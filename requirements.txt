@@ -1,0 +1,5 @@
+PyQt
+twisted
+qt4reactor
+# requests is used in tests
+requests
