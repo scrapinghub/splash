@@ -1,4 +1,4 @@
-import sys, requests, random, optparse
+import sys, requests, random, optparse, time
 from Queue import Queue
 from threading import Thread
 from collections import Counter
@@ -43,6 +43,7 @@ class StressTest():
             print "Concurrency   : %d" % self.concurrency
             print "Log file      : %s" % f.name
 
+            starttime = time.time()
             q, p = Queue(), Queue()
             for _ in xrange(self.concurrency):
                 t = Thread(target=worker, args=(q, p))
@@ -56,12 +57,18 @@ class StressTest():
             for _ in xrange(self.requests):
                 outputs.append(p.get())
 
+            elapsed = time.time() - starttime
             expected = {
                 200: len(ok_urls),
                 502: len(error_urls),
                 504: len(timeout_urls),
             }
             print
+            print "Total requests: %d" % len(urls)
+            print "Concurrency   : %d" % self.concurrency
+            print "Log file      : %s" % f.name
+            print "Elapsed time  : %.3fs" % elapsed
+            print "Avg time p/req: %.3fs" % (elapsed/len(urls))
             print "Received/Expected (per status code or error):"
             for c, n in Counter(outputs).items():
                 print "  %s: %d/%d" % (c, n, expected.get(c, 0))
