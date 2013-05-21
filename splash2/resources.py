@@ -64,7 +64,8 @@ class RenderHtml(Resource):
         log.err()
 
     def _finishRequest(self, _, request):
-        request.finish()
+        if not request._disconnected:
+            request.finish()
 
 
 class Root(Resource):
@@ -76,3 +77,5 @@ class Root(Resource):
     def getChild(self, request, name):
         return self
 
+    def render_GET(self, request):
+        return ""
