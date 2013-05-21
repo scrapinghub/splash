@@ -35,8 +35,17 @@ render.html
 
 Arguments:
 
-* url - the url to render (required)
-* timeout - a timeout for the render, in seconds (defaults to 30)
+url : string : required
+  The url to render (required)
+
+baseurl : string : optional
+  The base url to render the page with.
+
+  If given, base HTML content will be feched from the URL given in the url
+  argument, and render using this as the base url.
+
+timeout : float : optional
+  A timeout (in seconds) for the render (defaults to 30)
 
 Returns:
 

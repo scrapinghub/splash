@@ -24,6 +24,32 @@ document.getElementById("p1").innerHTML="After";
 </html>
 """
 
+class BaseUrl(Resource):
+
+    def render_GET(self, request):
+        return """
+<html>
+<body>
+<p id="p1">Before</p>
+<script src="script.js"></script>
+</body>
+</html>
+"""
+
+    def getChild(self, name, request):
+        if name == "script.js":
+            return self.ScriptJs()
+        return self
+
+
+    class ScriptJs(Resource):
+
+        isLeaf = True
+
+        def render_GET(self, request):
+            request.setHeader("Content-Type", "application/javascript")
+            return 'document.getElementById("p1").innerHTML="After";'
+
 class Delay(Resource):
 
     isLeaf = True
@@ -66,15 +92,10 @@ class Root(Resource):
         Resource.__init__(self)
         self.log = []
         self.putChild("jsrender", JsRender())
+        self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("partial", Partial())
         self.putChild("drop", Drop())
-
-    def getChild(self, request, name):
-        return self
-
-    def render(self, request):
-        return 'Splash mock HTTP server\n'
 
 
 if __name__ == "__main__":

@@ -13,8 +13,9 @@ class RenderHtml(Resource):
 
     def render_GET(self, request):
         url = getarg(request, "url")
+        baseurl = getarg(request, "baseurl", None)
         timeout = getarg(request, "timeout", 30, type=float)
-        render = WebkitRender(url)
+        render = WebkitRender(url, baseurl)
         d = render.deferred
         timer = reactor.callLater(timeout, d.cancel)
         d.addCallback(self._cancelTimer, timer)
@@ -50,7 +51,7 @@ class RenderHtml(Resource):
         failure.trap(defer.CancelledError)
         request.setResponseCode(504)
         request.write("Timeout exceeded rendering page\n")
-        #render.cancel()
+        render.cancel()
 
     def _renderError(self, failure, request):
         failure.trap(RenderError)
