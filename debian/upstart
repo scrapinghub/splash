@@ -1,0 +1,9 @@
+start on runlevel [2345]
+stop on runlevel [06]
+
+script
+    [ -r /etc/default/splash2 ] && . /etc/default/splash2
+    logdir=/var/log/splash2
+    exec start-stop-daemon --start --chuid proxy:proxy \
+        python -m splash2.server -f /var/log/splash2/splash2.log
+end script
