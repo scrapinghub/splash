@@ -74,8 +74,10 @@ class Root(Resource):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml())
 
-    def getChild(self, request, name):
-        return self
+    def getChild(self, name, request):
+        if name == "":
+            return self
+        return Resource.getChild(self, name, request)
 
     def render_GET(self, request):
         return ""
