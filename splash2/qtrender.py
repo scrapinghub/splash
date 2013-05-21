@@ -1,5 +1,6 @@
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import QUrl
+from PyQt4.QtCore import QUrl, QBuffer
+from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 
@@ -22,12 +23,15 @@ class RenderError(Exception):
 
 class WebkitRender(QWebPage):  
 
-    def __init__(self, url, baseurl=None):
+    def __init__(self, url, baseurl=None, format="html"):
         QWebPage.__init__(self)  
         self.webview = QWebView()
         self.webview.setPage(self)
         #self.webview.show()
   
+        if format not in ("html", "png"):
+            raise ValueError("Invalid render format: %s" % format)
+        self.format = format
         self.deferred = defer.Deferred()
         if baseurl:
             self._baseUrl = QUrl(baseurl)
@@ -42,9 +46,25 @@ class WebkitRender(QWebPage):
 
     def _loadFinished(self, ok):
         if ok:
-            self.deferred.callback(str(self.mainFrame().toHtml().toUtf8()))
+            if self.format == "html":
+                self._renderHtml()
+            else:
+                self._renderPng()
         else:
             self.deferred.errback(RenderError())
+
+    def _renderHtml(self):
+        self.deferred.callback(str(self.mainFrame().toHtml().toUtf8()))
+
+    def _renderPng(self):
+        self.setViewportSize(self.mainFrame().contentsSize())
+        image = QImage(self.viewportSize(), QImage.Format_ARGB32)
+        painter = QPainter(image)
+        self.mainFrame().render(painter)
+        painter.end()
+        b = QBuffer()
+        image.save(b, self.format)
+        self.deferred.callback(str(b.data()))
 
     def _urlFinished(self, reply):
         self.networkAccessManager().finished.disconnect(self._urlFinished)

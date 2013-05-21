@@ -1,4 +1,4 @@
-import unittest, requests
+import unittest, imghdr, requests
 from splash2.tests.utils import TestServers
 
 class RenderHtmlTest(unittest.TestCase):
@@ -7,6 +7,7 @@ class RenderHtmlTest(unittest.TestCase):
         with TestServers():
             r = requests.get("http://localhost:8050/render.html?url=http://localhost:8998/jsrender")
             self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.headers["content-type"].lower(), "text/html; charset=utf-8")
             self.assertTrue("Before" not in r.text)
             self.assertTrue("After" in r.text)
 
@@ -36,3 +37,13 @@ class RenderHtmlTest(unittest.TestCase):
             self.assertEqual(r.status_code, 200)
             self.assertTrue("Before" not in r.text)
             self.assertTrue("After" in r.text)
+
+class RenderPngTest(unittest.TestCase):
+
+    def test_ok(self):
+        with TestServers():
+            r = requests.get("http://localhost:8050/render.png?url=http://localhost:8998/jsrender")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.headers["content-type"], "image/png")
+            self.assertGreater(len(r.content), 0)
+            self.assertEqual(imghdr.what("", r.content), "png")

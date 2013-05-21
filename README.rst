@@ -33,6 +33,8 @@ The following endpoints are supported:
 render.html
 -----------
 
+Return the HTML of the javascript-rendered page.
+
 Arguments:
 
 url : string : required
@@ -47,13 +49,20 @@ baseurl : string : optional
 timeout : float : optional
   A timeout (in seconds) for the render (defaults to 30)
 
-Returns:
-
-The HTML of the javascript rendered page.
-
 Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10
+
+render.png
+----------
+
+Return a image (in PNG format) of the javascript-rendered page.
+
+The arguments are the same as for `render.html`_.
+
+Curl example::
+
+    curl http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&timeout=10
 
 Functional Tests
 ================

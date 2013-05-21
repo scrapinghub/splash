@@ -10,16 +10,21 @@ from splash2.utils import getarg, BadRequest
 class RenderHtml(Resource):
 
     isLeaf = True
+    render_format = "html"
+    content_type = "text/html; charset=utf-8"
 
-    def render_GET(self, request):
+    def _getRender(self, request):
         url = getarg(request, "url")
         baseurl = getarg(request, "baseurl", None)
-        timeout = getarg(request, "timeout", 30, type=float)
-        render = WebkitRender(url, baseurl)
+        return WebkitRender(url, baseurl, format=self.render_format)
+
+    def render_GET(self, request):
+        render = self._getRender(request)
         d = render.deferred
+        timeout = getarg(request, "timeout", 30, type=float)
         timer = reactor.callLater(timeout, d.cancel)
         d.addCallback(self._cancelTimer, timer)
-        d.addCallback(self._writeOutput, request, url)
+        d.addCallback(self._writeOutput, request)
         d.addErrback(self._timeoutError, request, render)
         d.addErrback(self._renderError, request)
         d.addErrback(self._internalError, request)
@@ -38,13 +43,15 @@ class RenderHtml(Resource):
         timer.cancel()
         return _
 
-    def _writeOutput(self, html, request, url):
+    def _writeOutput(self, html, request):
         stats = {
-            "url": url,
+            "args": request.args,
+            "format": self.render_format,
             "rendertime": time.time() - request.starttime,
             "rss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         }
         log.msg(json.dumps(stats), system="stats")
+        request.setHeader("content-type", self.content_type)
         request.write(html)
 
     def _timeoutError(self, failure, request, render):
@@ -68,11 +75,18 @@ class RenderHtml(Resource):
             request.finish()
 
 
+class RenderPng(RenderHtml):
+
+    render_format = "png"
+    content_type = "image/png"
+
+
 class Root(Resource):
 
     def __init__(self):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml())
+        self.putChild("render.png", RenderPng())
 
     def getChild(self, name, request):
         if name == "":
