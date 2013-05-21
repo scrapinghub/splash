@@ -58,7 +58,9 @@ render.png
 
 Return a image (in PNG format) of the javascript-rendered page.
 
-The arguments are the same as for `render.html`_.
+Arguments:
+
+    Same as `render.html`_.
 
 Curl example::
 
@@ -72,8 +74,8 @@ Run with::
     nosetests
 
 
-Stess tests
-===========
+Stress tests
+============
 
 There are some stress tests that spawn its own splash2 server and a mock server
 to run tests against.
