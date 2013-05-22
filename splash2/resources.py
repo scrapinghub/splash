@@ -24,7 +24,7 @@ class RenderHtml(Resource):
         timer = reactor.callLater(timeout, d.cancel)
         d.addCallback(self._cancelTimer, timer)
         d.addCallback(self._writeOutput, request)
-        d.addErrback(self._timeoutError, request, render)
+        d.addErrback(self._timeoutError, request)
         d.addErrback(self._renderError, request)
         d.addErrback(self._internalError, request)
         d.addBoth(self._finishRequest, request)
@@ -53,11 +53,10 @@ class RenderHtml(Resource):
         request.setHeader("content-type", self.content_type)
         request.write(html)
 
-    def _timeoutError(self, failure, request, render):
+    def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
         request.setResponseCode(504)
         request.write("Timeout exceeded rendering page\n")
-        render.cancel()
 
     def _renderError(self, failure, request):
         failure.trap(RenderError)

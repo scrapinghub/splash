@@ -31,7 +31,7 @@ class HtmlRender(QWebPage):
         #self.webview.show()
   
         self.format = format
-        self.deferred = defer.Deferred()
+        self.deferred = defer.Deferred(self.cancel)
         if baseurl:
             self._baseUrl = QUrl(baseurl)
             request = QNetworkRequest()
@@ -61,7 +61,8 @@ class HtmlRender(QWebPage):
         mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
         self.mainFrame().setContent(reply.readAll(), mimeType, self._baseUrl)
 
-    def cancel(self):
+    def cancel(self, _):
+        self.loadFinished.disconnect(self._loadFinished)
         self.webview.stop()
 
 
