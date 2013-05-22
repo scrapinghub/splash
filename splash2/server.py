@@ -1,4 +1,4 @@
-import sys, optparse
+import sys, optparse, resource
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -27,10 +27,15 @@ def start_logging(opts):
     else:
         logfile = sys.stderr
     log.startLogging(logfile)
+    log.msg("Open files limit: %d" % resource.getrlimit(resource.RLIMIT_NOFILE)[0])
 
 def splash_started(opts, stderr):
     if opts.logfile:
         stderr.write("Splash started - logging to: %s\n" % opts.logfile)
+
+def bump_nofile_limit():
+    _, n = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (n, n))
 
 def main():
     install_qtreactor()
@@ -41,15 +46,13 @@ def main():
 
     opts, _ = parse_opts()
 
+    bump_nofile_limit()
     reactor.callWhenRunning(splash_started, opts, sys.stderr)
     start_logging(opts)
     root = Root()
     factory = Site(root)
     reactor.listenTCP(opts.port, factory)
     reactor.run()
-
-def startup():
-    sys.stderr.write("reactor running\n")
 
 if __name__ == "__main__":
     main()

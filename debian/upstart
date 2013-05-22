@@ -1,6 +1,7 @@
 start on runlevel [2345]
 stop on runlevel [06]
 
+limit nofile 32768 32768
 env DISPLAY=:0
 
 script
