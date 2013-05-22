@@ -3,20 +3,19 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash2.qtrender import WebkitRender, RenderError
+from splash2.qtrender import HtmlRender, PngRender, RenderError
 from splash2.utils import getarg, BadRequest
 
 
 class RenderHtml(Resource):
 
     isLeaf = True
-    render_format = "html"
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request):
         url = getarg(request, "url")
         baseurl = getarg(request, "baseurl", None)
-        return WebkitRender(url, baseurl, format=self.render_format)
+        return HtmlRender(url, baseurl)
 
     def render_GET(self, request):
         render = self._getRender(request)
@@ -45,8 +44,8 @@ class RenderHtml(Resource):
 
     def _writeOutput(self, html, request):
         stats = {
+            "path": request.path,
             "args": request.args,
-            "format": self.render_format,
             "rendertime": time.time() - request.starttime,
             "rss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         }
@@ -77,8 +76,14 @@ class RenderHtml(Resource):
 
 class RenderPng(RenderHtml):
 
-    render_format = "png"
     content_type = "image/png"
+
+    def _getRender(self, request):
+        url = getarg(request, "url")
+        baseurl = getarg(request, "baseurl", None)
+        width = getarg(request, "width", None, type=int)
+        height = getarg(request, "height", None, type=int)
+        return PngRender(url, baseurl, width, height)
 
 
 class Root(Resource):

@@ -60,11 +60,23 @@ Return a image (in PNG format) of the javascript-rendered page.
 
 Arguments:
 
-    Same as `render.html`_.
+Same as `render.html`_ plus the following ones:
 
-Curl example::
+width : integer : optional
+  Resize the rendered image to the given width (in pixels) keeping the aspect
+  ratio.
 
+height : integer : optional
+  Crop the renderd image to the given height (in pixels). Often used in
+  conjunction with the width argument to generate fixed-size thumbnails.
+
+Curl examples::
+
+    # render with timeout
     curl http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&timeout=10
+
+    # 320x240 thumbnail
+    curl http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240
 
 Functional Tests
 ================

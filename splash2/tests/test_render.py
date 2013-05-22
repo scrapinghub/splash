@@ -1,4 +1,6 @@
-import unittest, imghdr, requests
+import unittest, requests
+from cStringIO import StringIO
+from PIL import Image
 from splash2.tests.utils import TestServers
 
 class _RenderTest(unittest.TestCase):
@@ -53,8 +55,23 @@ class RenderPngTest(_RenderTest):
         r = self.request("url=http://localhost:8998/jsrender")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers["content-type"], "image/png")
-        self.assertGreater(len(r.content), 0)
-        self.assertEqual(imghdr.what("", r.content), "png")
+        img = Image.open(StringIO(r.content))
+        self.assertEqual(img.format, "PNG")
+        self.assertGreater(img.size, (0, 0))
+
+    def test_width(self):
+        r = self.request("url=http://localhost:8998/jsrender&width=300")
+        self.assertEqual(r.headers["content-type"], "image/png")
+        img = Image.open(StringIO(r.content))
+        self.assertEqual(img.format, "PNG")
+        self.assertEqual(img.size[0], 300)
+
+    def test_width_height(self):
+        r = self.request("url=http://localhost:8998/jsrender&width=300&height=100")
+        self.assertEqual(r.headers["content-type"], "image/png")
+        img = Image.open(StringIO(r.content))
+        self.assertEqual(img.format, "PNG")
+        self.assertEqual(img.size, (300, 100))
 
 ts = TestServers()
 

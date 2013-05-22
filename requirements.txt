@@ -1,5 +1,7 @@
 PyQt
 twisted
 qt4reactor
-# requests is used in tests
+
+# the following libraries are only required by tests
 requests
+PIL

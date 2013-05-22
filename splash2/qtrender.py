@@ -1,5 +1,5 @@
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import QUrl, QBuffer
+from PyQt4.QtCore import Qt, QUrl, QBuffer
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
@@ -21,16 +21,15 @@ for key, value in qWebSettings.iteritems():
 class RenderError(Exception):
     pass
 
-class WebkitRender(QWebPage):  
 
-    def __init__(self, url, baseurl=None, format="html"):
+class HtmlRender(QWebPage):
+
+    def __init__(self, url, baseurl=None):
         QWebPage.__init__(self)  
         self.webview = QWebView()
         self.webview.setPage(self)
         #self.webview.show()
   
-        if format not in ("html", "png"):
-            raise ValueError("Invalid render format: %s" % format)
         self.format = format
         self.deferred = defer.Deferred()
         if baseurl:
@@ -46,25 +45,15 @@ class WebkitRender(QWebPage):
 
     def _loadFinished(self, ok):
         if ok:
-            if self.format == "html":
-                self._renderHtml()
-            else:
-                self._renderPng()
+            try:
+                self.deferred.callback(self._render())
+            except Exception as e:
+                self.deferred.errback(e)
         else:
             self.deferred.errback(RenderError())
 
-    def _renderHtml(self):
-        self.deferred.callback(str(self.mainFrame().toHtml().toUtf8()))
-
-    def _renderPng(self):
-        self.setViewportSize(self.mainFrame().contentsSize())
-        image = QImage(self.viewportSize(), QImage.Format_ARGB32)
-        painter = QPainter(image)
-        self.mainFrame().render(painter)
-        painter.end()
-        b = QBuffer()
-        image.save(b, self.format)
-        self.deferred.callback(str(b.data()))
+    def _render(self):
+        return str(self.mainFrame().toHtml().toUtf8())
 
     def _urlFinished(self, reply):
         self.networkAccessManager().finished.disconnect(self._urlFinished)
@@ -74,3 +63,25 @@ class WebkitRender(QWebPage):
 
     def cancel(self):
         self.webview.stop()
+
+
+class PngRender(HtmlRender):
+
+    def __init__(self, url, baseurl=None, width=None, height=None):
+        HtmlRender.__init__(self, url, baseurl)
+        self.width = width
+        self.height = height
+
+    def _render(self):
+        self.setViewportSize(self.mainFrame().contentsSize())
+        image = QImage(self.viewportSize(), QImage.Format_ARGB32)
+        painter = QPainter(image)
+        self.mainFrame().render(painter)
+        painter.end()
+        if self.width:
+            image = image.scaledToWidth(self.width, Qt.SmoothTransformation)
+        if self.height:
+            image = image.copy(0, 0, self.width, self.height)
+        b = QBuffer()
+        image.save(b, "png")
+        return str(b.data())
