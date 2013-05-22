@@ -5,6 +5,7 @@ from twisted.internet import reactor, defer
 from twisted.python import log
 from splash2.qtrender import HtmlRender, PngRender, RenderError
 from splash2.utils import getarg, BadRequest
+from splash2 import sentry
 
 
 class RenderHtml(Resource):
@@ -68,6 +69,7 @@ class RenderHtml(Resource):
         request.setResponseCode(500)
         request.write(failure.getErrorMessage())
         log.err()
+        sentry.capture(failure)
 
     def _finishRequest(self, _, request):
         if not request._disconnected:
