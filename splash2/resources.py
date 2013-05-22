@@ -1,4 +1,4 @@
-import time, resource, json
+import os, time, resource, json
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
@@ -48,6 +48,7 @@ class RenderHtml(Resource):
             "args": request.args,
             "rendertime": time.time() - request.starttime,
             "rss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+            "load": os.getloadavg(),
         }
         log.msg(json.dumps(stats), system="stats")
         request.setHeader("content-type", self.content_type)
