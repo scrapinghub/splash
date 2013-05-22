@@ -47,8 +47,8 @@ class HtmlRender(QWebPage):
         if ok:
             try:
                 self.deferred.callback(self._render())
-            except Exception as e:
-                self.deferred.errback(e)
+            except:
+                self.deferred.errback()
         else:
             self.deferred.errback(RenderError())
 
