@@ -64,7 +64,7 @@ class RenderPngTest(_RenderTest):
         self.assertEqual(r.headers["content-type"], "image/png")
         img = Image.open(StringIO(r.content))
         self.assertEqual(img.format, "PNG")
-        self.assertGreater(img.size, (0, 0))
+        self.assertEqual(img.size, (1280, 960))
 
     def test_width(self):
         r = self.request("url=http://localhost:8998/jsrender&width=300")
@@ -79,6 +79,12 @@ class RenderPngTest(_RenderTest):
         img = Image.open(StringIO(r.content))
         self.assertEqual(img.format, "PNG")
         self.assertEqual(img.size, (300, 100))
+
+    def test_range_checks(self):
+        for arg in ('width', 'height', 'vwidth', 'vheight'):
+            for val in (-1, 99999):
+                r = self.request("url=http://localhost:8998/jsrender&%s=%d" % (arg, val))
+                self.assertEqual(r.status_code, 400)
 
 ts = TestServers()
 

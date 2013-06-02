@@ -83,9 +83,11 @@ class RenderPng(RenderHtml):
     def _getRender(self, request):
         url = getarg(request, "url")
         baseurl = getarg(request, "baseurl", None)
-        width = getarg(request, "width", None, type=int)
-        height = getarg(request, "height", None, type=int)
-        return PngRender(url, baseurl, width, height)
+        width = getarg(request, "width", None, type=int, range=(0, 1920))
+        height = getarg(request, "height", None, type=int, range=(0, 1080))
+        vwidth = getarg(request, "vwidth", 1280, type=int, range=(0, 1920))
+        vheight = getarg(request, "vheight", 960, type=int, range=(0, 1080))
+        return PngRender(url, baseurl, width, height, vwidth, vheight)
 
 
 class Root(Resource):

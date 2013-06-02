@@ -1,5 +1,5 @@
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QBuffer
+from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
@@ -74,13 +74,15 @@ class HtmlRender(QWebPage):
 
 class PngRender(HtmlRender):
 
-    def __init__(self, url, baseurl=None, width=None, height=None):
+    def __init__(self, url, baseurl=None, width=None, height=None, vwidth=1280, vheight=960):
         HtmlRender.__init__(self, url, baseurl)
         self.width = width
         self.height = height
+        self.vwidth = vwidth
+        self.vheight = vheight
 
     def _render(self):
-        self.setViewportSize(self.mainFrame().contentsSize())
+        self.setViewportSize(QSize(self.vwidth, self.vheight))
         image = QImage(self.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.mainFrame().render(painter)

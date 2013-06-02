@@ -70,6 +70,15 @@ height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
 
+vwidth : integer : optional
+  View width. Size (in pixels) of the browser viewport to render the web page.
+  Defaults to 1280.
+
+vheight : integer : optional
+  View height. Size (in pixels) of the browser viewport to render the web page.
+  Defaults to 960.
+
+
 Curl examples::
 
     # render with timeout
