@@ -1,4 +1,4 @@
-Source: splash2
+Source: splash
 Section: misc
 Priority: extra
 Maintainer: Scrapinghub Team <info@scrapinghub.com>
@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 7)
 Standards-Version: 3.8.3
 Homepage: http://www.scrapinghub.com/
 
-Package: splash2
+Package: splash
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends},
  hub-xvfb,

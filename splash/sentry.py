@@ -6,7 +6,7 @@ class SentryLogger():
         try:
             import raven
             self.enabled = True
-            dsn = os.environ['SPLASH2_SENTRY_DSN']
+            dsn = os.environ['SPLASH_SENTRY_DSN']
             if dsn.startswith('https'):
                 dsn = dsn.replace('https://', 'twisted+https://')
             self.client = raven.Client(dsn)

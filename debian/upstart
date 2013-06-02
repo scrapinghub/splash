@@ -5,12 +5,12 @@ limit nofile 32768 32768
 env DISPLAY=:0
 
 script
-    [ -r /etc/default/splash2 ] && . /etc/default/splash2
-    logdir=/var/log/splash2
+    [ -r /etc/default/splash ] && . /etc/default/splash
+    logdir=/var/log/splash
     chown proxy:proxy $logdir
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
-        --pidfile /var/run/splash2.pid \
+        --pidfile /var/run/splash.pid \
         --exec /usr/bin/python \
-            -- -m splash2.server -f $logdir/splash2.log >$logdir/splash2.out 2>$logdir/splash2.err
+            -- -m splash.server -f $logdir/splash.log >$logdir/splash.out 2>$logdir/splash.err
 end script

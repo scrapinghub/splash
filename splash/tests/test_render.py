@@ -1,7 +1,7 @@
 import unittest, requests
 from cStringIO import StringIO
 from PIL import Image
-from splash2.tests.utils import TestServers
+from splash.tests.utils import TestServers
 
 class _RenderTest(unittest.TestCase):
 

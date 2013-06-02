@@ -2,7 +2,7 @@ from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor
 from twisted.internet.task import deferLater
-from splash2.utils import getarg
+from splash.utils import getarg
 
 
 class JsRender(Resource):

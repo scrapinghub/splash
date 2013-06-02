@@ -1,11 +1,11 @@
-========================================
-Splash2 - A javascript rendering service
-========================================
+=======================================
+Splash - A javascript rendering service
+=======================================
 
 Introduction
 ============
 
-Splash2 is a javascript rendering service with a HTTP API. It runs on top of
+Splash is a javascript rendering service with a HTTP API. It runs on top of
 twisted and QT webkit for rendering pages.
 
 The (twisted) QT reactor is used to make the sever fully asynchronous allowing
@@ -22,7 +22,7 @@ Usage
 
 To run the server::
 
-    python -m splash2.server
+    python -m splash.server
 
 
 API
@@ -89,16 +89,16 @@ Run with::
 Stress tests
 ============
 
-There are some stress tests that spawn its own splash2 server and a mock server
+There are some stress tests that spawn its own splash server and a mock server
 to run tests against.
 
 To run the stress tests::
 
-    python -m splash2.stress
+    python -m splash.tests.stress
 
 Typical output::
 
-    $ python -m splash2.tests.stress 
+    $ python -m splash.tests.stress 
     Total requests: 1000
     Concurrency   : 50
     Log file      : /tmp/splash-stress-48H91h.log

@@ -3,9 +3,9 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash2.qtrender import HtmlRender, PngRender, RenderError
-from splash2.utils import getarg, BadRequest
-from splash2 import sentry
+from splash.qtrender import HtmlRender, PngRender, RenderError
+from splash.utils import getarg, BadRequest
+from splash import sentry
 
 
 class RenderHtml(Resource):

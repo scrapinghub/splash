@@ -42,7 +42,7 @@ def main():
 
     from twisted.web.server import Site
     from twisted.internet import reactor
-    from splash2.resources import Root
+    from splash.resources import Root
 
     opts, _ = parse_opts()
 

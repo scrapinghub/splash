@@ -12,13 +12,13 @@ class SplashServer():
         self.logfile = logfile
 
     def __enter__(self):
-        args = [sys.executable, '-u', '-m', 'splash2.server']
+        args = [sys.executable, '-u', '-m', 'splash.server']
         if self.logfile:
             args += ['-f', self.logfile]
         self.proc = Popen(args, stderr=PIPE, env=get_testenv())
         self.proc.poll()
         if self.proc.returncode:
-            msg = "unable to start splash2 server. error code: %d - stderr follows: \n%s" % \
+            msg = "unable to start splash server. error code: %d - stderr follows: \n%s" % \
                 (self.proc.returncode, self.proc.stderr.read())
             raise RuntimeError(msg)
         self.proc.stderr.readline()
@@ -32,7 +32,7 @@ class SplashServer():
 class MockServer():
 
     def __enter__(self):
-        self.proc = Popen([sys.executable, '-u', '-m', 'splash2.tests.mockserver'],
+        self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
             stdout=PIPE, env=get_testenv())
         self.proc.stdout.readline()
 

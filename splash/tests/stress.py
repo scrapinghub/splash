@@ -3,7 +3,7 @@ from Queue import Queue
 from threading import Thread
 from collections import Counter
 from tempfile import NamedTemporaryFile
-from splash2.tests.utils import TestServers
+from splash.tests.utils import TestServers
 
 
 class StressTest():
