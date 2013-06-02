@@ -65,6 +65,12 @@ class HtmlRender(QWebPage):
         self.loadFinished.disconnect(self._loadFinished)
         self.webview.stop()
 
+    def javaScriptAlert(self, frame, msg):
+        return
+
+    def javaScriptConfirm(self, frame, msg):
+        return False
+
 
 class PngRender(HtmlRender):
 

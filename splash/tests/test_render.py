@@ -25,6 +25,13 @@ class _RenderTest(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertTrue("url" in r.text)
 
+    def test_jsalert(self):
+        r = self.request("url=http://localhost:8998/jsalert&timeout=3")
+        self.assertEqual(r.status_code, 200)
+
+    def test_jsconfirm(self):
+        r = self.request("url=http://localhost:8998/jsconfirm&timeout=3")
+        self.assertEqual(r.status_code, 200)
 
 class RenderHtmlTest(_RenderTest):
 

@@ -24,6 +24,41 @@ document.getElementById("p1").innerHTML="After";
 </html>
 """
 
+class JsAlert(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return """
+<html>
+<body>
+<p id="p1">Before</p>
+<script>
+alert("hello");
+document.getElementById("p1").innerHTML="After";
+</script>
+</body>
+</html>
+"""
+
+class JsConfirm(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return """
+<html>
+<body>
+<p id="p1">Before</p>
+<script>
+confirm("are you sure?");
+document.getElementById("p1").innerHTML="After";
+</script>
+</body>
+</html>
+"""
+
+
 class BaseUrl(Resource):
 
     def render_GET(self, request):
@@ -92,6 +127,8 @@ class Root(Resource):
         Resource.__init__(self)
         self.log = []
         self.putChild("jsrender", JsRender())
+        self.putChild("jsalert", JsAlert())
+        self.putChild("jsconfirm", JsConfirm())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("partial", Partial())
