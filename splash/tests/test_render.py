@@ -64,7 +64,7 @@ class RenderPngTest(_RenderTest):
         self.assertEqual(r.headers["content-type"], "image/png")
         img = Image.open(StringIO(r.content))
         self.assertEqual(img.format, "PNG")
-        self.assertEqual(img.size, (1280, 960))
+        self.assertEqual(img.size, (1024, 768))
 
     def test_width(self):
         r = self.request("url=http://localhost:8998/jsrender&width=300")

@@ -85,8 +85,8 @@ class RenderPng(RenderHtml):
         baseurl = getarg(request, "baseurl", None)
         width = getarg(request, "width", None, type=int, range=(0, 1920))
         height = getarg(request, "height", None, type=int, range=(0, 1080))
-        vwidth = getarg(request, "vwidth", 1280, type=int, range=(0, 1920))
-        vheight = getarg(request, "vheight", 960, type=int, range=(0, 1080))
+        vwidth = getarg(request, "vwidth", 1024, type=int, range=(0, 1920))
+        vheight = getarg(request, "vheight", 768, type=int, range=(0, 1080))
         return PngRender(url, baseurl, width, height, vwidth, vheight)
 
 

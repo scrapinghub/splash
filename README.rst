@@ -72,11 +72,11 @@ height : integer : optional
 
 vwidth : integer : optional
   View width. Size (in pixels) of the browser viewport to render the web page.
-  Defaults to 1280.
+  Defaults to 1024.
 
 vheight : integer : optional
   View height. Size (in pixels) of the browser viewport to render the web page.
-  Defaults to 960.
+  Defaults to 768.
 
 
 Curl examples::

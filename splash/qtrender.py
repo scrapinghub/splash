@@ -74,7 +74,7 @@ class HtmlRender(QWebPage):
 
 class PngRender(HtmlRender):
 
-    def __init__(self, url, baseurl=None, width=None, height=None, vwidth=1280, vheight=960):
+    def __init__(self, url, baseurl=None, width=None, height=None, vwidth=1024, vheight=768):
         HtmlRender.__init__(self, url, baseurl)
         self.width = width
         self.height = height
