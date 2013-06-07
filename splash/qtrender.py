@@ -30,7 +30,6 @@ class HtmlRender(QWebPage):
         self.webview.setPage(self)
         #self.webview.show()
   
-        self.format = format
         self.deferred = defer.Deferred(self.cancel)
         if baseurl:
             self._baseUrl = QUrl(baseurl)
