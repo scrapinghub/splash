@@ -4,7 +4,7 @@ from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
 from splash.qtrender import HtmlRender, PngRender, RenderError
-from splash.utils import getarg, BadRequest
+from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 
 
@@ -48,8 +48,9 @@ class RenderHtml(Resource):
             "path": request.path,
             "args": request.args,
             "rendertime": time.time() - request.starttime,
-            "rss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+            "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
+            "fds": get_num_fds(),
         }
         log.msg(json.dumps(stats), system="stats")
         request.setHeader("content-type", self.content_type)
@@ -90,12 +91,23 @@ class RenderPng(RenderHtml):
         return PngRender(url, baseurl, width, height, vwidth, vheight)
 
 
+class Debug(Resource):
+
+    isLeaf = True
+
+    def render_GET(self, request):
+        return json.dumps({
+            "leaks": get_leaks(),
+        })
+
+
 class Root(Resource):
 
     def __init__(self):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml())
         self.putChild("render.png", RenderPng())
+        self.putChild("debug", Debug())
 
     def getChild(self, name, request):
         if name == "":

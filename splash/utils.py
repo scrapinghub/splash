@@ -1,3 +1,5 @@
+import os, gc, inspect
+from collections import defaultdict
 
 _REQUIRED = object()
 
@@ -15,3 +17,18 @@ def getarg(request, name, default=_REQUIRED, type=str, range=None):
     else:
         return default
 
+PID = os.getpid()
+def get_num_fds():
+    return len(os.listdir("/proc/%s/fd" % PID))
+
+def get_leaks():
+    relevant_types = frozenset(('CustomQWebPage', 'CustomQNetworkAccessManager',
+        'QWebView', 'HtmlRender', 'PngRender', 'QNetworkRequest'))
+    leaks = defaultdict(int)
+    gc.collect()
+    for o in gc.get_objects():
+        if not inspect.isclass(o):
+            cname = type(o).__name__
+            if cname in relevant_types:
+                leaks[cname] += 1
+    return leaks
