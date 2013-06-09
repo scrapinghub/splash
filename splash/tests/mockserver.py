@@ -1,6 +1,7 @@
+import os
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
-from twisted.internet import reactor
+from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
 from splash.utils import getarg
 
@@ -135,12 +136,20 @@ class Root(Resource):
         self.putChild("drop", Drop())
 
 
+def ssl_factory():
+    pem = os.path.join(os.path.dirname(__file__), "server.pem")
+    return ssl.DefaultOpenSSLContextFactory(pem, pem)
+
+
 if __name__ == "__main__":
     root = Root()
     factory = Site(root)
     port = reactor.listenTCP(8998, factory)
+    sslport = reactor.listenSSL(8999, factory, ssl_factory())
     def print_listening():
         h = port.getHost()
-        print "Mock server running at http://%s:%d" % (h.host, h.port)
+        s = sslport.getHost()
+        print "Mock server running at http://%s:%d & https://%s:%d" % \
+            (h.host, h.port, s.host, s.port)
     reactor.callWhenRunning(print_listening)
     reactor.run()

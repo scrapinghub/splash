@@ -22,8 +22,9 @@ def get_num_fds():
     return len(os.listdir("/proc/%s/fd" % PID))
 
 def get_leaks():
-    relevant_types = frozenset(('CustomQWebPage', 'CustomQNetworkAccessManager',
-        'QWebView', 'HtmlRender', 'PngRender', 'QNetworkRequest'))
+    relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
+        'QWebView', 'HtmlRender', 'PngRender', 'QNetworkRequest', 'QSize',
+        'QBuffer', 'QPainter', 'QImage'))
     leaks = defaultdict(int)
     gc.collect()
     for o in gc.get_objects():

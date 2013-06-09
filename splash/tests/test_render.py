@@ -42,7 +42,13 @@ class RenderHtmlTest(_RenderTest):
     render_format = "html"
 
     def test_ok(self):
-        r = self.request("url=http://localhost:8998/jsrender")
+        self._test_ok("http://localhost:8998/jsrender")
+
+    def test_ok_https(self):
+        self._test_ok("https://localhost:8999/jsrender")
+
+    def _test_ok(self, url):
+        r = self.request("url=%s" % url)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers["content-type"].lower(), "text/html; charset=utf-8")
         self.assertTrue("Before" not in r.text)
@@ -63,7 +69,13 @@ class RenderPngTest(_RenderTest):
     render_format = "png"
 
     def test_ok(self):
-        r = self.request("url=http://localhost:8998/jsrender")
+        self._test_ok("http://localhost:8998/jsrender")
+
+    def test_ok_https(self):
+        self._test_ok("https://localhost:8999/jsrender")
+
+    def _test_ok(self, url):
+        r = self.request("url=%s" % url)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers["content-type"], "image/png")
         img = Image.open(StringIO(r.content))
