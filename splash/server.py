@@ -43,13 +43,15 @@ def main():
     from twisted.web.server import Site
     from twisted.internet import reactor
     from splash.resources import Root
+    from splash.pool import RenderPool
 
     opts, _ = parse_opts()
 
     bump_nofile_limit()
     reactor.callWhenRunning(splash_started, opts, sys.stderr)
     start_logging(opts)
-    root = Root()
+    pool = RenderPool()
+    root = Root(pool)
     factory = Site(root)
     reactor.listenTCP(opts.port, factory)
     reactor.run()

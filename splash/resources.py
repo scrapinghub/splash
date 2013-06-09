@@ -13,14 +13,17 @@ class RenderHtml(Resource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
+    def __init__(self, pool):
+        Resource.__init__(self)
+        self.pool = pool
+
     def _getRender(self, request):
         url = getarg(request, "url")
         baseurl = getarg(request, "baseurl", None)
-        return HtmlRender(url, baseurl)
+        return self.pool.render(HtmlRender, url, baseurl)
 
     def render_GET(self, request):
-        render = self._getRender(request)
-        d = render.deferred
+        d = self._getRender(request)
         timeout = getarg(request, "timeout", 30, type=float)
         timer = reactor.callLater(timeout, d.cancel)
         d.addCallback(self._cancelTimer, timer)
@@ -88,26 +91,32 @@ class RenderPng(RenderHtml):
         height = getarg(request, "height", None, type=int, range=(0, 1080))
         vwidth = getarg(request, "vwidth", 1024, type=int, range=(0, 1920))
         vheight = getarg(request, "vheight", 768, type=int, range=(0, 1080))
-        return PngRender(url, baseurl, width, height, vwidth, vheight)
+        return self.pool.render(PngRender, url, baseurl, width, height, vwidth, vheight)
 
 
 class Debug(Resource):
 
     isLeaf = True
 
+    def __init__(self, pool):
+        Resource.__init__(self)
+        self.pool = pool
+
     def render_GET(self, request):
         return json.dumps({
             "leaks": get_leaks(),
+            "active": [x.url for x in self.pool.active],
+            "qsize": len(self.pool.queue.pending),
         })
 
 
 class Root(Resource):
 
-    def __init__(self):
+    def __init__(self, pool):
         Resource.__init__(self)
-        self.putChild("render.html", RenderHtml())
-        self.putChild("render.png", RenderPng())
-        self.putChild("debug", Debug())
+        self.putChild("render.html", RenderHtml(pool))
+        self.putChild("render.png", RenderPng(pool))
+        self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):
         if name == "":

@@ -26,6 +26,7 @@ class HtmlRender(QWebPage):
 
     def __init__(self, url, baseurl=None):
         QWebPage.__init__(self)  
+        self.url = url
         self.webview = QWebView()
         self.webview.setPage(self)
         #self.webview.show()
@@ -63,6 +64,9 @@ class HtmlRender(QWebPage):
     def cancel(self, _):
         self.loadFinished.disconnect(self._loadFinished)
         self.webview.stop()
+
+    def close(self):
+        pass
 
     def javaScriptAlert(self, frame, msg):
         return
