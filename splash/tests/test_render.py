@@ -20,6 +20,10 @@ class _RenderTest(unittest.TestCase):
         r = self.request("url=http://localhost:8998/delay?n=10&timeout=0.5")
         self.assertEqual(r.status_code, 504)
 
+    def test_timeout_out_of_range(self):
+        r = self.request("url=http://localhost:8998/delay?n=10&timeout=999")
+        self.assertEqual(r.status_code, 400)
+
     def test_missing_url(self):
         r = self.request("")
         self.assertEqual(r.status_code, 400)

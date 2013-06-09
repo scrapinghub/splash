@@ -24,7 +24,7 @@ class RenderHtml(Resource):
 
     def render_GET(self, request):
         d = self._getRender(request)
-        timeout = getarg(request, "timeout", 30, type=float)
+        timeout = getarg(request, "timeout", 30, type=float, range=(0, 60))
         timer = reactor.callLater(timeout, d.cancel)
         d.addCallback(self._cancelTimer, timer)
         d.addCallback(self._writeOutput, request)
