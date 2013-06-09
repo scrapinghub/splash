@@ -107,6 +107,8 @@ class Debug(Resource):
             "leaks": get_leaks(),
             "active": [x.url for x in self.pool.active],
             "qsize": len(self.pool.queue.pending),
+            "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+            "fds": get_num_fds(),
         })
 
 
