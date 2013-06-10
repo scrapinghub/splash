@@ -54,6 +54,8 @@ class RenderHtml(Resource):
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
             "fds": get_num_fds(),
+            "active": len(self.pool.active),
+            "qsize": len(self.pool.queue.pending),
         }
         log.msg(json.dumps(stats), system="stats")
         request.setHeader("content-type", self.content_type)
