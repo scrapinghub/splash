@@ -1,4 +1,4 @@
-import sys, optparse, resource
+import sys, optparse, resource, traceback, signal
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -65,6 +65,7 @@ def main():
     start_logging(opts)
     manhole_server()
     splash_server(opts.port)
+    signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor
     reactor.callWhenRunning(splash_started, opts, sys.stderr)
