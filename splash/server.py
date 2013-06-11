@@ -37,23 +37,37 @@ def bump_nofile_limit():
     _, n = resource.getrlimit(resource.RLIMIT_NOFILE)
     resource.setrlimit(resource.RLIMIT_NOFILE, (n, n))
 
-def main():
-    install_qtreactor()
-
-    from twisted.web.server import Site
+def manhole_server():
     from twisted.internet import reactor
+    from twisted.manhole import telnet
+
+    f = telnet.ShellFactory()
+    f.username = "admin"
+    f.password = "admin"
+    reactor.listenTCP(5023, f)
+
+def splash_server(portnum):
+    from twisted.internet import reactor
+    from twisted.web.server import Site
     from splash.resources import Root
     from splash.pool import RenderPool
 
-    opts, _ = parse_opts()
-
-    bump_nofile_limit()
-    reactor.callWhenRunning(splash_started, opts, sys.stderr)
-    start_logging(opts)
     pool = RenderPool()
     root = Root(pool)
     factory = Site(root)
-    reactor.listenTCP(opts.port, factory)
+    reactor.listenTCP(portnum, factory)
+
+def main():
+    install_qtreactor()
+    opts, _ = parse_opts()
+
+    bump_nofile_limit()
+    start_logging(opts)
+    manhole_server()
+    splash_server(opts.port)
+
+    from twisted.internet import reactor
+    reactor.callWhenRunning(splash_started, opts, sys.stderr)
     reactor.run()
 
 if __name__ == "__main__":
