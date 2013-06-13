@@ -45,6 +45,8 @@ class HtmlRender(object):
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
+        self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
+        self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 
         self.deferred = defer.Deferred()
         request = QNetworkRequest()
