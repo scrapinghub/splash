@@ -3,14 +3,17 @@ stop on runlevel [06]
 
 limit nofile 32768 32768
 env DISPLAY=:0
+respawn
 
 script
     [ -r /etc/default/splash ] && . /etc/default/splash
+    totmem=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+    maxrss=$(($totmem*3/4))
     logdir=/var/log/splash
     chown proxy:proxy $logdir
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
         --pidfile /var/run/splash.pid \
         --exec /usr/bin/python \
-            -- -m splash.server -f $logdir/splash.log >$logdir/splash.out 2>$logdir/splash.err
+            -- -m splash.server -f $logdir/splash.log -m $maxrss >$logdir/splash.out 2>$logdir/splash.err
 end script

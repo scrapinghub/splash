@@ -15,6 +15,8 @@ def install_qtreactor():
 def parse_opts():
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
+    op.add_option("-m", "--maxrss", type="int", default=0,
+        help="exit if max RSS reaches this value (in KB) (default: %default)")
     op.add_option("-p", "--port", type="int", default=8050,
         help="port to listen to (default: %default)")
     return op.parse_args()
@@ -57,12 +59,25 @@ def splash_server(portnum):
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
 
+def monitor_maxrss(maxrss):
+    from twisted.internet import reactor, task
+    from twisted.python import log
+    def check_maxrss():
+        if resource.getrusage(resource.RUSAGE_SELF).ru_maxrss > maxrss:
+            log.msg("maxrss exceeded %d kb, shutting down..." % maxrss)
+            reactor.stop()
+    if maxrss:
+        log.msg("maxrss limit: %d kb" % maxrss)
+        t = task.LoopingCall(check_maxrss)
+        t.start(60, now=False)
+
 def main():
     install_qtreactor()
     opts, _ = parse_opts()
 
     bump_nofile_limit()
     start_logging(opts)
+    monitor_maxrss(opts.maxrss)
     manhole_server()
     splash_server(opts.port)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
