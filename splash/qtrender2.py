@@ -1,3 +1,4 @@
+import json
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize
 from PyQt4.QtGui import QPainter, QImage
@@ -110,3 +111,21 @@ class PngRender(HtmlRender):
         b = QBuffer()
         image.save(b, "png")
         return str(b.data())
+
+
+class IframesRender(HtmlRender):
+
+    def _render(self):
+        frame = self.web_view.page().mainFrame()
+        return json.dumps(self._frameToDict(frame))
+
+    def _frameToDict(self, frame):
+        g = frame.geometry()
+        return {
+            "url": str(frame.url().toString()),
+            "requestedUrl": str(frame.requestedUrl().toString()),
+            "html": unicode(frame.toHtml()),
+            "name": unicode(frame.frameName()),
+            "geometry": (g.x(), g.y(), g.width(), g.height()),
+            "childFrames": map(self._frameToDict, frame.childFrames()),
+        }

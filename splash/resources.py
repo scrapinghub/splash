@@ -3,7 +3,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash.qtrender2 import HtmlRender, PngRender, RenderError
+from splash.qtrender2 import HtmlRender, PngRender, IframesRender, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 
@@ -96,6 +96,16 @@ class RenderPng(RenderHtml):
         return self.pool.render(PngRender, url, baseurl, width, height, vwidth, vheight)
 
 
+class RenderIframes(RenderHtml):
+
+    content_type = "application/json"
+
+    def _getRender(self, request):
+        url = getarg(request, "url")
+        baseurl = getarg(request, "baseurl", None)
+        return self.pool.render(IframesRender, url, baseurl)
+
+
 class Debug(Resource):
 
     isLeaf = True
@@ -120,6 +130,7 @@ class Root(Resource):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
+        self.putChild("iframes.json", RenderIframes(pool))
         self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):
