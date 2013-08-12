@@ -1,9 +1,9 @@
 PyQt
 twisted
 qt4reactor
-pyOpenSSL
 psutil
 
 # the following libraries are only required by tests
+pyOpenSSL
 requests
 PIL
