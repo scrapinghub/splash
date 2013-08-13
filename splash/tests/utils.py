@@ -21,7 +21,11 @@ class SplashServer():
             msg = "unable to start splash server. error code: %d - stderr follows: \n%s" % \
                 (self.proc.returncode, self.proc.stderr.read())
             raise RuntimeError(msg)
+
+        # wait until server starts writing debug messages,
+        # then wait a bit more to make it more likely to be online
         self.proc.stderr.readline()
+        time.sleep(0.2)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
@@ -35,6 +39,7 @@ class MockServer():
         self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
             stdout=PIPE, env=get_testenv())
         self.proc.stdout.readline()
+        time.sleep(0.1)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
