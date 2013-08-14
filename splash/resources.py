@@ -3,7 +3,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash.qtrender2 import (HtmlRender, PngRender, JsonRender, RenderError)
+from splash.qtrender2 import HtmlRender, PngRender, JsonRender, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 
@@ -80,10 +80,10 @@ class RenderBase(Resource):
 
 
 def _get_dimension_params(request):
-    width = getarg(request, "width", None, type=int, range=(0, 1920))
-    height = getarg(request, "height", None, type=int, range=(0, 1080))
-    vwidth = getarg(request, "vwidth", 1024, type=int, range=(0, 1920))
-    vheight = getarg(request, "vheight", 768, type=int, range=(0, 1080))
+    width = getarg(request, "width", None, type=int, range=(1, 1920))
+    height = getarg(request, "height", None, type=int, range=(1, 1080))
+    vwidth = getarg(request, "vwidth", 1024, type=int, range=(1, 1920))
+    vheight = getarg(request, "vheight", 768, type=int, range=(1, 1080))
     return width, height, vwidth, vheight
 
 def _get_url_params(request):
