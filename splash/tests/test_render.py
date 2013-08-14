@@ -4,7 +4,7 @@ from PIL import Image
 from splash.tests.utils import TestServers
 
 
-class _RenderTest(unittest.TestCase):
+class _BaseRenderTest(unittest.TestCase):
 
     host = "localhost:8050"
     render_format = "html"
@@ -17,6 +17,9 @@ class _RenderTest(unittest.TestCase):
         else:
             url = "http://%s/render.%s?%s" % (self.host, render_format, query)
             return requests.get(url)
+
+
+class _RenderTest(_BaseRenderTest):
 
     def test_render_error(self):
         r = self.request("url=http://non-existent-host/")
@@ -46,6 +49,13 @@ class _RenderTest(unittest.TestCase):
     def test_iframes(self):
         r = self.request("url=http://localhost:8998/iframes&timeout=3")
         self.assertEqual(r.status_code, 200)
+
+    def test_wait(self):
+        r1 = self.request("url=http://localhost:8998/jsinterval")
+        r2 = self.request("url=http://localhost:8998/jsinterval&wait=0.2")
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r2.status_code, 200)
+        self.assertNotEqual(r1.text, r2.text)
 
 
 class RenderHtmlTest(_RenderTest):
@@ -210,6 +220,7 @@ class RenderJsonTest(_RenderTest):
         self.assertFieldsNotInResponse(res, ["childFrames"])
 
 
+
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
             self.assertTrue(key in res, "%s is not in response" % key)
@@ -239,6 +250,48 @@ class RenderJsonTest(_RenderTest):
         self.assertEqual(r2.status_code, 200)
         return r1, r2
 
+
+class IframesRenderTest(_BaseRenderTest):
+    render_format = 'json'
+
+    def test_basic(self):
+        self.assertIframesText('IFRAME_1_OK')
+
+    def test_js_iframes(self):
+        self.assertIframesText('IFRAME_2_OK')
+
+    def test_delayed_js_iframes(self):
+        self.assertNoIframesText('IFRAME_3_OK', {'wait': 0.05})
+        self.assertIframesText('IFRAME_3_OK', {'wait': 0.5})
+
+    def test_onload_iframes(self):
+        self.assertIframesText('IFRAME_4_OK')
+
+    def test_document_write_iframes(self):
+        self.assertIframesText('IFRAME_5_OK')
+
+    def test_nested_iframes(self):
+        self.assertIframesText('IFRAME_6_OK')
+
+
+    def assertIframesText(self, text, params=None):
+        data = self._iframes_request(params)
+        self.assertTrue(self._text_is_somewhere(data, text))
+
+    def assertNoIframesText(self, text, params=None):
+        data = self._iframes_request(params)
+        self.assertFalse(self._text_is_somewhere(data, text))
+
+    def _text_is_somewhere(self, result, text):
+        if text in result['html']:
+            return True
+        return any(self._text_is_somewhere(child, text)
+                   for child in result['childFrames'])
+
+    def _iframes_request(self, params):
+        query = {'url': 'https://localhost:8999/iframes'}
+        query.update(params or {})
+        return self.request(query).json()
 
 class TestTestSetup(unittest.TestCase):
 

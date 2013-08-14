@@ -62,6 +62,25 @@ document.getElementById("p1").innerHTML="After";
 """
 
 
+class JsInterval(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return """
+<html><body>
+<div id='num'>not started</div>
+<script>
+var num=0;
+setInterval(function(){
+    document.getElementById('num').innerHTML = num;
+    num += 1;
+}, 1);
+</script>
+</body></html>
+"""
+
+
 class BaseUrl(Resource):
 
     def render_GET(self, request):
@@ -174,7 +193,7 @@ document.getElementById('js-iframe').innerHTML="<iframe src='/iframes/3.html'>js
 <script type="text/javascript">
 window.setTimeout(function(){
     document.getElementById('js-iframe2').innerHTML="<iframe src='/iframes/4.html'>delayed js iframes don't work</iframe>";
-}, 2000);
+}, 200);
 </script>
 
 <script type="text/javascript">
@@ -187,7 +206,7 @@ window.onload = function(){
 </html>
 """
 
-    IframeContent1 = _html_resource("<html><body>iframes work</body></html>")
+    IframeContent1 = _html_resource("<html><body>iframes work IFRAME_1_OK</body></html>")
     IframeContent2 = _html_resource("""
         <html><body>
         <iframe src="/iframes/nested.html" width=200 height=200>
@@ -195,11 +214,11 @@ window.onload = function(){
         </iframe>
         </body></html>
         """)
-    IframeContent3 = _html_resource("<html><body>js iframes work</body></html>")
-    IframeContent4 = _html_resource("<html><body>delayed js iframes work</body></html>")
-    IframeContent5 = _html_resource("<html><body>js iframes created in window.onoad work</body></html>")
-    IframeContent6 = _html_resource("<html><body>js iframes created by document.write in external script work</body></html>")
-    NestedIframeContent = _html_resource("<html><body><p>nested iframes work</p></body></html>")
+    IframeContent3 = _html_resource("<html><body>js iframes work IFRAME_2_OK</body></html>")
+    IframeContent4 = _html_resource("<html><body>delayed js iframes work IFRAME_3_OK</body></html>")
+    IframeContent5 = _html_resource("<html><body>js iframes created in window.onoad work IFRAME_4_OK</body></html>")
+    IframeContent6 = _html_resource("<html><body>js iframes created by document.write in external script work IFRAME_5_OK</body></html>")
+    NestedIframeContent = _html_resource("<html><body><p>nested iframes work IFRAME_6_OK</p></body></html>")
 
     class ScriptJs(Resource):
         isLeaf = True
@@ -218,6 +237,7 @@ class Root(Resource):
         self.putChild("jsrender", JsRender())
         self.putChild("jsalert", JsAlert())
         self.putChild("jsconfirm", JsConfirm())
+        self.putChild("jsinterval", JsInterval())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("partial", Partial())

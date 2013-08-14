@@ -49,6 +49,11 @@ baseurl : string : optional
 timeout : float : optional
   A timeout (in seconds) for the render (defaults to 30)
 
+wait : float : optional
+  Time to wait for updates after page is loaded (defaults to 0).
+  Increase this value if you expect pages to contain setInterval/setTimeout
+  javascript calls.
+
 Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10
@@ -107,7 +112,7 @@ To run the stress tests::
 
 Typical output::
 
-    $ python -m splash.tests.stress 
+    $ python -m splash.tests.stress
     Total requests: 1000
     Concurrency   : 50
     Log file      : /tmp/splash-stress-48H91h.log

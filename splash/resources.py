@@ -19,7 +19,9 @@ class RenderBase(Resource):
     def render_GET(self, request):
         d = self._getRender(request)
         timeout = getarg(request, "timeout", 30, type=float, range=(0, 60))
-        timer = reactor.callLater(timeout, d.cancel)
+        wait_time = getarg(request, "wait", 0, type=float, range=(0, 60))
+
+        timer = reactor.callLater(timeout+wait_time, d.cancel)
         d.addCallback(self._cancelTimer, timer)
         d.addCallback(self._writeOutput, request)
         d.addErrback(self._timeoutError, request)
@@ -86,11 +88,11 @@ def _get_dimension_params(request):
     vheight = getarg(request, "vheight", 768, type=int, range=(1, 1080))
     return width, height, vwidth, vheight
 
-def _get_url_params(request):
+def _get_common_params(request):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
-    return url, baseurl
-
+    wait_time = getarg(request, "wait", 0, type=float, range=(0, 60))
+    return url, baseurl, wait_time
 
 
 class RenderHtml(RenderBase):
@@ -98,8 +100,8 @@ class RenderHtml(RenderBase):
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request):
-        url, baseurl = _get_url_params(request)
-        return self.pool.render(HtmlRender, url, baseurl)
+        url, baseurl, wait_time = _get_common_params(request)
+        return self.pool.render(HtmlRender, url, baseurl, wait_time)
 
 
 class RenderPng(RenderBase):
@@ -107,9 +109,10 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        url, baseurl = _get_url_params(request)
+        url, baseurl, wait_time = _get_common_params(request)
         width, height, vwidth, vheight = _get_dimension_params(request)
-        return self.pool.render(PngRender, url, baseurl, width, height, vwidth, vheight)
+        return self.pool.render(PngRender, url, baseurl, wait_time,
+                                width, height, vwidth, vheight)
 
 
 class RenderJson(RenderBase):
@@ -117,14 +120,14 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        url, baseurl = _get_url_params(request)
+        url, baseurl, wait_time = _get_common_params(request)
         width, height, vwidth, vheight = _get_dimension_params(request)
 
         html = getarg(request, "html", 1, type=int, range=(0, 1))
         iframes = getarg(request, "iframes", 1, type=int, range=(0, 1))
         png = getarg(request, "png", 1, type=int, range=(0, 1))
 
-        return self.pool.render(JsonRender, url, baseurl,
+        return self.pool.render(JsonRender, url, baseurl, wait_time,
                                             html, iframes, png,
                                             width, height, vwidth, vheight)
 
