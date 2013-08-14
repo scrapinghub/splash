@@ -1,4 +1,4 @@
-PyQt
+# install PyQt4 and the following packages:
 twisted
 qt4reactor
 psutil
@@ -6,4 +6,4 @@ psutil
 # the following libraries are only required by tests
 pyOpenSSL
 requests
-PIL
+Pillow
