@@ -1,0 +1,10 @@
+# distutils/setuptools files
+build
+dist
+splash.egg-info
+
+# temp files & IDE settings
+_trial_temp
+*.pyc
+.idea
+.ipynb_checkpoints
