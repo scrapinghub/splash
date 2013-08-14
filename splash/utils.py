@@ -1,5 +1,6 @@
 import os, gc, inspect
 from collections import defaultdict
+import psutil
 
 _REQUIRED = object()
 
@@ -19,7 +20,8 @@ def getarg(request, name, default=_REQUIRED, type=str, range=None):
 
 PID = os.getpid()
 def get_num_fds():
-    return len(os.listdir("/proc/%s/fd" % PID))
+    proc = psutil.Process(PID)
+    return proc.get_num_fds()
 
 def get_leaks():
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
