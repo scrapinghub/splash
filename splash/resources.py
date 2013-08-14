@@ -3,12 +3,11 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash.qtrender2 import HtmlRender, PngRender, IframesRender, RenderError
+from splash.qtrender2 import (HtmlRender, PngRender, JsonRender, RenderError)
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 
-
-class RenderHtml(Resource):
+class RenderBase(Resource):
 
     isLeaf = True
     content_type = "text/html; charset=utf-8"
@@ -16,11 +15,6 @@ class RenderHtml(Resource):
     def __init__(self, pool):
         Resource.__init__(self)
         self.pool = pool
-
-    def _getRender(self, request):
-        url = getarg(request, "url")
-        baseurl = getarg(request, "baseurl", None)
-        return self.pool.render(HtmlRender, url, baseurl)
 
     def render_GET(self, request):
         d = self._getRender(request)
@@ -81,29 +75,58 @@ class RenderHtml(Resource):
         if not request._disconnected:
             request.finish()
 
+    def _getRender(self, request):
+        raise NotImplementedError()
 
-class RenderPng(RenderHtml):
+
+def _get_dimension_params(request):
+    width = getarg(request, "width", None, type=int, range=(0, 1920))
+    height = getarg(request, "height", None, type=int, range=(0, 1080))
+    vwidth = getarg(request, "vwidth", 1024, type=int, range=(0, 1920))
+    vheight = getarg(request, "vheight", 768, type=int, range=(0, 1080))
+    return width, height, vwidth, vheight
+
+def _get_url_params(request):
+    url = getarg(request, "url")
+    baseurl = getarg(request, "baseurl", None)
+    return url, baseurl
+
+
+
+class RenderHtml(RenderBase):
+
+    content_type = "text/html; charset=utf-8"
+
+    def _getRender(self, request):
+        url, baseurl = _get_url_params(request)
+        return self.pool.render(HtmlRender, url, baseurl)
+
+
+class RenderPng(RenderBase):
 
     content_type = "image/png"
 
     def _getRender(self, request):
-        url = getarg(request, "url")
-        baseurl = getarg(request, "baseurl", None)
-        width = getarg(request, "width", None, type=int, range=(0, 1920))
-        height = getarg(request, "height", None, type=int, range=(0, 1080))
-        vwidth = getarg(request, "vwidth", 1024, type=int, range=(0, 1920))
-        vheight = getarg(request, "vheight", 768, type=int, range=(0, 1080))
+        url, baseurl = _get_url_params(request)
+        width, height, vwidth, vheight = _get_dimension_params(request)
         return self.pool.render(PngRender, url, baseurl, width, height, vwidth, vheight)
 
 
-class RenderIframes(RenderHtml):
+class RenderJson(RenderBase):
 
     content_type = "application/json"
 
     def _getRender(self, request):
-        url = getarg(request, "url")
-        baseurl = getarg(request, "baseurl", None)
-        return self.pool.render(IframesRender, url, baseurl)
+        url, baseurl = _get_url_params(request)
+        width, height, vwidth, vheight = _get_dimension_params(request)
+
+        html = getarg(request, "html", 1, type=int, range=(0, 1))
+        iframes = getarg(request, "iframes", 1, type=int, range=(0, 1))
+        png = getarg(request, "png", 1, type=int, range=(0, 1))
+
+        return self.pool.render(JsonRender, url, baseurl,
+                                            html, iframes, png,
+                                            width, height, vwidth, vheight)
 
 
 class Debug(Resource):
@@ -130,7 +153,7 @@ class Root(Resource):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
-        self.putChild("iframes.json", RenderIframes(pool))
+        self.putChild("render.json", RenderJson(pool))
         self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):
