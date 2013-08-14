@@ -3,6 +3,17 @@ from cStringIO import StringIO
 from PIL import Image
 from splash.tests.utils import TestServers
 
+class TestTestUtils(unittest.TestCase):
+
+    def test_mockserver_works(self):
+        r = requests.get('http://localhost:8998/jsrender')
+        self.assertEqual(r.status_code, 200)
+
+    def test_splashserver_works(self):
+        r = requests.get('http://localhost:8050/debug')
+        self.assertEqual(r.status_code, 200)
+
+
 class _RenderTest(unittest.TestCase):
 
     host = "localhost:8050"

@@ -29,15 +29,26 @@ def start_logging(opts):
     else:
         logfile = sys.stderr
     log.startLogging(logfile)
-    log.msg("Open files limit: %d" % resource.getrlimit(resource.RLIMIT_NOFILE)[0])
 
 def splash_started(opts, stderr):
     if opts.logfile:
         stderr.write("Splash started - logging to: %s\n" % opts.logfile)
 
 def bump_nofile_limit():
-    _, n = resource.getrlimit(resource.RLIMIT_NOFILE)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (n, n))
+    from twisted.python import log
+    log.msg("Open files limit: %d" % resource.getrlimit(resource.RLIMIT_NOFILE)[0])
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    values_to_try = [v for v in [hard, 100000, 10000] if v > soft]
+    for new_soft in values_to_try:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft, hard))
+        except ValueError:
+            continue
+        else:
+            log.msg("Open files limit increased from %d to %d" % (soft, new_soft))
+            break
+    else:
+        log.msg("Can't bump open files limit")
 
 def manhole_server():
     from twisted.internet import reactor
@@ -75,8 +86,8 @@ def main():
     install_qtreactor()
     opts, _ = parse_opts()
 
-    bump_nofile_limit()
     start_logging(opts)
+    bump_nofile_limit()
     monitor_maxrss(opts.maxrss)
     manhole_server()
     splash_server(opts.port)
