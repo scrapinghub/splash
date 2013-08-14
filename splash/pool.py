@@ -1,10 +1,11 @@
 from twisted.internet import defer
+from splash import defaults
 
 class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots=50):
+    def __init__(self, slots=defaults.SLOTS):
         self.active = set()
         self.queue = defer.DeferredQueue()
         for n in range(slots):

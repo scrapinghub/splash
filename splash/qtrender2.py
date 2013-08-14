@@ -4,6 +4,7 @@ from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from twisted.internet import defer
+from splash import defaults
 
 
 class RenderError(Exception):
@@ -35,9 +36,9 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, url, baseurl=None, wait_time=0):
+    def __init__(self, url, baseurl=None, wait_time=None):
         self.url = url
-        self.wait_time = wait_time
+        self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.web_view = QWebView()
         self.network_manager = SplashQNetworkAccessManager()
         self.web_page = SplashQWebPage()
@@ -98,7 +99,10 @@ class WebpageRender(object):
         frame = self.web_view.page().mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
-    def _getPng(self, width=None, height=None, vwidth=1024, vheight=768):
+    def _getPng(self, width=None, height=None, vwidth=None, vheight=None):
+        vwidth = defaults.VWIDTH if vwidth is None else vwidth
+        vheight = defaults.VHEIGHT if vheight is None else vheight
+
         self.web_page.setViewportSize(QSize(vwidth, vheight))
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
@@ -144,7 +148,7 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def __init__(self, url, baseurl=None, wait_time=0, width=None, height=None, vwidth=1024, vheight=768):
+    def __init__(self, url, baseurl=None, wait_time=None, width=None, height=None, vwidth=None, vheight=None):
         WebpageRender.__init__(self, url, baseurl, wait_time)
         self.width = width
         self.height = height
@@ -157,8 +161,8 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def __init__(self, url, baseurl=None, wait_time=0, html=True, iframes=True, png=True,
-                       width=None, height=None, vwidth=1024, vheight=768):
+    def __init__(self, url, baseurl=None, wait_time=None, html=True, iframes=True, png=True,
+                       width=None, height=None, vwidth=None, vheight=None):
         WebpageRender.__init__(self, url, baseurl, wait_time)
         self.width = width
         self.height = height

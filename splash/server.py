@@ -1,4 +1,5 @@
 import sys, optparse, resource, traceback, signal
+from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -17,7 +18,7 @@ def parse_opts():
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type="int", default=0,
         help="exit if max RSS reaches this value (in KB) (default: %default)")
-    op.add_option("-p", "--port", type="int", default=8050,
+    op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
         help="port to listen to (default: %default)")
     return op.parse_args()
 
@@ -57,7 +58,7 @@ def manhole_server():
     f = telnet.ShellFactory()
     f.username = "admin"
     f.password = "admin"
-    reactor.listenTCP(5023, f)
+    reactor.listenTCP(defaults.MANHOLE_PORT, f)
 
 def splash_server(portnum):
     from twisted.internet import reactor

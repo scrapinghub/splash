@@ -2,11 +2,11 @@ import unittest, requests, json, base64, urllib
 from cStringIO import StringIO
 from PIL import Image
 from splash.tests.utils import TestServers
-
+from splash import defaults
 
 class _BaseRenderTest(unittest.TestCase):
 
-    host = "localhost:8050"
+    host = "localhost:%s" % defaults.SPLASH_PORT
     render_format = "html"
 
     def request(self, query, render_format=None):
@@ -300,7 +300,7 @@ class TestTestSetup(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
 
     def test_splashserver_works(self):
-        r = requests.get('http://localhost:8050/debug')
+        r = requests.get('http://localhost:%s/debug' % defaults.SPLASH_PORT)
         self.assertEqual(r.status_code, 200)
 
 
