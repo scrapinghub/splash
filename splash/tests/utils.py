@@ -23,7 +23,8 @@ class SplashServer():
             raise RuntimeError(msg)
 
         # wait until server starts writing debug messages,
-        # then wait a bit more to make it more likely to be online
+        # then wait a bit more to make it more likely to be online, otherwise
+        # it will fail on Mac OS X 10.8
         self.proc.stderr.readline()
         time.sleep(0.2)
 
