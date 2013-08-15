@@ -1,8 +1,9 @@
-import json
+import json, os
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize
 from PyQt4.QtGui import QPainter, QImage
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PyQt4.QtNetwork import (QNetworkAccessManager, QNetworkRequest,
+                             QNetworkDiskCache)
 from twisted.internet import defer
 
 class RenderError(Exception):
@@ -37,6 +38,13 @@ class HtmlRender(object):
         self.url = url
         self.web_view = QWebView()
         self.network_manager = SplashQNetworkAccessManager()
+
+        if os.environ.get('SPLASH_CACHE_PATH'):
+            cache = QNetworkDiskCache()
+            cache.setCacheDirectory(os.environ['SPLASH_CACHE_PATH'])
+            cache.setMaximumCacheSize(os.environ.get('SPLASH_CACHE_SIZE', 50*1024*1024))
+            self.network_manager.setCache(cache)
+
         self.web_page = SplashQWebPage()
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
