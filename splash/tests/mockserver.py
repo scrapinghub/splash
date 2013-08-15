@@ -193,7 +193,7 @@ document.getElementById('js-iframe').innerHTML="<iframe src='/iframes/3.html'>js
 <script type="text/javascript">
 window.setTimeout(function(){
     document.getElementById('js-iframe2').innerHTML="<iframe src='/iframes/4.html'>delayed js iframes don't work</iframe>";
-}, 200);
+}, 100);
 </script>
 
 <script type="text/javascript">

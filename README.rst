@@ -24,6 +24,7 @@ To run the server::
 
     python -m splash.server
 
+Run ``python -m splash.server --help`` to see options available.
 
 API
 ===

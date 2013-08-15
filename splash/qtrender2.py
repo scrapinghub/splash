@@ -5,6 +5,7 @@ from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from twisted.internet import defer
 from splash import defaults
+from splash import cache
 
 
 class RenderError(Exception):
@@ -36,11 +37,11 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, url, baseurl=None, wait_time=None):
-        self.url = url
-        self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
+    def __init__(self, cache_kwargs=None):
         self.web_view = QWebView()
         self.network_manager = SplashQNetworkAccessManager()
+        if cache_kwargs:
+            self.network_manager.setCache(cache.construct(**cache_kwargs))
         self.web_page = SplashQWebPage()
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
@@ -52,6 +53,10 @@ class WebpageRender(object):
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
+
+    def doRequest(self, url, baseurl=None, wait_time=None):
+        self.url = url
+        self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
 
         self.deferred = defer.Deferred()
         request = QNetworkRequest()
@@ -148,12 +153,12 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def __init__(self, url, baseurl=None, wait_time=None, width=None, height=None, vwidth=None, vheight=None):
-        WebpageRender.__init__(self, url, baseurl, wait_time)
+    def doRequest(self, url, baseurl=None, wait_time=None, width=None, height=None, vwidth=None, vheight=None):
         self.width = width
         self.height = height
         self.vwidth = vwidth
         self.vheight = vheight
+        super(PngRender, self).doRequest(url, baseurl, wait_time)
 
     def _render(self):
         return self._getPng(self.width, self.height, self.vwidth, self.vheight)
@@ -161,14 +166,15 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def __init__(self, url, baseurl=None, wait_time=None, html=True, iframes=True, png=True,
-                       width=None, height=None, vwidth=None, vheight=None):
-        WebpageRender.__init__(self, url, baseurl, wait_time)
+    def doRequest(self, url, baseurl=None, wait_time=None,
+                        html=True, iframes=True, png=True,
+                        width=None, height=None, vwidth=None, vheight=None):
         self.width = width
         self.height = height
         self.vwidth = vwidth
         self.vheight = vheight
         self.include = {'html': html, 'png': png, 'iframes': iframes}
+        super(JsonRender, self).doRequest(url, baseurl, wait_time)
 
     def _render(self):
         res = {}

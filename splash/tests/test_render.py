@@ -220,7 +220,6 @@ class RenderJsonTest(_RenderTest):
         self.assertFieldsNotInResponse(res, ["childFrames"])
 
 
-
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
             self.assertTrue(key in res, "%s is not in response" % key)
@@ -261,7 +260,7 @@ class IframesRenderTest(_BaseRenderTest):
         self.assertIframesText('IFRAME_2_OK')
 
     def test_delayed_js_iframes(self):
-        self.assertNoIframesText('IFRAME_3_OK', {'wait': 0.05})
+        self.assertNoIframesText('IFRAME_3_OK', {'wait': 0.0})
         self.assertIframesText('IFRAME_3_OK', {'wait': 0.5})
 
     def test_onload_iframes(self):
@@ -292,6 +291,7 @@ class IframesRenderTest(_BaseRenderTest):
         query = {'url': 'https://localhost:8999/iframes'}
         query.update(params or {})
         return self.request(query).json()
+
 
 class TestTestSetup(unittest.TestCase):
 
