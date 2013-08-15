@@ -50,9 +50,9 @@ timeout : float : optional
   A timeout (in seconds) for the render (defaults to 30)
 
 wait : float : optional
-  Time to wait for updates after page is loaded (defaults to 0).
-  Increase this value if you expect pages to contain
-  setInterval/setTimeout javascript calls.
+  Time (in seconds) to wait for updates after page is loaded
+  (defaults to 0). Increase this value if you expect pages to
+  contain setInterval/setTimeout javascript calls.
 
 Curl example::
 
