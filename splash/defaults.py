@@ -12,9 +12,11 @@ DO_HTML = 1
 DO_IFRAMES = 1
 DO_PNG = 1
 
-# ports
+# servers
 SPLASH_PORT = 8050
 MANHOLE_PORT = 5023
+MANHOLE_USERNAME = 'admin'
+MANHOLE_PASSWORD = 'admin'
 
 # pool options
 SLOTS = 50

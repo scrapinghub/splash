@@ -56,8 +56,8 @@ def manhole_server():
     from twisted.manhole import telnet
 
     f = telnet.ShellFactory()
-    f.username = "admin"
-    f.password = "admin"
+    f.username = defaults.MANHOLE_USERNAME
+    f.password = defaults.MANHOLE_PASSWORD
     reactor.listenTCP(defaults.MANHOLE_PORT, f)
 
 def splash_server(portnum):
