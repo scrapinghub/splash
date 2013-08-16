@@ -1,4 +1,4 @@
-import json, base64
+import json, base64, re
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer
 from PyQt4.QtGui import QPainter, QImage
@@ -6,6 +6,7 @@ from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from twisted.internet import defer
 from splash import defaults
 from splash import cache
+from splash.proxy import SplashQNetworkProxyFactory
 
 
 class RenderError(Exception):
@@ -37,11 +38,16 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, cache_kwargs=None):
-        self.web_view = QWebView()
+    def __init__(self, cache_kwargs=None, proxy_kwargs=None):
         self.network_manager = SplashQNetworkAccessManager()
         if cache_kwargs:
             self.network_manager.setCache(cache.construct(**cache_kwargs))
+
+        if proxy_kwargs:
+            factory = SplashQNetworkProxyFactory(**proxy_kwargs)
+            self.network_manager.setProxyFactory(factory)
+
+        self.web_view = QWebView()
         self.web_page = SplashQWebPage()
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)

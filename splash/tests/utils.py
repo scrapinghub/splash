@@ -6,6 +6,7 @@ def get_testenv():
     env['PYTHONPATH'] = os.getcwd()
     return env
 
+
 class SplashServer():
 
     def __init__(self, logfile=None):

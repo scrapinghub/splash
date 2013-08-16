@@ -1,6 +1,7 @@
 import os
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
+from twisted.web import proxy, http
 from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
 from splash.utils import getarg
@@ -250,15 +251,36 @@ def ssl_factory():
     return ssl.DefaultOpenSSLContextFactory(pem, pem)
 
 
+class ProxyClient(proxy.ProxyClient):
+    def handleResponsePart(self, buffer):
+        buffer = buffer.replace('</body>', ' PROXY_USED</body>')
+        proxy.ProxyClient.handleResponsePart(self, buffer)
+
+class ProxyClientFactory(proxy.ProxyClientFactory):
+    protocol = ProxyClient
+
+class ProxyRequest(proxy.ProxyRequest):
+    protocols = {'http': ProxyClientFactory}
+
+class Proxy(proxy.Proxy):
+    requestFactory = ProxyRequest
+
+class ProxyFactory(http.HTTPFactory):
+    protocol = Proxy
+
+
 if __name__ == "__main__":
     root = Root()
     factory = Site(root)
     port = reactor.listenTCP(8998, factory)
     sslport = reactor.listenSSL(8999, factory, ssl_factory())
+    proxyport = reactor.listenTCP(8990, ProxyFactory())
+
     def print_listening():
         h = port.getHost()
         s = sslport.getHost()
-        print "Mock server running at http://%s:%d & https://%s:%d" % \
-            (h.host, h.port, s.host, s.port)
+        p = proxyport.getHost()
+        print "Mock server running at http://%s:%d, https://%s:%d and http://%s:%d" % \
+            (h.host, h.port, s.host, s.port, p.host, p.port)
     reactor.callWhenRunning(print_listening)
     reactor.run()

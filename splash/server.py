@@ -1,4 +1,4 @@
-import sys, optparse, resource, traceback, signal
+import re, sys, optparse, resource, traceback, signal
 from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
@@ -94,7 +94,22 @@ def splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cach
     else:
         cache_kwargs = {'path': cache_path, 'size_kb': cache_size_kb}
 
-    pool = RenderPool(slots=slots, cache_kwargs=cache_kwargs)
+    #proxy_kwargs = {
+    #    'blacklist': [
+    #        re.compile(r'.*\.js'),
+    #        re.compile(r'.*\.css'),
+    #        re.compile(r'.*\.png'),
+    #    ],
+    #    'whitelist': [
+    #        re.compile(r'.*crawlera\.com.*'),
+    #    ],
+    #    'proxy_list': [
+    #        ("proxy.crawlera.com", 8010, 'username', 'password'),
+    #    ]
+    #}
+    proxy_kwargs = None
+
+    pool = RenderPool(slots=slots, cache_kwargs=cache_kwargs, proxy_kwargs=proxy_kwargs)
     root = Root(pool)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
