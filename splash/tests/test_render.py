@@ -51,11 +51,14 @@ class _RenderTest(_BaseRenderTest):
         self.assertEqual(r.status_code, 200)
 
     def test_wait(self):
-        r1 = self.request({"url": "http://localhost:8998/jsinterval"})
-        r2 = self.request({"url": "http://localhost:8998/jsinterval&wait=0.2"})
+        r1 = self.request("url=http://localhost:8998/jsinterval")
+        r2 = self.request("url=http://localhost:8998/jsinterval")
+        r3 = self.request("url=http://localhost:8998/jsinterval&wait=0.2")
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
-        self.assertNotEqual(r1.text, r2.text)
+        self.assertEqual(r3.status_code, 200)
+        self.assertEqual(r1.content, r2.content)
+        self.assertNotEqual(r1.content, r3.content)
 
 
 class RenderHtmlTest(_RenderTest):
@@ -224,6 +227,21 @@ class RenderJsonTest(_RenderTest):
         self.assertFieldsInResponse(res, ["url", "requestedUrl", "geometry",
                                           "title"])
         self.assertFieldsNotInResponse(res, ["childFrames", "html", "png"])
+
+    def test_wait(self):
+        # override parent's test to make it aware of render.json endpoint
+        r1 = self.request({"url": "http://localhost:8998/jsinterval", 'html': 1})
+        r2 = self.request({"url": "http://localhost:8998/jsinterval", 'html': 1})
+        r3 = self.request({"url": "http://localhost:8998/jsinterval", 'wait': 0.2, 'html': 1})
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r3.status_code, 200)
+
+        html1 = r1.json()['html']
+        html2 = r2.json()['html']
+        html3 = r3.json()['html']
+        self.assertEqual(html1, html2)
+        self.assertNotEqual(html1, html3)
 
 
     def assertFieldsInResponse(self, res, fields):
