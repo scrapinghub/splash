@@ -106,32 +106,32 @@ Same as `render.png`_ plus the following ones:
 
 html : integer : optional
     Whether to include HTML in output. Possible values are
-    ``1`` (include) and ``0`` (exclude). Default is 1.
+    ``1`` (include) and ``0`` (exclude). Default is 0.
 
 png : integer : optional
     Whether to include PNG in output. Possible values are
-    ``1`` (include) and ``0`` (exclude). Default is 1.
+    ``1`` (include) and ``0`` (exclude). Default is 0.
 
 iframes : integer : optional
     Whether to include information about child frames in output.
     Possible values are  ``1`` (include) and ``0`` (exclude).
-    Default is 1.
+    Default is 0.
 
 PNG image is base64-encoded.
 
 Curl examples::
 
     # full information
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html
+    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&png=1&html=1&iframes=1
 
     # HTML and meta information of page itself and all its iframes
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&png=0
+    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&iframes=1
 
     # only meta information (like page/iframes titles and urls)
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&png=0&html=0
+    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&iframes=1
 
     # render html and 320x240 thumbnail at once; do not return info about iframes
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&iframes=0&width=320&height=240
+    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&png=1&width=320&height=240
 
 
 Functional Tests

@@ -51,8 +51,8 @@ class _RenderTest(_BaseRenderTest):
         self.assertEqual(r.status_code, 200)
 
     def test_wait(self):
-        r1 = self.request("url=http://localhost:8998/jsinterval")
-        r2 = self.request("url=http://localhost:8998/jsinterval&wait=0.2")
+        r1 = self.request({"url": "http://localhost:8998/jsinterval"})
+        r2 = self.request({"url": "http://localhost:8998/jsinterval&wait=0.2"})
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
         self.assertNotEqual(r1.text, r2.text)
@@ -135,13 +135,13 @@ class RenderJsonTest(_RenderTest):
         self.assertSameHtml('https://localhost:8999/jsrender')
 
     def test_jsalert_html(self):
-        self.assertSameHtml('http://localhost:8998/jsalert&timeout=3')
+        self.assertSameHtml('http://localhost:8998/jsalert', {'timeout': 3})
 
     def test_jsconfirm_html(self):
-        self.assertSameHtml("http://localhost:8998/jsconfirm&timeout=3")
+        self.assertSameHtml("http://localhost:8998/jsconfirm", {'timeout': 3})
 
     def test_iframes_html(self):
-        self.assertSameHtml("http://localhost:8998/iframes&timeout=3")
+        self.assertSameHtml("http://localhost:8998/iframes", {'timeout': 3})
 
 
     def test_jsrender_png(self):
@@ -151,13 +151,13 @@ class RenderJsonTest(_RenderTest):
         self.assertSamePng('https://localhost:8999/jsrender')
 
     def test_jsalert_png(self):
-        self.assertSamePng('http://localhost:8998/jsalert&timeout=3')
+        self.assertSamePng('http://localhost:8998/jsalert', {'timeout': 3})
 
     def test_jsconfirm_png(self):
-        self.assertSamePng("http://localhost:8998/jsconfirm&timeout=3")
+        self.assertSamePng("http://localhost:8998/jsconfirm", {'timeout': 3})
 
     def test_iframes_png(self):
-        self.assertSamePng("http://localhost:8998/iframes&timeout=3")
+        self.assertSamePng("http://localhost:8998/iframes", {'timeout': 3})
 
     def test_png_size(self):
         self.assertSamePng('http://localhost:8998/jsrender', {'width': 100})
@@ -168,11 +168,10 @@ class RenderJsonTest(_RenderTest):
                            {'vwidth': 100})
 
 
-    def test_fields_default(self):
-        query = {'url': "https://localhost:8999/iframes"}
+    def test_fields_all(self):
+        query = {'url': "https://localhost:8999/iframes",
+                 "html": 1, "png": 1, "iframes": 1}
 
-        # default request with all fields
-        # XXX: should we return png by default?
         res = self.request(query).json()
         self.assertFieldsInResponse(res, ["html", "png", "url", "requestedUrl",
                                           "childFrames", "geometry", "title"])
@@ -219,6 +218,13 @@ class RenderJsonTest(_RenderTest):
                                           "title", "html", "png"])
         self.assertFieldsNotInResponse(res, ["childFrames"])
 
+    def test_fields_default(self):
+        query = {'url': "https://localhost:8999/iframes"}
+        res = self.request(query).json()
+        self.assertFieldsInResponse(res, ["url", "requestedUrl", "geometry",
+                                          "title"])
+        self.assertFieldsNotInResponse(res, ["childFrames", "html", "png"])
+
 
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
@@ -228,14 +234,18 @@ class RenderJsonTest(_RenderTest):
         for key in fields:
             self.assertTrue(key not in res, "%s is in response" % key)
 
-    def assertSameHtml(self, url):
-        r1, r2 = self._do_same_requests(url, {}, 'html')
+    def assertSameHtml(self, url, params=None):
+        defaults = {'html': 1}
+        defaults.update(params or {})
+        r1, r2 = self._do_same_requests(url, defaults, 'html')
         html1 = r1.json()['html']
         html2 = r2.text
         self.assertEqual(html1, html2)
 
     def assertSamePng(self, url, params=None):
-        r1, r2 = self._do_same_requests(url, params, 'png')
+        defaults = {'png': 1}
+        defaults.update(params or {})
+        r1, r2 = self._do_same_requests(url, defaults, 'png')
         png1 = base64.decodestring(r1.json()['png'])
         png2 = r2.content
         self.assertEqual(png1, png2)
@@ -288,7 +298,8 @@ class IframesRenderTest(_BaseRenderTest):
                    for child in result['childFrames'])
 
     def _iframes_request(self, params):
-        query = {'url': 'https://localhost:8999/iframes'}
+        query = {'url': 'https://localhost:8999/iframes',
+                 'iframes': 1, 'html': 1}
         query.update(params or {})
         return self.request(query).json()
 

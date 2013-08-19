@@ -8,9 +8,9 @@ VWIDTH = 1024
 VHEIGHT = 768
 
 # defaults for render.json endpoint
-DO_HTML = 1
-DO_IFRAMES = 1
-DO_PNG = 1
+DO_HTML = 0
+DO_IFRAMES = 0
+DO_PNG = 0
 
 # servers
 SPLASH_PORT = 8050
