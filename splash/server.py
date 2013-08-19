@@ -1,4 +1,5 @@
 import sys, optparse, resource, traceback, signal
+from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -17,8 +18,21 @@ def parse_opts():
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type="int", default=0,
         help="exit if max RSS reaches this value (in KB) (default: %default)")
-    op.add_option("-p", "--port", type="int", default=8050,
+    op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
         help="port to listen to (default: %default)")
+    op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
+        help="number of render slots (default: %default)")
+
+    _bool_default={True:' (active by default)', False: ''}
+    op.add_option("", "--cache", action="store_true", dest="cache_enabled",
+        help="enable local cache" + _bool_default[defaults.CACHE_ENABLED])
+    op.add_option("", "--no-cache", action="store_false", dest="cache_enabled",
+        help="disable local cache" + _bool_default[not defaults.CACHE_ENABLED])
+
+    op.add_option("-c", "--cache-path", help="local cache folder")
+    op.add_option("", "--cache-size", type="int", default=defaults.CACHE_MAXSIZE_KB,
+                  help="maximum cache size in Kb (default: %default)")
+
     return op.parse_args()
 
 def start_logging(opts):
@@ -55,17 +69,32 @@ def manhole_server():
     from twisted.manhole import telnet
 
     f = telnet.ShellFactory()
-    f.username = "admin"
-    f.password = "admin"
-    reactor.listenTCP(5023, f)
+    f.username = defaults.MANHOLE_USERNAME
+    f.password = defaults.MANHOLE_PASSWORD
+    reactor.listenTCP(defaults.MANHOLE_PORT, f)
 
-def splash_server(portnum):
+def splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
+    from twisted.python import log
     from splash.resources import Root
     from splash.pool import RenderPool
 
-    pool = RenderPool()
+    slots = defaults.SLOTS if slots is None else slots
+    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
+    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
+    cache_size_kb = defaults.CACHE_MAXSIZE_KB if cache_size_kb is None else cache_size_kb
+
+    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sKb" % (
+        slots, cache_enabled, cache_path, cache_size_kb
+    ))
+
+    if not cache_enabled:
+        cache_kwargs = None
+    else:
+        cache_kwargs = {'path': cache_path, 'size_kb': cache_size_kb}
+
+    pool = RenderPool(slots=slots, cache_kwargs=cache_kwargs)
     root = Root(pool)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
@@ -90,7 +119,11 @@ def main():
     bump_nofile_limit()
     monitor_maxrss(opts.maxrss)
     manhole_server()
-    splash_server(opts.port)
+    splash_server(portnum=opts.port,
+                  slots=opts.slots,
+                  cache_enabled=opts.cache_enabled,
+                  cache_path=opts.cache_path,
+                  cache_size_kb=opts.cache_size)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor

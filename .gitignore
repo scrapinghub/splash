@@ -8,3 +8,4 @@ _trial_temp
 *.pyc
 .idea
 .ipynb_checkpoints
+.splash-cache
