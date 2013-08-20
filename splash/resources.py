@@ -93,7 +93,7 @@ def _get_dimension_params(request):
 def _get_common_params(request):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
-    wait_time = getarg(request, "wait", 0, type=float, range=(0, 60))
+    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 60))
     return url, baseurl, wait_time
 
 
