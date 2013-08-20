@@ -83,12 +83,24 @@ class RenderBase(Resource):
         raise NotImplementedError()
 
 
+def _check_viewport(viewport, max_width, max_heigth, max_area):
+    if viewport=='full' or viewport is None:
+        return
+    try:
+        w, h = map(int, viewport.split('x'))
+        if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
+            return
+        raise BadRequest("Viewport is out of range (%dx%d, area=%d)" % (max_width, max_heigth, max_area))
+    except (ValueError):
+        raise BadRequest("Invalid viewport format: %s" % viewport)
+
 def _get_dimension_params(request):
-    width = getarg(request, "width", None, type=int, range=(1, 1920))
-    height = getarg(request, "height", None, type=int, range=(1, 1080))
-    vwidth = getarg(request, "vwidth", defaults.VWIDTH, type=int, range=(1, 1920))
-    vheight = getarg(request, "vheight", defaults.VHEIGHT, type=int, range=(1, 1080))
-    return width, height, vwidth, vheight
+    width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
+    height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
+    viewport = getarg(request, "viewport", None)
+    _check_viewport(viewport, defaults.VIEWPORT_MAX_WIDTH,
+                    defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
+    return width, height, viewport
 
 def _get_common_params(request):
     url = getarg(request, "url")
@@ -112,9 +124,9 @@ class RenderPng(RenderBase):
 
     def _getRender(self, request):
         url, baseurl, wait_time = _get_common_params(request)
-        width, height, vwidth, vheight = _get_dimension_params(request)
+        width, height, viewport = _get_dimension_params(request)
         return self.pool.render(PngRender, url, baseurl, wait_time,
-                                width, height, vwidth, vheight)
+                                width, height, viewport)
 
 
 class RenderJson(RenderBase):
@@ -123,7 +135,7 @@ class RenderJson(RenderBase):
 
     def _getRender(self, request):
         url, baseurl, wait_time = _get_common_params(request)
-        width, height, vwidth, vheight = _get_dimension_params(request)
+        width, height, viewport = _get_dimension_params(request)
 
         html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
         iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
@@ -131,7 +143,7 @@ class RenderJson(RenderBase):
 
         return self.pool.render(JsonRender, url, baseurl, wait_time,
                                             html, iframes, png,
-                                            width, height, vwidth, vheight)
+                                            width, height, viewport)
 
 
 class Debug(Resource):

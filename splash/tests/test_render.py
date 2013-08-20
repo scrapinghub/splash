@@ -122,7 +122,7 @@ class RenderPngTest(_RenderTest):
         self.assertEqual(img.size, (300, 100))
 
     def test_range_checks(self):
-        for arg in ('width', 'height', 'vwidth', 'vheight'):
+        for arg in ('width', 'height'):
             for val in (-1, 99999):
                 r = self.request("url=http://localhost:8998/jsrender&%s=%d" % (arg, val))
                 self.assertEqual(r.status_code, 400)
