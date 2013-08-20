@@ -25,6 +25,7 @@ document.getElementById("p1").innerHTML="After";
 </html>
 """
 
+
 class JsAlert(Resource):
 
     isLeaf = True
@@ -42,6 +43,7 @@ document.getElementById("p1").innerHTML="After";
 </html>
 """
 
+
 class JsConfirm(Resource):
 
     isLeaf = True
@@ -57,6 +59,25 @@ document.getElementById("p1").innerHTML="After";
 </script>
 </body>
 </html>
+"""
+
+
+class JsInterval(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return """
+<html><body>
+<div id='num'>not started</div>
+<script>
+var num=0;
+setInterval(function(){
+    document.getElementById('num').innerHTML = num;
+    num += 1;
+}, 1);
+</script>
+</body></html>
 """
 
 
@@ -86,6 +107,7 @@ class BaseUrl(Resource):
             request.setHeader("Content-Type", "application/javascript")
             return 'document.getElementById("p1").innerHTML="After";'
 
+
 class Delay(Resource):
 
     isLeaf = True
@@ -101,6 +123,7 @@ class Delay(Resource):
         if not request._disconnected:
             request.finish()
 
+
 class Partial(Resource):
 
     isLeaf = True
@@ -115,12 +138,96 @@ class Partial(Resource):
         request.write("partial content\n")
         request.finish()
 
+
 class Drop(Partial):
 
     def _delayedRender(self, request):
         request.write("this connection will be dropped\n")
         request.channel.transport.loseConnection()
         request.finish()
+
+
+def _html_resource(html):
+    class HtmlResource(Resource):
+        isLeaf = True
+        def render(self, request):
+            return html
+    return HtmlResource
+
+
+class IframeResource(Resource):
+
+    def __init__(self):
+        Resource.__init__(self)
+        self.putChild("1.html", self.IframeContent1())
+        self.putChild("2.html", self.IframeContent2())
+        self.putChild("3.html", self.IframeContent3())
+        self.putChild("4.html", self.IframeContent4())
+        self.putChild("5.html", self.IframeContent5())
+        self.putChild("6.html", self.IframeContent6())
+        self.putChild("script.js", self.ScriptJs())
+        self.putChild("nested.html", self.NestedIframeContent())
+
+    def render(self, request):
+        return """
+<html>
+<head><script src="/iframes/script.js"></script></head>
+<body>
+
+<iframe src="/iframes/1.html">
+  <p>no iframe 1</p>
+</iframe>
+
+<iframe src="/iframes/2.html">
+  <p>no iframe 2</p>
+</iframe>
+
+<p id="js-iframe">no js iframes</p>
+<p id="js-iframe2">no delayed js iframes</p>
+<p id="js-iframe3">no js iframes created in window.onload</p>
+
+<script type="text/javascript">
+document.getElementById('js-iframe').innerHTML="<iframe src='/iframes/3.html'>js iframes don't work</iframe>"
+</script>
+
+<script type="text/javascript">
+window.setTimeout(function(){
+    document.getElementById('js-iframe2').innerHTML="<iframe src='/iframes/4.html'>delayed js iframes don't work</iframe>";
+}, 100);
+</script>
+
+<script type="text/javascript">
+window.onload = function(){
+    document.getElementById('js-iframe3').innerHTML="<iframe src='/iframes/5.html'>js iframes created in window.onload don't work</iframe>";
+};
+</script>
+
+</body>
+</html>
+"""
+
+    IframeContent1 = _html_resource("<html><body>iframes work IFRAME_1_OK</body></html>")
+    IframeContent2 = _html_resource("""
+        <html><body>
+        <iframe src="/iframes/nested.html" width=200 height=200>
+            <p>nested iframes don't work</p>
+        </iframe>
+        </body></html>
+        """)
+    IframeContent3 = _html_resource("<html><body>js iframes work IFRAME_2_OK</body></html>")
+    IframeContent4 = _html_resource("<html><body>delayed js iframes work IFRAME_3_OK</body></html>")
+    IframeContent5 = _html_resource("<html><body>js iframes created in window.onoad work IFRAME_4_OK</body></html>")
+    IframeContent6 = _html_resource("<html><body>js iframes created by document.write in external script work IFRAME_5_OK</body></html>")
+    NestedIframeContent = _html_resource("<html><body><p>nested iframes work IFRAME_6_OK</p></body></html>")
+
+    class ScriptJs(Resource):
+        isLeaf = True
+        def render(self, request):
+            request.setHeader("Content-Type", "application/javascript")
+            iframe_html = "<iframe src='/iframes/6.html'>js iframe created by document.write in external script doesn't work</iframe>"
+            return '''document.write("%s");''' % iframe_html
+
+
 
 class Root(Resource):
 
@@ -130,10 +237,12 @@ class Root(Resource):
         self.putChild("jsrender", JsRender())
         self.putChild("jsalert", JsAlert())
         self.putChild("jsconfirm", JsConfirm())
+        self.putChild("jsinterval", JsInterval())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("partial", Partial())
         self.putChild("drop", Drop())
+        self.putChild("iframes", IframeResource())
 
 
 def ssl_factory():

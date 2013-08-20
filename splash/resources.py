@@ -3,12 +3,13 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash.qtrender2 import HtmlRender, PngRender, IframesRender, RenderError
+from splash.qtrender2 import HtmlRender, PngRender, JsonRender, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
+from splash import defaults
 
 
-class RenderHtml(Resource):
+class RenderBase(Resource):
 
     isLeaf = True
     content_type = "text/html; charset=utf-8"
@@ -17,15 +18,12 @@ class RenderHtml(Resource):
         Resource.__init__(self)
         self.pool = pool
 
-    def _getRender(self, request):
-        url = getarg(request, "url")
-        baseurl = getarg(request, "baseurl", None)
-        return self.pool.render(HtmlRender, url, baseurl)
-
     def render_GET(self, request):
         d = self._getRender(request)
-        timeout = getarg(request, "timeout", 30, type=float, range=(0, 60))
-        timer = reactor.callLater(timeout, d.cancel)
+        timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, 60))
+        wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 60))
+
+        timer = reactor.callLater(timeout+wait_time, d.cancel)
         d.addCallback(self._cancelTimer, timer)
         d.addCallback(self._writeOutput, request)
         d.addErrback(self._timeoutError, request)
@@ -81,29 +79,59 @@ class RenderHtml(Resource):
         if not request._disconnected:
             request.finish()
 
+    def _getRender(self, request):
+        raise NotImplementedError()
 
-class RenderPng(RenderHtml):
+
+def _get_dimension_params(request):
+    width = getarg(request, "width", None, type=int, range=(1, 1920))
+    height = getarg(request, "height", None, type=int, range=(1, 1080))
+    vwidth = getarg(request, "vwidth", defaults.VWIDTH, type=int, range=(1, 1920))
+    vheight = getarg(request, "vheight", defaults.VHEIGHT, type=int, range=(1, 1080))
+    return width, height, vwidth, vheight
+
+def _get_common_params(request):
+    url = getarg(request, "url")
+    baseurl = getarg(request, "baseurl", None)
+    wait_time = getarg(request, "wait", 0, type=float, range=(0, 60))
+    return url, baseurl, wait_time
+
+
+class RenderHtml(RenderBase):
+
+    content_type = "text/html; charset=utf-8"
+
+    def _getRender(self, request):
+        url, baseurl, wait_time = _get_common_params(request)
+        return self.pool.render(HtmlRender, url, baseurl, wait_time)
+
+
+class RenderPng(RenderBase):
 
     content_type = "image/png"
 
     def _getRender(self, request):
-        url = getarg(request, "url")
-        baseurl = getarg(request, "baseurl", None)
-        width = getarg(request, "width", None, type=int, range=(0, 1920))
-        height = getarg(request, "height", None, type=int, range=(0, 1080))
-        vwidth = getarg(request, "vwidth", 1024, type=int, range=(0, 1920))
-        vheight = getarg(request, "vheight", 768, type=int, range=(0, 1080))
-        return self.pool.render(PngRender, url, baseurl, width, height, vwidth, vheight)
+        url, baseurl, wait_time = _get_common_params(request)
+        width, height, vwidth, vheight = _get_dimension_params(request)
+        return self.pool.render(PngRender, url, baseurl, wait_time,
+                                width, height, vwidth, vheight)
 
 
-class RenderIframes(RenderHtml):
+class RenderJson(RenderBase):
 
     content_type = "application/json"
 
     def _getRender(self, request):
-        url = getarg(request, "url")
-        baseurl = getarg(request, "baseurl", None)
-        return self.pool.render(IframesRender, url, baseurl)
+        url, baseurl, wait_time = _get_common_params(request)
+        width, height, vwidth, vheight = _get_dimension_params(request)
+
+        html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
+        iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
+        png = getarg(request, "png", defaults.DO_PNG, type=int, range=(0, 1))
+
+        return self.pool.render(JsonRender, url, baseurl, wait_time,
+                                            html, iframes, png,
+                                            width, height, vwidth, vheight)
 
 
 class Debug(Resource):
@@ -130,7 +158,7 @@ class Root(Resource):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
-        self.putChild("iframes.json", RenderIframes(pool))
+        self.putChild("render.json", RenderJson(pool))
         self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):

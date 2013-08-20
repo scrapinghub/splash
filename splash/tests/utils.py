@@ -1,4 +1,4 @@
-import sys, os, time
+import sys, os, time, tempfile, shutil
 from subprocess import Popen, PIPE
 
 def get_testenv():
@@ -10,9 +10,10 @@ class SplashServer():
 
     def __init__(self, logfile=None):
         self.logfile = logfile
+        self.tempdir = tempfile.mkdtemp()
 
     def __enter__(self):
-        args = [sys.executable, '-u', '-m', 'splash.server']
+        args = [sys.executable, '-u', '-m', 'splash.server', '--cache-path=%s' % self.tempdir]
         if self.logfile:
             args += ['-f', self.logfile]
         self.proc = Popen(args, stderr=PIPE, env=get_testenv())
@@ -32,6 +33,7 @@ class SplashServer():
         self.proc.kill()
         self.proc.wait()
         time.sleep(0.2)
+        shutil.rmtree(self.tempdir)
 
 
 class MockServer():
