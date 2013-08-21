@@ -64,14 +64,15 @@ def bump_nofile_limit():
     else:
         log.msg("Can't bump open files limit")
 
-def manhole_server():
+def manhole_server(portnum=None, username=None, password=None):
     from twisted.internet import reactor
     from twisted.manhole import telnet
 
     f = telnet.ShellFactory()
-    f.username = defaults.MANHOLE_USERNAME
-    f.password = defaults.MANHOLE_PASSWORD
-    reactor.listenTCP(defaults.MANHOLE_PORT, f)
+    f.username = defaults.MANHOLE_USERNAME if username is None else username
+    f.password = defaults.MANHOLE_PASSWORD if password is None else password
+    portnum = defaults.MANHOLE_PORT if portnum is None else portnum
+    reactor.listenTCP(portnum, f)
 
 def splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None):
     from twisted.internet import reactor
