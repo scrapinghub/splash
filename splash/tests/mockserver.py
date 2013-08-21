@@ -81,6 +81,14 @@ setInterval(function(){
 """
 
 
+class TallPage(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return "<html style='height:2000px'><body>Hello</body></html>"
+
+
 class BaseUrl(Resource):
 
     def render_GET(self, request):
@@ -238,6 +246,7 @@ class Root(Resource):
         self.putChild("jsalert", JsAlert())
         self.putChild("jsconfirm", JsConfirm())
         self.putChild("jsinterval", JsInterval())
+        self.putChild("tall", TallPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("partial", Partial())
