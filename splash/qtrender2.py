@@ -124,17 +124,16 @@ class WebpageRender(object):
 
 
     def _setViewportSize(self, viewport=None):
-        assert defaults.VIEWPORT != 'full'
         viewport = defaults.VIEWPORT if viewport is None else viewport
 
         if viewport == 'full':
             size = self.web_page.mainFrame().contentsSize()
-            if size.isEmpty():
-                w, h = defaults.VIEWPORT.split('x')
-                size = QSize(int(w), int(h))
+            if size.isEmpty():  # sometimes contentsSize doesn't work
+                w, h = map(int, defaults.VIEWPORT_FALLBACK.split('x'))
+                size = QSize(w, h)
         else:
-            w, h = viewport.split('x')
-            size = QSize(int(w), int(h))
+            w, h = map(int, viewport.split('x'))
+            size = QSize(w, h)
 
         self.web_page.setViewportSize(size)
 
