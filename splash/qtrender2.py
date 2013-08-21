@@ -1,4 +1,4 @@
-import json, base64, re
+import json, base64
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer
 from PyQt4.QtGui import QPainter, QImage

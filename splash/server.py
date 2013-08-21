@@ -1,4 +1,4 @@
-import re, sys, optparse, resource, traceback, signal
+import sys, optparse, resource, traceback, signal
 from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
