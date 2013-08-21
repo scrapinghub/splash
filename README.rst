@@ -52,8 +52,11 @@ timeout : float : optional
 
 wait : float : optional
   Time (in seconds) to wait for updates after page is loaded
-  (defaults to 0). Increase this value if you expect pages to
-  contain setInterval/setTimeout javascript calls.
+  (defaults to 0). Increase this value if you expect pages to contain
+  setInterval/setTimeout javascript calls, because with wait=0
+  callbacks of setInterval/setTimeout won't be executed. Non-zero
+  'wait' is also required for PNG rendering when viewport=full
+  (see later).
 
 Curl example::
 
@@ -82,6 +85,12 @@ viewport : string : optional
   It also accepts 'full' as value; viewport=full means that the whole
   page (possibly very tall) will be rendered.
   Default value is 1024x768.
+
+.. note::
+
+    viewport=full requires non-zero 'wait' parameter. This is
+    an unfortunate restriction, but it seems that this is the only
+    way to make rendering work reliably with viewport=full.
 
 
 Curl examples::
