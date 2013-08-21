@@ -101,31 +101,48 @@ class RenderPngTest(_RenderTest):
 
     def _test_ok(self, url):
         r = self.request("url=%s" % url)
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.headers["content-type"], "image/png")
-        img = Image.open(StringIO(r.content))
-        self.assertEqual(img.format, "PNG")
-        self.assertEqual(img.size, (1024, 768))
+        self.assertPng(r, width=1024, height=768)
 
     def test_width(self):
         r = self.request("url=http://localhost:8998/jsrender&width=300")
-        self.assertEqual(r.headers["content-type"], "image/png")
-        img = Image.open(StringIO(r.content))
-        self.assertEqual(img.format, "PNG")
-        self.assertEqual(img.size[0], 300)
+        self.assertPng(r, width=300)
 
     def test_width_height(self):
         r = self.request("url=http://localhost:8998/jsrender&width=300&height=100")
-        self.assertEqual(r.headers["content-type"], "image/png")
-        img = Image.open(StringIO(r.content))
-        self.assertEqual(img.format, "PNG")
-        self.assertEqual(img.size, (300, 100))
+        self.assertPng(r, width=300, height=100)
 
     def test_range_checks(self):
-        for arg in ('width', 'height', 'vwidth', 'vheight'):
+        for arg in ('width', 'height'):
             for val in (-1, 99999):
                 r = self.request("url=http://localhost:8998/jsrender&%s=%d" % (arg, val))
                 self.assertEqual(r.status_code, 400)
+
+    def test_viewport_full_wait(self):
+        r = self.request({'url': 'http://localhost:8998/jsrender', 'viewport': 'full'})
+        self.assertEqual(r.status_code, 400)
+
+        r = self.request({'url': 'http://localhost:8998/jsrender', 'viewport': 'full', 'wait': 0.1})
+        self.assertEqual(r.status_code, 200)
+
+    def test_viewport_checks(self):
+        for viewport in ['99999x1', '1x99999', 'foo', '1xfoo', 'axe', '9000x9000', '-1x300']:
+            r = self.request({'url': 'http://localhost:8998/jsrender', 'viewport': viewport})
+            self.assertEqual(r.status_code, 400)
+
+    def test_viewport_full(self):
+        r = self.request({'url': 'http://localhost:8998/tall', 'viewport': 'full', 'wait': 0.1})
+        self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
+
+    def assertPng(self, response, width=None, height=None):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "image/png")
+        img = Image.open(StringIO(response.content))
+        self.assertEqual(img.format, "PNG")
+        if width is not None:
+            self.assertEqual(img.size[0], width)
+        if height is not None:
+            self.assertEqual(img.size[1], height)
+        return img.size
 
 
 class RenderJsonTest(_RenderTest):
@@ -170,6 +187,9 @@ class RenderJsonTest(_RenderTest):
         self.assertSamePng('http://localhost:8998/jsrender',
                            {'vwidth': 100})
 
+    def test_png_size_viewport(self):
+        self.assertSamePng('http://localhost:8998/jsrender', {'wait': 0.1, 'viewport': 'full'})
+        self.assertSamePng('http://localhost:8998/tall', {'wait': 0.1, 'viewport': 'full'})
 
     def test_fields_all(self):
         query = {'url': "https://localhost:8999/iframes",
