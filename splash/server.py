@@ -74,46 +74,24 @@ def manhole_server(portnum=None, username=None, password=None):
     portnum = defaults.MANHOLE_PORT if portnum is None else portnum
     reactor.listenTCP(portnum, f)
 
-def splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None):
+
+def splash_server(portnum, slots, get_cache, get_proxy_factory):
     from twisted.internet import reactor
     from twisted.web.server import Site
-    from twisted.python import log
     from splash.resources import Root
     from splash.pool import RenderPool
 
     slots = defaults.SLOTS if slots is None else slots
-    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
-    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
-    cache_size_kb = defaults.CACHE_MAXSIZE_KB if cache_size_kb is None else cache_size_kb
 
-    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sKb" % (
-        slots, cache_enabled, cache_path, cache_size_kb
-    ))
-
-    if not cache_enabled:
-        cache_kwargs = None
-    else:
-        cache_kwargs = {'path': cache_path, 'size_kb': cache_size_kb}
-
-    #proxy_kwargs = {
-    #    'blacklist': [
-    #        re.compile(r'.*\.js'),
-    #        re.compile(r'.*\.css'),
-    #        re.compile(r'.*\.png'),
-    #    ],
-    #    'whitelist': [
-    #        re.compile(r'.*crawlera\.com.*'),
-    #    ],
-    #    'proxy_list': [
-    #        ("proxy.crawlera.com", 8010, 'username', 'password'),
-    #    ]
-    #}
-    proxy_kwargs = None
-
-    pool = RenderPool(slots=slots, cache_kwargs=cache_kwargs, proxy_kwargs=proxy_kwargs)
+    pool = RenderPool(
+        slots=slots,
+        get_cache=get_cache,
+        get_proxy_factory=get_proxy_factory
+    )
     root = Root(pool)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
+
 
 def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
@@ -127,6 +105,27 @@ def monitor_maxrss(maxrss):
         t = task.LoopingCall(check_maxrss)
         t.start(60, now=False)
 
+
+def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None):
+    from twisted.python import log
+    from splash import cache
+
+    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
+    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
+    cache_size_kb = defaults.CACHE_MAXSIZE_KB if cache_size_kb is None else cache_size_kb
+
+    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sKb" % (
+        slots, cache_enabled, cache_path, cache_size_kb
+    ))
+
+    if not cache_enabled:
+        get_cache = lambda: None
+    else:
+        get_cache = lambda: cache.construct(cache_path, cache_size_kb)
+
+    return splash_server(portnum, slots, get_cache, lambda: None)
+
+
 def main():
     install_qtreactor()
     opts, _ = parse_opts()
@@ -135,7 +134,7 @@ def main():
     bump_nofile_limit()
     monitor_maxrss(opts.maxrss)
     manhole_server()
-    splash_server(portnum=opts.port,
+    default_splash_server(portnum=opts.port,
                   slots=opts.slots,
                   cache_enabled=opts.cache_enabled,
                   cache_path=opts.cache_path,

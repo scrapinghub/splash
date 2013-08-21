@@ -4,9 +4,9 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, cache_kwargs=None, proxy_kwargs=None):
-        self.cache_kwargs = cache_kwargs
-        self.proxy_kwargs = proxy_kwargs
+    def __init__(self, slots, get_cache=None, get_proxy_factory=None):
+        self.get_cache = get_cache
+        self.get_proxy_factory = get_proxy_factory
         self.active = set()
         self.queue = defer.DeferredQueue()
         for n in range(slots):
@@ -25,8 +25,8 @@ class RenderPool(object):
 
     def _start_render(self, (rendercls, args, extdef)):
         render = rendercls(
-            cache_kwargs=self.cache_kwargs,
-            proxy_kwargs=self.proxy_kwargs
+            get_cache=self.get_cache,
+            get_proxy_factory=self.get_proxy_factory
         )
         render.doRequest(*args)
         self.active.add(render)

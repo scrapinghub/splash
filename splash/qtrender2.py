@@ -5,8 +5,6 @@ from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from twisted.internet import defer
 from splash import defaults
-from splash import cache
-from splash.proxy import SplashQNetworkProxyFactory
 
 
 class RenderError(Exception):
@@ -38,14 +36,18 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, cache_kwargs=None, proxy_kwargs=None):
+    def __init__(self, get_cache=None, get_proxy_factory=None):
         self.network_manager = SplashQNetworkAccessManager()
-        if cache_kwargs:
-            self.network_manager.setCache(cache.construct(**cache_kwargs))
 
-        if proxy_kwargs:
-            factory = SplashQNetworkProxyFactory(**proxy_kwargs)
-            self.network_manager.setProxyFactory(factory)
+        if get_cache:
+            cache = get_cache()
+            if cache:
+                self.network_manager.setCache(cache)
+
+        if get_proxy_factory:
+            proxy_factory = get_proxy_factory()
+            if proxy_factory:
+                self.network_manager.setProxyFactory(proxy_factory)
 
         self.web_view = QWebView()
         self.web_page = SplashQWebPage()
