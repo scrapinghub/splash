@@ -83,9 +83,15 @@ class RenderBase(Resource):
         raise NotImplementedError()
 
 
-def _check_viewport(viewport, max_width, max_heigth, max_area):
-    if viewport=='full' or viewport is None:
+def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
+    if viewport is None:
         return
+
+    if viewport == 'full':
+        if wait == 0:
+            raise BadRequest("Pass non-zero 'wait' to render full webpage")
+        return
+
     try:
         w, h = map(int, viewport.split('x'))
         if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
@@ -94,13 +100,16 @@ def _check_viewport(viewport, max_width, max_heigth, max_area):
     except (ValueError):
         raise BadRequest("Invalid viewport format: %s" % viewport)
 
-def _get_dimension_params(request):
+def _get_png_params(request):
+    url, baseurl, wait_time = _get_common_params(request)
     width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
     height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
-    viewport = getarg(request, "viewport", None)
-    _check_viewport(viewport, defaults.VIEWPORT_MAX_WIDTH,
+    viewport = getarg(request, "viewport", defaults.VIEWPORT)
+
+    _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
-    return width, height, viewport
+
+    return url, baseurl, wait_time, width, height, viewport
 
 def _get_common_params(request):
     url = getarg(request, "url")
@@ -123,8 +132,7 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        url, baseurl, wait_time = _get_common_params(request)
-        width, height, viewport = _get_dimension_params(request)
+        url, baseurl, wait_time, width, height, viewport = _get_png_params(request)
         return self.pool.render(PngRender, url, baseurl, wait_time,
                                 width, height, viewport)
 
@@ -134,8 +142,7 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        url, baseurl, wait_time = _get_common_params(request)
-        width, height, viewport = _get_dimension_params(request)
+        url, baseurl, wait_time, width, height, viewport = _get_png_params(request)
 
         html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
         iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))

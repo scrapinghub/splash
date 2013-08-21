@@ -127,6 +127,18 @@ class RenderPngTest(_RenderTest):
                 r = self.request("url=http://localhost:8998/jsrender&%s=%d" % (arg, val))
                 self.assertEqual(r.status_code, 400)
 
+    def test_viewport_full_wait(self):
+        r = self.request({'url': 'http://localhost:8998/jsrender', 'viewport': 'full'})
+        self.assertEqual(r.status_code, 400)  # no 'wait' parameter
+
+        r = self.request({'url': 'http://localhost:8998/jsrender', 'viewport': 'full', 'wait': '0.1'})
+        self.assertEqual(r.status_code, 200)
+
+    def test_viewport_checks(self):
+        for viewport in ['99999x1', '1x99999', 'foo', '1xfoo', 'axe', '9000x9000', '-1x300']:
+            r = self.request({'url': 'http://localhost:8998/jsrender', 'viewport': viewport})
+            self.assertEqual(r.status_code, 400)
+
 
 class RenderJsonTest(_RenderTest):
     render_format = 'json'
