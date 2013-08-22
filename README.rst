@@ -52,8 +52,11 @@ timeout : float : optional
 
 wait : float : optional
   Time (in seconds) to wait for updates after page is loaded
-  (defaults to 0). Increase this value if you expect pages to
-  contain setInterval/setTimeout javascript calls.
+  (defaults to 0). Increase this value if you expect pages to contain
+  setInterval/setTimeout javascript calls, because with wait=0
+  callbacks of setInterval/setTimeout won't be executed. Non-zero
+  'wait' is also required for PNG rendering when viewport=full
+  (see later).
 
 Curl example::
 
@@ -76,13 +79,18 @@ height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
 
-vwidth : integer : optional
-  View width. Size (in pixels) of the browser viewport to render the web page.
-  Defaults to 1024.
+viewport : string : optional
+  View width and height (in pixels) of the browser viewport
+  to render the web page. Format is "<width>x<heigth>", e.g. 800x600.
+  It also accepts 'full' as value; viewport=full means that the whole
+  page (possibly very tall) will be rendered.
+  Default value is 1024x768.
 
-vheight : integer : optional
-  View height. Size (in pixels) of the browser viewport to render the web page.
-  Defaults to 768.
+.. note::
+
+    viewport=full requires non-zero 'wait' parameter. This is
+    an unfortunate restriction, but it seems that this is the only
+    way to make rendering work reliably with viewport=full.
 
 
 Curl examples::
