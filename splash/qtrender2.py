@@ -104,11 +104,8 @@ class WebpageRender(object):
         frame = self.web_view.page().mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
-    def _getPng(self, width=None, height=None, vwidth=None, vheight=None):
-        vwidth = defaults.VWIDTH if vwidth is None else vwidth
-        vheight = defaults.VHEIGHT if vheight is None else vheight
-
-        self.web_page.setViewportSize(QSize(vwidth, vheight))
+    def _getPng(self, width=None, height=None, viewport=None):
+        self._setViewportSize(viewport)
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.web_page.mainFrame().render(painter)
@@ -124,6 +121,21 @@ class WebpageRender(object):
     def _getIframes(self, children=True, html=True):
         frame = self.web_view.page().mainFrame()
         return self._frameToDict(frame, children, html)
+
+
+    def _setViewportSize(self, viewport=None):
+        viewport = defaults.VIEWPORT if viewport is None else viewport
+
+        if viewport == 'full':
+            size = self.web_page.mainFrame().contentsSize()
+            if size.isEmpty():  # sometimes contentsSize doesn't work
+                w, h = map(int, defaults.VIEWPORT_FALLBACK.split('x'))
+                size = QSize(w, h)
+        else:
+            w, h = map(int, viewport.split('x'))
+            size = QSize(w, h)
+
+        self.web_page.setViewportSize(size)
 
     def _frameToDict(self, frame, children=True, html=True):
         g = frame.geometry()
@@ -153,26 +165,24 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, width=None, height=None, vwidth=None, vheight=None):
+    def doRequest(self, url, baseurl=None, wait_time=None, width=None, height=None, viewport=None):
         self.width = width
         self.height = height
-        self.vwidth = vwidth
-        self.vheight = vheight
+        self.viewport = viewport
         super(PngRender, self).doRequest(url, baseurl, wait_time)
 
     def _render(self):
-        return self._getPng(self.width, self.height, self.vwidth, self.vheight)
+        return self._getPng(self.width, self.height, self.viewport)
 
 
 class JsonRender(WebpageRender):
 
     def doRequest(self, url, baseurl=None, wait_time=None,
                         html=True, iframes=True, png=True,
-                        width=None, height=None, vwidth=None, vheight=None):
+                        width=None, height=None, viewport=None):
         self.width = width
         self.height = height
-        self.vwidth = vwidth
-        self.vheight = vheight
+        self.viewport = viewport
         self.include = {'html': html, 'png': png, 'iframes': iframes}
         super(JsonRender, self).doRequest(url, baseurl, wait_time)
 
@@ -180,7 +190,7 @@ class JsonRender(WebpageRender):
         res = {}
 
         if self.include['png']:
-            png = self._getPng(self.width, self.height, self.vwidth, self.vheight)
+            png = self._getPng(self.width, self.height, self.viewport)
             res['png'] = base64.encodestring(png)
 
         res.update(self._getIframes(
