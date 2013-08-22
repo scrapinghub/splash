@@ -20,10 +20,19 @@ class RenderBase(Resource):
 
     def render_GET(self, request):
         d = self._getRender(request)
-        timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, 60))
-        wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 60))
+        timeout = getarg(request, "timeout", None, type=float, range=(0, 60))
+        wait_time = getarg(request, "wait", None, type=float, range=(0, 10))
 
-        timer = reactor.callLater(timeout+wait_time, d.cancel)
+        if timeout is None and wait_time is not None:
+            timeout = max([defaults.TIMEOUT, wait_time])
+
+        timeout = defaults.TIMEOUT if timeout is None else timeout
+        wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
+
+        if timeout <= wait_time:
+            raise BadRequest("Timeout (%s) must be greater than wait (%s)" % (timeout, wait_time))
+
+        timer = reactor.callLater(timeout, d.cancel)
         d.addCallback(self._cancelTimer, timer)
         d.addCallback(self._writeOutput, request)
         d.addErrback(self._timeoutError, request)
@@ -93,7 +102,7 @@ def _get_dimension_params(request):
 def _get_common_params(request):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
-    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 60))
+    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 10))
     return url, baseurl, wait_time
 
 

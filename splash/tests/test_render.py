@@ -33,6 +33,16 @@ class _RenderTest(_BaseRenderTest):
         r = self.request("url=http://localhost:8998/delay?n=10&timeout=999")
         self.assertEqual(r.status_code, 400)
 
+    def test_timeout_and_wait(self):
+        r = self.request("url=http://localhost:8998/jsrender&timeout=0.5&wait=0.1")
+        self.assertEqual(r.status_code, 200)
+
+        r = self.request("url=http://localhost:8998/jsrender&timeout=0.5&wait=1")
+        self.assertEqual(r.status_code, 400)
+
+        r = self.request("url=http://localhost:8998/jsrender&timeout=0.5&wait=0.5")
+        self.assertEqual(r.status_code, 400)
+
     def test_missing_url(self):
         r = self.request("")
         self.assertEqual(r.status_code, 400)
