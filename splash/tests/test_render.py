@@ -15,11 +15,20 @@ class _BaseRenderTest(unittest.TestCase):
     def request(self, query, render_format=None):
         render_format = render_format or self.render_format
         if isinstance(query, dict):
-            url= "http://%s/render.%s" % (self.host, render_format)
+            url = "http://%s/render.%s" % (self.host, render_format)
             return requests.get(url, params=query)
         else:
             url = "http://%s/render.%s?%s" % (self.host, render_format, query)
             return requests.get(url)
+
+    def post(self, query, render_format=None, payload=None):
+        render_format = render_format or self.render_format
+        if isinstance(query, dict):
+            url = "http://%s/render.%s" % (self.host, render_format)
+            return requests.post(url, params=query, data=payload)
+        else:
+            url = "http://%s/render.%s?%s" % (self.host, render_format, query)
+            return requests.post(url, data=payload)
 
 
 class _RenderTest(_BaseRenderTest):
@@ -343,6 +352,33 @@ class IframesRenderTest(_BaseRenderTest):
                  'iframes': 1, 'html': 1}
         query.update(params or {})
         return self.request(query).json()
+
+
+class RenderJsTest(_BaseRenderTest):
+
+    render_format = "js"
+
+    def test_simple_js(self):
+        simple_js = "function test(x){ return x; } test('abc');"
+        r = self.post("url=http://localhost:8998/baseurl", payload=simple_js)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.text, 'abc')
+
+    def test_innerhtml_js(self):
+        simple_js = "function get_html(){ return document.body.innerHTML; } get_html();"
+        r = self.post("url=http://localhost:8998/baseurl", payload=simple_js)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.text, '\n<p id="p1">Before</p>\n<script src="script.js"></script>\n\n\n')
+
+    def test_xpath_js(self):
+        simple_js = """function get_id(){ 
+    var x = document.evaluate( '//p/@id', document, null, XPathResult.STRING_TYPE, null ); 
+    return x.stringValue;
+};
+get_id();"""
+        r = self.post("url=http://localhost:8998/baseurl", payload=simple_js)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.text, 'p1')
 
 
 class TestTestSetup(unittest.TestCase):
