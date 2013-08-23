@@ -33,9 +33,6 @@ class RenderBase(Resource):
         request.starttime = time.time()
         return NOT_DONE_YET
 
-    def render_POST(self, request):
-        return self.render_GET(request)
-
     def render(self, request):
         try:
             return Resource.render(self, request)
@@ -160,6 +157,9 @@ class RenderJson(RenderBase):
 class RenderJs(RenderBase):
 
     content_type = "text/plain; charset=utf-8"
+
+    def render_POST(self, request):
+        return self.render_GET(request)
 
     def _getRender(self, request):
         url, baseurl, wait_time = _get_common_params(request)
