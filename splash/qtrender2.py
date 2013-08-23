@@ -36,18 +36,14 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, get_cache=None, get_proxy_factory=None):
+    def __init__(self, cache=None, proxy_factory=None):
         self.network_manager = SplashQNetworkAccessManager()
 
-        if get_cache:
-            cache = get_cache()
-            if cache:
-                self.network_manager.setCache(cache)
+        if cache:
+            self.network_manager.setCache(cache)
 
-        if get_proxy_factory:
-            proxy_factory = get_proxy_factory()
-            if proxy_factory:
-                self.network_manager.setProxyFactory(proxy_factory)
+        if proxy_factory:
+            self.network_manager.setProxyFactory(proxy_factory)
 
         self.web_view = QWebView()
         self.web_page = SplashQWebPage()

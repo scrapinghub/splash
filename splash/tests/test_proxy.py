@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import unittest
-from splash.proxy import SplashQNetworkProxyFactory
+from splash.proxy import SplashQNetworkProxyFactory, BlackWhiteQNetworkProxyFactory
 
-class ProxyFactoryTest(unittest.TestCase):
+class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
     def _factory(self, **kwargs):
         params = {
             "proxy_list": [("proxy.crawlera.com", 8010, "username", "password")],
             "whitelist": [
-                r".*scrapinghub\.com.*"
+                r".*scrapinghub\.com.*",
             ],
             "blacklist": [
                 r".*\.js",
@@ -17,10 +17,10 @@ class ProxyFactoryTest(unittest.TestCase):
             ]
         }
         params.update(kwargs)
-        return SplashQNetworkProxyFactory(**params)
+        return BlackWhiteQNetworkProxyFactory(**params)
 
     def test_noproxy(self):
-        f = SplashQNetworkProxyFactory()
+        f = BlackWhiteQNetworkProxyFactory()
         self.assertTrue(f.shouldUseDefault('http', 'crawlera.com'))
 
     def test_whitelist(self):

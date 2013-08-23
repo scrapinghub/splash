@@ -5,16 +5,16 @@ class RenderPool(object):
     renders will be run in parallel, at the most."""
 
     def __init__(self, slots, get_cache=None, get_proxy_factory=None):
-        self.get_cache = get_cache
-        self.get_proxy_factory = get_proxy_factory
+        self.get_cache = get_cache or (lambda request: None)
+        self.get_proxy_factory = get_proxy_factory or (lambda request: None)
         self.active = set()
         self.queue = defer.DeferredQueue()
         for n in range(slots):
             self._wait_for_render(None, n)
 
-    def render(self, rendercls, *args):
+    def render(self, rendercls, request, *args):
         extdef = defer.Deferred()
-        self.queue.put((rendercls, args, extdef))
+        self.queue.put((rendercls, request, args, extdef))
         return extdef
 
     def _wait_for_render(self, _, slot):
@@ -23,10 +23,10 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, args, extdef)):
+    def _start_render(self, (rendercls, request, args, extdef)):
         render = rendercls(
-            get_cache=self.get_cache,
-            get_proxy_factory=self.get_proxy_factory
+            cache=self.get_cache(request),
+            proxy_factory=self.get_proxy_factory(request)
         )
         render.doRequest(*args)
         self.active.add(render)
