@@ -50,7 +50,7 @@ class _RenderTest(_BaseRenderTest):
         r = self.request("url=http://localhost:8998/iframes&timeout=3")
         self.assertEqual(r.status_code, 200)
 
-    def test_wait(self):
+    def test_wait_works(self):
         r1 = self.request("url=http://localhost:8998/jsinterval")
         r2 = self.request("url=http://localhost:8998/jsinterval")
         r3 = self.request("url=http://localhost:8998/jsinterval&wait=0.2")
@@ -87,6 +87,11 @@ class RenderHtmlTest(_RenderTest):
         self.assertEqual(r.status_code, 200)
         self.assertTrue("Before" not in r.text)
         self.assertTrue("After" in r.text)
+
+    def test_wait_value(self):
+        r = self.request("url=http://localhost:8998/jsinterval&wait=0.5")
+        self.assertEqual(r.status_code, 200)
+        assert any(str(v) in r.text for v in [600, 500, 400]), r.text
 
 
 class RenderPngTest(_RenderTest):
@@ -248,7 +253,7 @@ class RenderJsonTest(_RenderTest):
                                           "title"])
         self.assertFieldsNotInResponse(res, ["childFrames", "html", "png"])
 
-    def test_wait(self):
+    def test_wait_works(self):
         # override parent's test to make it aware of render.json endpoint
         r1 = self.request({"url": "http://localhost:8998/jsinterval", 'html': 1})
         r2 = self.request({"url": "http://localhost:8998/jsinterval", 'html': 1})
