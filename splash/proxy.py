@@ -57,6 +57,28 @@ class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
 
 class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
     """
+    This proxy factory reads BlackWhiteQNetworkProxyFactory
+    parameters from ini file; names of the ini file can be set per-request
+    using GET parameter.
+
+    Example config file::
+
+        ; /etc/splash/proxy/mywebsite.ini
+        [proxy]
+        host=proxy.crawlera.com
+        port=8010
+        username=username
+        password=password
+
+        [rules]
+        whitelist=
+            .*mywebsite\.com.*
+
+        blacklist=
+            .*\.js.*
+            .*\.css.*
+            .*\.png
+
     """
     GET_ARGUMENT = 'proxy'
 

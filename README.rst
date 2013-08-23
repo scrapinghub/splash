@@ -58,6 +58,9 @@ wait : float : optional
   'wait' is also required for PNG rendering when viewport=full
   (see later).
 
+proxy : string : optional
+  Proxy profile name. See :ref:`Proxy Profiles`.
+
 Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
@@ -221,6 +224,14 @@ Curl examples::
     # render html and 320x240 thumbnail at once; do not return info about iframes
     curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&png=1&width=320&height=240
 
+
+Proxy Profiles
+==============
+
+Splash supports "proxy profiles" that allows to set proxy handling rules
+per-request.
+
+TODO
 
 
 Functional Tests
