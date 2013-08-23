@@ -217,7 +217,7 @@ class JsRender(WebpageRender):
         frame = self.web_view.page().mainFrame()
         frame.addToJavaScriptWindowObject('printer', printer)
         ret = frame.evaluateJavaScript(self.js)
-        return str(ret.toString())
+        return bytes(ret.toString().toUtf8())
 
 
 class ConsolePrinter(QObject):
