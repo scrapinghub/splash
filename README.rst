@@ -109,9 +109,9 @@ render.js
 ---------
 
 Evaluates the JavaScript defined by script source using the page's main frame as context 
-and returns the result of the last executed statement. Note that unlike the other Splash
-endpoints render.js expects a POST request where the body of the request is the javascript
-source.
+and returns the result of the last executed statement. The javascript code is evaluated after
+the delay defined by the wait parameter. Note that unlike the other Splash endpoints render.js 
+expects a POST request where the body of the request is the javascript source.
 
 Arguments:
 
