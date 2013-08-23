@@ -13,8 +13,10 @@ class RenderPool(object):
             self._wait_for_render(None, n)
 
     def render(self, rendercls, request, *args):
+        cache = self.get_cache(request)
+        proxy_factory = self.get_proxy_factory(request)
         extdef = defer.Deferred()
-        self.queue.put((rendercls, request, args, extdef))
+        self.queue.put((rendercls, cache, proxy_factory, args, extdef))
         return extdef
 
     def _wait_for_render(self, _, slot):
@@ -23,11 +25,8 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, request, args, extdef)):
-        render = rendercls(
-            cache=self.get_cache(request),
-            proxy_factory=self.get_proxy_factory(request)
-        )
+    def _start_render(self, (rendercls, cache, proxy_factory, args, extdef)):
+        render = rendercls(cache=cache, proxy_factory=proxy_factory)
         render.doRequest(*args)
         self.active.add(render)
         d = render.deferred

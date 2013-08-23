@@ -55,16 +55,16 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
     """
     GET_ARGUMENT = 'proxy'
 
-    def __init__(self, proxy_rules_path, request):
-        proxy_rules_path = os.path.abspath(proxy_rules_path)
+    def __init__(self, proxy_profiles_path, request):
+        proxy_profiles_path = os.path.abspath(proxy_profiles_path)
         filename = getarg(request, self.GET_ARGUMENT, None)
         if not filename:
             params = [], [], []
         else:
-            ini_path = os.path.abspath(os.path.join(proxy_rules_path, filename))
-            if not ini_path.startswith(proxy_rules_path + os.path.sep):
-                # security check
-                params = [], [], []
+            ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
+            if not ini_path.startswith(proxy_profiles_path + os.path.sep):
+                # security check fails
+                raise BadRequest("Proxy profile does not exist")
             else:
                 params = self._parseIni(ini_path)
         super(SplashQNetworkProxyFactory, self).__init__(*params)
@@ -73,17 +73,28 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
     def _parseIni(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
-            return [], [], []
+            raise BadRequest("Proxy profile does not exist")
 
         blacklist = _get_lines(parser, 'rules', 'blacklist', [])
         whitelist = _get_lines(parser, 'rules', 'whitelist', [])
-        proxy_params = dict(parser.items('proxy'))
-        proxy_list = [(
-            proxy_params['host'],
-            int(proxy_params['port']),
-            proxy_params.get('username'),
-            proxy_params.get('password'),
-        )]
+        try:
+            proxy = dict(parser.items('proxy'))
+        except ConfigParser.NoSectionError:
+            raise BadRequest("Invalid proxy profile: no [proxy] section found")
+
+        try:
+            host = proxy['host']
+        except KeyError:
+            raise BadRequest("Invalid proxy profile: [proxy] host is not found")
+
+        try:
+            port = int(proxy['port'])
+        except KeyError:
+            raise BadRequest("Invalid proxy profile: [proxy] port is not found")
+        except ValueError:
+            raise BadRequest("Invalid proxy profile: [proxy] port is incorrect")
+
+        proxy_list = [(host, port, proxy.get('username'), proxy.get('password'))]
 
         return blacklist, whitelist, proxy_list
 
