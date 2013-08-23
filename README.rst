@@ -108,10 +108,13 @@ Curl examples::
 render.js
 ---------
 
-Evaluates the JavaScript defined by script source using the page's main frame as context 
-and returns the result of the last executed statement. The javascript code is evaluated after
-the delay defined by the wait parameter. Note that unlike the other Splash endpoints render.js 
-expects a POST request where the body of the request is the javascript source.
+Evaluates the JavaScript defined by script source using the page's main frame 
+as context and returns the result of the last executed statement. The javascript 
+code is evaluated after the load of the page is finished. If the wait is parameter 
+is defined the javascript code will be evaluated after the delay defined by it.
+
+Note that unlike the other Splash endpoints render.js expects a POST request 
+where the body of the request is the javascript source.
 
 Arguments:
 
