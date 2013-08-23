@@ -1,5 +1,6 @@
 import sys, os, time, tempfile, shutil
 from subprocess import Popen, PIPE
+from splash import defaults
 
 def get_testenv():
     env = os.environ.copy()
@@ -9,14 +10,21 @@ def get_testenv():
 
 class SplashServer():
 
-    def __init__(self, logfile=None):
+    def __init__(self, logfile=None, proxy_profiles_path=None, portnum=defaults.SPLASH_PORT):
         self.logfile = logfile
+        self.proxy_profiles_path = proxy_profiles_path
+        self.portnum = str(portnum)
         self.tempdir = tempfile.mkdtemp()
 
     def __enter__(self):
-        args = [sys.executable, '-u', '-m', 'splash.server', '--cache-path=%s' % self.tempdir]
+        args = [sys.executable, '-u', '-m', 'splash.server']
+        args += ['--cache-path', self.tempdir]
+        args += ['--port', self.portnum]
         if self.logfile:
             args += ['-f', self.logfile]
+        if self.proxy_profiles_path:
+            args += ['--proxy-profiles-path', self.proxy_profiles_path]
+
         self.proc = Popen(args, stderr=PIPE, env=get_testenv())
         self.proc.poll()
         if self.proc.returncode:
@@ -55,11 +63,15 @@ class TestServers():
 
     def __init__(self, logfile=None):
         self.logfile = logfile
+        self.proxy_profiles_path = os.path.join(
+            os.path.dirname(__file__),
+            'proxy_profiles'
+        )
 
     def __enter__(self):
         self.mockserver = MockServer()
         self.mockserver.__enter__()
-        self.splashserver = SplashServer(self.logfile)
+        self.splashserver = SplashServer(self.logfile, self.proxy_profiles_path)
         self.splashserver.__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):

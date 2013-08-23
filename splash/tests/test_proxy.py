@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import unittest
-from splash.proxy import SplashQNetworkProxyFactory, BlackWhiteQNetworkProxyFactory
+from splash.proxy import BlackWhiteQNetworkProxyFactory
+from .test_render import _BaseRenderTest
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
@@ -43,3 +44,51 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
     def assertUsesCustom(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
         self.assertFalse(f.shouldUseDefault(protocol, url))
+
+
+class HtmlProxyRenderTest(_BaseRenderTest):
+
+    def test_proxy_works(self):
+        r1 = self.request({'url': 'http://localhost:8998/jsrender'})
+        self.assertNotProxied(r1.text)
+
+        r2 = self.request({'url': 'http://localhost:8998/jsrender', 'proxy': 'test.ini'})
+        self.assertProxied(r2.text)
+
+    def test_blacklist(self):
+        params = {'url': 'http://localhost:8998/iframes',
+                  'proxy': 'test.ini', 'html': 1, 'iframes': 1}
+        r = self.request(params, render_format='json')
+        data = r.json()
+
+        # only 1.html is blacklisted in test.ini
+        self.assertProxied(data['html'])
+        assert any('1.html' in f['requestedUrl'] for f in data['childFrames'])
+
+        for frame in data['childFrames']:
+            if '1.html' in frame['requestedUrl']:
+                self.assertNotProxied(frame['html'])
+            else:
+                self.assertProxied(frame['html'])
+
+    def test_insecure(self):
+        r = self.request({'url': 'http://localhost:8998/jsrender',
+                          'proxy': '../__init__.py'})
+        self.assertEqual(r.status_code, 400)
+
+    def test_nonexisting(self):
+        r = self.request({'url': 'http://localhost:8998/jsrender',
+                          'proxy': 'nonexisting.ini'})
+        self.assertEqual(r.status_code, 400)
+
+    def test_no_proxy_settings(self):
+        r = self.request({'url': 'http://localhost:8998/jsrender',
+                          'proxy': 'no-proxy-settings.ini'})
+        self.assertEqual(r.status_code, 400)
+
+
+    def assertProxied(self, html):
+        assert 'PROXY_USED' in html
+
+    def assertNotProxied(self, html):
+        assert 'PROXY_USED' not in html

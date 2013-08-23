@@ -44,10 +44,15 @@ class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
         return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
 
     def _customProxyList(self):
-        return [
-            QNetworkProxy(QNetworkProxy.HttpProxy, *args)
-            for args in self.proxy_list
-        ]
+        proxies = []
+        for host, port, username, password in self.proxy_list:
+            if username is not None and password is not None:
+                proxy = QNetworkProxy(QNetworkProxy.HttpProxy,
+                                      host, port, username, password)
+            else:
+                proxy = QNetworkProxy(QNetworkProxy.HttpProxy, host, port)
+            proxies.append(proxy)
+        return proxies
 
 
 class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
@@ -95,7 +100,6 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
             raise BadRequest("Invalid proxy profile: [proxy] port is incorrect")
 
         proxy_list = [(host, port, proxy.get('username'), proxy.get('password'))]
-
         return blacklist, whitelist, proxy_list
 
 

@@ -35,7 +35,7 @@ def parse_opts():
     op.add_option("", "--cache-size", type="int", default=defaults.CACHE_MAXSIZE_KB,
                   help="maximum cache size in Kb (default: %default)")
 
-    op.add_option("", "--proxy-rules-path", help="path to a folder with proxy rules")
+    op.add_option("", "--proxy-profiles-path", help="path to a folder with proxy profiles")
 
     return op.parse_args()
 
@@ -114,7 +114,7 @@ def monitor_maxrss(maxrss):
         t.start(60, now=False)
 
 
-def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None, proxy_rules_path=None):
+def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None, proxy_profiles_path=None):
     from twisted.python import log
     from splash import cache
     from splash import proxy
@@ -128,13 +128,13 @@ def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=No
     else:
         get_cache = lambda request: cache.construct(cache_path, cache_size_kb)
 
-    if proxy_rules_path:
-        if not os.path.isdir(proxy_rules_path):
-            log.msg("--proxy-rules-path does not exist or it is not a folder; proxy won't be used")
+    if proxy_profiles_path:
+        if not os.path.isdir(proxy_profiles_path):
+            log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
             get_proxy_factory = lambda request: None
         else:
             def get_proxy_factory(request):
-                return proxy.SplashQNetworkProxyFactory(proxy_rules_path, request)
+                return proxy.SplashQNetworkProxyFactory(proxy_profiles_path, request)
     else:
         get_proxy_factory = lambda request: None
 
@@ -158,7 +158,7 @@ def main():
                   cache_enabled=opts.cache_enabled,
                   cache_path=opts.cache_path,
                   cache_size_kb=opts.cache_size,
-                  proxy_rules_path=opts.proxy_rules_path)
+                  proxy_profiles_path=opts.proxy_profiles_path)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor
