@@ -105,6 +105,28 @@ Curl examples::
     curl http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240
 
 
+render.js
+---------
+
+Evaluates the JavaScript defined by script source using the page's main frame as context 
+and returns the result of the last executed statement. Note that unlike the other Splash
+endpoints render.js expects a POST request where the body of the request is the javascript
+source.
+
+Arguments:
+
+Same as `render.html`_ 
+
+
+Curl examples::
+
+    # executes a simple js function
+    curl -X POST -d "function getAd(x){ return x; } getAd('abc');" http://localhost:8050/render.js?url=http://domain.com
+
+    # get the document body html 
+    curl -X POST -d "document.body.innerHTML;" http://localhost:8050/render.js?url=http://domain.com
+
+
 render.json
 -----------
 
