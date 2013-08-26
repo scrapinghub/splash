@@ -9,12 +9,20 @@ script
     [ -r /etc/default/splash ] && . /etc/default/splash
     totmem=$(awk '/MemTotal/{print $2}' /proc/meminfo)
     maxrss=$(($totmem*3/4))
-    logdir=/var/log/splash
-    proxydir=/etc/splash/proxy-profiles
-    chown proxy:proxy $logdir
+
+    logdir=${SPLASH_LOGDIR:-/var/log/splash}
+    profiles=${SPLASH_PROFILES:-/etc/splash/proxy-profiles}
+    cache=${SPLASH_CACHEDIR:-/var/cache/splash}
+    chown proxy:proxy $logdir $profiles $cache
+
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
         --pidfile /var/run/splash.pid \
-        --exec /usr/bin/python \
-            -- -m splash.server -f $logdir/splash.log --proxy-profiles-path=$proxydir -m $maxrss >$logdir/splash.out 2>$logdir/splash.err
+        --exec /usr/bin/python -- \
+            -m splash.server \
+            -m $maxrss \
+            -f $logdir/splash.log \
+            --proxy-profiles-path=$profiles \
+            --cache --cache-path=$cache \
+            >$logdir/splash.out 2>$logdir/splash.err
 end script
