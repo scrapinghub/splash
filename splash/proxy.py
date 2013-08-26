@@ -58,10 +58,10 @@ class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
 class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
     """
     This proxy factory reads BlackWhiteQNetworkProxyFactory
-    parameters from ini file; names of the ini file can be set per-request
+    parameters from ini file; name of the profile can be set per-request
     using GET parameter.
 
-    Example config file::
+    Example config file for 'mywebsite' proxy profile::
 
         ; /etc/splash/proxy-profiles/mywebsite.ini
         [proxy]
@@ -81,17 +81,19 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
 
     """
     GET_ARGUMENT = 'proxy'
+    NO_PROXY_PROFILE_MSG = 'Proxy profile does not exist'
 
     def __init__(self, proxy_profiles_path, request):
         proxy_profiles_path = os.path.abspath(proxy_profiles_path)
-        filename = getarg(request, self.GET_ARGUMENT, None)
-        if not filename:
+        profile_name = getarg(request, self.GET_ARGUMENT, None)
+        if not profile_name:
             params = [], [], []
         else:
+            filename = profile_name + '.ini'
             ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
             if not ini_path.startswith(proxy_profiles_path + os.path.sep):
                 # security check fails
-                raise BadRequest("Proxy profile does not exist")
+                raise BadRequest(self.NO_PROXY_PROFILE_MSG)
             else:
                 params = self._parseIni(ini_path)
         super(SplashQNetworkProxyFactory, self).__init__(*params)
@@ -100,7 +102,7 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
     def _parseIni(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
-            raise BadRequest("Proxy profile does not exist")
+            raise BadRequest(self.NO_PROXY_PROFILE_MSG)
 
         blacklist = _get_lines(parser, 'rules', 'blacklist', [])
         whitelist = _get_lines(parser, 'rules', 'whitelist', [])

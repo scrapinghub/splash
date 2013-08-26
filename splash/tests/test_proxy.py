@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import unittest
-from splash.proxy import BlackWhiteQNetworkProxyFactory
+from splash.proxy import BlackWhiteQNetworkProxyFactory, SplashQNetworkProxyFactory
 from .test_render import _BaseRenderTest
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
@@ -52,12 +52,12 @@ class HtmlProxyRenderTest(_BaseRenderTest):
         r1 = self.request({'url': 'http://localhost:8998/jsrender'})
         self.assertNotProxied(r1.text)
 
-        r2 = self.request({'url': 'http://localhost:8998/jsrender', 'proxy': 'test.ini'})
+        r2 = self.request({'url': 'http://localhost:8998/jsrender', 'proxy': 'test'})
         self.assertProxied(r2.text)
 
     def test_blacklist(self):
         params = {'url': 'http://localhost:8998/iframes',
-                  'proxy': 'test.ini', 'html': 1, 'iframes': 1}
+                  'proxy': 'test', 'html': 1, 'iframes': 1}
         r = self.request(params, render_format='json')
         data = r.json()
 
@@ -73,17 +73,19 @@ class HtmlProxyRenderTest(_BaseRenderTest):
 
     def test_insecure(self):
         r = self.request({'url': 'http://localhost:8998/jsrender',
-                          'proxy': '../__init__.py'})
+                          'proxy': '../this-is-not-a-proxy-profile'})
         self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.text.strip(), SplashQNetworkProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_nonexisting(self):
         r = self.request({'url': 'http://localhost:8998/jsrender',
-                          'proxy': 'nonexisting.ini'})
+                          'proxy': 'nonexisting'})
         self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.text.strip(), SplashQNetworkProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_no_proxy_settings(self):
         r = self.request({'url': 'http://localhost:8998/jsrender',
-                          'proxy': 'no-proxy-settings.ini'})
+                          'proxy': 'no-proxy-settings'})
         self.assertEqual(r.status_code, 400)
 
 
