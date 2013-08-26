@@ -1,9 +1,10 @@
-import sys, optparse, resource, traceback, signal
+import os, sys, optparse, resource, traceback, signal
 from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
 qtapp = None
+
 
 def install_qtreactor():
     global qtapp
@@ -12,6 +13,7 @@ def install_qtreactor():
     qtapp = QApplication(sys.argv)
     import qt4reactor
     qt4reactor.install()
+
 
 def parse_opts():
     op = optparse.OptionParser()
@@ -33,7 +35,10 @@ def parse_opts():
     op.add_option("", "--cache-size", type="int", default=defaults.CACHE_MAXSIZE_KB,
                   help="maximum cache size in Kb (default: %default)")
 
+    op.add_option("", "--proxy-profiles-path", help="path to a folder with proxy profiles")
+
     return op.parse_args()
+
 
 def start_logging(opts):
     from twisted.python import log
@@ -44,9 +49,11 @@ def start_logging(opts):
         logfile = sys.stderr
     log.startLogging(logfile)
 
+
 def splash_started(opts, stderr):
     if opts.logfile:
         stderr.write("Splash started - logging to: %s\n" % opts.logfile)
+
 
 def bump_nofile_limit():
     from twisted.python import log
@@ -64,40 +71,35 @@ def bump_nofile_limit():
     else:
         log.msg("Can't bump open files limit")
 
-def manhole_server():
+
+def manhole_server(portnum=None, username=None, password=None):
     from twisted.internet import reactor
     from twisted.manhole import telnet
 
     f = telnet.ShellFactory()
-    f.username = defaults.MANHOLE_USERNAME
-    f.password = defaults.MANHOLE_PASSWORD
-    reactor.listenTCP(defaults.MANHOLE_PORT, f)
+    f.username = defaults.MANHOLE_USERNAME if username is None else username
+    f.password = defaults.MANHOLE_PASSWORD if password is None else password
+    portnum = defaults.MANHOLE_PORT if portnum is None else portnum
+    reactor.listenTCP(portnum, f)
 
-def splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None):
+
+def splash_server(portnum, slots, get_cache, get_proxy_factory):
     from twisted.internet import reactor
     from twisted.web.server import Site
-    from twisted.python import log
     from splash.resources import Root
     from splash.pool import RenderPool
 
     slots = defaults.SLOTS if slots is None else slots
-    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
-    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
-    cache_size_kb = defaults.CACHE_MAXSIZE_KB if cache_size_kb is None else cache_size_kb
 
-    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sKb" % (
-        slots, cache_enabled, cache_path, cache_size_kb
-    ))
-
-    if not cache_enabled:
-        cache_kwargs = None
-    else:
-        cache_kwargs = {'path': cache_path, 'size_kb': cache_size_kb}
-
-    pool = RenderPool(slots=slots, cache_kwargs=cache_kwargs)
+    pool = RenderPool(
+        slots=slots,
+        get_cache=get_cache,
+        get_proxy_factory=get_proxy_factory
+    )
     root = Root(pool)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
+
 
 def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
@@ -111,6 +113,38 @@ def monitor_maxrss(maxrss):
         t = task.LoopingCall(check_maxrss)
         t.start(60, now=False)
 
+
+def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None, proxy_profiles_path=None):
+    from twisted.python import log
+    from splash import cache
+    from splash import proxy
+
+    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
+    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
+    cache_size_kb = defaults.CACHE_MAXSIZE_KB if cache_size_kb is None else cache_size_kb
+
+    if not cache_enabled:
+        get_cache = lambda request: None
+    else:
+        get_cache = lambda request: cache.construct(cache_path, cache_size_kb)
+
+    if proxy_profiles_path:
+        if not os.path.isdir(proxy_profiles_path):
+            log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
+            get_proxy_factory = lambda request: None
+        else:
+            def get_proxy_factory(request):
+                return proxy.SplashQNetworkProxyFactory(proxy_profiles_path, request)
+    else:
+        get_proxy_factory = lambda request: None
+
+    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sKb" % (
+        slots, cache_enabled, cache_path, cache_size_kb
+    ))
+
+    return splash_server(portnum, slots, get_cache, get_proxy_factory)
+
+
 def main():
     install_qtreactor()
     opts, _ = parse_opts()
@@ -119,16 +153,18 @@ def main():
     bump_nofile_limit()
     monitor_maxrss(opts.maxrss)
     manhole_server()
-    splash_server(portnum=opts.port,
+    default_splash_server(portnum=opts.port,
                   slots=opts.slots,
                   cache_enabled=opts.cache_enabled,
                   cache_path=opts.cache_path,
-                  cache_size_kb=opts.cache_size)
+                  cache_size_kb=opts.cache_size,
+                  proxy_profiles_path=opts.proxy_profiles_path)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor
     reactor.callWhenRunning(splash_started, opts, sys.stderr)
     reactor.run()
+
 
 if __name__ == "__main__":
     main()

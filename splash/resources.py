@@ -124,7 +124,7 @@ class RenderHtml(RenderBase):
 
     def _getRender(self, request):
         url, baseurl, wait_time = _get_common_params(request)
-        return self.pool.render(HtmlRender, url, baseurl, wait_time)
+        return self.pool.render(HtmlRender, request, url, baseurl, wait_time)
 
 
 class RenderPng(RenderBase):
@@ -133,7 +133,7 @@ class RenderPng(RenderBase):
 
     def _getRender(self, request):
         url, baseurl, wait_time, width, height, viewport = _get_png_params(request)
-        return self.pool.render(PngRender, url, baseurl, wait_time,
+        return self.pool.render(PngRender, request, url, baseurl, wait_time,
                                 width, height, viewport)
 
 
@@ -148,9 +148,10 @@ class RenderJson(RenderBase):
         iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
         png = getarg(request, "png", defaults.DO_PNG, type=int, range=(0, 1))
 
-        return self.pool.render(JsonRender, url, baseurl, wait_time,
-                                            html, iframes, png,
-                                            width, height, viewport)
+        return self.pool.render(JsonRender, request,
+                                url, baseurl, wait_time,
+                                html, iframes, png,
+                                width, height, viewport)
 
 
 class Debug(Resource):
