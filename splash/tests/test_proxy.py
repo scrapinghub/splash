@@ -22,7 +22,7 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
     def test_noproxy(self):
         f = BlackWhiteQNetworkProxyFactory()
-        self.assertTrue(f.shouldUseDefault('http', 'crawlera.com'))
+        self.assertFalse(f.shouldUseProxyList('http', 'crawlera.com'))
 
     def test_whitelist(self):
         self.assertUsesCustom('http://www.scrapinghub.com')
@@ -39,11 +39,11 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
     def assertUsesDefault(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
-        self.assertTrue(f.shouldUseDefault(protocol, url))
+        self.assertFalse(f.shouldUseProxyList(protocol, url))
 
     def assertUsesCustom(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
-        self.assertFalse(f.shouldUseDefault(protocol, url))
+        self.assertTrue(f.shouldUseProxyList(protocol, url))
 
 
 class HtmlProxyRenderTest(_BaseRenderTest):
