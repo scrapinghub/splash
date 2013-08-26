@@ -20,8 +20,8 @@ class RenderBase(Resource):
 
     def render_GET(self, request):
         d = self._getRender(request)
-        timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, 60))
-        wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 60))
+        timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
+        wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
         timer = reactor.callLater(timeout+wait_time, d.cancel)
         d.addCallback(self._cancelTimer, timer)
@@ -114,7 +114,7 @@ def _get_png_params(request):
 def _get_common_params(request):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
-    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, 60))
+    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
     return url, baseurl, wait_time
 
 
