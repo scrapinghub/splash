@@ -15,6 +15,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  python-qt4,
  python-qt4reactor,
  python-raven,
+ python-psutil,
  openssl
 Description: Page thumbnailing service
  This is the service that powers webpage thumbnailing for Autoscraping
