@@ -20,25 +20,25 @@ class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
     def queryProxy(self, query=None, *args, **kwargs):
         protocol = unicode(query.protocolTag())
         url = unicode(query.url().toString())
-        if self.shouldUseDefault(protocol, url):
-            return self._defaultProxyList()
+        if self.shouldUseProxyList(protocol, url):
+            return self._customProxyList()
 
-        return self._customProxyList()
+        return self._defaultProxyList()
 
-    def shouldUseDefault(self, protocol, url):
+    def shouldUseProxyList(self, protocol, url):
         if not self.proxy_list:
-            return True
-
-        if protocol != 'http':  # don't try to proxy https
-            return True
-
-        if any(re.match(p, url) for p in self.blacklist):
-            return True
-
-        if any(re.match(p, url) for p in self.whitelist):
             return False
 
-        return bool(self.whitelist)
+        if protocol != 'http':  # don't try to proxy https
+            return False
+
+        if any(re.match(p, url) for p in self.blacklist):
+            return False
+
+        if any(re.match(p, url) for p in self.whitelist):
+            return True
+
+        return not bool(self.whitelist)
 
     def _defaultProxyList(self):
         return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
