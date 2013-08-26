@@ -229,10 +229,47 @@ Proxy Profiles
 ==============
 
 Splash supports "proxy profiles" that allows to set proxy handling rules
-per-request.
+per-request using ``proxy`` GET parameter.
 
-TODO
+To enable proxy profiles support, run splash server with
+``--proxy-profiles-path=<path to a folder with proxy profiles>`` option::
 
+    python -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
+
+Then create a "proxy profile" config inside the specified folder, e.g.
+``/etc/splash/proxy-profiles/mywebsite.ini`` file with the following
+contents::
+
+    [proxy]
+
+    ; required
+    host=proxy.crawlera.com
+    port=8010
+
+    ; optional, default is no auth
+    username=username
+    password=password
+
+    [rules]
+    ; optional, default ".*"
+    whitelist=
+        .*mywebsite\.com.*
+
+    ; optional, default is no blacklist
+    blacklist=
+        .*\.js.*
+        .*\.css.*
+        .*\.png
+
+whitelist and blacklist are newline-separated lists of regexpes.
+If URL matches one of whitelist patterns and matches none of blacklist
+patterns, proxy specified in ``[proxy]`` section is used;
+no proxy is used otherwise.
+
+Then, to apply proxy rules according to this profile,
+add ``proxy=mywebsite.ini`` parameter to request::
+
+    curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite.ini
 
 Functional Tests
 ================

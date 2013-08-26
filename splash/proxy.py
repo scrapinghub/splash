@@ -63,7 +63,7 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
 
     Example config file::
 
-        ; /etc/splash/proxy/mywebsite.ini
+        ; /etc/splash/proxy-profiles/mywebsite.ini
         [proxy]
         host=proxy.crawlera.com
         port=8010
