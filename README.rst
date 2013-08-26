@@ -236,9 +236,9 @@ To enable proxy profiles support, run splash server with
 
     python -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
 
-Then create a "proxy profile" config inside the specified folder, e.g.
-``/etc/splash/proxy-profiles/mywebsite.ini`` file with the following
-contents::
+Then create an INI file with "proxy profile" config inside the
+specified folder, e.g. ``/etc/splash/proxy-profiles/mywebsite.ini``.
+Example contents of this file::
 
     [proxy]
 
@@ -261,15 +261,15 @@ contents::
         .*\.css.*
         .*\.png
 
-whitelist and blacklist are newline-separated lists of regexpes.
+whitelist and blacklist are newline-separated lists of regexes.
 If URL matches one of whitelist patterns and matches none of blacklist
 patterns, proxy specified in ``[proxy]`` section is used;
 no proxy is used otherwise.
 
 Then, to apply proxy rules according to this profile,
-add ``proxy=mywebsite.ini`` parameter to request::
+add ``proxy=mywebsite`` parameter to request::
 
-    curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite.ini
+    curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite
 
 Functional Tests
 ================
