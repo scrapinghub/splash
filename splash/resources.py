@@ -163,7 +163,6 @@ class RenderJs(RenderBase):
 
     def _getRender(self, request):
         url, baseurl, wait_time = _get_common_params(request)
-        print '--> url=%s' % url
         js = request.content.getvalue()
 
         return self.pool.render(JsRender, request, url, baseurl, wait_time,
