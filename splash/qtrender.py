@@ -5,6 +5,7 @@ from PyQt4.QtCore import QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from twisted.internet import defer
+from twisted.python import log
 from splash import defaults
 
 
@@ -226,4 +227,4 @@ class ConsolePrinter(QObject):
 
     @pyqtSlot(str)
     def text(self, message):
-        print message
+        log.msg(message)
