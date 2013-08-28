@@ -18,24 +18,22 @@ def install_qtreactor():
 def parse_opts():
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
-    op.add_option("-m", "--maxrss", type="int", default=0,
-        help="exit if max RSS reaches this value (in KB) (default: %default)")
+    op.add_option("-m", "--maxrss", type=float, default=0,
+        help="exit if max RSS reaches this value (in MB) (default: %default)")
     op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
         help="port to listen to (default: %default)")
     op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
         help="number of render slots (default: %default)")
-
+    op.add_option("--proxy-profiles-path",
+        help="path to a folder with proxy profiles")
     _bool_default={True:' (active by default)', False: ''}
-    op.add_option("", "--cache", action="store_true", dest="cache_enabled",
+    op.add_option("--cache", action="store_true", dest="cache_enabled",
         help="enable local cache" + _bool_default[defaults.CACHE_ENABLED])
-    op.add_option("", "--no-cache", action="store_false", dest="cache_enabled",
+    op.add_option("--no-cache", action="store_false", dest="cache_enabled",
         help="disable local cache" + _bool_default[not defaults.CACHE_ENABLED])
-
     op.add_option("-c", "--cache-path", help="local cache folder")
-    op.add_option("", "--cache-size", type="int", default=defaults.CACHE_MAXSIZE_KB,
-                  help="maximum cache size in Kb (default: %default)")
-
-    op.add_option("", "--proxy-profiles-path", help="path to a folder with proxy profiles")
+    op.add_option("--cache-size", type=int, default=defaults.CACHE_SIZE,
+        help="maximum cache size in MB (default: %default)")
 
     return op.parse_args()
 
@@ -105,28 +103,28 @@ def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
     from twisted.python import log
     def check_maxrss():
-        if resource.getrusage(resource.RUSAGE_SELF).ru_maxrss > maxrss:
-            log.msg("maxrss exceeded %d kb, shutting down..." % maxrss)
+        if resource.getrusage(resource.RUSAGE_SELF).ru_maxrss > maxrss * 1024:
+            log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
             reactor.stop()
     if maxrss:
-        log.msg("maxrss limit: %d kb" % maxrss)
+        log.msg("maxrss limit: %d MB" % maxrss)
         t = task.LoopingCall(check_maxrss)
         t.start(60, now=False)
 
 
-def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size_kb=None, proxy_profiles_path=None):
+def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size=None, proxy_profiles_path=None):
     from twisted.python import log
     from splash import cache
     from splash import proxy
 
     cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
     cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
-    cache_size_kb = defaults.CACHE_MAXSIZE_KB if cache_size_kb is None else cache_size_kb
+    cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
 
     if not cache_enabled:
         get_cache = lambda request: None
     else:
-        get_cache = lambda request: cache.construct(cache_path, cache_size_kb)
+        get_cache = lambda request: cache.construct(cache_path, cache_size)
 
     if proxy_profiles_path:
         if not os.path.isdir(proxy_profiles_path):
@@ -138,8 +136,8 @@ def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=No
     else:
         get_proxy_factory = lambda request: None
 
-    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sKb" % (
-        slots, cache_enabled, cache_path, cache_size_kb
+    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (
+        slots, cache_enabled, cache_path, cache_size
     ))
 
     return splash_server(portnum, slots, get_cache, get_proxy_factory)
@@ -157,7 +155,7 @@ def main():
                   slots=opts.slots,
                   cache_enabled=opts.cache_enabled,
                   cache_path=opts.cache_path,
-                  cache_size_kb=opts.cache_size,
+                  cache_size=opts.cache_size,
                   proxy_profiles_path=opts.proxy_profiles_path)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 

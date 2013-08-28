@@ -7,22 +7,24 @@ respawn
 
 script
     [ -r /etc/default/splash ] && . /etc/default/splash
-    totmem=$(awk '/MemTotal/{print $2}' /proc/meminfo)
-    maxrss=$(($totmem*3/4))
+    MAXRSS=$(awk '/MemTotal/{print $2 * 0.75}' /proc/meminfo)
 
     logdir=${SPLASH_LOGDIR:-/var/log/splash}
-    profiles=${SPLASH_PROFILES:-/etc/splash/proxy-profiles}
-    cache=${SPLASH_CACHEDIR:-/var/cache/splash}
-    chown proxy:proxy $logdir $profiles $cache
+    proxyprofilespath=${SPLASH_PROXYPROFILESPATH:-/etc/splash/proxy-profiles}
+    maxrss=${SPLASH_MAXRSS:-$(awk '/MemTotal/{print $2*0.75/1024}' /proc/meminfo)}
+    cachepath=${SPLASH_CACHEPATH:-/var/cache/splash}
+    cachesize=${SPLASH_CACHESIZE:-102400}  # 100GB
+
+    chown proxy:proxy $logdir $proxyprofilespath $cachepath
 
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
         --pidfile /var/run/splash.pid \
         --exec /usr/bin/python -- \
             -m splash.server \
-            -m $maxrss \
-            -f $logdir/splash.log \
-            --proxy-profiles-path=$profiles \
-            --cache --cache-path=$cache \
+            --maxrss $maxrss \
+            --logfile $logdir/splash.log \
+            --proxy-profiles-path=$proxyprofilespath \
+            --cache --cache-path=$cachepath --cache-size=$cachesize \
             >$logdir/splash.out 2>$logdir/splash.err
 end script
