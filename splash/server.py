@@ -123,11 +123,11 @@ def default_splash_server(portnum, slots=None,
     cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
     cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
 
-    if proxy_profiles_path and not os.path.isdir(proxy_profiles_path):
+    if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
         log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
         proxy_enabled = False
     else:
-        proxy_enabled = bool(proxy_profiles_path)
+        proxy_enabled = proxy_profiles_path is not None
 
     def get_network_manager(request):
         manager = network_manager.FilteringQNetworkAccessManager(request)
