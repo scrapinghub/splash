@@ -175,12 +175,16 @@ class IframeResource(Resource):
         self.putChild("5.html", self.IframeContent5())
         self.putChild("6.html", self.IframeContent6())
         self.putChild("script.js", self.ScriptJs())
+        self.putChild("script2.js", self.OtherDomainScript())
         self.putChild("nested.html", self.NestedIframeContent())
 
     def render(self, request):
         return """
 <html>
-<head><script src="/iframes/script.js"></script></head>
+<head>
+    <script src="/iframes/script.js"></script>
+    <script src="http://0.0.0.0:8998/iframes/script2.js"></script>
+</head>
 <body>
 
 <iframe src="/iframes/1.html">
@@ -233,9 +237,14 @@ window.onload = function(){
         isLeaf = True
         def render(self, request):
             request.setHeader("Content-Type", "application/javascript")
-            iframe_html = "<iframe src='/iframes/6.html'>js iframe created by document.write in external script doesn't work</iframe>"
+            iframe_html = " SAME_DOMAIN <iframe src='/iframes/6.html'>js iframe created by document.write in external script doesn't work</iframe>"
             return '''document.write("%s");''' % iframe_html
 
+    class OtherDomainScript(Resource):
+        isLeaf = True
+        def render(self, request):
+            request.setHeader("Content-Type", "application/javascript")
+            return "document.write(' OTHER_DOMAIN ');"
 
 
 class Root(Resource):

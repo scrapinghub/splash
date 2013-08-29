@@ -88,6 +88,18 @@ class RenderHtmlTest(_RenderTest):
         self.assertTrue("Before" not in r.text)
         self.assertTrue("After" in r.text)
 
+    def test_otherdomain(self):
+        r = self.request("url=http://localhost:8998/iframes")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue('SAME_DOMAIN' in r.text)
+        self.assertTrue('OTHER_DOMAIN' in r.text)
+
+    def test_allowed_domains(self):
+        r = self.request({'url': 'http://localhost:8998/iframes', 'allowed_domains': 'localhost'})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue('SAME_DOMAIN' in r.text)
+        self.assertFalse('OTHER_DOMAIN' in r.text)
+
 
 class RenderPngTest(_RenderTest):
 
@@ -162,6 +174,9 @@ class RenderJsonTest(_RenderTest):
 
     def test_iframes_html(self):
         self.assertSameHtml("http://localhost:8998/iframes", {'timeout': 3})
+
+    def test_allowed_domains_html(self):
+        self.assertSameHtml("http://localhost:8998/iframes", {'allowed_domains': 'localhost'})
 
 
     def test_jsrender_png(self):

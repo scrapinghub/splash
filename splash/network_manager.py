@@ -28,13 +28,9 @@ class FilteringQNetworkAccessManager(SplashQNetworkAccessManager):
         super(FilteringQNetworkAccessManager, self).__init__()
 
     def createRequest(self, QNetworkAccessManager_Operation, QNetworkRequest, QIODevice_device=None):
-        print(unicode(QNetworkRequest.url()))
-
         if not self.host_re.match(unicode(QNetworkRequest.url().host())):
             # hack: set invalid URL
-            #QNetworkRequest.setUrl(QUrl('forbidden://localhost/'))
-            QNetworkRequest.setUrl(QUrl('http://non-existing-host/'))
-            #print('blocked')
+            QNetworkRequest.setUrl(QUrl('forbidden://localhost/'))
 
         # this method is called crateRequest, but in fact it creates a reply
         reply = super(FilteringQNetworkAccessManager, self).createRequest(
