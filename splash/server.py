@@ -81,7 +81,7 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, get_cache, get_proxy_factory):
+def splash_server(portnum, slots, get_network_manager=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -91,8 +91,7 @@ def splash_server(portnum, slots, get_cache, get_proxy_factory):
 
     pool = RenderPool(
         slots=slots,
-        get_cache=get_cache,
-        get_proxy_factory=get_proxy_factory
+        get_network_manager=get_network_manager,
     )
     root = Root(pool)
     factory = Site(root)
@@ -112,35 +111,38 @@ def monitor_maxrss(maxrss):
         t.start(60, now=False)
 
 
-def default_splash_server(portnum, slots=None, cache_enabled=None, cache_path=None, cache_size=None, proxy_profiles_path=None):
+def default_splash_server(portnum, slots=None,
+                          cache_enabled=None, cache_path=None, cache_size=None,
+                          proxy_profiles_path=None):
     from twisted.python import log
     from splash import cache
     from splash import proxy
+    from splash import network_manager
 
     cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
     cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
     cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
 
-    if not cache_enabled:
-        get_cache = lambda request: None
+    if proxy_profiles_path and not os.path.isdir(proxy_profiles_path):
+        log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
+        proxy_enabled = False
     else:
-        get_cache = lambda request: cache.construct(cache_path, cache_size)
+        proxy_enabled = bool(proxy_profiles_path)
 
-    if proxy_profiles_path:
-        if not os.path.isdir(proxy_profiles_path):
-            log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
-            get_proxy_factory = lambda request: None
-        else:
-            def get_proxy_factory(request):
-                return proxy.SplashQNetworkProxyFactory(proxy_profiles_path, request)
-    else:
-        get_proxy_factory = lambda request: None
+    def get_network_manager(request):
+        manager = network_manager.FilteringQNetworkAccessManager(request)
+        if cache_enabled:
+            manager.setCache(cache.construct(cache_path, cache_size))
+        if proxy_enabled:
+            proxy_factory = proxy.SplashQNetworkProxyFactory(proxy_profiles_path, request)
+            manager.setProxyFactory(proxy_factory)
+        return manager
 
     log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (
         slots, cache_enabled, cache_path, cache_size
     ))
 
-    return splash_server(portnum, slots, get_cache, get_proxy_factory)
+    return splash_server(portnum, slots, get_network_manager)
 
 
 def main():
