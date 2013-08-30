@@ -5,5 +5,5 @@ psutil
 
 # the following libraries are only required by tests
 pyOpenSSL
-requests
+requests >= 1.0
 Pillow
