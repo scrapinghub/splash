@@ -72,7 +72,6 @@ class MockServer():
     def __enter__(self):
         self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
             stdout=PIPE, env=get_testenv())
-        print(self.proc.stdout.readline())
         for port in (8998, 8999, 8990):
             _wait_for_port(port)
         print(_non_block_read(self.proc.stdout))
