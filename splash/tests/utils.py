@@ -22,19 +22,29 @@ def _non_block_read(output):
     except Exception:
         return ""
 
+def _wait_for_port(portnum, delay=0.1, attempts=30):
+    while attempts > 0:
+        s = socket.socket()
+        if s.connect_ex(('127.0.0.1', portnum)) == 0:
+            s.close()
+            return
+        time.sleep(delay)
+        attempts -= 1
+    raise RuntimeError("Port %d is not open" % portnum)
+
 
 class SplashServer():
 
     def __init__(self, logfile=None, proxy_profiles_path=None, portnum=None):
         self.logfile = logfile
         self.proxy_profiles_path = proxy_profiles_path
-        self.portnum = str(portnum) if portnum is not None else str(_ephemeral_port())
+        self.portnum = portnum if portnum is not None else _ephemeral_port()
         self.tempdir = tempfile.mkdtemp()
 
     def __enter__(self):
         args = [sys.executable, '-u', '-m', 'splash.server']
         args += ['--cache-path', self.tempdir]
-        args += ['--port', self.portnum]
+        args += ['--port', str(self.portnum)]
         if self.logfile:
             args += ['-f', self.logfile]
         if self.proxy_profiles_path:
@@ -47,11 +57,7 @@ class SplashServer():
                 (self.proc.returncode, self.proc.stderr.read())
             raise RuntimeError(msg)
 
-        # wait until server starts writing debug messages,
-        # then wait a bit more to make it more likely to be online, otherwise
-        # it will fail on Mac OS X 10.8
-        print(self.proc.stderr.readline())
-        time.sleep(0.2)
+        _wait_for_port(self.portnum)
         print(_non_block_read(self.proc.stderr))
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -67,7 +73,8 @@ class MockServer():
         self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
             stdout=PIPE, env=get_testenv())
         print(self.proc.stdout.readline())
-        time.sleep(0.1)
+        for port in (8998, 8999, 8990):
+            _wait_for_port(port)
         print(_non_block_read(self.proc.stdout))
 
     def __exit__(self, exc_type, exc_value, traceback):
