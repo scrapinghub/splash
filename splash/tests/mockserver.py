@@ -133,29 +133,6 @@ class Delay(Resource):
             request.finish()
 
 
-class Partial(Resource):
-
-    isLeaf = True
-
-    def render_GET(self, request):
-        request.setHeader("Content-Length", "1024")
-        d = deferLater(reactor, 0, lambda: request)
-        d.addCallback(self._delayedRender)
-        return NOT_DONE_YET
-
-    def _delayedRender(self, request):
-        request.write("partial content\n")
-        request.finish()
-
-
-class Drop(Partial):
-
-    def _delayedRender(self, request):
-        request.write("this connection will be dropped\n")
-        request.channel.transport.loseConnection()
-        request.finish()
-
-
 def _html_resource(html):
     class HtmlResource(Resource):
         isLeaf = True
@@ -250,8 +227,6 @@ class Root(Resource):
         self.putChild("tall", TallPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
-        self.putChild("partial", Partial())
-        self.putChild("drop", Drop())
         self.putChild("iframes", IframeResource())
 
 
