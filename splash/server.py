@@ -34,6 +34,8 @@ def parse_opts():
     op.add_option("-c", "--cache-path", help="local cache folder")
     op.add_option("--cache-size", type=int, default=defaults.CACHE_SIZE,
         help="maximum cache size in MB (default: %default)")
+    op.add_option("--manhole", action="store_true",
+        help="enable manhole server")
 
     return op.parse_args()
 
@@ -150,7 +152,8 @@ def main():
     start_logging(opts)
     bump_nofile_limit()
     monitor_maxrss(opts.maxrss)
-    manhole_server()
+    if opts.manhole:
+        manhole_server()
     default_splash_server(portnum=opts.port,
                   slots=opts.slots,
                   cache_enabled=opts.cache_enabled,

@@ -24,5 +24,6 @@ script
             --logfile $logdir/splash.log \
             --proxy-profiles-path=$proxyprofilespath \
             --cache --cache-path=$cachepath --cache-size=$cachesize \
+            --manhole \
             >$logdir/splash.out 2>$logdir/splash.err
 end script
