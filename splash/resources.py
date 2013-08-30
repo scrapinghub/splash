@@ -3,7 +3,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
+from splash.qtrender import HtmlRender, PngRender, JsonRender, JsExecute, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 from splash import defaults
@@ -23,7 +23,7 @@ class RenderBase(Resource):
         timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
         wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
-        timer = reactor.callLater(timeout+wait_time, d.cancel)
+        timer = reactor.callLater(timeout + wait_time, d.cancel)
         d.addCallback(self._cancelTimer, timer)
         d.addCallback(self._writeOutput, request)
         d.addErrback(self._timeoutError, request)
@@ -94,7 +94,7 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
 
     try:
         w, h = map(int, viewport.split('x'))
-        if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
+        if (0 < w <= max_width) and (0 < h <= max_heigth) and (w * h < max_area):
             return
         raise BadRequest("Viewport is out of range (%dx%d, area=%d)" % (max_width, max_heigth, max_area))
     except (ValueError):
@@ -154,6 +154,21 @@ class RenderJson(RenderBase):
                                 width, height, viewport)
 
 
+class ExecuteJsTxt(RenderBase):
+
+    content_type = "text/plain; charset=utf-8"
+
+    def render_POST(self, request):
+        return self.render_GET(request)
+
+    def _getRender(self, request):
+        url, baseurl, wait_time = _get_common_params(request)
+        js = request.content.getvalue()
+
+        return self.pool.render(JsExecute, request, url, baseurl, wait_time,
+                                          js)
+
+
 class Debug(Resource):
 
     isLeaf = True
@@ -179,6 +194,7 @@ class Root(Resource):
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
+        self.putChild("executejs.txt", ExecuteJsTxt(pool))
         self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):

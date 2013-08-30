@@ -1,9 +1,11 @@
 import json, base64
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer
+from PyQt4.QtCore import QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from twisted.internet import defer
+from twisted.python import log
 from splash import defaults
 
 
@@ -202,3 +204,27 @@ class JsonRender(WebpageRender):
             html=self.include['html'],
         ))
         return json.dumps(res)
+
+
+class JsExecute(WebpageRender):
+
+    def doRequest(self, url, baseurl=None, wait_time=None,
+                        js=None):
+        self.js = js
+        super(JsExecute, self).doRequest(url, baseurl, wait_time)
+
+    def _render(self):
+        printer = ConsolePrinter()
+        frame = self.web_view.page().mainFrame()
+        frame.addToJavaScriptWindowObject('printer', printer)
+        ret = frame.evaluateJavaScript(self.js)
+        return bytes(ret.toString().toUtf8())
+
+
+class ConsolePrinter(QObject):
+    def __init__(self, parent=None):
+        super(ConsolePrinter, self).__init__(parent)
+
+    @pyqtSlot(str)
+    def text(self, message):
+        log.msg(message)
