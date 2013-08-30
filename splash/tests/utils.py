@@ -1,4 +1,4 @@
-import sys, os, time, tempfile, shutil
+import sys, os, time, tempfile, shutil, socket
 from subprocess import Popen, PIPE
 from splash import defaults
 
@@ -8,12 +8,18 @@ def get_testenv():
     return env
 
 
+def _ephemeral_port():
+    s = socket.socket()
+    s.bind(("", 0))
+    return s.getsockname()[1]
+
+
 class SplashServer():
 
-    def __init__(self, logfile=None, proxy_profiles_path=None, portnum=defaults.SPLASH_PORT):
+    def __init__(self, logfile=None, proxy_profiles_path=None, portnum=None):
         self.logfile = logfile
         self.proxy_profiles_path = proxy_profiles_path
-        self.portnum = str(portnum)
+        self.portnum = str(portnum) if portnum is not None else str(_ephemeral_port())
         self.tempdir = tempfile.mkdtemp()
 
     def __enter__(self):
