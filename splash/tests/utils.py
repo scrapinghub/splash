@@ -1,4 +1,4 @@
-import sys, os, time, tempfile, shutil, socket
+import sys, os, time, tempfile, shutil, socket, fcntl
 from subprocess import Popen, PIPE
 from splash import defaults
 
@@ -12,6 +12,15 @@ def _ephemeral_port():
     s = socket.socket()
     s.bind(("", 0))
     return s.getsockname()[1]
+
+def _non_block_read(output):
+    fd = output.fileno()
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+    try:
+        return output.read()
+    except Exception:
+        return ""
 
 
 class SplashServer():
@@ -41,8 +50,9 @@ class SplashServer():
         # wait until server starts writing debug messages,
         # then wait a bit more to make it more likely to be online, otherwise
         # it will fail on Mac OS X 10.8
-        self.proc.stderr.readline()
+        print(self.proc.stderr.readline())
         time.sleep(0.2)
+        print(_non_block_read(self.proc.stderr))
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
@@ -56,8 +66,9 @@ class MockServer():
     def __enter__(self):
         self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
             stdout=PIPE, env=get_testenv())
-        self.proc.stdout.readline()
+        print(self.proc.stdout.readline())
         time.sleep(0.1)
+        print(_non_block_read(self.proc.stdout))
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
