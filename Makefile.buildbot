@@ -1,2 +1,4 @@
+export DISPLAY=:0
+
 test:
-	true
+	nosetests
