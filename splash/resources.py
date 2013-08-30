@@ -3,7 +3,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
-from splash.qtrender import HtmlRender, PngRender, JsonRender, JsRender, RenderError
+from splash.qtrender import HtmlRender, PngRender, JsonRender, JsExecute, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 from splash import defaults
@@ -154,7 +154,7 @@ class RenderJson(RenderBase):
                                 width, height, viewport)
 
 
-class RenderJs(RenderBase):
+class ExecuteJsTxt(RenderBase):
 
     content_type = "text/plain; charset=utf-8"
 
@@ -165,7 +165,7 @@ class RenderJs(RenderBase):
         url, baseurl, wait_time = _get_common_params(request)
         js = request.content.getvalue()
 
-        return self.pool.render(JsRender, request, url, baseurl, wait_time,
+        return self.pool.render(JsExecute, request, url, baseurl, wait_time,
                                           js)
 
 
@@ -194,7 +194,7 @@ class Root(Resource):
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
-        self.putChild("render.js", RenderJs(pool))
+        self.putChild("executejs.txt", ExecuteJsTxt(pool))
         self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):

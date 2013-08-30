@@ -58,7 +58,7 @@ class HtmlProxyRenderTest(_BaseRenderTest):
     def test_blacklist(self):
         params = {'url': 'http://localhost:8998/iframes',
                   'proxy': 'test', 'html': 1, 'iframes': 1}
-        r = self.request(params, render_format='json')
+        r = self.request(params, endpoint='render.json')
         data = r.json()
 
         # only 1.html is blacklisted in test.ini

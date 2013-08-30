@@ -6,28 +6,28 @@ from splash.tests import ts
 
 class _BaseRenderTest(unittest.TestCase):
 
-    render_format = "html"
+    endpoint = "render.html"
 
     @property
     def host(self):
         return "localhost:%s" % ts.splashserver.portnum
 
-    def request(self, query, render_format=None):
-        render_format = render_format or self.render_format
+    def request(self, query, endpoint=None):
+        endpoint = endpoint or self.endpoint
         if isinstance(query, dict):
-            url = "http://%s/render.%s" % (self.host, render_format)
+            url = "http://%s/%s" % (self.host, endpoint)
             return requests.get(url, params=query)
         else:
-            url = "http://%s/render.%s?%s" % (self.host, render_format, query)
+            url = "http://%s/%s?%s" % (self.host, endpoint, query)
             return requests.get(url)
 
-    def post(self, query, render_format=None, payload=None):
-        render_format = render_format or self.render_format
+    def post(self, query, endpoint=None, payload=None):
+        endpoint = endpoint or self.endpoint
         if isinstance(query, dict):
-            url = "http://%s/render.%s" % (self.host, render_format)
+            url = "http://%s/%s" % (self.host, endpoint)
             return requests.post(url, params=query, data=payload)
         else:
-            url = "http://%s/render.%s?%s" % (self.host, render_format, query)
+            url = "http://%s/%s?%s" % (self.host, endpoint, query)
             return requests.post(url, data=payload)
 
 
@@ -75,7 +75,7 @@ class _RenderTest(_BaseRenderTest):
 
 class RenderHtmlTest(_RenderTest):
 
-    render_format = "html"
+    endpoint = "render.html"
 
     def test_ok(self):
         self._test_ok("http://localhost:8998/jsrender")
@@ -103,7 +103,7 @@ class RenderHtmlTest(_RenderTest):
 
 class RenderPngTest(_RenderTest):
 
-    render_format = "png"
+    endpoint = "render.png"
 
     def test_ok(self):
         self._test_ok("http://localhost:8998/jsrender")
@@ -158,7 +158,8 @@ class RenderPngTest(_RenderTest):
 
 
 class RenderJsonTest(_RenderTest):
-    render_format = 'json'
+
+    endpoint = 'render.json'
 
     def test_jsrender_html(self):
         self.assertSameHtml('http://localhost:8998/jsrender')
@@ -174,7 +175,6 @@ class RenderJsonTest(_RenderTest):
 
     def test_iframes_html(self):
         self.assertSameHtml("http://localhost:8998/iframes", {'timeout': 3})
-
 
     def test_jsrender_png(self):
         self.assertSamePng('http://localhost:8998/jsrender')
@@ -275,7 +275,6 @@ class RenderJsonTest(_RenderTest):
         self.assertEqual(html1, html2)
         self.assertNotEqual(html1, html3)
 
-
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
             self.assertTrue(key in res, "%s is not in response" % key)
@@ -287,7 +286,7 @@ class RenderJsonTest(_RenderTest):
     def assertSameHtml(self, url, params=None):
         defaults = {'html': 1}
         defaults.update(params or {})
-        r1, r2 = self._do_same_requests(url, defaults, 'html')
+        r1, r2 = self._do_same_requests(url, defaults, 'render.html')
         html1 = r1.json()['html']
         html2 = r2.text
         self.assertEqual(html1, html2)
@@ -295,23 +294,24 @@ class RenderJsonTest(_RenderTest):
     def assertSamePng(self, url, params=None):
         defaults = {'png': 1}
         defaults.update(params or {})
-        r1, r2 = self._do_same_requests(url, defaults, 'png')
+        r1, r2 = self._do_same_requests(url, defaults, 'render.png')
         png1 = base64.decodestring(r1.json()['png'])
         png2 = r2.content
         self.assertEqual(png1, png2)
 
-    def _do_same_requests(self, url, params, other_format):
+    def _do_same_requests(self, url, params, other_endpoint):
         query = {'url': url}
         query.update(params or {})
-        r1 = self.request(query, render_format='json')
-        r2 = self.request(query, render_format=other_format)
+        r1 = self.request(query, endpoint='render.json')
+        r2 = self.request(query, endpoint=other_endpoint)
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
         return r1, r2
 
 
 class IframesRenderTest(_BaseRenderTest):
-    render_format = 'json'
+
+    endpoint = 'render.json'
 
     def test_basic(self):
         self.assertIframesText('IFRAME_1_OK')
@@ -331,7 +331,6 @@ class IframesRenderTest(_BaseRenderTest):
 
     def test_nested_iframes(self):
         self.assertIframesText('IFRAME_6_OK')
-
 
     def assertIframesText(self, text, params=None):
         data = self._iframes_request(params)
@@ -354,9 +353,9 @@ class IframesRenderTest(_BaseRenderTest):
         return self.request(query).json()
 
 
-class RenderJsTest(_BaseRenderTest):
+class ExecuteJsTxtTest(_BaseRenderTest):
 
-    render_format = "js"
+    endpoint = "executejs.txt"
 
     def test_simple_js(self):
         simple_js = "function test(x){ return x; } test('abc');"

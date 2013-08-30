@@ -206,12 +206,12 @@ class JsonRender(WebpageRender):
         return json.dumps(res)
 
 
-class JsRender(WebpageRender):
+class JsExecute(WebpageRender):
 
     def doRequest(self, url, baseurl=None, wait_time=None,
                         js=None):
         self.js = js
-        super(JsRender, self).doRequest(url, baseurl, wait_time)
+        super(JsExecute, self).doRequest(url, baseurl, wait_time)
 
     def _render(self):
         printer = ConsolePrinter()
