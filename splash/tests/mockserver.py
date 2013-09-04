@@ -75,8 +75,8 @@ class JsInterval(Resource):
 var num=0;
 setInterval(function(){
     document.getElementById('num').innerHTML = num;
-    num += 1;
-}, 1);
+    num += 100;
+}, 100);
 </script>
 </body></html>
 """
