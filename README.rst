@@ -61,6 +61,11 @@ wait : float : optional
 proxy : string : optional
   Proxy profile name. See :ref:`Proxy Profiles`.
 
+allowed_domains : string : optional
+  Comma-separated list of allowed domain names.
+  If present, Splash won't load anything neither from domains
+  not in this list nor from subdomains of domains not in this list.
+
 Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
