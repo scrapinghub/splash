@@ -131,10 +131,11 @@ def default_splash_server(portnum, slots=None,
     else:
         proxy_enabled = proxy_profiles_path is not None
 
+    cacheobj = cache.construct(cache_path, cache_size)
     def get_network_manager(request):
         manager = network_manager.FilteringQNetworkAccessManager(request)
         if cache_enabled:
-            manager.setCache(cache.construct(cache_path, cache_size))
+            manager.setCache(cacheobj)
         if proxy_enabled:
             proxy_factory = proxy.SplashQNetworkProxyFactory(proxy_profiles_path, request)
             manager.setProxyFactory(proxy_factory)
