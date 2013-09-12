@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import re, os, ConfigParser
-from PyQt4.QtNetwork import QNetworkProxyFactory, QNetworkProxy
+from PyQt4.QtNetwork import QNetworkProxy
 from splash.utils import getarg, BadRequest
 
 
-class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
+class BlackWhiteSplashProxyFactory(object):
     """
     Proxy factory that enables non-default proxy list when
     requested URL is matched by one of whitelist patterns
@@ -15,7 +15,6 @@ class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
         self.blacklist = blacklist or []
         self.whitelist = whitelist or []
         self.proxy_list = proxy_list or []
-        super(BlackWhiteQNetworkProxyFactory, self).__init__()
 
     def queryProxy(self, query=None, *args, **kwargs):
         protocol = unicode(query.protocolTag())
@@ -55,7 +54,7 @@ class BlackWhiteQNetworkProxyFactory(QNetworkProxyFactory):
         return proxies
 
 
-class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
+class ProfilesSplashProxyFactory(BlackWhiteSplashProxyFactory):
     """
     This proxy factory reads BlackWhiteQNetworkProxyFactory
     parameters from ini file; name of the profile can be set per-request
@@ -84,20 +83,30 @@ class SplashQNetworkProxyFactory(BlackWhiteQNetworkProxyFactory):
     NO_PROXY_PROFILE_MSG = 'Proxy profile does not exist'
 
     def __init__(self, proxy_profiles_path, request):
-        proxy_profiles_path = os.path.abspath(proxy_profiles_path)
+        self.proxy_profiles_path = proxy_profiles_path
         profile_name = getarg(request, self.GET_ARGUMENT, None)
-        if not profile_name:
-            params = [], [], []
-        else:
-            filename = profile_name + '.ini'
-            ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
-            if not ini_path.startswith(proxy_profiles_path + os.path.sep):
-                # security check fails
-                raise BadRequest(self.NO_PROXY_PROFILE_MSG)
-            else:
-                params = self._parseIni(ini_path)
-        super(SplashQNetworkProxyFactory, self).__init__(*params)
+        blacklist, whitelist, proxy_list = self._getFilterParams(profile_name)
+        super(ProfilesSplashProxyFactory, self).__init__(blacklist, whitelist, proxy_list)
 
+    def _getFilterParams(self, profile_name=None):
+        """
+        Return (blacklist, whitelist, proxy_list) tuple
+        loaded from profile ``profile_name``.
+        """
+        if not profile_name:
+            return [], [], []
+        ini_path = self._getIniPath(profile_name)
+        return self._parseIni(ini_path)
+
+    def _getIniPath(self, profile_name):
+        proxy_profiles_path =  os.path.abspath(self.proxy_profiles_path)
+        filename = profile_name + '.ini'
+        ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
+        if not ini_path.startswith(proxy_profiles_path + os.path.sep):
+            # security check fails
+            raise BadRequest(self.NO_PROXY_PROFILE_MSG)
+        else:
+            return ini_path
 
     def _parseIni(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)

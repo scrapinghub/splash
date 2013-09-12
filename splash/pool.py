@@ -4,17 +4,21 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, get_network_manager):
-        self.get_network_manager = get_network_manager
+    def __init__(self, slots, network_manager, get_splash_proxy_factory):
+        self.network_manager = network_manager
+        self.get_splash_proxy_factory = get_splash_proxy_factory
         self.active = set()
         self.queue = defer.DeferredQueue()
         for n in range(slots):
             self._wait_for_render(None, n)
 
     def render(self, rendercls, request, *args):
-        network_manager = self.get_network_manager(request)
         extdef = defer.Deferred()
-        self.queue.put((rendercls, network_manager, args, extdef))
+        if self.get_splash_proxy_factory:
+            splash_proxy_factory = self.get_splash_proxy_factory(request)
+        else:
+            splash_proxy_factory = None
+        self.queue.put((rendercls, request, splash_proxy_factory, args, extdef))
         return extdef
 
     def _wait_for_render(self, _, slot):
@@ -23,8 +27,12 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, network_manager, args, extdef)):
-        render = rendercls(network_manager=network_manager)
+    def _start_render(self, (rendercls, request, splash_proxy_factory, args, extdef)):
+        render = rendercls(
+            network_manager=self.network_manager,
+            splash_proxy_factory=splash_proxy_factory,
+            splash_request=request,
+        )
         render.doRequest(*args)
         self.active.add(render)
         d = render.deferred
