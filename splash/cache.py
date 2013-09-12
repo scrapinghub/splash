@@ -10,5 +10,5 @@ def construct(path=defaults.CACHE_PATH, size=defaults.CACHE_SIZE):
     cache = QNetworkDiskCache()
     cache.setCacheDirectory(path)
     cache.setMaximumCacheSize(size * 1024**2)
-    cache.cacheSize() # forces immediate initialization
+    cache.cacheSize()  # forces immediate initialization
     return cache

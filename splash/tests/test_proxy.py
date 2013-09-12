@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import unittest
-from splash.proxy import BlackWhiteQNetworkProxyFactory, SplashQNetworkProxyFactory
+from splash.proxy import BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
 from .test_render import _BaseRenderTest
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
@@ -18,10 +18,10 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
             ]
         }
         params.update(kwargs)
-        return BlackWhiteQNetworkProxyFactory(**params)
+        return BlackWhiteSplashProxyFactory(**params)
 
     def test_noproxy(self):
-        f = BlackWhiteQNetworkProxyFactory()
+        f = BlackWhiteSplashProxyFactory()
         self.assertFalse(f.shouldUseProxyList('http', 'crawlera.com'))
 
     def test_whitelist(self):
@@ -75,13 +75,14 @@ class HtmlProxyRenderTest(_BaseRenderTest):
         r = self.request({'url': 'http://localhost:8998/jsrender',
                           'proxy': '../this-is-not-a-proxy-profile'})
         self.assertEqual(r.status_code, 400)
-        self.assertEqual(r.text.strip(), SplashQNetworkProxyFactory.NO_PROXY_PROFILE_MSG)
+        self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
+
 
     def test_nonexisting(self):
         r = self.request({'url': 'http://localhost:8998/jsrender',
                           'proxy': 'nonexisting'})
         self.assertEqual(r.status_code, 400)
-        self.assertEqual(r.text.strip(), SplashQNetworkProxyFactory.NO_PROXY_PROFILE_MSG)
+        self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_no_proxy_settings(self):
         r = self.request({'url': 'http://localhost:8998/jsrender',
