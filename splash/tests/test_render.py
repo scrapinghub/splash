@@ -15,11 +15,20 @@ class _BaseRenderTest(unittest.TestCase):
     def request(self, query, render_format=None):
         render_format = render_format or self.render_format
         if isinstance(query, dict):
-            url= "http://%s/render.%s" % (self.host, render_format)
+            url = "http://%s/render.%s" % (self.host, render_format)
             return requests.get(url, params=query)
         else:
             url = "http://%s/render.%s?%s" % (self.host, render_format, query)
             return requests.get(url)
+
+    def post(self, query, render_format=None, payload=None, headers=None):
+        render_format = render_format or self.render_format
+        if isinstance(query, dict):
+            url = "http://%s/render.%s" % (self.host, render_format)
+            return requests.post(url, params=query, data=payload, headers=headers)
+        else:
+            url = "http://%s/render.%s?%s" % (self.host, render_format, query)
+            return requests.post(url, data=payload, headers=headers)
 
 
 class _RenderTest(_BaseRenderTest):
@@ -358,6 +367,43 @@ class IframesRenderTest(_BaseRenderTest):
                  'iframes': 1, 'html': 1}
         query.update(params or {})
         return self.request(query).json()
+
+
+class RunJsTest(_BaseRenderTest):
+    render_format = 'json'
+
+    def test_simple_js(self):
+        js_source = "function test(x){ return x; } test('abc');"
+        r = self._runjs_request(js_source).json()
+        self.assertEqual(r['script'], "abc")
+
+    def test_js_and_console(self):
+        js_source = """function test(x){ return x; } 
+console.log('some log');
+console.log('another log');
+test('abc');"""
+        params = {'console': '1'}
+        r = self._runjs_request(js_source, params=params).json()
+        self.assertEqual(r['script'], "abc")
+        self.assertEqual(r['console'], ["some log", "another log"])
+
+    def test_js_modify_html(self):
+        js_source = """function test(x){ document.getElementById("p1").innerHTML=x; } 
+test('Changed');"""
+        params = {'url': 'http://localhost:8998/jsrender'}
+        r = self._runjs_request(js_source, render_format='html', params=params)
+        print r.text
+        self.assertTrue("Before" not in r.text)
+        self.assertTrue("Changed" in r.text)
+
+    def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
+        query = {'url': 'http://localhost:8998/jsrender',
+                 'script': 1}
+        query.update(params or {})
+        req_headers = {'content-type': 'application/javascript'}
+        req_headers.update(headers or {})
+        return self.post(query, render_format=render_format,
+                         payload=js_source, headers=req_headers)
 
 
 class TestTestSetup(unittest.TestCase):
