@@ -276,6 +276,50 @@ add ``proxy=mywebsite`` parameter to request::
 
     curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite
 
+Javascript Support
+==================
+
+Splash supports executing JavaScript code in any of the endpoints. The JavaScript
+code is executed after the page finished loading (including any delay defined by 'wait')
+but before the page is rendered. This allow to use the javascript code to modify 
+the page being rendered. 
+
+To execute JavaScript code we use a POST request with the content-type set to 
+'application/javascript'. The body of the request contains the code to be executed.
+
+The render.json endpoint has the following arguments to display the output of 
+the JavaScript execution.
+
+Arguments:
+
+script : integer : optional
+    Whether to include the result of the javascript final statement in output. 
+    Possible values are ``1`` (include) and ``0`` (exclude). Default is 0.
+
+console : integer : optional
+    Whether to include javascript console messges in output. Possible values are
+    ``1`` (include) and ``0`` (exclude). Default is 0.
+
+Note that Splash supports the console.log() function to save log messages from
+JavaScript.
+
+Curl Examples::
+
+    # Render page and execute simple Javascript function, display the js output
+    curl -X POST -H "content-type: application/javascript" \
+        -d "function getAd(x){ return x; } getAd('abc');" \
+        "http://localhost:8050/render.json?url=http://domain.com&script=1"
+
+    # Render page and execute simple Javascript function, display the js output and the console output
+    curl -X POST -H "content-type: application/javascript" \
+        -d "function getAd(x){ return x; }; console.log('some log'); console.log('another log'); getAd('abc');" \
+        "http://localhost:8050/render.json?url=http://domain.com&script=1&console=1"
+
+    # Render page and modify its title dynamically
+    curl -X POST -H "content-type: application/javascript" \
+        -d "document.title='My Title';" \
+        "http://localhost:8050/render.html?url=http://domain.com"
+
 Functional Tests
 ================
 
