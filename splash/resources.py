@@ -33,6 +33,14 @@ class RenderBase(Resource):
         request.starttime = time.time()
         return NOT_DONE_YET
 
+    def render_POST(self, request):
+        content_type = request.getHeader('content-type')
+        if content_type == 'application/javascript':
+            return self.render_GET(request)
+        else:
+            request.setResponseCode(501)
+            request.write("Request content-type not supported\n")
+
     def render(self, request):
         try:
             return Resource.render(self, request)
@@ -100,8 +108,12 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
     except (ValueError):
         raise BadRequest("Invalid viewport format: %s" % viewport)
 
+def _get_javascript_params(request):
+    if request.method == 'POST':
+        return request.content.getvalue()
+
 def _get_png_params(request):
-    url, baseurl, wait_time = _get_common_params(request)
+    url, baseurl, wait_time, js_source = _get_common_params(request)
     width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
     height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
@@ -109,22 +121,22 @@ def _get_png_params(request):
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
-    return url, baseurl, wait_time, width, height, viewport
+    return url, baseurl, wait_time, js_source, width, height, viewport
 
 def _get_common_params(request):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
-    return url, baseurl, wait_time
-
+    js_source = _get_javascript_params(request)
+    return url, baseurl, wait_time, js_source
 
 class RenderHtml(RenderBase):
 
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request):
-        url, baseurl, wait_time = _get_common_params(request)
-        return self.pool.render(HtmlRender, request, url, baseurl, wait_time)
+        url, baseurl, wait_time, js_source = _get_common_params(request)
+        return self.pool.render(HtmlRender, request, url, baseurl, wait_time, js_source)
 
 
 class RenderPng(RenderBase):
@@ -132,8 +144,8 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        url, baseurl, wait_time, width, height, viewport = _get_png_params(request)
-        return self.pool.render(PngRender, request, url, baseurl, wait_time,
+        url, baseurl, wait_time, js_source, width, height, viewport = _get_png_params(request)
+        return self.pool.render(PngRender, request, url, baseurl, wait_time, js_source,
                                 width, height, viewport)
 
 
@@ -142,15 +154,17 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        url, baseurl, wait_time, width, height, viewport = _get_png_params(request)
+        url, baseurl, wait_time, js_source, width, height, viewport = _get_png_params(request)
 
         html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
         iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
         png = getarg(request, "png", defaults.DO_PNG, type=int, range=(0, 1))
+        script = getarg(request, "script", defaults.SHOW_SCRIPT, type=int, range=(0, 1))
+        console = getarg(request, "console", defaults.SHOW_CONSOLE, type=int, range=(0, 1))
 
         return self.pool.render(JsonRender, request,
-                                url, baseurl, wait_time,
-                                html, iframes, png,
+                                url, baseurl, wait_time, js_source,
+                                html, iframes, png, script, console,
                                 width, height, viewport)
 
 
