@@ -83,17 +83,20 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, get_network_manager=None):
+def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
     from splash.pool import RenderPool
+    from twisted.python import log
 
     slots = defaults.SLOTS if slots is None else slots
+    log.msg("slots=%s" % slots)
 
     pool = RenderPool(
         slots=slots,
-        get_network_manager=get_network_manager,
+        network_manager=network_manager,
+        get_splash_proxy_factory=get_splash_proxy_factory
     )
     root = Root(pool)
     factory = Site(root)
@@ -116,14 +119,30 @@ def monitor_maxrss(maxrss):
 def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None):
+    from splash import network_manager
+    manager = network_manager.FilteringQNetworkAccessManager()
+    manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
+    get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
+    return splash_server(portnum, slots, manager, get_splash_proxy_factory)
+
+
+def _default_cache(cache_enabled, cache_path, cache_size):
     from twisted.python import log
     from splash import cache
-    from splash import proxy
-    from splash import network_manager
 
     cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
     cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
     cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
+
+    log.msg("cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (cache_enabled, cache_path, cache_size))
+
+    if cache_enabled:
+        return cache.construct(cache_path, cache_size)
+
+
+def _default_proxy_config(proxy_profiles_path):
+    from twisted.python import log
+    from splash import proxy
 
     if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
         log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
@@ -131,21 +150,11 @@ def default_splash_server(portnum, slots=None,
     else:
         proxy_enabled = proxy_profiles_path is not None
 
-    cacheobj = cache.construct(cache_path, cache_size)
-    def get_network_manager(request):
-        manager = network_manager.FilteringQNetworkAccessManager(request)
-        if cache_enabled:
-            manager.setCache(cacheobj)
-        if proxy_enabled:
-            proxy_factory = proxy.SplashQNetworkProxyFactory(proxy_profiles_path, request)
-            manager.setProxyFactory(proxy_factory)
-        return manager
-
-    log.msg("slots=%s, cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (
-        slots, cache_enabled, cache_path, cache_size
-    ))
-
-    return splash_server(portnum, slots, get_network_manager)
+    if proxy_enabled:
+        log.msg("proxy support is enabled, proxy profiles path: %s" % proxy_profiles_path)
+        def get_splash_proxy_factory(request):
+            return proxy.ProfilesSplashProxyFactory(proxy_profiles_path, request)
+        return get_splash_proxy_factory
 
 
 def main():

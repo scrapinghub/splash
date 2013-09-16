@@ -22,7 +22,7 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, network_manager):
+    def __init__(self, network_manager, splash_proxy_factory, splash_request):
         self.network_manager = network_manager
         self.web_view = QWebView()
         self.web_page = SplashQWebPage()
@@ -37,6 +37,10 @@ class WebpageRender(object):
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 
+        self.web_page.splash_request = splash_request
+        self.web_page.splash_proxy_factory = splash_proxy_factory
+
+
     def doRequest(self, url, baseurl=None, wait_time=None):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
@@ -44,8 +48,10 @@ class WebpageRender(object):
         self.deferred = defer.Deferred()
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
+
         if baseurl:
             self._baseUrl = QUrl(baseurl)
+            request.setOriginatingObject(self.web_page.mainFrame())
             self.network_manager.finished.connect(self._requestFinished)
             self.network_manager.get(request)
         else:
@@ -57,7 +63,6 @@ class WebpageRender(object):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
-        self.network_manager.deleteLater()
 
     def _requestFinished(self, reply):
         self.web_page.networkAccessManager().finished.disconnect(self._requestFinished)
