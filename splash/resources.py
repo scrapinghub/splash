@@ -163,6 +163,7 @@ class Debug(Resource):
         self.pool = pool
 
     def render_GET(self, request):
+        request.setHeader("content-type", "application/json")
         return json.dumps({
             "leaks": get_leaks(),
             "active": [x.url for x in self.pool.active],
