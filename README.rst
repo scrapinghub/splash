@@ -70,6 +70,21 @@ Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
 
+Splash supports executing JavaScript code within the context of the page. 
+The JavaScript code is executed after the page finished loading (including 
+any delay defined by 'wait') but before the page is rendered. This allow to 
+use the javascript code to modify the page being rendered. 
+
+To execute JavaScript code we use a POST request with the content-type set to 
+'application/javascript'. The body of the request contains the code to be executed.
+
+Curl example::
+
+    # Render page and modify its title dynamically
+    curl -X POST -H "content-type: application/javascript" \
+        -d "document.title='My Title';" \
+        "http://localhost:8050/render.html?url=http://domain.com"
+
 render.png
 ----------
 
@@ -134,6 +149,14 @@ iframes : integer : optional
     Possible values are  ``1`` (include) and ``0`` (exclude).
     Default is 0.
 
+script : integer : optional
+    Whether to include the result of the executed javascript final 
+    statement in output. Possible values are ``1`` (include) and ``0`` 
+    (exclude). Default is 0.
+
+console : integer : optional
+    Whether to include the executed javascript console messages in output. 
+    Possible values are ``1`` (include) and ``0`` (exclude). Default is 0.
 
 By default, URL, requested URL, page title and frame geometry is returned::
 
@@ -214,6 +237,29 @@ as well as for the main page::
 
 Unlike 'html=1', 'png=1' does not affect data in childFrames.
 
+When executing JavaScript code add the parameter 'script=1' to the request
+to include the code output in the result::
+
+    {
+        "url": "http://crawlera.com/",
+        "geometry": [0, 0, 640, 480],
+        "requestedUrl": "http://crawlera.com/",
+        "title": "Crawlera",
+        "script": "result of script..."
+    }
+
+The JavaScript code supports the console.log() function to log messages. 
+Add 'console=1' to the request to include the console output in the result::
+
+    {
+        "url": "http://crawlera.com/",
+        "geometry": [0, 0, 640, 480],
+        "requestedUrl": "http://crawlera.com/",
+        "title": "Crawlera",
+        "script": "result of script...",
+        "console": ["first log message", "second log message", ...]
+    }
+
 
 Curl examples::
 
@@ -228,6 +274,16 @@ Curl examples::
 
     # render html and 320x240 thumbnail at once; do not return info about iframes
     curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&png=1&width=320&height=240
+
+    # Render page and execute simple Javascript function, display the js output
+    curl -X POST -H "content-type: application/javascript" \
+        -d "function getAd(x){ return x; } getAd('abc');" \
+        "http://localhost:8050/render.json?url=http://domain.com&script=1"
+
+    # Render page and execute simple Javascript function, display the js output and the console output
+    curl -X POST -H "content-type: application/javascript" \
+        -d "function getAd(x){ return x; }; console.log('some log'); console.log('another log'); getAd('abc');" \
+        "http://localhost:8050/render.json?url=http://domain.com&script=1&console=1"
 
 
 Proxy Profiles
@@ -275,6 +331,7 @@ Then, to apply proxy rules according to this profile,
 add ``proxy=mywebsite`` parameter to request::
 
     curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite
+
 
 Functional Tests
 ================
