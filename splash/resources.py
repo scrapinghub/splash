@@ -38,7 +38,7 @@ class RenderBase(Resource):
         if content_type == 'application/javascript':
             return self.render_GET(request)
         else:
-            request.setResponseCode(501)
+            request.setResponseCode(415)
             request.write("Request content-type not supported\n")
 
     def render(self, request):

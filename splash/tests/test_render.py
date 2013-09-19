@@ -396,6 +396,12 @@ test('Changed');"""
         self.assertTrue("Before" not in r.text)
         self.assertTrue("Changed" in r.text)
 
+    def test_incorrect_content_type(self):
+        js_source = "function test(x){ return x; } test('abc');"
+        headers = {'content-type': 'text/plain'}
+        r = self._runjs_request(js_source, headers=headers)
+        self.assertEqual(r.status_code, 415)
+
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
         query = {'url': 'http://localhost:8998/jsrender',
                  'script': 1}
