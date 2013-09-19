@@ -4,6 +4,7 @@ from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
+from twisted.python import log
 from splash import defaults
 
 
@@ -71,6 +72,8 @@ class WebpageRender(object):
         self.web_view.loadFinished.connect(self._loadFinished)
         mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
         self.web_view.page().mainFrame().setContent(reply.readAll(), mimeType, self._baseUrl)
+        if reply.error():
+            log.msg("Error loading %s: %s" % (self.url, reply.errorString()))
 
     def _loadFinished(self, ok):
         if self.deferred.called:
