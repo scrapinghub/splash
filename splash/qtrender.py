@@ -1,6 +1,6 @@
 import json, base64
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer
+from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
@@ -41,9 +41,11 @@ class WebpageRender(object):
         self.web_page.splash_proxy_factory = splash_proxy_factory
 
 
-    def doRequest(self, url, baseurl=None, wait_time=None):
+    def doRequest(self, url, baseurl=None, wait_time=None, js_source=None, console=False):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
+        self.js_source = js_source
+        self.console = console
 
         self.deferred = defer.Deferred()
         request = QNetworkRequest()
@@ -83,6 +85,7 @@ class WebpageRender(object):
         if self.deferred.called:
             return
         try:
+            self._prerender()
             self.deferred.callback(self._render())
         except:
             self.deferred.errback()
@@ -125,6 +128,20 @@ class WebpageRender(object):
 
         self.web_page.setViewportSize(size)
 
+    def _runJS(self, js_source):
+        js_output = None
+        js_console_output = None
+        if js_source:
+            frame = self.web_view.page().mainFrame()
+            if self.console:
+                js_console = JavascriptConsole()
+                frame.addToJavaScriptWindowObject('console', js_console)
+            ret = frame.evaluateJavaScript(js_source)
+            js_output = bytes(ret.toString().toUtf8())
+            if self.console:
+                js_console_output = [str(s) for s in js_console.messages]
+        return js_output, js_console_output
+
     def _frameToDict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
@@ -142,6 +159,9 @@ class WebpageRender(object):
 
         return res
 
+    def _prerender(self):
+        self.js_output, self.js_console_output = self._runJS(self.js_source)
+
     def _render(self):
         raise NotImplementedError()
 
@@ -153,11 +173,12 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, width=None, height=None, viewport=None):
+    def doRequest(self, url, baseurl=None, wait_time=None, js_source=None,
+                        width=None, height=None, viewport=None):
         self.width = width
         self.height = height
         self.viewport = viewport
-        super(PngRender, self).doRequest(url, baseurl, wait_time)
+        super(PngRender, self).doRequest(url, baseurl, wait_time, js_source)
 
     def _render(self):
         return self._getPng(self.width, self.height, self.viewport)
@@ -165,14 +186,15 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None,
-                        html=True, iframes=True, png=True,
+    def doRequest(self, url, baseurl=None, wait_time=None, js_source=None,
+                        html=True, iframes=True, png=True, script=True, console=False,
                         width=None, height=None, viewport=None):
         self.width = width
         self.height = height
         self.viewport = viewport
-        self.include = {'html': html, 'png': png, 'iframes': iframes}
-        super(JsonRender, self).doRequest(url, baseurl, wait_time)
+        self.include = {'html': html, 'png': png, 'iframes': iframes,
+                        'script': script, 'console': console}
+        super(JsonRender, self).doRequest(url, baseurl, wait_time, js_source, console)
 
     def _render(self):
         res = {}
@@ -181,8 +203,23 @@ class JsonRender(WebpageRender):
             png = self._getPng(self.width, self.height, self.viewport)
             res['png'] = base64.encodestring(png)
 
+        if self.include['script'] and self.js_output:
+            res['script'] = self.js_output
+        if self.include['console'] and self.js_console_output:
+            res['console'] = self.js_console_output
+
         res.update(self._getIframes(
             children=self.include['iframes'],
             html=self.include['html'],
         ))
         return json.dumps(res)
+
+
+class JavascriptConsole(QObject):
+    def __init__(self, parent=None):
+        self.messages = []
+        super(JavascriptConsole, self).__init__(parent)
+
+    @pyqtSlot(str)
+    def log(self, message):
+        self.messages.append(message)
