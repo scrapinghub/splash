@@ -55,8 +55,8 @@ class WebpageRender(object):
         if baseurl:
             self._baseUrl = QUrl(baseurl)
             request.setOriginatingObject(self.web_page.mainFrame())
-            self.network_manager.finished.connect(self._requestFinished)
-            self.network_manager.get(request)
+            self._reply = self.network_manager.get(request)
+            self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
             self.web_page.mainFrame().load(request)
@@ -67,13 +67,15 @@ class WebpageRender(object):
         self.web_page.deleteLater()
         self.web_view.deleteLater()
 
-    def _requestFinished(self, reply):
-        self.web_page.networkAccessManager().finished.disconnect(self._requestFinished)
+    def _requestFinished(self):
         self.web_view.loadFinished.connect(self._loadFinished)
-        mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
-        self.web_view.page().mainFrame().setContent(reply.readAll(), mimeType, self._baseUrl)
-        if reply.error():
-            log.msg("Error loading %s: %s" % (self.url, reply.errorString()))
+        mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
+        data = self._reply.readAll()
+        self.web_view.page().mainFrame().setContent(data, mimeType, self._baseUrl)
+        if self._reply.error():
+            log.msg("Error loading %s: %s" % (self.url, self._reply.errorString()))
+        self._reply.close()
+        self._reply.deleteLater()
 
     def _loadFinished(self, ok):
         if self.deferred.called:
