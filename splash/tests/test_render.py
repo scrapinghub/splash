@@ -402,11 +402,22 @@ test('abc');"""
 test('Changed');"""
         params = {'url': 'http://localhost:8998/jsrender'}
         r = self._runjs_request(js_source, render_format='html', params=params)
-        print r.text
         self.assertTrue("Before" not in r.text)
         self.assertTrue("Changed" in r.text)
 
-    def test_incorrect_content_type(self):
+    def test_js_profile(self):
+        js_source = """test('abc');"""
+        params = {'url': 'http://localhost:8998/jsrender', 'js' : 'test'}
+        r = self._runjs_request(js_source, params=params).json()
+        self.assertEqual(r['script'], "abc")
+
+    def test_js_profile_another_lib(self):
+        js_source = """test2('abc');"""
+        params = {'url': 'http://localhost:8998/jsrender', 'js' : 'test'}
+        r = self._runjs_request(js_source, params=params).json()
+        self.assertEqual(r['script'], "abcabc")
+
+    def test_js_incorrect_content_type(self):
         js_source = "function test(x){ return x; } test('abc');"
         headers = {'content-type': 'text/plain'}
         r = self._runjs_request(js_source, headers=headers)

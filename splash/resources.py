@@ -117,12 +117,15 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
 
 
 def _get_javascript_params(request):
+    js_profile = getarg(request, 'js', None)
     if request.method == 'POST':
-        return request.content.getvalue()
+        return request.content.getvalue(), js_profile
+    else:
+        return None, js_profile
 
 
 def _get_png_params(request):
-    url, baseurl, wait_time, viewport, js_source = _get_common_params(request)
+    url, baseurl, wait_time, viewport, js_source, js_profile = _get_common_params(request)
     width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
     height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
     return url, baseurl, wait_time, viewport, js_source, width, height
@@ -132,13 +135,13 @@ def _get_common_params(request):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
-    js_source = _get_javascript_params(request)
+    js_source, js_profile = _get_javascript_params(request)
 
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
-    return url, baseurl, wait_time, viewport, js_source
+    return url, baseurl, wait_time, viewport, js_source, js_profile
 
 
 class RenderHtml(RenderBase):
@@ -171,7 +174,7 @@ class RenderJson(RenderBase):
         console = getarg(request, "console", defaults.SHOW_CONSOLE, type=int, range=(0, 1))
 
         return self.pool.render(JsonRender, request,
-                                url, baseurl, wait_time, viewport, js_source,
+                                url, baseurl, wait_time, viewport, js_source, js_profile,
                                 html, iframes, png, script, console,
                                 width, height)
 
