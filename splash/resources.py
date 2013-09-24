@@ -19,7 +19,7 @@ class RenderBase(Resource):
         self.pool = pool
 
     def render_GET(self, request):
-        log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
+        #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
         pool_d = self._getRender(request)
         timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
         wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
