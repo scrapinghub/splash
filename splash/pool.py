@@ -24,7 +24,7 @@ class RenderPool(object):
 
         pool_d = defer.Deferred()
         self.log("queued %s" % id(request))
-        self.queue.put((rendercls, request, splash_proxy_factory, self.js_profiles_path, args, pool_d))
+        self.queue.put((rendercls, request, splash_proxy_factory, args, pool_d))
         return pool_d
 
     def _wait_for_render(self, _, slot):
@@ -34,11 +34,10 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, request, splash_proxy_factory, js_profiles_path, args, pool_d), slot):
+    def _start_render(self, (rendercls, request, splash_proxy_factory, args, pool_d), slot):
         render = rendercls(
             network_manager=self.network_manager,
             splash_proxy_factory=splash_proxy_factory,
-            js_profiles_path=js_profiles_path,
             splash_request=request,
             verbose=self.verbose >= 2,
         )

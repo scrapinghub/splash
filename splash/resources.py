@@ -13,6 +13,7 @@ class RenderBase(Resource):
 
     isLeaf = True
     content_type = "text/html; charset=utf-8"
+    NO_JS_PROFILE_MSG = 'Javascript profile does not exist'
 
     def __init__(self, pool):
         Resource.__init__(self)

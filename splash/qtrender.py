@@ -152,14 +152,10 @@ class WebpageRender(object):
 
 
     def _loadJsLibs(self, frame, js_profile):
-        if self.web_page.js_profiles_path:
-            profile_dir = os.path.join(self.web_page.js_profiles_path, js_profile)
-            if not os.path.isdir(profile_dir):
-                raise RenderError('Missing js profile %s' % js_profile)
-
-            for jsfile in os.listdir(profile_dir):
+        if js_profile:
+            for jsfile in os.listdir(js_profile):
                 if jsfile.endswith('.js'):
-                    with open(os.path.join(profile_dir, jsfile)) as f:
+                    with open(os.path.join(js_profile, jsfile)) as f:
                         frame.evaluateJavaScript(f.read())
 
     def _runJS(self, js_source, js_profile):
