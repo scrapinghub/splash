@@ -42,15 +42,16 @@ class RenderPool(object):
         )
         render.doRequest(*args)
         self.active.add(render)
-        d = render.deferred
-        d.addBoth(self._close_render, render, slot)
-        d.chainDeferred(pool_d)
+
+        render.deferred.chainDeferred(pool_d)
+        pool_d.addBoth(self._close_render, render, slot)
         self.log("SLOT %d is working on %s" % (slot, id(request)))
-        return d
+        return render.deferred
 
     def _close_render(self, _, render, slot):
         self.log("SLOT %d finished %s %s" % (slot, id(render.splash_request), render))
         self.active.remove(render)
+        render.deferred.cancel()
         render.close()
         return _
 
