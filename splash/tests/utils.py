@@ -100,3 +100,8 @@ class TestServers():
     def __exit__(self, exc_type, exc_value, traceback):
         self.splashserver.__exit__(None, None, None)
         self.mockserver.__exit__(None, None, None)
+
+    def print_output(self):
+        print(_non_block_read(self.splashserver.proc.stderr))
+        print(_non_block_read(self.mockserver.proc.stdout))
+

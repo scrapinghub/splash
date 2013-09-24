@@ -23,7 +23,7 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, network_manager, splash_proxy_factory, splash_request):
+    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbose=False):
         self.network_manager = network_manager
         self.web_view = QWebView()
         self.web_page = SplashQWebPage()
@@ -38,8 +38,10 @@ class WebpageRender(object):
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 
+        self.splash_request = splash_request
         self.web_page.splash_request = splash_request
         self.web_page.splash_proxy_factory = splash_proxy_factory
+        self.verbose = verbose
 
 
     def doRequest(self, url, baseurl=None, wait_time=None, js_source=None, console=False):
@@ -68,17 +70,21 @@ class WebpageRender(object):
         self.web_view.deleteLater()
 
     def _requestFinished(self):
+        self.log("_requestFinished %s" % id(self.splash_request))
         self.web_view.loadFinished.connect(self._loadFinished)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
         data = self._reply.readAll()
         self.web_view.page().mainFrame().setContent(data, mimeType, self._baseUrl)
         if self._reply.error():
-            log.msg("Error loading %s: %s" % (self.url, self._reply.errorString()))
+            log.msg("Error loading %s: %s" % (self.url, self._reply.errorString()), system='render')
         self._reply.close()
         self._reply.deleteLater()
 
     def _loadFinished(self, ok):
+        self.log("_loadFinished %s" % id(self.splash_request))
         if self.deferred.called:
+            # sometimes this callback is called multiple times
+            self.log("_loadFinished called multiple times")
             return
         if ok:
             time_ms = int(self.wait_time * 1000)
@@ -87,8 +93,7 @@ class WebpageRender(object):
             self.deferred.errback(RenderError())
 
     def _loadFinishedOK(self):
-        if self.deferred.called:
-            return
+        self.log("_loadFinishedOK %s" % id(self.splash_request))
         try:
             self._prerender()
             self.deferred.callback(self._render())
@@ -125,6 +130,7 @@ class WebpageRender(object):
         if viewport == 'full':
             size = self.web_page.mainFrame().contentsSize()
             if size.isEmpty():  # sometimes contentsSize doesn't work
+                self.log("contentsSize method doesn't work %s" % id(self.splash_request))
                 w, h = map(int, defaults.VIEWPORT_FALLBACK.split('x'))
                 size = QSize(w, h)
         else:
@@ -169,6 +175,10 @@ class WebpageRender(object):
 
     def _render(self):
         raise NotImplementedError()
+
+    def log(self, text):
+        if self.verbose:
+            log.msg(text, system='render')
 
 
 class HtmlRender(WebpageRender):

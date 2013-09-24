@@ -8,6 +8,11 @@ class _BaseRenderTest(unittest.TestCase):
 
     render_format = "html"
 
+    def tearDown(self):
+        # we must consume splash output because subprocess.PIPE is used
+        ts.print_output()
+        super(_BaseRenderTest, self).tearDown()
+
     @property
     def host(self):
         return "localhost:%s" % ts.splashserver.portnum
@@ -378,7 +383,7 @@ class RunJsTest(_BaseRenderTest):
         self.assertEqual(r['script'], "abc")
 
     def test_js_and_console(self):
-        js_source = """function test(x){ return x; } 
+        js_source = """function test(x){ return x; }
 console.log('some log');
 console.log('another log');
 test('abc');"""
@@ -388,7 +393,7 @@ test('abc');"""
         self.assertEqual(r['console'], ["some log", "another log"])
 
     def test_js_modify_html(self):
-        js_source = """function test(x){ document.getElementById("p1").innerHTML=x; } 
+        js_source = """function test(x){ document.getElementById("p1").innerHTML=x; }
 test('Changed');"""
         params = {'url': 'http://localhost:8998/jsrender'}
         r = self._runjs_request(js_source, render_format='html', params=params)
@@ -413,6 +418,9 @@ test('Changed');"""
 
 
 class TestTestSetup(unittest.TestCase):
+    def tearDown(self):
+        # we must consume splash output because subprocess.PIPE is used
+        ts.print_output()
 
     def test_mockserver_works(self):
         r = requests.get('http://localhost:8998/jsrender')

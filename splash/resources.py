@@ -19,17 +19,18 @@ class RenderBase(Resource):
         self.pool = pool
 
     def render_GET(self, request):
-        d = self._getRender(request)
+        log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
+        pool_d = self._getRender(request)
         timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
         wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
-        timer = reactor.callLater(timeout+wait_time, d.cancel)
-        d.addCallback(self._cancelTimer, timer)
-        d.addCallback(self._writeOutput, request)
-        d.addErrback(self._timeoutError, request)
-        d.addErrback(self._renderError, request)
-        d.addErrback(self._internalError, request)
-        d.addBoth(self._finishRequest, request)
+        timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
+        pool_d.addCallback(self._cancelTimer, timer)
+        pool_d.addCallback(self._writeOutput, request)
+        pool_d.addErrback(self._timeoutError, request)
+        pool_d.addErrback(self._renderError, request)
+        pool_d.addErrback(self._internalError, request)
+        pool_d.addBoth(self._finishRequest, request)
         request.starttime = time.time()
         return NOT_DONE_YET
 
@@ -49,10 +50,12 @@ class RenderBase(Resource):
             return str(e) + "\n"
 
     def _cancelTimer(self, _, timer):
+        #log.msg("_cancelTimer")
         timer.cancel()
         return _
 
     def _writeOutput(self, html, request):
+        #log.msg("_writeOutput: %s" % id(request))
         stats = {
             "path": request.path,
             "args": request.args,
@@ -62,6 +65,7 @@ class RenderBase(Resource):
             "fds": get_num_fds(),
             "active": len(self.pool.active),
             "qsize": len(self.pool.queue.pending),
+            "_id": id(request),
         }
         log.msg(json.dumps(stats), system="stats")
         request.setHeader("content-type", self.content_type)
@@ -71,11 +75,13 @@ class RenderBase(Resource):
         failure.trap(defer.CancelledError)
         request.setResponseCode(504)
         request.write("Timeout exceeded rendering page\n")
+        #log.msg("_timeoutError: %s" % id(request))
 
     def _renderError(self, failure, request):
         failure.trap(RenderError)
         request.setResponseCode(502)
         request.write("Error rendering page\n")
+        #log.msg("_renderError: %s" % id(request))
 
     def _internalError(self, failure, request):
         request.setResponseCode(500)
@@ -86,6 +92,7 @@ class RenderBase(Resource):
     def _finishRequest(self, _, request):
         if not request._disconnected:
             request.finish()
+        #log.msg("_finishRequest: %s" % id(request))
 
     def _getRender(self, request):
         raise NotImplementedError()
@@ -129,6 +136,7 @@ def _get_common_params(request):
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
     js_source = _get_javascript_params(request)
     return url, baseurl, wait_time, js_source
+
 
 class RenderHtml(RenderBase):
 
