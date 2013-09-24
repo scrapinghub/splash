@@ -121,7 +121,7 @@ filesystem. Directory example::
 To apply this javascript profile add the parameter ``js=mywebsite`` to the request::
 
     curl -X POST -H "content-type: application/javascript" \
-        -d "myfunc('Hello')';" \
+        -d "myfunc('Hello');" \
         "http://localhost:8050/render.html?url=http://domain.com"
 
 Note that this example assumes that myfunc is a javascript function defined in lib1.js.
