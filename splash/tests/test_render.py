@@ -434,6 +434,12 @@ test('Changed');"""
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], '123,234')
 
+    def test_js_invalid_profile(self):
+        js_source = """test('abc');"""
+        params = {'url': 'http://localhost:8998/jsrender', 'js' : 'not_a_profile'}
+        r = self._runjs_request(js_source, params=params)
+        self.assertEqual(r.status_code, 400)
+
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
         query = {'url': 'http://localhost:8998/jsrender',
                  'script': 1}
