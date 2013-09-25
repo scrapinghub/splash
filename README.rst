@@ -118,7 +118,8 @@ filesystem. Directory example::
                         mywebsite/
                               lib1.js
 
-To apply this javascript profile add the parameter ``js=mywebsite`` to the request::
+Note that the javascript files must be utf-8 encoded. To apply this javascript profile 
+add the parameter ``js=mywebsite`` to the request::
 
     curl -X POST -H "content-type: application/javascript" \
         -d "myfunc('Hello');" \

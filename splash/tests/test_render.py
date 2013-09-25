@@ -417,6 +417,12 @@ test('Changed');"""
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], "abcabc")
 
+    def test_js_utf8_lib(self):
+        js_source = """test_utf8('abc');"""
+        params = {'url': 'http://localhost:8998/jsrender', 'js' : 'test'}
+        r = self._runjs_request(js_source, params=params).json()
+        self.assertEqual(r['script'], u'abc\xae')
+
     def test_js_incorrect_content_type(self):
         js_source = "function test(x){ return x; } test('abc');"
         headers = {'content-type': 'text/plain'}

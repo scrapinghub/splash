@@ -156,7 +156,7 @@ class WebpageRender(object):
             for jsfile in os.listdir(js_profile):
                 if jsfile.endswith('.js'):
                     with open(os.path.join(js_profile, jsfile)) as f:
-                        frame.evaluateJavaScript(f.read())
+                        frame.evaluateJavaScript(f.read().decode('utf-8'))
 
     def _runJS(self, js_source, js_profile):
         js_output = None
