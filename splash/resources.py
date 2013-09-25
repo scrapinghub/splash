@@ -1,8 +1,14 @@
-import os, time, resource, json
+import os, time, resource, json, warnings
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
+try:
+    from plop.collector import Collector
+except ImportError:
+    warnings.warn("install 'plop' python package to make /profile endpoint available")
+    Collector = None
+
 from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
@@ -220,6 +226,32 @@ class Debug(Resource):
         })
 
 
+class Profile(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        timeout = getarg(request, "timeout", default=30, type=int, range=(0, 120))
+        self.collector = Collector()
+        self.collector.start()
+        reactor.callLater(timeout, self.finishProfile, request)
+        return NOT_DONE_YET
+
+    def finishProfile(self, request):
+        self.collector.stop()
+        result = self.stats_to_json(self.collector.stack_counts)
+        request.setHeader("content-type", "application/json")
+        request.write(result)
+        request.finish()
+
+    @classmethod
+    def stats_to_json(cls, stack_counts):
+        values = sorted(stack_counts.items(), key=lambda item: item[1], reverse=True)
+        return json.dumps([
+            (["%s:%s:%s" % frame for frame in frames], count)
+            for frames, count in values
+        ])
+
+
 class Root(Resource):
 
     def __init__(self, pool):
@@ -228,6 +260,9 @@ class Root(Resource):
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("debug", Debug(pool))
+
+        if Collector is not None:
+            self.putChild("profile", Profile())
 
     def getChild(self, name, request):
         if name == "":
