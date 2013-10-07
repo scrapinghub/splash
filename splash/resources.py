@@ -231,14 +231,21 @@ class Profile(Resource):
 
     def render_GET(self, request):
         timeout = getarg(request, "timeout", default=30, type=int, range=(0, 120))
-        self.collector = Collector()
-        self.collector.start()
-        reactor.callLater(timeout, self.finishProfile, request)
+
+        collector = Collector()
+        collector.start()
+        d = reactor.callLater(timeout, self.finishProfile, request, collector)
+
+        def onFailure(failure):
+            d.cancel()
+            collector.stop()
+
+        request.notifyFinish().addErrback(onFailure)
         return NOT_DONE_YET
 
-    def finishProfile(self, request):
-        self.collector.stop()
-        result = self.stats_to_json(self.collector.stack_counts)
+    def finishProfile(self, request, collector):
+        collector.stop()
+        result = self.stats_to_json(collector.stack_counts)
         request.setHeader("content-type", "application/json")
         request.write(result)
         request.finish()
