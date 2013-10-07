@@ -105,8 +105,7 @@ class WebpageRender(object):
         frame = self.web_view.page().mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
-    def _getPng(self, width=None, height=None, viewport=None):
-        self._setViewportSize(viewport)
+    def _getPng(self, width=None, height=None):
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.web_page.mainFrame().render(painter)
@@ -171,6 +170,8 @@ class WebpageRender(object):
         return res
 
     def _prerender(self):
+        if getattr(self, 'viewport', None):
+            self._setViewportSize(self.viewport)
         self.js_output, self.js_console_output = self._runJS(self.js_source)
 
     def _render(self):
@@ -196,7 +197,7 @@ class PngRender(WebpageRender):
         super(PngRender, self).doRequest(url, baseurl, wait_time, js_source)
 
     def _render(self):
-        return self._getPng(self.width, self.height, self.viewport)
+        return self._getPng(self.width, self.height)
 
 
 class JsonRender(WebpageRender):
@@ -215,7 +216,7 @@ class JsonRender(WebpageRender):
         res = {}
 
         if self.include['png']:
-            png = self._getPng(self.width, self.height, self.viewport)
+            png = self._getPng(self.width, self.height)
             res['png'] = base64.encodestring(png)
 
         if self.include['script'] and self.js_output:

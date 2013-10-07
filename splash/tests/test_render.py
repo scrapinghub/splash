@@ -407,6 +407,17 @@ test('Changed');"""
         r = self._runjs_request(js_source, headers=headers)
         self.assertEqual(r.status_code, 415)
 
+    def test_proper_viewport(self):
+        js_source = """
+            function size() {
+                return [window.innerWidth, window.innerHeight].toString();
+            }
+            size();
+            """
+        params = {'viewport': '123x234'}
+        r = self._runjs_request(js_source, params=params).json()
+        self.assertEqual(r['script'], '123,234')
+
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
         query = {'url': 'http://localhost:8998/jsrender',
                  'script': 1}
