@@ -23,7 +23,7 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, network_manager, splash_proxy_factory, js_profiles_path, splash_request, verbose=False):
+    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbose=False):
         self.network_manager = network_manager
         self.web_view = QWebView()
         self.web_page = SplashQWebPage()
@@ -42,7 +42,6 @@ class WebpageRender(object):
         self.web_page.splash_request = splash_request
         self.web_page.splash_proxy_factory = splash_proxy_factory
         self.verbose = verbose
-        self.web_page.js_profiles_path = js_profiles_path
 
     # ======= General request/response handling:
 
