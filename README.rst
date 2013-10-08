@@ -66,16 +66,33 @@ allowed_domains : string : optional
   If present, Splash won't load anything neither from domains
   not in this list nor from subdomains of domains not in this list.
 
+viewport : string : optional
+  View width and height (in pixels) of the browser viewport
+  to render the web page. Format is "<width>x<heigth>", e.g. 800x600.
+  It also accepts 'full' as value; viewport=full means that the whole
+  page (possibly very tall) will be rendered. Default value is 1024x768.
+
+  'viewport' parameter is more important for PNG rendering;
+  it is supported for all rendering endpoints because javascript
+  code execution can depend on viewport size.
+
+.. note::
+
+    viewport=full requires non-zero 'wait' parameter. This is
+    an unfortunate restriction, but it seems that this is the only
+    way to make rendering work reliably with viewport=full.
+
+
 Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
 
-Splash supports executing JavaScript code within the context of the page. 
-The JavaScript code is executed after the page finished loading (including 
-any delay defined by 'wait') but before the page is rendered. This allow to 
-use the javascript code to modify the page being rendered. 
+Splash supports executing JavaScript code within the context of the page.
+The JavaScript code is executed after the page finished loading (including
+any delay defined by 'wait') but before the page is rendered. This allow to
+use the javascript code to modify the page being rendered.
 
-To execute JavaScript code we use a POST request with the content-type set to 
+To execute JavaScript code we use a POST request with the content-type set to
 'application/javascript'. The body of the request contains the code to be executed.
 
 Curl example::
@@ -101,20 +118,6 @@ width : integer : optional
 height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
-
-viewport : string : optional
-  View width and height (in pixels) of the browser viewport
-  to render the web page. Format is "<width>x<heigth>", e.g. 800x600.
-  It also accepts 'full' as value; viewport=full means that the whole
-  page (possibly very tall) will be rendered.
-  Default value is 1024x768.
-
-.. note::
-
-    viewport=full requires non-zero 'wait' parameter. This is
-    an unfortunate restriction, but it seems that this is the only
-    way to make rendering work reliably with viewport=full.
-
 
 Curl examples::
 
@@ -150,12 +153,12 @@ iframes : integer : optional
     Default is 0.
 
 script : integer : optional
-    Whether to include the result of the executed javascript final 
-    statement in output. Possible values are ``1`` (include) and ``0`` 
+    Whether to include the result of the executed javascript final
+    statement in output. Possible values are ``1`` (include) and ``0``
     (exclude). Default is 0.
 
 console : integer : optional
-    Whether to include the executed javascript console messages in output. 
+    Whether to include the executed javascript console messages in output.
     Possible values are ``1`` (include) and ``0`` (exclude). Default is 0.
 
 By default, URL, requested URL, page title and frame geometry is returned::
@@ -248,7 +251,7 @@ to include the code output in the result::
         "script": "result of script..."
     }
 
-The JavaScript code supports the console.log() function to log messages. 
+The JavaScript code supports the console.log() function to log messages.
 Add 'console=1' to the request to include the console output in the result::
 
     {

@@ -43,16 +43,22 @@ class WebpageRender(object):
         self.web_page.splash_proxy_factory = splash_proxy_factory
         self.verbose = verbose
 
+    # ======= General request/response handling:
 
-    def doRequest(self, url, baseurl=None, wait_time=None, js_source=None, console=False):
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, console=False):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
         self.console = console
+        self.viewport = defaults.VIEWPORT if viewport is None else viewport
 
         self.deferred = defer.Deferred()
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
+
+        if self.viewport != 'full':
+            # viewport='full' can't be set if content is not loaded yet
+            self._setViewportSize(self.viewport)
 
         if baseurl:
             self._baseUrl = QUrl(baseurl)
@@ -100,6 +106,7 @@ class WebpageRender(object):
         except:
             self.deferred.errback()
 
+    # ======= Rendering methods that subclasses can use:
 
     def _getHtml(self):
         frame = self.web_view.page().mainFrame()
@@ -122,21 +129,23 @@ class WebpageRender(object):
         frame = self.web_view.page().mainFrame()
         return self._frameToDict(frame, children, html)
 
+    def _render(self):
+        raise NotImplementedError()
 
-    def _setViewportSize(self, viewport=None):
-        viewport = defaults.VIEWPORT if viewport is None else viewport
+    # ======= Other helper methods:
 
-        if viewport == 'full':
-            size = self.web_page.mainFrame().contentsSize()
-            if size.isEmpty():  # sometimes contentsSize doesn't work
-                self.log("contentsSize method doesn't work %s" % id(self.splash_request))
-                w, h = map(int, defaults.VIEWPORT_FALLBACK.split('x'))
-                size = QSize(w, h)
-        else:
-            w, h = map(int, viewport.split('x'))
-            size = QSize(w, h)
-
+    def _setViewportSize(self, viewport):
+        w, h = map(int, viewport.split('x'))
+        size = QSize(w, h)
         self.web_page.setViewportSize(size)
+
+    def _setFullViewport(self):
+        size = self.web_page.mainFrame().contentsSize()
+        if size.isEmpty():
+            self.log("contentsSize method doesn't work %s" % id(self.splash_request))
+            self._setViewportSize(defaults.VIEWPORT_FALLBACK)
+        else:
+            self.web_page.setViewportSize(size)
 
     def _runJS(self, js_source):
         js_output = None
@@ -170,12 +179,9 @@ class WebpageRender(object):
         return res
 
     def _prerender(self):
-        if getattr(self, 'viewport', None):
-            self._setViewportSize(self.viewport)
+        if self.viewport == 'full':
+            self._setFullViewport()
         self.js_output, self.js_console_output = self._runJS(self.js_source)
-
-    def _render(self):
-        raise NotImplementedError()
 
     def log(self, text):
         if self.verbose:
@@ -189,12 +195,11 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, js_source=None,
-                        width=None, height=None, viewport=None):
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None,
+                        width=None, height=None):
         self.width = width
         self.height = height
-        self.viewport = viewport
-        super(PngRender, self).doRequest(url, baseurl, wait_time, js_source)
+        super(PngRender, self).doRequest(url, baseurl, wait_time, viewport, js_source)
 
     def _render(self):
         return self._getPng(self.width, self.height)
@@ -202,15 +207,14 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, js_source=None,
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None,
                         html=True, iframes=True, png=True, script=True, console=False,
-                        width=None, height=None, viewport=None):
+                        width=None, height=None):
         self.width = width
         self.height = height
-        self.viewport = viewport
         self.include = {'html': html, 'png': png, 'iframes': iframes,
                         'script': script, 'console': console}
-        super(JsonRender, self).doRequest(url, baseurl, wait_time, js_source, console)
+        super(JsonRender, self).doRequest(url, baseurl, wait_time, viewport, js_source, console)
 
     def _render(self):
         res = {}

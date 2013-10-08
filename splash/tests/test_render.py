@@ -117,6 +117,11 @@ class RenderHtmlTest(_RenderTest):
         self.assertTrue('SAME_DOMAIN' in r.text)
         self.assertFalse('OTHER_DOMAIN' in r.text)
 
+    def test_viewport(self):
+        r = self.request({'url': 'http://localhost:8998/jsviewport', 'viewport': '300x400'})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue('300x400' in r.text)
+
 
 class RenderPngTest(_RenderTest):
 

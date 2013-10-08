@@ -82,6 +82,20 @@ setInterval(function(){
 """
 
 
+class JsViewport(Resource):
+    isLeaf = True
+    def render(self, request):
+        return """
+<html><body>
+<script>
+document.write(window.innerWidth);
+document.write('x');
+document.write(window.innerHeight);
+</script>
+</body></html>
+"""
+
+
 class TallPage(Resource):
 
     isLeaf = True
@@ -233,6 +247,7 @@ class Root(Resource):
         self.putChild("jsalert", JsAlert())
         self.putChild("jsconfirm", JsConfirm())
         self.putChild("jsinterval", JsInterval())
+        self.putChild("jsviewport", JsViewport())
         self.putChild("tall", TallPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
