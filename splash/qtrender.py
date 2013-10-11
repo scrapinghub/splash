@@ -170,7 +170,7 @@ class WebpageRender(object):
             ret = frame.evaluateJavaScript(js_source)
             js_output = bytes(ret.toString().toUtf8())
             if self.console:
-                js_console_output = [str(s) for s in js_console.messages]
+                js_console_output = [bytes(s.toUtf8()) for s in js_console.messages]
         return js_output, js_console_output
 
     def _frameToDict(self, frame, children=True, html=True):
