@@ -26,7 +26,9 @@ def parse_opts():
         help="number of render slots (default: %default)")
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
-    _bool_default={True:' (active by default)', False: ''}
+    op.add_option("--js-profiles-path",
+        help="path to a folder with javascript profiles")
+    _bool_default = {True:' (active by default)', False: ''}
     op.add_option("--cache", action="store_true", dest="cache_enabled",
         help="enable local cache" + _bool_default[defaults.CACHE_ENABLED])
     op.add_option("--no-cache", action="store_false", dest="cache_enabled",
@@ -83,7 +85,8 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None):
+def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
+                  js_profiles_path=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -96,7 +99,8 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
     pool = RenderPool(
         slots=slots,
         network_manager=network_manager,
-        get_splash_proxy_factory=get_splash_proxy_factory
+        get_splash_proxy_factory=get_splash_proxy_factory,
+        js_profiles_path=js_profiles_path
     )
     root = Root(pool)
     factory = Site(root)
@@ -118,12 +122,14 @@ def monitor_maxrss(maxrss):
 
 def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
-                          proxy_profiles_path=None):
+                          proxy_profiles_path=None, js_profiles_path=None):
     from splash import network_manager
     manager = network_manager.FilteringQNetworkAccessManager()
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
-    return splash_server(portnum, slots, manager, get_splash_proxy_factory)
+    js_profiles_path = _check_js_profiles_path(js_profiles_path)
+    return splash_server(portnum, slots, manager, get_splash_proxy_factory,
+                         js_profiles_path)
 
 
 def _default_cache(cache_enabled, cache_path, cache_size):
@@ -157,6 +163,14 @@ def _default_proxy_config(proxy_profiles_path):
         return get_splash_proxy_factory
 
 
+def _check_js_profiles_path(js_profiles_path):
+    from twisted.python import log
+
+    if js_profiles_path is not None and not os.path.isdir(js_profiles_path):
+        log.msg("--js-profiles-path does not exist or it is not a folder; js profiles won't be used")
+    return js_profiles_path
+
+
 def main():
     install_qtreactor()
     opts, _ = parse_opts()
@@ -171,7 +185,8 @@ def main():
                   cache_enabled=opts.cache_enabled,
                   cache_path=opts.cache_path,
                   cache_size=opts.cache_size,
-                  proxy_profiles_path=opts.proxy_profiles_path)
+                  proxy_profiles_path=opts.proxy_profiles_path,
+                  js_profiles_path=opts.js_profiles_path)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor

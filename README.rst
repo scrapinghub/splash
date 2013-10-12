@@ -102,6 +102,35 @@ Curl example::
         -d "document.title='My Title';" \
         "http://localhost:8050/render.html?url=http://domain.com"
 
+Splash supports "javascript profiles" that allows to preload javascript files,
+the javascript files defined in a profile are executed after the page is loaded
+and before any javascript code defined in the request.
+
+The preloaded files can be used in the user's POST'ed code.
+
+To enable javascript profiles support, run splash server with the
+``--js-profiles-path=<path to a folder with js profiles>`` option::
+
+    python -m splash.server --js-profiles-path=/etc/splash/js-profiles
+
+Then create a directory with the name of the profile and place inside it the
+javascript files to load. The files are loaded in the order they appear in the
+filesystem. Directory example::
+
+    /etc/splash/js-profiles/
+                        mywebsite/
+                              lib1.js
+
+Note that the javascript files must be utf-8 encoded. To apply this javascript profile 
+add the parameter ``js=mywebsite`` to the request::
+
+    curl -X POST -H "content-type: application/javascript" \
+        -d "myfunc('Hello');" \
+        "http://localhost:8050/render.html?js=mywebsite&url=http://domain.com"
+
+Note that this example assumes that myfunc is a javascript function defined in lib1.js.
+
+
 render.png
 ----------
 

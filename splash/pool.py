@@ -6,9 +6,10 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, network_manager, get_splash_proxy_factory, verbose=0):
+    def __init__(self, slots, network_manager, get_splash_proxy_factory, js_profiles_path, verbose=0):
         self.network_manager = network_manager
         self.get_splash_proxy_factory = get_splash_proxy_factory
+        self.js_profiles_path = js_profiles_path
         self.active = set()
         self.queue = defer.DeferredQueue()
         self.verbose = verbose
