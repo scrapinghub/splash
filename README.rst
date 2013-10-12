@@ -102,7 +102,10 @@ Curl example::
         -d "document.title='My Title';" \
         "http://localhost:8050/render.html?url=http://domain.com"
 
-Splash supports "javascript profiles" that allows to preload javascript files. 
+Splash supports "javascript profiles" that allows to preload javascript files,
+the javascript files defined in a profile are executed after the page is loaded
+and before any javascript code defined in the request.
+
 The preloaded files can be used in the user's POST'ed code.
 
 To enable javascript profiles support, run splash server with the
