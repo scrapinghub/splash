@@ -126,9 +126,9 @@ def _get_javascript_params(request, js_profiles_path):
 
 
 def _check_js_profile(request, js_profiles_path, js_profile):
-    if js_profiles_path is None:
-        raise BadRequest('Javascript profiles are not enabled')
     if js_profile:
+        if js_profiles_path is None:
+            raise BadRequest('Javascript profiles are not enabled')
         profile_dir = os.path.join(js_profiles_path, js_profile)
         if not profile_dir.startswith(js_profiles_path + os.path.sep):
             # security check fails
