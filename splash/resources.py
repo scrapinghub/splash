@@ -17,6 +17,7 @@ class RenderBase(Resource):
     def __init__(self, pool):
         Resource.__init__(self)
         self.pool = pool
+        self.js_profiles_path = self.pool.js_profiles_path
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
@@ -116,29 +117,45 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
         raise BadRequest("Invalid viewport format: %s" % viewport)
 
 
-def _get_javascript_params(request):
+def _get_javascript_params(request, js_profiles_path):
+    js_profile = _check_js_profile(request, js_profiles_path, getarg(request, 'js', None))
     if request.method == 'POST':
-        return request.content.getvalue()
+        return request.content.getvalue(), js_profile
+    else:
+        return None, js_profile
 
 
-def _get_png_params(request):
-    url, baseurl, wait_time, viewport, js_source = _get_common_params(request)
+def _check_js_profile(request, js_profiles_path, js_profile):
+    if js_profile:
+        if js_profiles_path is None:
+            raise BadRequest('Javascript profiles are not enabled')
+        profile_dir = os.path.join(js_profiles_path, js_profile)
+        if not profile_dir.startswith(js_profiles_path + os.path.sep):
+            # security check fails
+            raise BadRequest('Javascript profile does not exist')
+        if not os.path.isdir(profile_dir):
+            raise BadRequest('Javascript profile does not exist')
+        return profile_dir
+
+
+def _get_png_params(request, js_profiles_path):
+    url, baseurl, wait_time, viewport, js_source, js_profile = _get_common_params(request, js_profiles_path)
     width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
     height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
-    return url, baseurl, wait_time, viewport, js_source, width, height
+    return url, baseurl, wait_time, viewport, js_source, js_profile, width, height
 
 
-def _get_common_params(request):
+def _get_common_params(request, js_profiles_path):
     url = getarg(request, "url")
     baseurl = getarg(request, "baseurl", None)
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
-    js_source = _get_javascript_params(request)
+    js_source, js_profile = _get_javascript_params(request, js_profiles_path)
 
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
-    return url, baseurl, wait_time, viewport, js_source
+    return url, baseurl, wait_time, viewport, js_source, js_profile
 
 
 class RenderHtml(RenderBase):
@@ -146,7 +163,7 @@ class RenderHtml(RenderBase):
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request):
-        return self.pool.render(HtmlRender, request, *_get_common_params(request))
+        return self.pool.render(HtmlRender, request, *_get_common_params(request, self.js_profiles_path))
 
 
 class RenderPng(RenderBase):
@@ -154,7 +171,7 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        return self.pool.render(PngRender, request, *_get_png_params(request))
+        return self.pool.render(PngRender, request, *_get_png_params(request, self.js_profiles_path))
 
 
 class RenderJson(RenderBase):
@@ -162,7 +179,7 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        url, baseurl, wait_time, viewport, js_source, width, height = _get_png_params(request)
+        url, baseurl, wait_time, viewport, js_source, js_profile, width, height = _get_png_params(request, self.js_profiles_path)
 
         html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
         iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
@@ -171,7 +188,7 @@ class RenderJson(RenderBase):
         console = getarg(request, "console", defaults.SHOW_CONSOLE, type=int, range=(0, 1))
 
         return self.pool.render(JsonRender, request,
-                                url, baseurl, wait_time, viewport, js_source,
+                                url, baseurl, wait_time, viewport, js_source, js_profile,
                                 html, iframes, png, script, console,
                                 width, height)
 

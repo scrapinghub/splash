@@ -1,4 +1,4 @@
-import json, base64
+import os, json, base64
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
@@ -45,10 +45,12 @@ class WebpageRender(object):
 
     # ======= General request/response handling:
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, console=False):
+
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, js_profile=None, console=False):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
+        self.js_profile = js_profile
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
 
@@ -147,7 +149,15 @@ class WebpageRender(object):
         else:
             self.web_page.setViewportSize(size)
 
-    def _runJS(self, js_source):
+
+    def _loadJsLibs(self, frame, js_profile):
+        if js_profile:
+            for jsfile in os.listdir(js_profile):
+                if jsfile.endswith('.js'):
+                    with open(os.path.join(js_profile, jsfile)) as f:
+                        frame.evaluateJavaScript(f.read().decode('utf-8'))
+
+    def _runJS(self, js_source, js_profile):
         js_output = None
         js_console_output = None
         if js_source:
@@ -155,10 +165,12 @@ class WebpageRender(object):
             if self.console:
                 js_console = JavascriptConsole()
                 frame.addToJavaScriptWindowObject('console', js_console)
+            if js_profile:
+                self._loadJsLibs(frame, js_profile)
             ret = frame.evaluateJavaScript(js_source)
             js_output = bytes(ret.toString().toUtf8())
             if self.console:
-                js_console_output = [str(s) for s in js_console.messages]
+                js_console_output = [bytes(s.toUtf8()) for s in js_console.messages]
         return js_output, js_console_output
 
     def _frameToDict(self, frame, children=True, html=True):
@@ -181,7 +193,7 @@ class WebpageRender(object):
     def _prerender(self):
         if self.viewport == 'full':
             self._setFullViewport()
-        self.js_output, self.js_console_output = self._runJS(self.js_source)
+        self.js_output, self.js_console_output = self._runJS(self.js_source, self.js_profile)
 
     def log(self, text):
         if self.verbose:
@@ -195,11 +207,11 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None,
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, js_profile=None,
                         width=None, height=None):
         self.width = width
         self.height = height
-        super(PngRender, self).doRequest(url, baseurl, wait_time, viewport, js_source)
+        super(PngRender, self).doRequest(url, baseurl, wait_time, viewport, js_source, js_profile)
 
     def _render(self):
         return self._getPng(self.width, self.height)
@@ -207,14 +219,14 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None,
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, js_profile=None,
                         html=True, iframes=True, png=True, script=True, console=False,
                         width=None, height=None):
         self.width = width
         self.height = height
         self.include = {'html': html, 'png': png, 'iframes': iframes,
                         'script': script, 'console': console}
-        super(JsonRender, self).doRequest(url, baseurl, wait_time, viewport, js_source, console)
+        super(JsonRender, self).doRequest(url, baseurl, wait_time, viewport, js_source, js_profile, console)
 
     def _render(self):
         res = {}

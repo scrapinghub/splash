@@ -35,9 +35,11 @@ def _wait_for_port(portnum, delay=0.1, attempts=30):
 
 class SplashServer():
 
-    def __init__(self, logfile=None, proxy_profiles_path=None, portnum=None):
+    def __init__(self, logfile=None, proxy_profiles_path=None,
+                 js_profiles_path=None, portnum=None):
         self.logfile = logfile
         self.proxy_profiles_path = proxy_profiles_path
+        self.js_profiles_path = js_profiles_path
         self.portnum = portnum if portnum is not None else _ephemeral_port()
         self.tempdir = tempfile.mkdtemp()
 
@@ -49,6 +51,8 @@ class SplashServer():
             args += ['-f', self.logfile]
         if self.proxy_profiles_path:
             args += ['--proxy-profiles-path', self.proxy_profiles_path]
+        if self.js_profiles_path:
+            args += ['--js-profiles-path', self.js_profiles_path]
 
         self.proc = Popen(args, stderr=PIPE, env=get_testenv())
         self.proc.poll()
@@ -90,11 +94,16 @@ class TestServers():
             os.path.dirname(__file__),
             'proxy_profiles'
         )
+        self.js_profiles_path = os.path.join(
+            os.path.dirname(__file__),
+            'js_profiles'
+        )
 
     def __enter__(self):
         self.mockserver = MockServer()
         self.mockserver.__enter__()
-        self.splashserver = SplashServer(self.logfile, self.proxy_profiles_path)
+        self.splashserver = SplashServer(self.logfile, self.proxy_profiles_path,
+                                         self.js_profiles_path)
         self.splashserver.__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):
