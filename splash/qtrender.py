@@ -62,6 +62,7 @@ class WebpageRender(object):
             # viewport='full' can't be set if content is not loaded yet
             self._setViewportSize(self.viewport)
 
+        self.web_page.loadStarted.connect(self._loadStarted)
         if baseurl:
             self._baseUrl = QUrl(baseurl)
             request.setOriginatingObject(self.web_page.mainFrame())
@@ -96,17 +97,18 @@ class WebpageRender(object):
         self._reply.close()
         self._reply.deleteLater()
 
+    def _loadStarted(self):
+        self.log("_loadStarted %s" % id(self.splash_request))
+        self.web_page.loading = True
+
     def _loadFinished(self, ok):
-        self.log("_loadFinished %s" % id(self.splash_request))
-        if self.deferred.called:
-            # sometimes this callback is called multiple times
-            self.log("_loadFinished called multiple times")
-            return
+        self.log("_loadFinished %s ok:%s" % (id(self.splash_request), ok))
+        self.web_page.loading = False
         if ok:
             time_ms = int(self.wait_time * 1000)
             QTimer.singleShot(time_ms, self._loadFinishedOK)
         else:
-            self.deferred.errback(RenderError())
+            QTimer.singleShot(defaults.LOAD_FINISHED_DELAY, self._isReallyFinished)
 
     def _loadFinishedOK(self):
         self.log("_loadFinishedOK %s" % id(self.splash_request))
@@ -115,6 +117,11 @@ class WebpageRender(object):
             self.deferred.callback(self._render())
         except:
             self.deferred.errback()
+
+    def _isReallyFinished(self):
+        self.log("_isReallyFinished %s" % id(self.splash_request))
+        if not self.web_page.loading:
+            self.deferred.errback(RenderError())
 
     # ======= Rendering methods that subclasses can use:
 
