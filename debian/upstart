@@ -14,7 +14,7 @@ script
     cachepath=${SPLASH_CACHEPATH:-/var/cache/splash}
     cachesize=${SPLASH_CACHESIZE:-102400}  # 100GB
 
-    chown proxy:proxy $logdir $proxyprofilespath $cachepath
+    chown proxy:proxy $logdir $proxyprofilespath $cachepath $jsprofilespath
 
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
