@@ -9,11 +9,12 @@ script
     [ -r /etc/default/splash ] && . /etc/default/splash
     logdir=${SPLASH_LOGDIR:-/var/log/splash}
     proxyprofilespath=${SPLASH_PROXYPROFILESPATH:-/etc/splash/proxy-profiles}
+    jsprofilespath=${SPLASH_JSPROFILESPATH:-/etc/splash/js-profiles}
     maxrss=${SPLASH_MAXRSS:-$(awk '/MemTotal/{print $2*0.75/1024}' /proc/meminfo)}
     cachepath=${SPLASH_CACHEPATH:-/var/cache/splash}
     cachesize=${SPLASH_CACHESIZE:-102400}  # 100GB
 
-    chown proxy:proxy $logdir $proxyprofilespath $cachepath
+    chown proxy:proxy $logdir $proxyprofilespath $cachepath $jsprofilespath
 
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
@@ -23,6 +24,7 @@ script
             --maxrss $maxrss \
             --logfile $logdir/splash.log \
             --proxy-profiles-path=$proxyprofilespath \
+            --js-profiles-path=$jsprofilespath \
             --cache --cache-path=$cachepath --cache-size=$cachesize \
             --manhole \
             >$logdir/splash.out 2>$logdir/splash.err
