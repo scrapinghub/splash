@@ -102,9 +102,16 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
         get_splash_proxy_factory=get_splash_proxy_factory,
         js_profiles_path=js_profiles_path
     )
+    
+    # HTTP API
     root = Root(pool)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
+
+    # HTTP Proxy
+    from splash.proxy_server import SplashProxyFactory
+    splash_proxy_factory = SplashProxyFactory(pool)
+    reactor.listenTCP(8051, splash_proxy_factory)
 
 
 def monitor_maxrss(maxrss):
