@@ -38,6 +38,8 @@ def parse_opts():
         help="maximum cache size in MB (default: %default)")
     op.add_option("--manhole", action="store_true",
         help="enable manhole server")
+    op.add_option("--enable-proxy", action="store_true",
+        help="enable proxy server")
 
     return op.parse_args()
 
@@ -86,7 +88,7 @@ def manhole_server(portnum=None, username=None, password=None):
 
 
 def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
-                  js_profiles_path=None):
+                  js_profiles_path=None, enable_proxy=False):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -109,9 +111,10 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
     reactor.listenTCP(portnum, factory)
 
     # HTTP Proxy
-    from splash.proxy_server import SplashProxyFactory
-    splash_proxy_factory = SplashProxyFactory(pool)
-    reactor.listenTCP(8051, splash_proxy_factory)
+    if enable_proxy:
+        from splash.proxy_server import SplashProxyFactory
+        splash_proxy_factory = SplashProxyFactory(pool)
+        reactor.listenTCP(8051, splash_proxy_factory)
 
 
 def monitor_maxrss(maxrss):
@@ -129,14 +132,15 @@ def monitor_maxrss(maxrss):
 
 def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
-                          proxy_profiles_path=None, js_profiles_path=None):
+                          proxy_profiles_path=None, js_profiles_path=None,
+                          enable_proxy=False):
     from splash import network_manager
     manager = network_manager.FilteringQNetworkAccessManager()
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
-                         js_profiles_path)
+                         js_profiles_path, enable_proxy)
 
 
 def _default_cache(cache_enabled, cache_path, cache_size):
@@ -193,7 +197,8 @@ def main():
                   cache_path=opts.cache_path,
                   cache_size=opts.cache_size,
                   proxy_profiles_path=opts.proxy_profiles_path,
-                  js_profiles_path=opts.js_profiles_path)
+                  js_profiles_path=opts.js_profiles_path,
+                  enable_proxy=opts.enable_proxy)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor
