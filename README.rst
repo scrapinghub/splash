@@ -364,6 +364,80 @@ add ``proxy=mywebsite`` parameter to request::
 
     curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite
 
+Splash as a Proxy
+=================
+
+Splash supports working as HTTP proxy. In this mode all the HTTP requests received
+will be proxied and the response will be rendered based in the following HTTP headers:
+
+X-Splash-render : string : required
+  The render mode to use, valid modes are: html, png and json. These modes have
+  the same behavior as the endpoints: render.html, render.png and render.json respectively.
+
+X-Splash-js_source : string
+  Allow to execute javascript code same as POST js code to render.html
+
+X-Splash-timeout : string
+  Same as 'timeout' argument for render.html
+
+X-Splash-wait : string
+  Same as 'wait' argument for render.html
+
+X-Splash-proxy : string
+  Same as 'proxy' argument for render.html
+
+X-Splash-allowed_domains : string
+  Same as 'allowed_domains' argument for render.html
+
+X-Splash-viewport : string
+  Same as 'viewport' argument for render.html
+
+X-Splash-width : string
+  Same as 'width' argument for render.png
+
+X-Splash-height : string
+  Same as 'height' argument for render.png
+
+X-Splash-html : string
+  Same as 'html' argument for render.json
+
+X-Splash-png : string
+  Same as 'png' argument for render.json
+
+X-Splash-iframes : string
+  Same as 'iframes' argument for render.json
+
+X-Splash-script : string
+  Same as 'script' argument for render.json
+
+X-Splash-console : string
+  Same as 'console' argument for render.json
+
+
+To enable splash proxy mode, run splash server with
+``--enable proxy server`` option::
+
+    python -m splash.server --enable proxy server
+
+
+Curl examples::
+
+    # Display json stats
+    curl -x localhost:8051 -H "X-Splash-render: json" \
+        http://www.mywebsite.com
+
+    # Execute JS and return output
+    curl -x localhost:8051 \
+        -H "X-Splash-render: json" \
+        -H "X-Splash-script: 1" \
+        -H "X-Splash-exec-javascript: function test(x){ return x; } test('abc');" \
+        http://www.mywebsite.com
+
+    # Send POST request to site and save screenshot of results
+    curl -X POST -d '{"key":"val"}' -x localhost:8051 -o screenshot.png \
+        -H "X-Splash-render: png" \
+        http://www.mywebsite.com
+
 
 Functional Tests
 ================
