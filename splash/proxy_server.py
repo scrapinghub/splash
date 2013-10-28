@@ -1,8 +1,7 @@
 from twisted.web import http
-from twisted.web import resource
 from twisted.web.error import UnsupportedMethod
 from twisted.python.compat import intToBytes
-from twisted.python import log, _reflectpy3 as reflect, failure
+from twisted.python import log, failure
 from resources import RenderHtml, RenderPng, RenderJson
 
 
@@ -35,6 +34,7 @@ class SplashProxyRequest(http.Request):
 
     def process(self):
         try:
+            
             # load resource class
             resource_name = self._get_header('render')
             resource_cls = SPLASH_RESOURCES.get(resource_name)
@@ -49,6 +49,7 @@ class SplashProxyRequest(http.Request):
             if resource_name == 'png':
                 self._set_header_as_params(PNG_PARAMS)
             elif resource_name == 'json':
+                self._set_header_as_params(PNG_PARAMS)
                 self._set_header_as_params(JSON_PARAMS)
 
             resource = resource_cls(self.pool, True)

@@ -4,19 +4,15 @@ from PIL import Image
 from splash import defaults
 from splash.tests import ts
 
-class _BaseRenderTest(unittest.TestCase):
 
+class DirectRequestHandler:
+    
     render_format = "html"
-
-    def tearDown(self):
-        # we must consume splash output because subprocess.PIPE is used
-        ts.print_output()
-        super(_BaseRenderTest, self).tearDown()
-
+    
     @property
     def host(self):
         return "localhost:%s" % ts.splashserver.portnum
-
+    
     def request(self, query, render_format=None):
         render_format = render_format or self.render_format
         if isinstance(query, dict):
@@ -34,6 +30,28 @@ class _BaseRenderTest(unittest.TestCase):
         else:
             url = "http://%s/render.%s?%s" % (self.host, render_format, query)
             return requests.post(url, data=payload, headers=headers)
+
+
+class _BaseRenderTest(unittest.TestCase):
+
+    render_format = "html"
+    request_handler = DirectRequestHandler
+
+    def tearDown(self):
+        # we must consume splash output because subprocess.PIPE is used
+        ts.print_output()
+        super(_BaseRenderTest, self).tearDown()
+        
+    def _get_handler(self):
+        handler = self.request_handler()
+        handler.render_format = self.render_format
+        return handler
+
+    def request(self, query, render_format=None):
+        return self._get_handler().request(query, render_format)
+
+    def post(self, query, render_format=None, payload=None, headers=None):
+        return self._get_handler().post(query, render_format, payload, headers)
 
 
 class _RenderTest(_BaseRenderTest):
