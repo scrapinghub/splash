@@ -8,11 +8,12 @@ from resources import RenderHtml, RenderPng, RenderJson
 
 NOT_DONE_YET = 1
 SPLASH_HEADER_PREFIX = 'X-Splash-'
-SPLASH_RENDERS = {'html': RenderHtml,
-                  'png': RenderPng,
-                  'json': RenderJson,
-                  }
-HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed_domains', 'viewport', 'js']
+SPLASH_RESOURCES = {'html': RenderHtml,
+                    'png': RenderPng,
+                    'json': RenderJson,
+                    }
+HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed_domains',
+               'viewport', 'js', 'js_source']
 PNG_PARAMS = ['width', 'height']
 JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 
@@ -23,10 +24,8 @@ class SplashProxyRequest(http.Request):
         http.Request.__init__(self, channel, queued)
         self.pool = channel.pool
 
-
     def _get_header(self, name):
         return self.getHeader(SPLASH_HEADER_PREFIX + name)
-
 
     def _set_header_as_params(self, param_list):
         for parameter in param_list:
@@ -34,77 +33,62 @@ class SplashProxyRequest(http.Request):
             if value is not None:
                 self.args[parameter] = [value]
 
-
     def process(self):
         try:
-            # load render class
-            render_name = self._get_header('render')
-            rendercls = SPLASH_RENDERS.get(render_name)
-            if rendercls is None:
-                self.invalidParameters('render')
+            # load resource class
+            resource_name = self._get_header('render')
+            resource_cls = SPLASH_RESOURCES.get(resource_name)
+            if resource_cls is None:
+                self.invalidParameter('render')
                 return
 
             # setup request parameters
             self.args['url'] = [self.uri]
             self._set_header_as_params(HTML_PARAMS)
 
-            if render_name == 'png':
+            if resource_name == 'png':
                 self._set_header_as_params(PNG_PARAMS)
-            elif render_name == 'json':
+            elif resource_name == 'json':
                 self._set_header_as_params(JSON_PARAMS)
 
-            render = rendercls(self.pool)
-            self.render(render)
-        except:
+            resource = resource_cls(self.pool, True)
+            self.render(resource)
+
+        except Exception, e:
+            print e
             self.processingFailed(failure.Failure())
 
-
-    def render(self, resrc):
+    def render(self, resource):
         try:
-            body = resrc.render(self)
+            body = resource.render(self)
         except UnsupportedMethod as e:
-            epage = resource.ErrorPage(http.NOT_ALLOWED, "Method Not Allowed")
-            body = epage.render(self)
+            return self.methodNotAllowed()
 
         if body == NOT_DONE_YET:
             return
-        if not isinstance(body, bytes):
-            body = resource.ErrorPage(
-                http.INTERNAL_SERVER_ERROR,
-                "Request did not return bytes",
-                "Request: " + html.PRE(reflect.safe_repr(self)) + "<br />" +
-                "Resource: " + html.PRE(reflect.safe_repr(resrc)) + "<br />" +
-                "Value: " + html.PRE(reflect.safe_repr(body))).render(self)
 
-        self.setHeader(b'content-length',
-                       intToBytes(len(body)))
-        self.write(body)
+        # errors handled by resources don't return a body, they write
+        # to the request directly.
+        if body:
+            self.setHeader(b'content-length',
+                           intToBytes(len(body)))
+            self.write(body)
         self.finish()
-
 
     def processingFailed(self, reason):
-        log.err(reason)
-        body = (b"<html><head><title>Processing Failed</title></head><body>"
-                b"<b>Processing Failed</b></body></html>")
-        self.setResponseCode(http.INTERNAL_SERVER_ERROR)
-        self.setHeader(b'content-type', b"text/html")
-        self.setHeader(b'content-length', intToBytes(len(body)))
-        self.write(body)
+        self.setResponseCode(500)
+        self.write('Error handling request')
         self.finish()
-        return reason
 
-
-    def invalidParameters(self, name):
-        reason = SPLASH_HEADER_PREFIX + '%s header is invalid or missing' % name
-        log.err(reason)
-        body = (b"<html><head><title>Bad Request/title></head><body>"
-                b"<b>%s</b></body></html>" % reason)
-        self.setResponseCode(http.BAD_REQUEST)
-        self.setHeader(b'content-type', b"text/html")
-        self.setHeader(b'content-length', intToBytes(len(body)))
-        self.write(body)
+    def methodNotAllowed(self):
+        self.setResponseCode(405)
+        self.write('Method Not Allowed')
         self.finish()
-        return reason
+
+    def invalidParameter(self, name):
+        self.setResponseCode(400)
+        self.write('%s header is invalid or missing' % (SPLASH_HEADER_PREFIX + name))
+        self.finish()
 
 
 class SplashProxy(http.HTTPChannel):
