@@ -2,7 +2,7 @@ import os, json, base64
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
-from PyQt4.QtNetwork import QNetworkRequest
+from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
@@ -69,7 +69,15 @@ class WebpageRender(object):
             self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
-            self.web_page.mainFrame().load(request)
+            if self.splash_request.method == 'POST':
+                headers = self.splash_request.getAllHeaders()
+                for header_name, header_value in headers.items():
+                    request.setRawHeader(header_name, header_value)
+                self.web_page.mainFrame().load(request,
+                                               QNetworkAccessManager.PostOperation,
+                                               self.splash_request.content.getvalue())
+            else:
+                self.web_page.mainFrame().load(request)
 
     def close(self):
         self.web_view.stop()

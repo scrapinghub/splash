@@ -1,4 +1,4 @@
-import unittest, requests, json, base64, urllib, urlparse
+import unittest, requests, json, base64, urllib, urlparse, simplejson
 from cStringIO import StringIO
 from PIL import Image
 from splash import defaults
@@ -40,7 +40,19 @@ class ProxyRequestHandler:
         return requests.get(url, headers=headers, proxies=self.proxies)
 
     def post(self, query, render_format=None, payload=None, headers=None):
-        raise NotImplementedError
+        render_format = render_format or self.render_format
+        headers = headers if headers is not None else {}
+        headers[self._get_header('render')] = render_format
+        if not isinstance(query, dict):
+            query = urlparse.parse_qs(query)
+
+        url = self._get_val(query.get('url'))
+        for k, v in query.items():
+            if k != 'url':
+                headers[self._get_header(k)] = self._get_val(v)
+
+        return requests.post(url, data=payload, headers=headers,
+                             proxies=self.proxies)
 
 
 class ProxyRenderHtmlTest(test_render.RenderHtmlTest):
@@ -120,3 +132,37 @@ class ProxyRunJsTest(test_render.RunJsTest):
                  'script': 1}
         query.update(params or {})
         return self.request(query, render_format=render_format)
+
+
+class ProxyPostTest(test_render._BaseRenderTest):
+
+    request_handler = ProxyRequestHandler
+
+    def test_post_request(self):
+        r = self.post("url=http://localhost:8998/postrequest")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue("From POST" in r.text)
+
+    def test_post_headers(self):
+        headers = {'X-Custom-Header1': 'some-val1',
+                   'X-Custom-Header2': 'some-val2',
+                   }
+        r = self.post("url=http://localhost:8998/postrequest",headers=headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue("'x-custom-header1': 'some-val1'" in r.text)
+        self.assertTrue("'x-custom-header2': 'some-val2'" in r.text)
+
+    def test_post_payload(self):
+        # simply post body
+        payload = {'some': 'data'}
+        json_payload = simplejson.dumps(payload)
+        r = self.post("url=http://localhost:8998/postrequest",payload=json_payload)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(json_payload in r.text)
+
+        # form encoded fields
+        payload = {'form_field1': 'value1',
+                   'form_field2': 'value2',}
+        r = self.post("url=http://localhost:8998/postrequest",payload=payload)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue('form_field2=value2&amp;form_field1=value1' in r.text)
