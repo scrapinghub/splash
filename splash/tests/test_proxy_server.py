@@ -14,9 +14,7 @@ class ProxyRequestHandler:
 
     @property
     def proxies(self):
-        return {'http': 'localhost:%d' % ts.splashserver.proxy_portnum,
-                'https': 'localhost:%d' % ts.splashserver.proxy_portnum,
-                }
+        return {'http': 'localhost:%d' % ts.splashserver.proxy_portnum}
 
     def _get_val(self, v):
         if isinstance(v, list):
