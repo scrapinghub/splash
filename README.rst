@@ -414,10 +414,11 @@ X-Splash-console : string
   Same as 'console' argument for render.json
 
 
-To enable splash proxy mode, run splash server with
-``--enable proxy server`` option::
+Splash proxy mode is enabled by default, to disable it
+run splash server with ``--disable-proxy server``
+option::
 
-    python -m splash.server --enable proxy server
+    python -m splash.server --disable-proxy server
 
 
 Curl examples::

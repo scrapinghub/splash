@@ -55,7 +55,6 @@ class SplashServer():
             args += ['--proxy-profiles-path', self.proxy_profiles_path]
         if self.js_profiles_path:
             args += ['--js-profiles-path', self.js_profiles_path]
-        args += ['--enable-proxy']
         if self.proxy_portnum:
             args += ['--proxy-portnum', str(self.proxy_portnum)]
 
