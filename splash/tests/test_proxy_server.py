@@ -5,7 +5,7 @@ from splash import defaults
 from splash.tests import ts, test_render
 
 
-SPLASH_HEADER_PREFIX = 'X-Splash-'
+SPLASH_HEADER_PREFIX = 'x-splash-'
 
 
 class ProxyRequestHandler:
@@ -147,22 +147,23 @@ class ProxyPostTest(test_render._BaseRenderTest):
         headers = {'X-Custom-Header1': 'some-val1',
                    'X-Custom-Header2': 'some-val2',
                    }
-        r = self.post("url=http://localhost:8998/postrequest",headers=headers)
+        r = self.post("url=http://localhost:8998/postrequest", headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertTrue("'x-custom-header1': 'some-val1'" in r.text)
         self.assertTrue("'x-custom-header2': 'some-val2'" in r.text)
+        self.assertTrue("x-splash" not in r.text)
 
     def test_post_payload(self):
         # simply post body
         payload = {'some': 'data'}
         json_payload = simplejson.dumps(payload)
-        r = self.post("url=http://localhost:8998/postrequest",payload=json_payload)
+        r = self.post("url=http://localhost:8998/postrequest", payload=json_payload)
         self.assertEqual(r.status_code, 200)
         self.assertTrue(json_payload in r.text)
 
         # form encoded fields
         payload = {'form_field1': 'value1',
-                   'form_field2': 'value2',}
-        r = self.post("url=http://localhost:8998/postrequest",payload=payload)
+                   'form_field2': 'value2', }
+        r = self.post("url=http://localhost:8998/postrequest", payload=payload)
         self.assertEqual(r.status_code, 200)
         self.assertTrue('form_field2=value2&amp;form_field1=value1' in r.text)

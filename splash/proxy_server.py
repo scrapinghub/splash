@@ -6,7 +6,7 @@ from resources import RenderHtml, RenderPng, RenderJson
 
 
 NOT_DONE_YET = 1
-SPLASH_HEADER_PREFIX = 'X-Splash-'
+SPLASH_HEADER_PREFIX = 'x-splash-'
 SPLASH_RESOURCES = {'html': RenderHtml,
                     'png': RenderPng,
                     'json': RenderJson,
@@ -32,9 +32,15 @@ class SplashProxyRequest(http.Request):
             if value is not None:
                 self.args[parameter] = [value]
 
+    def _remove_splash_headers(self):
+        headers = self.getAllHeaders()
+        for header_name, header_value in headers.items():
+            if SPLASH_HEADER_PREFIX in header_name.lower():
+                self.requestHeaders.removeHeader(header_name)
+
     def process(self):
         try:
-            
+
             # load resource class
             resource_name = self._get_header('render')
             resource_cls = SPLASH_RESOURCES.get(resource_name)
@@ -51,6 +57,9 @@ class SplashProxyRequest(http.Request):
             elif resource_name == 'json':
                 self._set_header_as_params(PNG_PARAMS)
                 self._set_header_as_params(JSON_PARAMS)
+
+            # make sure no splash headers are sent to the target
+            self._remove_splash_headers()
 
             resource = resource_cls(self.pool, True)
             self.render(resource)
