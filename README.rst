@@ -415,10 +415,10 @@ X-Splash-console : string
 
 
 Splash proxy mode is enabled by default, to disable it
-run splash server with ``--disable-proxy server``
+run splash server with ``--disable-proxy``
 option::
 
-    python -m splash.server --disable-proxy server
+    python -m splash.server --disable-proxy
 
 
 Curl examples::
