@@ -23,7 +23,7 @@ class ProxyRequestHandler:
             return v
 
     def _get_header(self, name):
-        return SPLASH_HEADER_PREFIX + name
+        return SPLASH_HEADER_PREFIX + name.replace('_', '-')
 
     def request(self, query, render_format=None):
         render_format = render_format or self.render_format

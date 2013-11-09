@@ -374,7 +374,7 @@ X-Splash-render : string : required
   The render mode to use, valid modes are: html, png and json. These modes have
   the same behavior as the endpoints: render.html, render.png and render.json respectively.
 
-X-Splash-js_source : string
+X-Splash-js-source : string
   Allow to execute javascript code same as POST js code to render.html
 
 X-Splash-timeout : string
@@ -386,7 +386,7 @@ X-Splash-wait : string
 X-Splash-proxy : string
   Same as 'proxy' argument for render.html
 
-X-Splash-allowed_domains : string
+X-Splash-allowed-domains : string
   Same as 'allowed_domains' argument for render.html
 
 X-Splash-viewport : string

@@ -11,8 +11,10 @@ SPLASH_RESOURCES = {'html': RenderHtml,
                     'png': RenderPng,
                     'json': RenderJson,
                     }
-HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed_domains',
-               'viewport', 'js', 'js_source']
+
+# Note the http header use '-' instead of '_' for the parameter names
+HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
+               'viewport', 'js', 'js-source']
 PNG_PARAMS = ['width', 'height']
 JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 
@@ -30,6 +32,8 @@ class SplashProxyRequest(http.Request):
         for parameter in param_list:
             value = self._get_header(parameter)
             if value is not None:
+                # normal splash parameter use underscore instead of dash
+                parameter = parameter.replace('-', '_')
                 self.args[parameter] = [value]
 
     def _remove_splash_headers(self):
