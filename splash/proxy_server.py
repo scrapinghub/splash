@@ -1,6 +1,5 @@
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod
-from twisted.python.compat import intToBytes
 from twisted.python import log, failure
 from resources import RenderHtml, RenderPng, RenderJson
 
@@ -84,8 +83,8 @@ class SplashProxyRequest(http.Request):
         # errors handled by resources don't return a body, they write
         # to the request directly.
         if body:
-            self.setHeader(b'content-length',
-                           intToBytes(len(body)))
+            self.setHeader('content-length',
+                           str(len(body)))
             self.write(body)
         self.finish()
 
