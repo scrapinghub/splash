@@ -58,73 +58,28 @@ class ProxyRequestHandler:
 class ProxyRenderHtmlTest(test_render.RenderHtmlTest):
 
     request_handler = ProxyRequestHandler
-
-    def test_missing_url(self):
-        # doesn't make sense to test when using splash as a proxy
-        pass
-
-    def test_ok_https(self):
-        # no proxy https support
-        pass
+    https_supported = False
+    proxy_test = True
 
 
 class ProxyRenderPngTest(test_render.RenderPngTest):
 
     request_handler = ProxyRequestHandler
-
-    def test_missing_url(self):
-        # doesn't make sense to test when using splash as a proxy
-        pass
-
-    def test_ok_https(self):
-        # no proxy https support
-        pass
+    https_supported = False
+    proxy_test = True
 
 
 class ProxyRenderJsonTest(test_render.RenderJsonTest):
 
     request_handler = ProxyRequestHandler
-
-    def test_missing_url(self):
-        # doesn't make sense to test when using splash as a proxy
-        pass
-
-    def test_jsrender_https_html(self):
-        # no proxy https support
-        pass
-
-    def test_jsrender_https_png(self):
-        # no proxy https support
-        pass
-
-    def test_fields_all(self):
-        # no proxy https support
-        pass
-
-    def test_fields_no_html(self):
-        # no proxy https support
-        pass
-
-    def test_fields_no_screenshots(self):
-        # no proxy https support
-        pass
-
-    def test_fields_no_iframes(self):
-        # no proxy https support
-        pass
-
-    def test_fields_default(self):
-        # no proxy https support
-        pass
+    https_supported = False
+    proxy_test = True
 
 
 class ProxyRunJsTest(test_render.RunJsTest):
 
     request_handler = ProxyRequestHandler
-
-    def test_js_incorrect_content_type(self):
-        # check not done by the proxy.
-        pass
+    proxy_test = True
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
         query = {'url': 'http://localhost:8998/jsrender',
