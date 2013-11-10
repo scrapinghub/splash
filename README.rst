@@ -431,7 +431,7 @@ Curl examples::
     curl -x localhost:8051 \
         -H "X-Splash-render: json" \
         -H "X-Splash-script: 1" \
-        -H "X-Splash-exec-javascript: function test(x){ return x; } test('abc');" \
+        -H "X-Splash-js-source: function test(x){ return x; } test('abc');" \
         http://www.mywebsite.com
 
     # Send POST request to site and save screenshot of results
