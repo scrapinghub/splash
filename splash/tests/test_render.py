@@ -3,15 +3,34 @@ from cStringIO import StringIO
 from PIL import Image
 from splash import defaults
 from splash.tests import ts
+from functools import wraps
 
-class _BaseRenderTest(unittest.TestCase):
+
+def https_only(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            if self.__class__.https_supported:
+                func(self, *args, **kwargs)
+        except AttributeError:
+            func(self, *args, **kwargs)
+    return wrapper
+
+
+def skip_proxy(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            if self.__class__.proxy_test is False:
+                func(self, *args, **kwargs)
+        except AttributeError:
+            func(self, *args, **kwargs)
+    return wrapper
+
+
+class DirectRequestHandler:
 
     render_format = "html"
-
-    def tearDown(self):
-        # we must consume splash output because subprocess.PIPE is used
-        ts.print_output()
-        super(_BaseRenderTest, self).tearDown()
 
     @property
     def host(self):
@@ -36,6 +55,28 @@ class _BaseRenderTest(unittest.TestCase):
             return requests.post(url, data=payload, headers=headers)
 
 
+class _BaseRenderTest(unittest.TestCase):
+
+    render_format = "html"
+    request_handler = DirectRequestHandler
+
+    def tearDown(self):
+        # we must consume splash output because subprocess.PIPE is used
+        ts.print_output()
+        super(_BaseRenderTest, self).tearDown()
+
+    def _get_handler(self):
+        handler = self.request_handler()
+        handler.render_format = self.render_format
+        return handler
+
+    def request(self, query, render_format=None):
+        return self._get_handler().request(query, render_format)
+
+    def post(self, query, render_format=None, payload=None, headers=None):
+        return self._get_handler().post(query, render_format, payload, headers)
+
+
 class _RenderTest(_BaseRenderTest):
 
     def test_render_error(self):
@@ -50,6 +91,7 @@ class _RenderTest(_BaseRenderTest):
         r = self.request("url=http://localhost:8998/delay?n=10&timeout=999")
         self.assertEqual(r.status_code, 400)
 
+    @skip_proxy
     def test_missing_url(self):
         r = self.request("")
         self.assertEqual(r.status_code, 400)
@@ -85,6 +127,7 @@ class RenderHtmlTest(_RenderTest):
     def test_ok(self):
         self._test_ok("http://localhost:8998/jsrender")
 
+    @https_only
     def test_ok_https(self):
         self._test_ok("https://localhost:8999/jsrender")
 
@@ -130,6 +173,7 @@ class RenderPngTest(_RenderTest):
     def test_ok(self):
         self._test_ok("http://localhost:8998/jsrender")
 
+    @https_only
     def test_ok_https(self):
         self._test_ok("https://localhost:8999/jsrender")
 
@@ -180,11 +224,13 @@ class RenderPngTest(_RenderTest):
 
 
 class RenderJsonTest(_RenderTest):
+
     render_format = 'json'
 
     def test_jsrender_html(self):
         self.assertSameHtml('http://localhost:8998/jsrender')
 
+    @https_only
     def test_jsrender_https_html(self):
         self.assertSameHtml('https://localhost:8999/jsrender')
 
@@ -204,6 +250,7 @@ class RenderJsonTest(_RenderTest):
     def test_jsrender_png(self):
         self.assertSamePng('http://localhost:8998/jsrender')
 
+    @https_only
     def test_jsrender_https_png(self):
         self.assertSamePng('https://localhost:8999/jsrender')
 
@@ -228,6 +275,7 @@ class RenderJsonTest(_RenderTest):
         self.assertSamePng('http://localhost:8998/jsrender', {'wait': 0.1, 'viewport': 'full'})
         self.assertSamePng('http://localhost:8998/tall', {'wait': 0.1, 'viewport': 'full'})
 
+    @https_only
     def test_fields_all(self):
         query = {'url': "https://localhost:8999/iframes",
                  "html": 1, "png": 1, "iframes": 1}
@@ -243,6 +291,7 @@ class RenderJsonTest(_RenderTest):
             # no screenshots for individual frames
             self.assertFieldsNotInResponse(frame, ['png'])
 
+    @https_only
     def test_fields_no_html(self):
         # turn off returning HTML
         query = {'url': "https://localhost:8999/iframes",
@@ -261,6 +310,7 @@ class RenderJsonTest(_RenderTest):
                                                 "childFrames", "geometry", "title"])
             self.assertFieldsNotInResponse(frame, ['html', 'png'])
 
+    @https_only
     def test_fields_no_screenshots(self):
         # turn off screenshots
         query = {'url': "https://localhost:8999/iframes",
@@ -270,6 +320,7 @@ class RenderJsonTest(_RenderTest):
                                           "geometry", "title", "html"])
         self.assertFieldsNotInResponse(res, ["png"])
 
+    @https_only
     def test_fields_no_iframes(self):
         query = {'url': "https://localhost:8999/iframes",
                  'html': 1, 'png': 1, 'iframes': 0}
@@ -278,6 +329,7 @@ class RenderJsonTest(_RenderTest):
                                           "title", "html", "png"])
         self.assertFieldsNotInResponse(res, ["childFrames"])
 
+    @https_only
     def test_fields_default(self):
         query = {'url': "https://localhost:8999/iframes"}
         res = self.request(query).json()
@@ -424,6 +476,7 @@ test('Changed');"""
         self.assertEqual(r['script'], u'abc\xae')
         self.assertEqual(r['console'], [u'abc\xae'])
 
+    @skip_proxy
     def test_js_incorrect_content_type(self):
         js_source = "function test(x){ return x; } test('abc');"
         headers = {'content-type': 'text/plain'}

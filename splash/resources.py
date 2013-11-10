@@ -14,10 +14,11 @@ class RenderBase(Resource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    def __init__(self, pool):
+    def __init__(self, pool, is_proxy_request=False):
         Resource.__init__(self)
         self.pool = pool
         self.js_profiles_path = self.pool.js_profiles_path
+        self.is_proxy_request = is_proxy_request
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
@@ -36,12 +37,15 @@ class RenderBase(Resource):
         return NOT_DONE_YET
 
     def render_POST(self, request):
-        content_type = request.getHeader('content-type')
-        if content_type == 'application/javascript':
-            return self.render_GET(request)
-        else:
-            request.setResponseCode(415)
-            request.write("Request content-type not supported\n")
+        # this check is required only in request not coming from the splash proxy service.
+        if not self.is_proxy_request:
+            content_type = request.getHeader('content-type')
+            if content_type != 'application/javascript':
+                request.setResponseCode(415)
+                request.write("Request content-type not supported\n")
+                return
+
+        return self.render_GET(request)
 
     def render(self, request):
         try:
@@ -119,6 +123,10 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
 
 def _get_javascript_params(request, js_profiles_path):
     js_profile = _check_js_profile(request, js_profiles_path, getarg(request, 'js', None))
+    js_source = getarg(request, 'js_source', None)
+    if js_source is not None:
+        return js_source, js_profile
+    
     if request.method == 'POST':
         return request.content.getvalue(), js_profile
     else:

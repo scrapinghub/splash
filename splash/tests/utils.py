@@ -36,11 +36,13 @@ def _wait_for_port(portnum, delay=0.1, attempts=30):
 class SplashServer():
 
     def __init__(self, logfile=None, proxy_profiles_path=None,
-                 js_profiles_path=None, portnum=None):
+                 js_profiles_path=None, portnum=None,
+                 proxy_portnum=None):
         self.logfile = logfile
         self.proxy_profiles_path = proxy_profiles_path
         self.js_profiles_path = js_profiles_path
         self.portnum = portnum if portnum is not None else _ephemeral_port()
+        self.proxy_portnum = proxy_portnum if proxy_portnum is not None else _ephemeral_port()
         self.tempdir = tempfile.mkdtemp()
 
     def __enter__(self):
@@ -53,6 +55,8 @@ class SplashServer():
             args += ['--proxy-profiles-path', self.proxy_profiles_path]
         if self.js_profiles_path:
             args += ['--js-profiles-path', self.js_profiles_path]
+        if self.proxy_portnum:
+            args += ['--proxy-portnum', str(self.proxy_portnum)]
 
         self.proc = Popen(args, stderr=PIPE, env=get_testenv())
         self.proc.poll()

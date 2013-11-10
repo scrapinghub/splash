@@ -238,6 +238,26 @@ window.onload = function(){
             return "document.write(' OTHER_DOMAIN ');"
 
 
+class PostResource(Resource):
+
+    def render_POST(self, request):
+        headers = request.getAllHeaders()
+        payload = request.content.getvalue() if request.content is not None else ''
+        return """
+<html>
+<body>
+<p id="p1">From POST</p>
+<p id="headers">
+%s
+</p>
+<p id="payload">
+%s
+</p>
+</body>
+</html>
+""" % (headers, payload)
+
+
 class Root(Resource):
 
     def __init__(self):
@@ -252,6 +272,7 @@ class Root(Resource):
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("iframes", IframeResource())
+        self.putChild("postrequest", PostResource())
 
 
 def ssl_factory():
