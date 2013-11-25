@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import re
 from PyQt4.QtCore import QUrl
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkProxyQuery
+from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkProxyQuery, QNetworkReply
 from PyQt4.QtWebKit import QWebFrame
 from splash.utils import getarg
 from twisted.python import log
@@ -10,30 +10,30 @@ from twisted.python import log
 
 # See: http://pyqt.sourceforge.net/Docs/PyQt4/qnetworkreply.html#NetworkError-enum
 REQUEST_ERRORS = {
-    0 : 'no error condition. Note: When the HTTP protocol returns a redirect no error will be reported. You can check if there is a redirect with the QNetworkRequest::RedirectionTargetAttribute attribute.',
-    1 : 'the remote server refused the connection (the server is not accepting requests)',
-    2 : 'the remote server closed the connection prematurely, before the entire reply was received and processed',
-    3 : 'the remote host name was not found (invalid hostname)',
-    4 : 'the connection to the remote server timed out',
-    5 : 'the operation was canceled via calls to abort() or close() before it was finished.',
-    6 : 'the SSL/TLS handshake failed and the encrypted channel could not be established. The sslErrors() signal should have been emitted.',
-    7 : 'the connection was broken due to disconnection from the network, however the system has initiated roaming to another access point. The request should be resubmitted and will be processed as soon as the connection is re-established.',
-    101 : 'the connection to the proxy server was refused (the proxy server is not accepting requests)',
-    102 : 'the proxy server closed the connection prematurely, before the entire reply was received and processed',
-    103 : 'the proxy host name was not found (invalid proxy hostname)',
-    104 : 'the connection to the proxy timed out or the proxy did not reply in time to the request sent',
-    105 : 'the proxy requires authentication in order to honour the request but did not accept any credentials offered (if any)',
-    201 : 'the access to the remote content was denied (similar to HTTP error 401)',
-    202 : 'the operation requested on the remote content is not permitted',
-    203 : 'the remote content was not found at the server (similar to HTTP error 404)',
-    204 : 'the remote server requires authentication to serve the content but the credentials provided were not accepted (if any)',
-    205 : 'the request needed to be sent again, but this failed for example because the upload data could not be read a second time.',
-    301 : 'the Network Access API cannot honor the request because the protocol is not known',
-    302 : 'the requested operation is invalid for this protocol',
-    99 : 'an unknown network-related error was detected',
-    199 : 'an unknown proxy-related error was detected',
-    299 : 'an unknown error related to the remote content was detected',
-    399 : 'a breakdown in protocol was detected (parsing error, invalid or unexpected responses, etc.)',
+    QNetworkReply.NoError : 'no error condition. Note: When the HTTP protocol returns a redirect no error will be reported. You can check if there is a redirect with the QNetworkRequest::RedirectionTargetAttribute attribute.',
+    QNetworkReply.ConnectionRefusedError : 'the remote server refused the connection (the server is not accepting requests)',
+    QNetworkReply.RemoteHostClosedError : 'the remote server closed the connection prematurely, before the entire reply was received and processed',
+    QNetworkReply.HostNotFoundError : 'the remote host name was not found (invalid hostname)',
+    QNetworkReply.TimeoutError : 'the connection to the remote server timed out',
+    QNetworkReply.OperationCanceledError : 'the operation was canceled via calls to abort() or close() before it was finished.',
+    QNetworkReply.SslHandshakeFailedError : 'the SSL/TLS handshake failed and the encrypted channel could not be established. The sslErrors() signal should have been emitted.',
+    QNetworkReply.TemporaryNetworkFailureError : 'the connection was broken due to disconnection from the network, however the system has initiated roaming to another access point. The request should be resubmitted and will be processed as soon as the connection is re-established.',
+    QNetworkReply.ProxyConnectionRefusedError : 'the connection to the proxy server was refused (the proxy server is not accepting requests)',
+    QNetworkReply.ProxyConnectionClosedError : 'the proxy server closed the connection prematurely, before the entire reply was received and processed',
+    QNetworkReply.ProxyNotFoundError : 'the proxy host name was not found (invalid proxy hostname)',
+    QNetworkReply.ProxyTimeoutError : 'the connection to the proxy timed out or the proxy did not reply in time to the request sent',
+    QNetworkReply.ProxyAuthenticationRequiredError : 'the proxy requires authentication in order to honour the request but did not accept any credentials offered (if any)',
+    QNetworkReply.ContentAccessDenied : 'the access to the remote content was denied (similar to HTTP error 401)',
+    QNetworkReply.ContentOperationNotPermittedError : 'the operation requested on the remote content is not permitted',
+    QNetworkReply.ContentNotFoundError : 'the remote content was not found at the server (similar to HTTP error 404)',
+    QNetworkReply.AuthenticationRequiredError : 'the remote server requires authentication to serve the content but the credentials provided were not accepted (if any)',
+    QNetworkReply.ContentReSendError : 'the request needed to be sent again, but this failed for example because the upload data could not be read a second time.',
+    QNetworkReply.ProtocolUnknownError : 'the Network Access API cannot honor the request because the protocol is not known',
+    QNetworkReply.ProtocolInvalidOperationError : 'the requested operation is invalid for this protocol',
+    QNetworkReply.UnknownNetworkError : 'an unknown network-related error was detected',
+    QNetworkReply.UnknownProxyError : 'an unknown proxy-related error was detected',
+    QNetworkReply.UnknownContentError : 'an unknown error related to the remote content was detected',
+    QNetworkReply.ProtocolFailure : 'a breakdown in protocol was detected (parsing error, invalid or unexpected responses, etc.)',
 }
 
 class SplashQNetworkAccessManager(QNetworkAccessManager):
@@ -92,7 +92,7 @@ class SplashQNetworkAccessManager(QNetworkAccessManager):
     def _handle_error(self, error_id):
         url = self.sender().url().toString()
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
-        log.msg("Error loading %s: %s" % (url, error_msg), system='network')
+        log.msg("Error %d: %s (%s)" % (error_id, error_msg, url), system='network')
 
 
 class FilteringQNetworkAccessManager(SplashQNetworkAccessManager):
