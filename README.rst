@@ -427,6 +427,13 @@ Curl examples::
     curl -x localhost:8051 -H "X-Splash-render: json" \
         http://www.mywebsite.com
 
+    # Get the html page and screenshot
+    curl -x localhost:8051 \
+        -H "X-Splash-render: json" \
+        -H "X-Splash-html: 1" \
+        -H "X-Splash-png: 1" \
+        http://www.mywebsite.com
+
     # Execute JS and return output
     curl -x localhost:8051 \
         -H "X-Splash-render: json" \
