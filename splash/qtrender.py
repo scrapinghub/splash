@@ -1,5 +1,5 @@
 import os, json, base64
-from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
+from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView, QWebSecurityOrigin
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
@@ -35,6 +35,12 @@ class WebpageRender(object):
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
+        if defaults.SECURITY_ORIGIN_LOCAL_SCHEMES:
+            try:
+                for scheme in defaults.SECURITY_ORIGIN_LOCAL_SCHEMES:
+                    QWebSecurityOrigin.addLocalScheme(scheme)
+            except TypeError:
+                pass
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 

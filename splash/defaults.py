@@ -35,3 +35,8 @@ SLOTS = 50
 CACHE_ENABLED = True
 CACHE_SIZE = 50  # MB
 CACHE_PATH = '.splash-cache'
+
+# security
+# Set common protocols as local origin
+# See: http://harmattan-dev.nokia.com/docs/library/html/qt4/qwebsecurityorigin.html#addLocalScheme
+SECURITY_ORIGIN_LOCAL_SCHEMES = ['http', 'https']
