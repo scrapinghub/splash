@@ -121,7 +121,7 @@ filesystem. Directory example::
                         mywebsite/
                               lib1.js
 
-Note that the javascript files must be utf-8 encoded. To apply this javascript profile 
+Note that the javascript files must be utf-8 encoded. To apply this javascript profile
 add the parameter ``js=mywebsite`` to the request::
 
     curl -X POST -H "content-type: application/javascript" \
@@ -446,6 +446,22 @@ Curl examples::
         -H "X-Splash-render: png" \
         http://www.mywebsite.com
 
+
+Profiling
+=========
+
+Spalsh has profiling support built-in. To enable it, install plop_
+python package and start splash with non-empty ``--profiling-auth-token``
+option::
+
+    $ python -m splash.server --profiling-auth-token=my_secret_auth_token
+
+This will enable ``/profile`` endpoint. For example, collect profiling
+information for 10 seconds and return it as JSON::
+
+    curl 'http://0.0.0.0:8050/profile?timeout=10&auth=my_secret_auth_token'
+
+.. _plop: https://github.com/bdarnell/plop
 
 Functional Tests
 ================

@@ -3,6 +3,11 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
+try:
+    from plop.collector import Collector
+except ImportError:
+    Collector = None
+
 from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry
@@ -126,7 +131,7 @@ def _get_javascript_params(request, js_profiles_path):
     js_source = getarg(request, 'js_source', None)
     if js_source is not None:
         return js_source, js_profile
-    
+
     if request.method == 'POST':
         return request.content.getvalue(), js_profile
     else:
@@ -220,14 +225,65 @@ class Debug(Resource):
         })
 
 
+class Profile(Resource):
+    isLeaf = True
+
+    def __init__(self, auth_token):
+        Resource.__init__(self)
+        self.auth_token = auth_token
+
+    def render_GET(self, request):
+        timeout = getarg(request, "timeout", default=30, type=int, range=(0, 120))
+        auth_token = getarg(request, "auth", default=None)
+        if auth_token != self.auth_token:
+            request.setResponseCode(403)
+            return 'auth token is incorrect'
+
+        collector = Collector()
+        collector.start()
+        d = reactor.callLater(timeout, self.finishProfile, request, collector)
+
+        def onFailure(failure):
+            d.cancel()
+            collector.stop()
+
+        request.notifyFinish().addErrback(onFailure)
+        return NOT_DONE_YET
+
+    def finishProfile(self, request, collector):
+        collector.stop()
+        result = self.stats_to_json(collector.stack_counts)
+        request.setHeader("content-type", "application/json")
+        request.write(result)
+        request.finish()
+
+    @classmethod
+    def stats_to_json(cls, stack_counts):
+        values = sorted(stack_counts.items(), key=lambda item: item[1], reverse=True)
+        return json.dumps([
+            (["%s:%s:%s" % frame for frame in frames], count)
+            for frames, count in values
+        ])
+
+
 class Root(Resource):
 
-    def __init__(self, pool):
+    def __init__(self, pool, profiling_auth_token=None):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("debug", Debug(pool))
+
+        if Collector is None:
+            log.msg("/profile endoint is disabled; "
+                    "install 'plop' python package to enable profiling support")
+        elif not profiling_auth_token:
+            log.msg("/profile endpoint is disabled; start splash with non-empty "
+                    "--profiling-auth-token option to enable profiling support")
+        else:
+            log.msg("/profile endpoint is enabled")
+            self.putChild("profile", Profile(profiling_auth_token))
 
     def getChild(self, name, request):
         if name == "":
