@@ -1,4 +1,4 @@
-import os, time, resource, json, warnings
+import os, time, resource, json
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
@@ -6,7 +6,6 @@ from twisted.python import log
 try:
     from plop.collector import Collector
 except ImportError:
-    warnings.warn("install 'plop' python package to make /profile endpoint available")
     Collector = None
 
 from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
@@ -132,7 +131,7 @@ def _get_javascript_params(request, js_profiles_path):
     js_source = getarg(request, 'js_source', None)
     if js_source is not None:
         return js_source, js_profile
-    
+
     if request.method == 'POST':
         return request.content.getvalue(), js_profile
     else:
@@ -229,8 +228,16 @@ class Debug(Resource):
 class Profile(Resource):
     isLeaf = True
 
+    def __init__(self, auth_token):
+        Resource.__init__(self)
+        self.auth_token = auth_token
+
     def render_GET(self, request):
         timeout = getarg(request, "timeout", default=30, type=int, range=(0, 120))
+        auth_token = getarg(request, "auth", default=None)
+        if auth_token != self.auth_token:
+            request.setResponseCode(403)
+            return 'auth token is incorrect'
 
         collector = Collector()
         collector.start()
@@ -261,15 +268,22 @@ class Profile(Resource):
 
 class Root(Resource):
 
-    def __init__(self, pool):
+    def __init__(self, pool, profiling_auth_token=None):
         Resource.__init__(self)
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("debug", Debug(pool))
 
-        if Collector is not None:
-            self.putChild("profile", Profile())
+        if Collector is None:
+            log.msg("/profile endoint is disabled; "
+                    "install 'plop' python package to enable profiling support")
+        elif not profiling_auth_token:
+            log.msg("/profile endpoint is disabled; start splash with non-empty "
+                    "--profiling-auth-token option to enable profiling support")
+        else:
+            log.msg("/profile endpoint is enabled")
+            self.putChild("profile", Profile(profiling_auth_token))
 
     def getChild(self, name, request):
         if name == "":

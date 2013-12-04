@@ -42,6 +42,8 @@ def parse_opts():
         help="enable proxy server")
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
+    op.add_option("--profiling-auth-token",
+        help="profiling auth token value (profiling is disabled if token is empty)")
 
     return op.parse_args()
 
@@ -90,7 +92,8 @@ def manhole_server(portnum=None, username=None, password=None):
 
 
 def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
-                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None):
+                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
+                  profiling_auth_token=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -106,9 +109,9 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
         get_splash_proxy_factory=get_splash_proxy_factory,
         js_profiles_path=js_profiles_path
     )
-    
+
     # HTTP API
-    root = Root(pool)
+    root = Root(pool, profiling_auth_token)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
 
@@ -136,14 +139,16 @@ def monitor_maxrss(maxrss):
 def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
-                          disable_proxy=False, proxy_portnum=None):
+                          disable_proxy=False, proxy_portnum=None,
+                          profiling_auth_token=None):
     from splash import network_manager
     manager = network_manager.FilteringQNetworkAccessManager()
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
-                         js_profiles_path, disable_proxy, proxy_portnum)
+                         js_profiles_path, disable_proxy, proxy_portnum,
+                         profiling_auth_token)
 
 
 def _default_cache(cache_enabled, cache_path, cache_size):
@@ -203,7 +208,8 @@ def main():
                   proxy_profiles_path=opts.proxy_profiles_path,
                   js_profiles_path=opts.js_profiles_path,
                   disable_proxy=opts.disable_proxy,
-                  proxy_portnum=opts.proxy_portnum)
+                  proxy_portnum=opts.proxy_portnum,
+                  profiling_auth_token=opts.profiling_auth_token)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor
