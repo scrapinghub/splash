@@ -1,5 +1,5 @@
 import os, json, base64
-from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView, QWebSecurityOrigin
+from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
@@ -20,6 +20,9 @@ class SplashQWebPage(QWebPage):
     def javaScriptConfirm(self, frame, msg):
         return False
 
+    def javaScriptConsoleMessage(self, msg, line_number, source_id):
+        log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
+
 
 class WebpageRender(object):
 
@@ -35,12 +38,7 @@ class WebpageRender(object):
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
-        if defaults.SECURITY_ORIGIN_LOCAL_SCHEMES:
-            try:
-                for scheme in defaults.SECURITY_ORIGIN_LOCAL_SCHEMES:
-                    QWebSecurityOrigin.addLocalScheme(scheme)
-            except TypeError:
-                pass
+        settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True) 
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 

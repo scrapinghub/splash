@@ -142,6 +142,7 @@ def default_splash_server(portnum, slots=None,
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
+    _set_global_render_settings()
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
                          js_profiles_path, disable_proxy, proxy_portnum)
 
@@ -183,6 +184,13 @@ def _check_js_profiles_path(js_profiles_path):
     if js_profiles_path is not None and not os.path.isdir(js_profiles_path):
         log.msg("--js-profiles-path does not exist or it is not a folder; js profiles won't be used")
     return js_profiles_path
+
+
+def _set_global_render_settings():
+    from PyQt4.QtWebKit import QWebSecurityOrigin
+    if defaults.SECURITY_ORIGIN_LOCAL_SCHEMES:
+        for scheme in defaults.SECURITY_ORIGIN_LOCAL_SCHEMES:
+            QWebSecurityOrigin.addLocalScheme(scheme)
 
 
 def main():
