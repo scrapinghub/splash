@@ -476,6 +476,16 @@ test('Changed');"""
         self.assertEqual(r['script'], u'abc\xae')
         self.assertEqual(r['console'], [u'abc\xae'])
 
+    def test_js_external_iframe(self):
+        js_source = """function getContents(){ 
+                            var iframe = document.getElementById('external'); 
+                            return iframe.contentDocument.getElementsByTagName('body')[0].innerHTML;
+                       }; 
+                       getContents();"""
+        params = {'url': 'http://localhost:8998/externaliframe'}
+        r = self._runjs_request(js_source, params=params).json()
+        self.assertEqual(r['script'], u'EXTERNAL\n\n')
+
     @skip_proxy
     def test_js_incorrect_content_type(self):
         js_source = "function test(x){ return x; } test('abc');"
