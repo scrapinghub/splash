@@ -7,3 +7,4 @@ psutil
 pyOpenSSL
 requests >= 1.0
 Pillow
+simplejson
