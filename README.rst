@@ -98,9 +98,9 @@ To execute JavaScript code we use a POST request with the content-type set to
 Curl example::
 
     # Render page and modify its title dynamically
-    curl -X POST -H "content-type: application/javascript" \
-        -d "document.title='My Title';" \
-        "http://localhost:8050/render.html?url=http://domain.com"
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'document.title="My Title";' \
+        'http://localhost:8050/render.html?url=http://domain.com'
 
 Splash supports "javascript profiles" that allows to preload javascript files,
 the javascript files defined in a profile are executed after the page is loaded
@@ -124,9 +124,9 @@ filesystem. Directory example::
 Note that the javascript files must be utf-8 encoded. To apply this javascript profile 
 add the parameter ``js=mywebsite`` to the request::
 
-    curl -X POST -H "content-type: application/javascript" \
-        -d "myfunc('Hello');" \
-        "http://localhost:8050/render.html?js=mywebsite&url=http://domain.com"
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'myfunc("Hello");' \
+        'http://localhost:8050/render.html?js=mywebsite&url=http://domain.com'
 
 Note that this example assumes that myfunc is a javascript function defined in lib1.js.
 
@@ -135,9 +135,9 @@ from a diferent origin from the original page (this is a different behavior than
 This feature is useful for scraping, i.e to extract the html of a iframe page. This is
 an example of its usage:
 
-    curl -X POST -H "content-type: application/javascript" \
-        -d "function getContents(){ var f = document.getElementById('external'); return f.contentDocument.getElementsByTagName('body')[0].innerHTML; }; getContents();" \
-        "http://localhost:8050/render.html?url=http://domain.com"
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'function getContents(){ var f = document.getElementById("external"); return f.contentDocument.getElementsByTagName("body")[0].innerHTML; }; getContents();' \
+        'http://localhost:8050/render.html?url=http://domain.com'
 
 The javascript function 'getContents' will look for a iframe with the id 'external'
 and extract its html contents.
@@ -319,14 +319,14 @@ Curl examples::
     curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&png=1&width=320&height=240
 
     # Render page and execute simple Javascript function, display the js output
-    curl -X POST -H "content-type: application/javascript" \
-        -d "function getAd(x){ return x; } getAd('abc');" \
-        "http://localhost:8050/render.json?url=http://domain.com&script=1"
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'function getAd(x){ return x; } getAd("abc");' \
+        'http://localhost:8050/render.json?url=http://domain.com&script=1'
 
     # Render page and execute simple Javascript function, display the js output and the console output
-    curl -X POST -H "content-type: application/javascript" \
-        -d "function getAd(x){ return x; }; console.log('some log'); console.log('another log'); getAd('abc');" \
-        "http://localhost:8050/render.json?url=http://domain.com&script=1&console=1"
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'function getAd(x){ return x; }; console.log("some log"); console.log("another log"); getAd("abc");' \
+        'http://localhost:8050/render.json?url=http://domain.com&script=1&console=1'
 
 
 Proxy Profiles
@@ -435,20 +435,20 @@ option::
 Curl examples::
 
     # Display json stats
-    curl -x localhost:8051 -H "X-Splash-render: json" \
-        http://www.mywebsite.com
+    curl -x localhost:8051 -H 'X-Splash-render: json' \
+        http://www.domain.com
 
     # Execute JS and return output
     curl -x localhost:8051 \
-        -H "X-Splash-render: json" \
-        -H "X-Splash-script: 1" \
-        -H "X-Splash-js-source: function test(x){ return x; } test('abc');" \
-        http://www.mywebsite.com
+        -H 'X-Splash-render: json' \
+        -H 'X-Splash-script: 1' \
+        -H 'X-Splash-js-source: function test(x){ return x; } test("abc");' \
+        http://www.domain.com
 
     # Send POST request to site and save screenshot of results
     curl -X POST -d '{"key":"val"}' -x localhost:8051 -o screenshot.png \
-        -H "X-Splash-render: png" \
-        http://www.mywebsite.com
+        -H 'X-Splash-render: png' \
+        http://www.domain.com
 
 
 Functional Tests
