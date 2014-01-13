@@ -131,7 +131,7 @@ add the parameter ``js=mywebsite`` to the request::
 Note that this example assumes that myfunc is a javascript function defined in lib1.js.
 
 Splash by default allows javascript code to access the content of iframes loaded
-from a diferent securiy origin from the original page. This feature is useful 
+from a diferent security origin from the original page. This feature is useful 
 for scraping, i.e to extract the html of a iframe page. This is an example of its usage:
 
     curl -X POST -H 'content-type: application/javascript' \
@@ -141,8 +141,8 @@ for scraping, i.e to extract the html of a iframe page. This is an example of it
 The javascript function 'getContents' will look for a iframe with the id 'external'
 and extract its html contents.
 
-Note that allowing cross origin javascript calls it is a potential security issue, since it
-is possible that secret information (i.e cookies) are exposed when this support is enabled.
+Note that allowing cross origin javascript calls is a potential security issue, since it
+is possible that secret information (i.e cookies) is exposed when this support is enabled.
 It is possible to disable this feature with the ``--js-disable-cross-domain-access`` option::
 
     python -m splash.server --js-disable-cross-domain-access
