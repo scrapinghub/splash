@@ -1,4 +1,4 @@
-import unittest, requests, json, base64, urllib, urlparse, simplejson
+import unittest, requests, json, base64, urllib, urlparse, json
 from cStringIO import StringIO
 from PIL import Image
 from splash import defaults
@@ -111,7 +111,7 @@ class ProxyPostTest(test_render._BaseRenderTest):
     def test_post_payload(self):
         # simply post body
         payload = {'some': 'data'}
-        json_payload = simplejson.dumps(payload)
+        json_payload = json.dumps(payload)
         r = self.post("url=http://localhost:8998/postrequest", payload=json_payload)
         self.assertEqual(r.status_code, 200)
         self.assertTrue(json_payload in r.text)
