@@ -258,6 +258,32 @@ class PostResource(Resource):
 """ % (headers, payload)
 
 
+class ExternalIFrameResource(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return """
+<html>
+<body>
+<iframe id='external' src="https://localhost:8999/external">
+</iframe>
+</body>
+</html>
+"""
+
+class ExternalResource(Resource):
+
+    isLeaf = True
+
+    def render(self, request):
+        return """
+<html>
+<body>EXTERNAL</body>
+</html>
+"""
+
+
 class Root(Resource):
 
     def __init__(self):
@@ -273,6 +299,8 @@ class Root(Resource):
         self.putChild("delay", Delay())
         self.putChild("iframes", IframeResource())
         self.putChild("postrequest", PostResource())
+        self.putChild("externaliframe", ExternalIFrameResource())
+        self.putChild("external", ExternalResource())
 
 
 def ssl_factory():

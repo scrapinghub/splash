@@ -28,6 +28,8 @@ def parse_opts():
         help="path to a folder with proxy profiles")
     op.add_option("--js-profiles-path",
         help="path to a folder with javascript profiles")
+    op.add_option("--js-disable-cross-domain-access", action="store_true", default=False,
+        help="disable support for cross domain access when executing custom javascript")
     _bool_default = {True:' (active by default)', False: ''}
     op.add_option("--cache", action="store_true", dest="cache_enabled",
         help="enable local cache" + _bool_default[defaults.CACHE_ENABLED])
@@ -136,12 +138,14 @@ def monitor_maxrss(maxrss):
 def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
+                          js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None):
     from splash import network_manager
     manager = network_manager.FilteringQNetworkAccessManager()
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
+    _set_global_render_settings(js_disable_cross_domain_access)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
                          js_profiles_path, disable_proxy, proxy_portnum)
 
@@ -185,6 +189,16 @@ def _check_js_profiles_path(js_profiles_path):
     return js_profiles_path
 
 
+def _set_global_render_settings(js_disable_cross_domain_access):
+    from PyQt4.QtWebKit import QWebSecurityOrigin
+    if js_disable_cross_domain_access is False:
+        # In order to enable cross domain requests it is necessary to add 
+        # the http and https to the local scheme, this way all the urls are 
+        # seen as inside the same security origin.
+        for scheme in ['http', 'https']:
+            QWebSecurityOrigin.addLocalScheme(scheme)
+
+
 def main():
     install_qtreactor()
     opts, _ = parse_opts()
@@ -202,6 +216,7 @@ def main():
                   cache_size=opts.cache_size,
                   proxy_profiles_path=opts.proxy_profiles_path,
                   js_profiles_path=opts.js_profiles_path,
+                  js_disable_cross_domain_access=opts.js_disable_cross_domain_access,
                   disable_proxy=opts.disable_proxy,
                   proxy_portnum=opts.proxy_portnum)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
