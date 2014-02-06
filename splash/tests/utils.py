@@ -65,8 +65,10 @@ class SplashServer():
                 (self.proc.returncode, self.proc.stderr.read())
             raise RuntimeError(msg)
 
-        _wait_for_port(self.portnum)
-        print(_non_block_read(self.proc.stderr))
+        try:
+            _wait_for_port(self.portnum)
+        finally:
+            print(_non_block_read(self.proc.stderr))
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
