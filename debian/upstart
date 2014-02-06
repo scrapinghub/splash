@@ -18,6 +18,7 @@ script
 
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
+        --make-pidfile \
         --pidfile /var/run/splash.pid \
         --exec /usr/bin/python -- \
             -m splash.server \
