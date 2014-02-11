@@ -121,7 +121,7 @@ filesystem. Directory example::
                         mywebsite/
                               lib1.js
 
-Note that the javascript files must be utf-8 encoded. To apply this javascript profile 
+Note that the javascript files must be utf-8 encoded. To apply this javascript profile
 add the parameter ``js=mywebsite`` to the request::
 
     curl -X POST -H 'content-type: application/javascript' \
@@ -131,7 +131,7 @@ add the parameter ``js=mywebsite`` to the request::
 Note that this example assumes that myfunc is a javascript function defined in lib1.js.
 
 Splash by default allows javascript code to access the content of iframes loaded
-from a diferent security origin from the original page. This feature is useful 
+from a diferent security origin from the original page. This feature is useful
 for scraping, i.e to extract the html of a iframe page. This is an example of its usage:
 
     curl -X POST -H 'content-type: application/javascript' \
@@ -431,9 +431,8 @@ X-Splash-console : string
   Same as 'console' argument for render.json
 
 
-Splash proxy mode is enabled by default, to disable it
-run splash server with ``--disable-proxy``
-option::
+Splash proxy mode is enabled by default. To disable it run splash
+server with ``--disable-proxy`` option::
 
     python -m splash.server --disable-proxy
 
