@@ -38,7 +38,7 @@ class WebpageRender(object):
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
-        settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True) 
+        settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         self.web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 
@@ -46,6 +46,8 @@ class WebpageRender(object):
         self.web_page.splash_request = splash_request
         self.web_page.splash_proxy_factory = splash_proxy_factory
         self.verbose = verbose
+
+        self.deferred = defer.Deferred()
 
     # ======= General request/response handling:
 
@@ -58,7 +60,6 @@ class WebpageRender(object):
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
 
-        self.deferred = defer.Deferred()
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
 

@@ -16,15 +16,15 @@ class RenderPool(object):
         for n in range(slots):
             self._wait_for_render(None, n)
 
-    def render(self, rendercls, request, *args):
+    def render(self, rendercls, splash_request, *args):
         if self.get_splash_proxy_factory:
-            splash_proxy_factory = self.get_splash_proxy_factory(request)
+            splash_proxy_factory = self.get_splash_proxy_factory(splash_request)
         else:
             splash_proxy_factory = None
 
         pool_d = defer.Deferred()
-        self.log("queued %s" % id(request))
-        self.queue.put((rendercls, request, splash_proxy_factory, args, pool_d))
+        self.log("queued %s" % id(splash_request))
+        self.queue.put((rendercls, splash_request, splash_proxy_factory, args, pool_d))
         return pool_d
 
     def _wait_for_render(self, _, slot):
@@ -34,26 +34,30 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, request, splash_proxy_factory, args, pool_d), slot):
+    def _start_render(self, (rendercls, splash_request, splash_proxy_factory, args, pool_d), slot):
+        self.log("initializing SLOT %d" % (slot, ))
         render = rendercls(
             network_manager=self.network_manager,
             splash_proxy_factory=splash_proxy_factory,
-            splash_request=request,
+            splash_request=splash_request,
             verbose=self.verbose >= 2,
         )
-        render.doRequest(*args)
         self.active.add(render)
-
         render.deferred.chainDeferred(pool_d)
         pool_d.addBoth(self._close_render, render, slot)
-        self.log("SLOT %d is working on %s" % (slot, id(request)))
+
+        self.log("SLOT %d creating request %s" % (slot, id(splash_request)))
+        render.doRequest(*args)
+        self.log("SLOT %d is working on %s" % (slot, id(splash_request)))
+
         return render.deferred
 
     def _close_render(self, _, render, slot):
-        self.log("SLOT %d finished %s %s" % (slot, id(render.splash_request), render))
+        self.log("SLOT %d closing %s %s" % (slot, id(render.splash_request), render))
         self.active.remove(render)
         render.deferred.cancel()
         render.close()
+        self.log("SLOT %d done with %s %s" % (slot, id(render.splash_request), render))
         return _
 
     def log(self, text):
