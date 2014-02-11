@@ -35,3 +35,6 @@ SLOTS = 50
 CACHE_ENABLED = True
 CACHE_SIZE = 50  # MB
 CACHE_PATH = '.splash-cache'
+
+# logging
+VERBOSITY = 1

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import re
-from PyQt4.QtCore import QUrl
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkProxyQuery, QNetworkReply
+from PyQt4.QtNetwork import (
+    QNetworkAccessManager, QNetworkProxyQuery,
+    QNetworkReply, QNetworkRequest
+)
 from PyQt4.QtWebKit import QWebFrame
-from splash.utils import getarg
 from twisted.python import log
+from splash import request_filters
+from splash.utils import qurl2ascii
 
 
 # See: http://pyqt.sourceforge.net/Docs/PyQt4/qnetworkreply.html#NetworkError-enum
@@ -36,17 +38,19 @@ REQUEST_ERRORS = {
     QNetworkReply.ProtocolFailure : 'a breakdown in protocol was detected (parsing error, invalid or unexpected responses, etc.)',
 }
 
-class SplashQNetworkAccessManager(QNetworkAccessManager):
+
+class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     """
     This QNetworkAccessManager subclass enables "splash proxy factories"
     support. Qt provides similar functionality via setProxyFactory method,
     but standard QNetworkProxyFactory is not flexible enough.
     """
 
-    def __init__(self):
-        super(SplashQNetworkAccessManager, self).__init__()
+    def __init__(self, verbosity):
+        super(ProxiedQNetworkAccessManager, self).__init__()
         self.sslErrors.connect(self._sslErrors)
         self.finished.connect(self._finished)
+        self.verbosity = verbosity
 
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -57,6 +61,7 @@ class SplashQNetworkAccessManager(QNetworkAccessManager):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
+        request = QNetworkRequest(request)
         old_proxy = self.proxy()
 
         splash_proxy_factory = self._getSplashProxyFactory(request)
@@ -66,16 +71,17 @@ class SplashQNetworkAccessManager(QNetworkAccessManager):
             self.setProxy(proxy)
 
         # this method is called createRequest, but in fact it creates a reply
-        reply = super(SplashQNetworkAccessManager, self).createRequest(
+        reply = super(ProxiedQNetworkAccessManager, self).createRequest(
             operation, request, outgoingData
         )
 
-        reply.error.connect(self._handle_error)
+        reply.error.connect(self._handleError)
+        reply.finished.connect(self._handleFinished)
+        reply.metaDataChanged.connect(self._handleMetaData)
+        reply.downloadProgress.connect(self._handleDownloadProgress)
+
         self.setProxy(old_proxy)
         return reply
-
-    def _getSplashRequest(self, request):
-        return self._getWebPageAttribute(request, 'splash_request')
 
     def _getSplashProxyFactory(self, request):
         return self._getWebPageAttribute(request, 'splash_proxy_factory')
@@ -85,47 +91,66 @@ class SplashQNetworkAccessManager(QNetworkAccessManager):
         if isinstance(web_frame, QWebFrame):
             return getattr(web_frame.page(), attribute, None)
 
-    def _drop_request(self, request):
-        # hack: set invalid URL
-        request.setUrl(QUrl('forbidden://localhost/'))
-
-    def _handle_error(self, error_id):
-        url = self.sender().url().toString()
+    def _handleError(self, error_id):
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
-        log.msg("Error %d: %s (%s)" % (error_id, error_msg, url), system='network')
+        self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=1)
+
+    def _handleFinished(self):
+        self.log("Finished downloading {url}", self.sender())
+
+    def _handleMetaData(self):
+        self.log("Headers received for {url}", self.sender(), min_level=3)
+
+    def _handleDownloadProgress(self, received, total):
+        if total == -1:
+            total = '?'
+        self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=3)
+
+    def _getSplashRequest(self, request):
+        return self._getWebPageAttribute(request, 'splash_request')
+
+    def log(self, msg, reply=None, min_level=2):
+        if not reply:
+            url = ''
+        else:
+            url = qurl2ascii(reply.url())
+            if not url:
+                return
+        if self.verbosity >= min_level:
+            msg = msg.format(url=url)
+            log.msg(msg, system='network')
 
 
-class FilteringQNetworkAccessManager(SplashQNetworkAccessManager):
+class FilteringQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
-    This SplashQNetworkAccessManager subclass enables request filtering
-    based on 'allowed_domains' GET parameter in original Splash request.
+    This SplashQNetworkAccessManager subclass enables request filtering.
     """
-    def __init__(self, allow_subdomains=True):
-        self.allow_subdomains = allow_subdomains
-        super(FilteringQNetworkAccessManager, self).__init__()
+    def __init__(self, filters_path, verbosity):
+        super(FilteringQNetworkAccessManager, self).__init__(verbosity=verbosity)
+
+        self.filters = []
+        if self.verbosity >= 2:
+            self.filters += [request_filters.LogRequestsFilter()]
+
+        self.filters += [request_filters.AllowedDomainsFilter(verbosity=verbosity)]
+
+        if filters_path is not None:
+            self.rules = request_filters.RulesRegistry(filters_path, verbosity=verbosity)
+            self.filters += [
+                request_filters.AdblockFilter(self.rules, verbosity=verbosity)
+            ]
+        else:
+            self.rules = None
 
     def createRequest(self, operation, request, outgoingData=None):
         splash_request = self._getSplashRequest(request)
         if splash_request:
-            allowed_domains = self._get_allowed_domains(splash_request)
-            host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
-            if not host_re.match(unicode(request.url().host())):
-                self._drop_request(request)
-
+            for filter in self.filters:
+                request = filter.process(request, splash_request, operation, outgoingData)
         return super(FilteringQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
 
-    def _get_allowed_domains(self, splash_request):
-        allowed_domains = getarg(splash_request, "allowed_domains", None)
-        if allowed_domains is not None:
-            return allowed_domains.split(',')
-
-    def _get_host_regex(self, allowed_domains, allow_subdomains):
-        """Override this method to implement a different offsite policy"""
-        if not allowed_domains:
-            return re.compile('')  # allow all by default
-        domains = [d.replace('.', r'\.') for d in allowed_domains]
-        if allow_subdomains:
-            regex = r'(.*\.)?(%s)$' % '|'.join(domains)
-        else:
-            regex = r'(%s)$' % '|'.join(domains)
-        return re.compile(regex, re.IGNORECASE)
+    def unknownFilters(self, filter_names):
+        names = [f for f in filter_names.split(',') if f]
+        if self.rules is None:
+            return names
+        return [name for name in names if not self.rules.filter_is_known(name)]

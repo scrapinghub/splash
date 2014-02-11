@@ -44,6 +44,10 @@ def parse_opts():
         help="enable proxy server")
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
+    op.add_option("--filters-path",
+        help="path to a folder with network filters")
+    op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
+        help="verbosity level; valid values are 0, 1, 2 and 3")
 
     return op.parse_args()
 
@@ -92,12 +96,16 @@ def manhole_server(portnum=None, username=None, password=None):
 
 
 def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
-                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None):
+                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
+                  verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
     from splash.pool import RenderPool
     from twisted.python import log
+
+    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    log.msg("verbosity=%d" % verbosity)
 
     slots = defaults.SLOTS if slots is None else slots
     log.msg("slots=%s" % slots)
@@ -106,9 +114,10 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
         slots=slots,
         network_manager=network_manager,
         get_splash_proxy_factory=get_splash_proxy_factory,
-        js_profiles_path=js_profiles_path
+        js_profiles_path=js_profiles_path,
+        verbosity=verbosity,
     )
-    
+
     # HTTP API
     root = Root(pool)
     factory = Site(root)
@@ -139,15 +148,21 @@ def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
-                          disable_proxy=False, proxy_portnum=None):
+                          disable_proxy=False, proxy_portnum=None,
+                          filters_path=None, verbosity=None):
     from splash import network_manager
-    manager = network_manager.FilteringQNetworkAccessManager()
+    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    manager = network_manager.FilteringQNetworkAccessManager(
+        filters_path=filters_path,
+        verbosity=verbosity
+    )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
-                         js_profiles_path, disable_proxy, proxy_portnum)
+                         js_profiles_path, disable_proxy, proxy_portnum,
+                         verbosity)
 
 
 def _default_cache(cache_enabled, cache_path, cache_size):
@@ -192,8 +207,8 @@ def _check_js_profiles_path(js_profiles_path):
 def _set_global_render_settings(js_disable_cross_domain_access):
     from PyQt4.QtWebKit import QWebSecurityOrigin
     if js_disable_cross_domain_access is False:
-        # In order to enable cross domain requests it is necessary to add 
-        # the http and https to the local scheme, this way all the urls are 
+        # In order to enable cross domain requests it is necessary to add
+        # the http and https to the local scheme, this way all the urls are
         # seen as inside the same security origin.
         for scheme in ['http', 'https']:
             QWebSecurityOrigin.addLocalScheme(scheme)
@@ -218,7 +233,9 @@ def main():
                   js_profiles_path=opts.js_profiles_path,
                   js_disable_cross_domain_access=opts.js_disable_cross_domain_access,
                   disable_proxy=opts.disable_proxy,
-                  proxy_portnum=opts.proxy_portnum)
+                  proxy_portnum=opts.proxy_portnum,
+                  filters_path=opts.filters_path,
+                  verbosity=opts.verbosity)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor

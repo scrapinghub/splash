@@ -2,6 +2,7 @@
 twisted
 qt4reactor
 psutil
+adblockparser >= 0.1.1
 
 # the following libraries are only required by tests
 pyOpenSSL

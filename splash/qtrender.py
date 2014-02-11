@@ -14,6 +14,10 @@ class RenderError(Exception):
 
 class SplashQWebPage(QWebPage):
 
+    def __init__(self, verbosity=0):
+        super(QWebPage, self).__init__()
+        self.verbosity = verbosity
+
     def javaScriptAlert(self, frame, msg):
         return
 
@@ -21,15 +25,16 @@ class SplashQWebPage(QWebPage):
         return False
 
     def javaScriptConsoleMessage(self, msg, line_number, source_id):
-        log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
+        if self.verbosity >= 1:
+            log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
 
 
 class WebpageRender(object):
 
-    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbose=False):
+    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
         self.network_manager = network_manager
         self.web_view = QWebView()
-        self.web_page = SplashQWebPage()
+        self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
@@ -45,7 +50,7 @@ class WebpageRender(object):
         self.splash_request = splash_request
         self.web_page.splash_request = splash_request
         self.web_page.splash_proxy_factory = splash_proxy_factory
-        self.verbose = verbose
+        self.verbosity = verbosity
 
         self.deferred = defer.Deferred()
 
@@ -97,7 +102,7 @@ class WebpageRender(object):
         data = self._reply.readAll()
         self.web_view.page().mainFrame().setContent(data, mimeType, self._baseUrl)
         if self._reply.error():
-            log.msg("Error loading %s: %s" % (self.url, self._reply.errorString()), system='render')
+            self.log("Error loading %s: %s" % (self.url, self._reply.errorString()), min_level=1)
         self._reply.close()
         self._reply.deleteLater()
 
@@ -105,7 +110,7 @@ class WebpageRender(object):
         self.log("_loadFinished %s" % id(self.splash_request))
         if self.deferred.called:
             # sometimes this callback is called multiple times
-            self.log("_loadFinished called multiple times")
+            self.log("_loadFinished called multiple times", min_level=1)
             return
         if ok:
             time_ms = int(self.wait_time * 1000)
@@ -124,10 +129,14 @@ class WebpageRender(object):
     # ======= Rendering methods that subclasses can use:
 
     def _getHtml(self):
+        self.log("getting HTML %s" % id(self.splash_request))
+
         frame = self.web_view.page().mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
     def _getPng(self, width=None, height=None):
+        self.log("getting PNG %s" % id(self.splash_request))
+
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.web_page.mainFrame().render(painter)
@@ -141,6 +150,7 @@ class WebpageRender(object):
         return bytes(b.data())
 
     def _getIframes(self, children=True, html=True):
+        self.log("getting iframes %s" % id(self.splash_request))
         frame = self.web_view.page().mainFrame()
         return self._frameToDict(frame, children, html)
 
@@ -157,7 +167,7 @@ class WebpageRender(object):
     def _setFullViewport(self):
         size = self.web_page.mainFrame().contentsSize()
         if size.isEmpty():
-            self.log("contentsSize method doesn't work %s" % id(self.splash_request))
+            self.log("contentsSize method doesn't work %s" % id(self.splash_request), min_level=1)
             self._setViewportSize(defaults.VIEWPORT_FALLBACK)
         else:
             self.web_page.setViewportSize(size)
@@ -208,8 +218,10 @@ class WebpageRender(object):
             self._setFullViewport()
         self.js_output, self.js_console_output = self._runJS(self.js_source, self.js_profile)
 
-    def log(self, text):
-        if self.verbose:
+    def log(self, text, min_level=2):
+        if self.verbosity >= min_level:
+            if isinstance(text, unicode):
+                text = text.encode('unicode-escape').decode('ascii')
             log.msg(text, system='render')
 
 

@@ -83,8 +83,7 @@ class SplashProxyRequest(http.Request):
         # errors handled by resources don't return a body, they write
         # to the request directly.
         if body:
-            self.setHeader('content-length',
-                           str(len(body)))
+            self.setHeader('content-length', str(len(body)))
             self.write(body)
         self.finish()
 
