@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import unittest
 from splash.proxy import BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
-from .test_render import _BaseRenderTest
+from .test_render import BaseRenderTest
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
@@ -46,7 +46,7 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
         self.assertTrue(f.shouldUseProxyList(protocol, url))
 
 
-class HtmlProxyRenderTest(_BaseRenderTest):
+class HtmlProxyRenderTest(BaseRenderTest):
 
     def test_proxy_works(self):
         r1 = self.request({'url': 'http://localhost:8998/jsrender'})

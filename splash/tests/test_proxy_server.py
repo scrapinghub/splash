@@ -89,7 +89,7 @@ class ProxyRunJsTest(test_render.RunJsTest):
         return self.request(query, render_format=render_format)
 
 
-class ProxyPostTest(test_render._BaseRenderTest):
+class ProxyPostTest(test_render.BaseRenderTest):
 
     request_handler = ProxyRequestHandler
 

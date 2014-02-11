@@ -55,7 +55,7 @@ class DirectRequestHandler:
             return requests.post(url, data=payload, headers=headers)
 
 
-class _BaseRenderTest(unittest.TestCase):
+class BaseRenderTest(unittest.TestCase):
 
     render_format = "html"
     request_handler = DirectRequestHandler
@@ -63,7 +63,7 @@ class _BaseRenderTest(unittest.TestCase):
     def tearDown(self):
         # we must consume splash output because subprocess.PIPE is used
         ts.print_output()
-        super(_BaseRenderTest, self).tearDown()
+        super(BaseRenderTest, self).tearDown()
 
     def _get_handler(self):
         handler = self.request_handler()
@@ -77,7 +77,7 @@ class _BaseRenderTest(unittest.TestCase):
         return self._get_handler().post(query, render_format, payload, headers)
 
 
-class _RenderTest(_BaseRenderTest):
+class _RenderTest(BaseRenderTest):
 
     def test_render_error(self):
         r = self.request("url=http://non-existent-host/")
@@ -387,7 +387,7 @@ class RenderJsonTest(_RenderTest):
         return r1, r2
 
 
-class IframesRenderTest(_BaseRenderTest):
+class IframesRenderTest(BaseRenderTest):
     render_format = 'json'
 
     def test_basic(self):
@@ -431,7 +431,7 @@ class IframesRenderTest(_BaseRenderTest):
         return self.request(query).json()
 
 
-class RunJsTest(_BaseRenderTest):
+class RunJsTest(BaseRenderTest):
     render_format = 'json'
 
     def test_simple_js(self):
@@ -477,10 +477,10 @@ test('Changed');"""
         self.assertEqual(r['console'], [u'abc\xae'])
 
     def test_js_external_iframe(self):
-        js_source = """function getContents(){ 
-                            var iframe = document.getElementById('external'); 
+        js_source = """function getContents(){
+                            var iframe = document.getElementById('external');
                             return iframe.contentDocument.getElementsByTagName('body')[0].innerHTML;
-                       }; 
+                       };
                        getContents();"""
         params = {'url': 'http://localhost:8998/externaliframe'}
         r = self._runjs_request(js_source, params=params).json()
