@@ -158,7 +158,7 @@ def _html_resource(html):
 
 class IframeResource(Resource):
 
-    def __init__(self):
+    def __init__(self, http_port):
         Resource.__init__(self)
         self.putChild("1.html", self.IframeContent1())
         self.putChild("2.html", self.IframeContent2())
@@ -169,13 +169,14 @@ class IframeResource(Resource):
         self.putChild("script.js", self.ScriptJs())
         self.putChild("script2.js", self.OtherDomainScript())
         self.putChild("nested.html", self.NestedIframeContent())
+        self.http_port = http_port
 
     def render(self, request):
         return """
 <html>
 <head>
     <script src="/iframes/script.js"></script>
-    <script src="http://0.0.0.0:8998/iframes/script2.js"></script>
+    <script src="http://0.0.0.0:%s/iframes/script2.js"></script>
 </head>
 <body>
 
@@ -209,7 +210,7 @@ window.onload = function(){
 
 </body>
 </html>
-"""
+""" % self.http_port
 
     IframeContent1 = _html_resource("<html><body>iframes work IFRAME_1_OK</body></html>")
     IframeContent2 = _html_resource("""
@@ -263,15 +264,19 @@ class ExternalIFrameResource(Resource):
 
     isLeaf = True
 
+    def __init__(self, https_port):
+        Resource.__init__(self)
+        self.https_port = https_port
+
     def render(self, request):
         return """
 <html>
 <body>
-<iframe id='external' src="https://localhost:8999/external">
+<iframe id='external' src="https://localhost:{https_port}/external">
 </iframe>
 </body>
 </html>
-"""
+""".format(https_port=self.https_port)
 
 class ExternalResource(Resource):
 
@@ -287,7 +292,7 @@ class ExternalResource(Resource):
 
 class Root(Resource):
 
-    def __init__(self):
+    def __init__(self, port_num, sslport_num, proxyport_num):
         Resource.__init__(self)
         self.log = []
         self.putChild("jsrender", JsRender())
@@ -298,14 +303,17 @@ class Root(Resource):
         self.putChild("tall", TallPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
-        self.putChild("iframes", IframeResource())
+        self.putChild("iframes", IframeResource(port_num))
         self.putChild("postrequest", PostResource())
-        self.putChild("externaliframe", ExternalIFrameResource())
+        self.putChild("externaliframe", ExternalIFrameResource(sslport_num))
         self.putChild("external", ExternalResource())
 
 
+def cert_path():
+    return os.path.join(os.path.dirname(__file__), "server.pem")
+
 def ssl_factory():
-    pem = os.path.join(os.path.dirname(__file__), "server.pem")
+    pem = cert_path()
     return ssl.DefaultOpenSSLContextFactory(pem, pem)
 
 
@@ -327,8 +335,8 @@ class ProxyFactory(http.HTTPFactory):
     protocol = Proxy
 
 
-def run(port_num=8998, sslport_num=8999, proxyport_num=8990):
-    root = Root()
+def run(port_num, sslport_num, proxyport_num):
+    root = Root(port_num, sslport_num, proxyport_num)
     factory = Site(root)
     port = reactor.listenTCP(port_num, factory)
     sslport = reactor.listenSSL(sslport_num, factory, ssl_factory())
@@ -346,9 +354,9 @@ def run(port_num=8998, sslport_num=8999, proxyport_num=8990):
 
 if __name__ == "__main__":
     op = optparse.OptionParser()
-    op.add_option("--http-port", help="http port", type=int, default=8998)
-    op.add_option("--https-port", help="https port", type=int, default=8999)
-    op.add_option("--proxy-port", help="proxy port", type=int, default=8990)
+    op.add_option("--http-port", type=int, default=8998)
+    op.add_option("--https-port", type=int, default=8999)
+    op.add_option("--proxy-port", type=int, default=8990)
     opts, _ = op.parse_args()
 
     run(opts.http_port, opts.https_port, opts.proxy_port)

@@ -2,7 +2,8 @@
 from __future__ import absolute_import
 import unittest
 from splash.proxy import BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
-from .test_render import BaseRenderTest
+from splash.tests.test_render import BaseRenderTest
+from splash.tests import ts
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
@@ -49,14 +50,14 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 class HtmlProxyRenderTest(BaseRenderTest):
 
     def test_proxy_works(self):
-        r1 = self.request({'url': 'http://localhost:8998/jsrender'})
+        r1 = self.request({'url': ts.mockserver.url('jsrender')})
         self.assertNotProxied(r1.text)
 
-        r2 = self.request({'url': 'http://localhost:8998/jsrender', 'proxy': 'test'})
+        r2 = self.request({'url': ts.mockserver.url('jsrender'), 'proxy': 'test'})
         self.assertProxied(r2.text)
 
     def test_blacklist(self):
-        params = {'url': 'http://localhost:8998/iframes',
+        params = {'url': ts.mockserver.url('iframes'),
                   'proxy': 'test', 'html': 1, 'iframes': 1}
         r = self.request(params, render_format='json')
         data = r.json()
@@ -72,20 +73,20 @@ class HtmlProxyRenderTest(BaseRenderTest):
                 self.assertProxied(frame['html'])
 
     def test_insecure(self):
-        r = self.request({'url': 'http://localhost:8998/jsrender',
+        r = self.request({'url': ts.mockserver.url('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
 
     def test_nonexisting(self):
-        r = self.request({'url': 'http://localhost:8998/jsrender',
+        r = self.request({'url': ts.mockserver.url('jsrender'),
                           'proxy': 'nonexisting'})
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_no_proxy_settings(self):
-        r = self.request({'url': 'http://localhost:8998/jsrender',
+        r = self.request({'url': ts.mockserver.url('jsrender'),
                           'proxy': 'no-proxy-settings'})
         self.assertEqual(r.status_code, 400)
 

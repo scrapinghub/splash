@@ -1,6 +1,6 @@
 import sys, os, time, tempfile, shutil, socket, fcntl
 from subprocess import Popen, PIPE
-from splash import defaults
+
 
 def get_testenv():
     env = os.environ.copy()
@@ -13,6 +13,7 @@ def _ephemeral_port():
     s.bind(("", 0))
     return s.getsockname()[1]
 
+
 def _non_block_read(output):
     fd = output.fileno()
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -21,6 +22,7 @@ def _non_block_read(output):
         return output.read()
     except Exception:
         return ""
+
 
 def _wait_for_port(portnum, delay=0.1, attempts=30):
     while attempts > 0:
@@ -33,7 +35,7 @@ def _wait_for_port(portnum, delay=0.1, attempts=30):
     raise RuntimeError("Port %d is not open" % portnum)
 
 
-class SplashServer():
+class SplashServer(object):
 
     def __init__(self, logfile=None, proxy_profiles_path=None,
                  js_profiles_path=None, portnum=None,
@@ -77,12 +79,25 @@ class SplashServer():
         shutil.rmtree(self.tempdir)
 
 
-class MockServer():
+class MockServer(object):
+
+    def __init__(self, http_port=None, https_port=None, proxy_port=8990):
+        self.http_port = http_port if http_port is not None else _ephemeral_port()
+        self.https_port = https_port if https_port is not None else _ephemeral_port()
+        self.proxy_port = proxy_port if proxy_port is not None else _ephemeral_port()
 
     def __enter__(self):
-        self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
-            stdout=PIPE, env=get_testenv())
-        for port in (8998, 8999, 8990):
+        self.proc = Popen([
+                sys.executable,
+                '-u', '-m', 'splash.tests.mockserver',
+                '--http-port', str(self.http_port),
+                '--https-port', str(self.https_port),
+                '--proxy-port', str(self.proxy_port),
+            ],
+            stdout=PIPE,
+            env=get_testenv()
+        )
+        for port in (self.http_port, self.https_port, self.proxy_port):
             _wait_for_port(port)
         print(_non_block_read(self.proc.stdout))
 
@@ -91,8 +106,14 @@ class MockServer():
         self.proc.wait()
         time.sleep(0.2)
 
+    def url(self, path):
+        return "http://localhost:%s/%s" % (self.http_port, path.lstrip('/'))
 
-class TestServers():
+    def https_url(self, path):
+        return "https://localhost:%s/%s" % (self.https_port, path.lstrip('/'))
+
+
+class TestServers(object):
 
     def __init__(self, logfile=None):
         self.logfile = logfile

@@ -82,7 +82,7 @@ class ProxyRunJsTest(test_render.RunJsTest):
     proxy_test = True
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
-        query = {'url': 'http://localhost:8998/jsrender',
+        query = {'url': ts.mockserver.url("jsrender"),
                  'js_source': js_source,
                  'script': 1}
         query.update(params or {})
@@ -94,7 +94,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
     request_handler = ProxyRequestHandler
 
     def test_post_request(self):
-        r = self.post("url=http://localhost:8998/postrequest")
+        r = self.post({"url": ts.mockserver.url("postrequest")})
         self.assertEqual(r.status_code, 200)
         self.assertTrue("From POST" in r.text)
 
@@ -102,7 +102,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
         headers = {'X-Custom-Header1': 'some-val1',
                    'X-Custom-Header2': 'some-val2',
                    }
-        r = self.post("url=http://localhost:8998/postrequest", headers=headers)
+        r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertTrue("'x-custom-header1': 'some-val1'" in r.text)
         self.assertTrue("'x-custom-header2': 'some-val2'" in r.text)
@@ -112,13 +112,13 @@ class ProxyPostTest(test_render.BaseRenderTest):
         # simply post body
         payload = {'some': 'data'}
         json_payload = json.dumps(payload)
-        r = self.post("url=http://localhost:8998/postrequest", payload=json_payload)
+        r = self.post({"url": ts.mockserver.url("postrequest")}, payload=json_payload)
         self.assertEqual(r.status_code, 200)
         self.assertTrue(json_payload in r.text)
 
         # form encoded fields
         payload = {'form_field1': 'value1',
                    'form_field2': 'value2', }
-        r = self.post("url=http://localhost:8998/postrequest", payload=payload)
+        r = self.post({"url": ts.mockserver.url("postrequest")}, payload=payload)
         self.assertEqual(r.status_code, 200)
         self.assertTrue('form_field2=value2&amp;form_field1=value1' in r.text)
