@@ -32,6 +32,6 @@ MANHOLE_PASSWORD = 'admin'
 
 # pool options
 SLOTS = 50
-CACHE_ENABLED = True
+CACHE_ENABLED = False
 CACHE_SIZE = 50  # MB
 CACHE_PATH = '.splash-cache'
