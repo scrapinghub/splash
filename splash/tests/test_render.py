@@ -1,8 +1,9 @@
 import unittest, requests, json, base64, urllib
+from functools import wraps
 from cStringIO import StringIO
 from PIL import Image
 from splash.tests import ts
-from functools import wraps
+from splash.tests.utils import NON_EXISTING_RESOLVABLE
 
 
 def https_only(func):
@@ -78,6 +79,7 @@ class BaseRenderTest(unittest.TestCase):
 
 class _RenderTest(BaseRenderTest):
 
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_render_error(self):
         r = self.request({"url": "http://non-existent-host/"})
         self.assertEqual(r.status_code, 502)

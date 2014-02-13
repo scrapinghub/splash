@@ -2,6 +2,13 @@ import sys, os, time, tempfile, shutil, socket, fcntl
 from subprocess import Popen, PIPE
 
 
+try:
+    socket.getaddrinfo('non-existing-host', 80)
+    NON_EXISTING_RESOLVABLE = True
+except socket.gaierror:
+    NON_EXISTING_RESOLVABLE = False
+
+
 def get_testenv():
     env = os.environ.copy()
     env['PYTHONPATH'] = os.getcwd()
