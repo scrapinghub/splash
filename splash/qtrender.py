@@ -25,7 +25,7 @@ class SplashQWebPage(QWebPage):
         return False
 
     def javaScriptConsoleMessage(self, msg, line_number, source_id):
-        if self.verbosity >= 1:
+        if self.verbosity >= 2:
             log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
 
 
