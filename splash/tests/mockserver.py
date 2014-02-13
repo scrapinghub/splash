@@ -1,4 +1,5 @@
 import os
+import optparse
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web import proxy, http
@@ -326,18 +327,28 @@ class ProxyFactory(http.HTTPFactory):
     protocol = Proxy
 
 
-if __name__ == "__main__":
+def run(port_num=8998, sslport_num=8999, proxyport_num=8990):
     root = Root()
     factory = Site(root)
-    port = reactor.listenTCP(8998, factory)
-    sslport = reactor.listenSSL(8999, factory, ssl_factory())
-    proxyport = reactor.listenTCP(8990, ProxyFactory())
+    port = reactor.listenTCP(port_num, factory)
+    sslport = reactor.listenSSL(sslport_num, factory, ssl_factory())
+    proxyport = reactor.listenTCP(proxyport_num, ProxyFactory())
 
     def print_listening():
         h = port.getHost()
         s = sslport.getHost()
         p = proxyport.getHost()
-        print "Mock server running at http://%s:%d, https://%s:%d and http://%s:%d" % \
+        print "Mock server running at http://%s:%d (http), https://%s:%d (https) and http://%s:%d (proxy)" % \
             (h.host, h.port, s.host, s.port, p.host, p.port)
     reactor.callWhenRunning(print_listening)
     reactor.run()
+
+
+if __name__ == "__main__":
+    op = optparse.OptionParser()
+    op.add_option("--http-port", help="http port", type=int, default=8998)
+    op.add_option("--https-port", help="https port", type=int, default=8999)
+    op.add_option("--proxy-port", help="proxy port", type=int, default=8990)
+    opts, _ = op.parse_args()
+
+    run(opts.http_port, opts.https_port, opts.proxy_port)
