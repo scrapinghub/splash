@@ -381,6 +381,11 @@ add ``proxy=mywebsite`` parameter to request::
 
     curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite
 
+If ``default.ini`` profile is present, it will be used when ``proxy``
+GET argument is not specified. If you have ``default.ini`` profile
+but don't want to apply it pass ``none`` as ``proxy`` value.
+
+
 Splash as a Proxy
 =================
 

@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import os
+import shutil
 import unittest
+import requests
 from splash.proxy import BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
 from splash.tests.test_render import BaseRenderTest
 from splash.tests import ts
+from splash.tests.utils import TestServers
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
@@ -47,7 +51,15 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
         self.assertTrue(f.shouldUseProxyList(protocol, url))
 
 
-class HtmlProxyRenderTest(BaseRenderTest):
+class BaseHtmlProxyTest(BaseRenderTest):
+    def assertProxied(self, html):
+        assert 'PROXY_USED' in html
+
+    def assertNotProxied(self, html):
+        assert 'PROXY_USED' not in html
+
+
+class HtmlProxyRenderTest(BaseHtmlProxyTest):
 
     def test_proxy_works(self):
         r1 = self.request({'url': ts.mockserver.url('jsrender')})
@@ -91,8 +103,68 @@ class HtmlProxyRenderTest(BaseRenderTest):
         self.assertEqual(r.status_code, 400)
 
 
-    def assertProxied(self, html):
-        assert 'PROXY_USED' in html
+class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
 
-    def assertNotProxied(self, html):
-        assert 'PROXY_USED' not in html
+    def ts_request(self, ts, query, render_format='html'):
+        url = "http://localhost:%s/render.%s" % (ts.splashserver.portnum, render_format)
+        return requests.get(url, params=query)
+
+    def create_default_ini(self, ts2):
+        src = os.path.join(ts2.proxy_profiles_path, 'test.ini')
+        dst = os.path.join(ts2.proxy_profiles_path, 'default.ini')
+        shutil.copyfile(src, dst)
+
+    def remove_default_ini(self, ts2):
+        dst = os.path.join(ts2.proxy_profiles_path, 'default.ini')
+        os.unlink(dst)
+
+    def test_ts_setup(self):
+        with TestServers(start_mockserver=False) as ts2:
+            r1 = self.ts_request(ts2, {'url': ts.mockserver.url('jsrender')})
+            self.assertNotProxied(r1.text)
+
+            r2 = self.ts_request(ts2, {
+                'url': ts.mockserver.url('jsrender'),
+                'proxy': 'test',
+            })
+            self.assertProxied(r2.text)
+
+    def test_default_profile_works(self):
+        with TestServers(start_mockserver=False) as ts2:
+            self.create_default_ini(ts2)
+            try:
+                # default.ini present, proxy is used by default
+                r1 = self.ts_request(ts2, {'url': ts.mockserver.url('jsrender')})
+                self.assertProxied(r1.text)
+
+                # another proxy
+                r2 = self.ts_request(ts2, {
+                    'url': ts.mockserver.url('jsrender'),
+                    'proxy': 'test',
+                })
+                self.assertProxied(r2.text)
+
+                # invalid proxy profile
+                r3 = self.ts_request(ts2, {
+                    'url': ts.mockserver.url('jsrender'),
+                    'proxy': 'nonexisting',
+                })
+                self.assertEqual(r3.status_code, 400)
+
+                # 'none' disables default.ini
+                r4 = self.ts_request(ts2, {
+                    'url': ts.mockserver.url('jsrender'),
+                    'proxy': 'none',
+                })
+                self.assertNotProxied(r4.text)
+
+                # empty 'proxy' argument disables default.ini
+                r5 = self.ts_request(ts2, {
+                    'url': ts.mockserver.url('jsrender'),
+                    'proxy': '',
+                })
+                self.assertNotProxied(r5.text)
+
+            finally:
+                self.remove_default_ini(ts2)
+

@@ -78,6 +78,10 @@ class ProfilesSplashProxyFactory(BlackWhiteSplashProxyFactory):
             .*\.css.*
             .*\.png
 
+    If there is ``default.ini`` proxy profile in profiles folder
+    it will be used when no profile is specified in GET parameter.
+    If GET parameter is 'none' or empty ('') no proxy will be used even if
+    ``default.ini`` is present.
     """
     GET_ARGUMENT = 'proxy'
     NO_PROXY_PROFILE_MSG = 'Proxy profile does not exist'
@@ -93,7 +97,13 @@ class ProfilesSplashProxyFactory(BlackWhiteSplashProxyFactory):
         Return (blacklist, whitelist, proxy_list) tuple
         loaded from profile ``profile_name``.
         """
-        if not profile_name:
+        if profile_name is None:
+            profile_name = 'default'
+            ini_path = self._getIniPath(profile_name)
+            if not os.path.isfile(ini_path):
+                profile_name = 'none'
+
+        if profile_name == 'none':
             return [], [], []
         ini_path = self._getIniPath(profile_name)
         return self._parseIni(ini_path)

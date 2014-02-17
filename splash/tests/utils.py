@@ -122,27 +122,33 @@ class MockServer(object):
 
 class TestServers(object):
 
-    def __init__(self, logfile=None):
+    def __init__(self, logfile=None, start_mockserver=True):
         self.logfile = logfile
-        self.proxy_profiles_path = os.path.join(
-            os.path.dirname(__file__),
-            'proxy_profiles'
-        )
-        self.js_profiles_path = os.path.join(
-            os.path.dirname(__file__),
-            'js_profiles'
-        )
+        self.tmp_folder = tempfile.mkdtemp("splash-tests-tmp")
+        self.proxy_profiles_path = self._copy_test_folder('proxy_profiles')
+        self.js_profiles_path = self._copy_test_folder('js_profiles')
+        self.start_mockserver = start_mockserver
+
+    def _copy_test_folder(self, src, dst=None):
+        src_path = os.path.join(os.path.dirname(__file__), src)
+        dst_path = os.path.join(self.tmp_folder, dst or src)
+        shutil.copytree(src_path, dst_path)
+        return dst_path
 
     def __enter__(self):
-        self.mockserver = MockServer()
-        self.mockserver.__enter__()
+        if self.start_mockserver:
+            self.mockserver = MockServer()
+            self.mockserver.__enter__()
         self.splashserver = SplashServer(self.logfile, self.proxy_profiles_path,
                                          self.js_profiles_path)
         self.splashserver.__enter__()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.splashserver.__exit__(None, None, None)
-        self.mockserver.__exit__(None, None, None)
+        if self.start_mockserver:
+            self.mockserver.__exit__(None, None, None)
+        shutil.rmtree(self.tmp_folder)
 
     def print_output(self):
         print(_non_block_read(self.splashserver.proc.stderr))
