@@ -30,11 +30,11 @@ def parse_opts():
         help="path to a folder with javascript profiles")
     op.add_option("--js-disable-cross-domain-access", action="store_true", default=False,
         help="disable support for cross domain access when executing custom javascript")
-    _bool_default = {True:' (active by default)', False: ''}
-    op.add_option("--cache", action="store_true", dest="cache_enabled",
-        help="enable local cache" + _bool_default[defaults.CACHE_ENABLED])
+    _bool_default = {True:' (default)', False: ''}
     op.add_option("--no-cache", action="store_false", dest="cache_enabled",
         help="disable local cache" + _bool_default[not defaults.CACHE_ENABLED])
+    op.add_option("--cache", action="store_true", dest="cache_enabled",
+        help="enable local cache (WARNING: don't enable it unless you know what are you doing)" + _bool_default[defaults.CACHE_ENABLED])
     op.add_option("-c", "--cache-path", help="local cache folder")
     op.add_option("--cache-size", type=int, default=defaults.CACHE_SIZE,
         help="maximum cache size in MB (default: %default)")
@@ -173,9 +173,12 @@ def _default_cache(cache_enabled, cache_path, cache_size):
     cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
     cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
 
-    log.msg("cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (cache_enabled, cache_path, cache_size))
-
     if cache_enabled:
+        log.msg("cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (cache_enabled, cache_path, cache_size))
+        log.msg("[WARNING] You have enabled cache support. QT cache is known "
+                "to cause segfaults and other issues for splash; "
+                "enable it on your own risk. We recommend using a separate "
+                "caching forward proxy like squid.")
         return cache.construct(cache_path, cache_size)
 
 

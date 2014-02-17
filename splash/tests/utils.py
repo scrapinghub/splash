@@ -2,6 +2,13 @@ import sys, os, time, tempfile, shutil, socket, fcntl
 from subprocess import Popen, PIPE
 
 
+try:
+    socket.getaddrinfo('non-existing-host', 80)
+    NON_EXISTING_RESOLVABLE = True
+except socket.gaierror:
+    NON_EXISTING_RESOLVABLE = False
+
+
 def get_testenv():
     env = os.environ.copy()
     env['PYTHONPATH'] = os.getcwd()
@@ -13,6 +20,7 @@ def _ephemeral_port():
     s.bind(("", 0))
     return s.getsockname()[1]
 
+
 def _non_block_read(output):
     fd = output.fileno()
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -21,6 +29,7 @@ def _non_block_read(output):
         return output.read()
     except Exception:
         return ""
+
 
 def _wait_for_port(portnum, delay=0.1, attempts=30):
     while attempts > 0:
@@ -84,10 +93,23 @@ class SplashServer(object):
 
 class MockServer(object):
 
+    def __init__(self, http_port=None, https_port=None, proxy_port=8990):
+        self.http_port = http_port if http_port is not None else _ephemeral_port()
+        self.https_port = https_port if https_port is not None else _ephemeral_port()
+        self.proxy_port = proxy_port if proxy_port is not None else _ephemeral_port()
+
     def __enter__(self):
-        self.proc = Popen([sys.executable, '-u', '-m', 'splash.tests.mockserver'],
-            stdout=PIPE, env=get_testenv())
-        for port in (8998, 8999, 8990):
+        self.proc = Popen([
+                sys.executable,
+                '-u', '-m', 'splash.tests.mockserver',
+                '--http-port', str(self.http_port),
+                '--https-port', str(self.https_port),
+                '--proxy-port', str(self.proxy_port),
+            ],
+            stdout=PIPE,
+            env=get_testenv()
+        )
+        for port in (self.http_port, self.https_port, self.proxy_port):
             _wait_for_port(port)
         print(_non_block_read(self.proc.stdout))
 
@@ -96,18 +118,33 @@ class MockServer(object):
         self.proc.wait()
         time.sleep(0.2)
 
+    def url(self, path):
+        return "http://localhost:%s/%s" % (self.http_port, path.lstrip('/'))
+
+    def https_url(self, path):
+        return "https://localhost:%s/%s" % (self.https_port, path.lstrip('/'))
+
 
 class TestServers(object):
 
-    def __init__(self, logfile=None):
+    def __init__(self, logfile=None, start_mockserver=True):
         self.logfile = logfile
-        self.proxy_profiles_path = _path('proxy_profiles')
-        self.js_profiles_path = _path('js_profiles')
-        self.filters_path = _path('filters')
+        self.tmp_folder = tempfile.mkdtemp("splash-tests-tmp")
+        self.proxy_profiles_path = self._copy_test_folder('proxy_profiles')
+        self.js_profiles_path = self._copy_test_folder('js_profiles')
+        self.filters_path = self._copy_test_folder('filters')
+        self.start_mockserver = start_mockserver
+
+    def _copy_test_folder(self, src, dst=None):
+        src_path = _path(src)
+        dst_path = os.path.join(self.tmp_folder, dst or src)
+        shutil.copytree(src_path, dst_path)
+        return dst_path
 
     def __enter__(self):
-        self.mockserver = MockServer()
-        self.mockserver.__enter__()
+        if self.start_mockserver:
+            self.mockserver = MockServer()
+            self.mockserver.__enter__()
         self.splashserver = SplashServer(
             logfile=self.logfile,
             proxy_profiles_path=self.proxy_profiles_path,
@@ -115,10 +152,13 @@ class TestServers(object):
             filters_path=self.filters_path,
         )
         self.splashserver.__enter__()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.splashserver.__exit__(None, None, None)
-        self.mockserver.__exit__(None, None, None)
+        if self.start_mockserver:
+            self.mockserver.__exit__(None, None, None)
+        shutil.rmtree(self.tmp_folder)
 
     def print_output(self):
         print(_non_block_read(self.splashserver.proc.stderr))
