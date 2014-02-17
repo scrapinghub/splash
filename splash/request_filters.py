@@ -85,8 +85,15 @@ class AdblockFilter(object):
 
     def process(self, request, splash_request, operation, data):
         filter_names = [f for f in getarg(splash_request, "filters", default="").split(',') if f]
-        if not filter_names:
+
+        if filter_names == ['none']:
             return request
+
+        if not filter_names:
+            if self.rules.filter_is_known('default'):
+                filter_names = ['default']
+            else:
+                return request
 
         url, options = self._url_and_options(request, splash_request)
         blocking_filter = self.rules.blocking_filter(filter_names, url, options)

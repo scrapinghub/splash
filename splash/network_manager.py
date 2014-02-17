@@ -153,4 +153,5 @@ class FilteringQNetworkAccessManager(ProxiedQNetworkAccessManager):
         names = [f for f in filter_names.split(',') if f]
         if self.rules is None:
             return names
-        return [name for name in names if not self.rules.filter_is_known(name)]
+        return [name for name in names
+                if not (self.rules.filter_is_known(name) or name=='none')]
