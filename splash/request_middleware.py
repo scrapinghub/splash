@@ -119,6 +119,9 @@ class AdblockMiddleware(object):
 
 
 class RulesRegistry(object):
+
+    RE2_WARN_THRESHOLD = 100
+
     def __init__(self, path, supported_options=('domain',), verbosity=0):
         self.filters = {}
         self.verbosity = verbosity
@@ -140,7 +143,12 @@ class RulesRegistry(object):
                 return name
 
     def _load(self, path):
-        import adblockparser
+        try:
+            import adblockparser
+        except ImportError:
+            log.msg('WARNING: https://github.com/scrapinghub/adblockparser '
+                    'library is not available, filters are not loaded.')
+            return
 
         for fname in os.listdir(path):
             if not fname.endswith('.txt'):
@@ -152,17 +160,30 @@ class RulesRegistry(object):
                 continue
 
             if self.verbosity >= 1:
-                log.msg("Loading filters: %s" % fname)
+                log.msg("Loading filter %s" % name)
 
             with open(fpath, 'rt') as f:
                 lines = [line.decode('utf8').strip() for line in f]
 
-            self.filters[name] = adblockparser.AdblockRules(
+            rules = adblockparser.AdblockRules(
                 lines,
                 supported_options=self.supported_options,
                 skip_unsupported_rules=False,
                 max_mem=512*1024*1024,  # this doesn't actually use 512M
             )
+            filters_num = len(rules.rules)
+
+            if self.verbosity >= 2:
+                log.msg("%d rule(s) loaded for filter %s" % (filters_num, name))
+
+            if not rules.uses_re2 and  filters_num > self.RE2_WARN_THRESHOLD:
+                log.msg('WARNING: a filter %s with %d rules loaded, but '
+                        'pyre2 library is not installed. Matching may become '
+                        'slow; installing https://github.com/axiak/pyre2 is '
+                        'highly recommended.' % (name, filters_num))
+
+            self.filters[name] = rules
+
 
     def filter_is_known(self, name):
         return name in self.filters
