@@ -6,8 +6,13 @@ from PyQt4.QtNetwork import (
 )
 from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
-from splash import request_filters
 from splash.utils import qurl2ascii
+from splash.request_middleware import (
+    AdblockMiddleware,
+    AllowedDomainsMiddleware,
+    RequestLoggingMiddleware,
+    RulesRegistry,
+)
 
 
 # See: http://pyqt.sourceforge.net/Docs/PyQt4/qnetworkreply.html#NetworkError-enum
@@ -121,23 +126,24 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             log.msg(msg, system='network')
 
 
-class FilteringQNetworkAccessManager(ProxiedQNetworkAccessManager):
+class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
-    This SplashQNetworkAccessManager subclass enables request filtering.
+    This QNetworkAccessManager provides proxy support and request
+    middleware support.
     """
     def __init__(self, filters_path, verbosity):
-        super(FilteringQNetworkAccessManager, self).__init__(verbosity=verbosity)
+        super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
 
-        self.filters = []
+        self.request_middlewares = []
         if self.verbosity >= 2:
-            self.filters += [request_filters.LogRequestsFilter()]
+            self.request_middlewares += [RequestLoggingMiddleware()]
 
-        self.filters += [request_filters.AllowedDomainsFilter(verbosity=verbosity)]
+        self.request_middlewares += [AllowedDomainsMiddleware(verbosity=verbosity)]
 
         if filters_path is not None:
-            self.rules = request_filters.RulesRegistry(filters_path, verbosity=verbosity)
-            self.filters += [
-                request_filters.AdblockFilter(self.rules, verbosity=verbosity)
+            self.rules = RulesRegistry(filters_path, verbosity=verbosity)
+            self.request_middlewares += [
+                AdblockMiddleware(self.rules, verbosity=verbosity)
             ]
         else:
             self.rules = None
@@ -145,9 +151,9 @@ class FilteringQNetworkAccessManager(ProxiedQNetworkAccessManager):
     def createRequest(self, operation, request, outgoingData=None):
         splash_request = self._getSplashRequest(request)
         if splash_request:
-            for filter in self.filters:
+            for filter in self.request_middlewares:
                 request = filter.process(request, splash_request, operation, outgoingData)
-        return super(FilteringQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
+        return super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
 
     def unknownFilters(self, filter_names):
         names = [f for f in filter_names.split(',') if f]

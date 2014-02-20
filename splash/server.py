@@ -152,7 +152,7 @@ def default_splash_server(portnum, slots=None,
                           filters_path=None, verbosity=None):
     from splash import network_manager
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
-    manager = network_manager.FilteringQNetworkAccessManager(
+    manager = network_manager.SplashQNetworkAccessManager(
         filters_path=filters_path,
         verbosity=verbosity
     )

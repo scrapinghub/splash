@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Classes that filter requests based on various conditions.
-They should be used with
-``splash.network_manager.FilteringQNetworkAccessManager``.
+Classes that process (and maybe filter) requests based on
+various conditions. They should be used with
+``splash.network_manager.SplashQNetworkAccessManager``.
 """
 from __future__ import absolute_import
 import re
@@ -34,10 +34,10 @@ def request_repr(request, operation=None):
     return "%s %s" % (method, url)
 
 
-class AllowedDomainsFilter(object):
+class AllowedDomainsMiddleware(object):
     """
-    This filter checks ``allowed_domains`` GET argument and drops all
-    requests to domains not in ``allowed_domains``.
+    This request middleware checks ``allowed_domains`` GET argument
+    and drops all requests to domains not in ``allowed_domains``.
     """
     def __init__(self, allow_subdomains=True, verbosity=0):
         self.allow_subdomains = allow_subdomains
@@ -48,7 +48,7 @@ class AllowedDomainsFilter(object):
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
         if not host_re.match(unicode(request.url().host())):
             if self.verbosity >= 2:
-                log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_filter')
+                log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
             _drop_request(request)
         return request
 
@@ -69,15 +69,18 @@ class AllowedDomainsFilter(object):
         return re.compile(regex, re.IGNORECASE)
 
 
-class LogRequestsFilter(object):
-    """ Filter for logging requests """
+class RequestLoggingMiddleware(object):
+    """ Request middleware for logging requests """
     def process(self, request, splash_request, operation, data):
-        log.msg("Request %s %s" % (id(splash_request), request_repr(request, operation)), system='network')
+        log.msg(
+            "Request %s %s" % (id(splash_request), request_repr(request, operation)),
+            system='network'
+        )
         return request
 
 
-class AdblockFilter(object):
-    """ Filter that discards requests based on Adblock rules """
+class AdblockMiddleware(object):
+    """ Request middleware that discards requests based on Adblock rules """
 
     def __init__(self, rules_registry, verbosity=0):
         self.rules = rules_registry
@@ -96,7 +99,7 @@ class AdblockFilter(object):
                 return request
 
         url, options = self._url_and_options(request, splash_request)
-        blocking_filter = self.rules.blocking_filter(filter_names, url, options)
+        blocking_filter = self.rules.get_blocking_filter(filter_names, url, options)
         if blocking_filter:
             if self.verbosity >= 2:
                 msg = "Filter %s: dropped %s %s" % (
@@ -104,7 +107,7 @@ class AdblockFilter(object):
                     id(splash_request),
                     request_repr(request, operation)
                 )
-                log.msg(msg, system='request_filter')
+                log.msg(msg, system='request_middleware')
             _drop_request(request)
         return request
 
@@ -122,7 +125,7 @@ class RulesRegistry(object):
         self.supported_options = supported_options
         self._load(path)
 
-    def blocking_filter(self, filter_names, url, options):
+    def get_blocking_filter(self, filter_names, url, options):
         for name in filter_names:
             if name not in self.filters:
                 if self.verbosity >= 1:
@@ -163,4 +166,3 @@ class RulesRegistry(object):
 
     def filter_is_known(self, name):
         return name in self.filters
-
