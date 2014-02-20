@@ -87,66 +87,6 @@ Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
 
-Splash supports executing JavaScript code within the context of the page.
-The JavaScript code is executed after the page finished loading (including
-any delay defined by 'wait') but before the page is rendered. This allow to
-use the javascript code to modify the page being rendered.
-
-To execute JavaScript code we use a POST request with the content-type set to
-'application/javascript'. The body of the request contains the code to be executed.
-
-Curl example::
-
-    # Render page and modify its title dynamically
-    curl -X POST -H 'content-type: application/javascript' \
-        -d 'document.title="My Title";' \
-        'http://localhost:8050/render.html?url=http://domain.com'
-
-Splash supports "javascript profiles" that allows to preload javascript files,
-the javascript files defined in a profile are executed after the page is loaded
-and before any javascript code defined in the request.
-
-The preloaded files can be used in the user's POST'ed code.
-
-To enable javascript profiles support, run splash server with the
-``--js-profiles-path=<path to a folder with js profiles>`` option::
-
-    python -m splash.server --js-profiles-path=/etc/splash/js-profiles
-
-Then create a directory with the name of the profile and place inside it the
-javascript files to load. The files are loaded in the order they appear in the
-filesystem. Directory example::
-
-    /etc/splash/js-profiles/
-                        mywebsite/
-                              lib1.js
-
-Note that the javascript files must be utf-8 encoded. To apply this javascript profile
-add the parameter ``js=mywebsite`` to the request::
-
-    curl -X POST -H 'content-type: application/javascript' \
-        -d 'myfunc("Hello");' \
-        'http://localhost:8050/render.html?js=mywebsite&url=http://domain.com'
-
-Note that this example assumes that myfunc is a javascript function defined in lib1.js.
-
-Splash by default allows javascript code to access the content of iframes loaded
-from a diferent security origin from the original page. This feature is useful
-for scraping, i.e to extract the html of a iframe page. This is an example of its usage:
-
-    curl -X POST -H 'content-type: application/javascript' \
-        -d 'function getContents(){ var f = document.getElementById("external"); return f.contentDocument.getElementsByTagName("body")[0].innerHTML; }; getContents();' \
-        'http://localhost:8050/render.html?url=http://domain.com'
-
-The javascript function 'getContents' will look for a iframe with the id 'external'
-and extract its html contents.
-
-Note that allowing cross origin javascript calls is a potential security issue, since it
-is possible that secret information (i.e cookies) is exposed when this support is enabled.
-It is possible to disable this feature with the ``--js-disable-cross-domain-access`` option::
-
-    python -m splash.server --js-disable-cross-domain-access
-
 
 render.png
 ----------
@@ -333,6 +273,84 @@ Curl examples::
     curl -X POST -H 'content-type: application/javascript' \
         -d 'function getAd(x){ return x; }; console.log("some log"); console.log("another log"); getAd("abc");' \
         'http://localhost:8050/render.json?url=http://domain.com&script=1&console=1'
+
+
+Executing custom Javascript code within page context
+====================================================
+
+Splash supports executing JavaScript code within the context of the page.
+The JavaScript code is executed after the page finished loading (including
+any delay defined by 'wait') but before the page is rendered. This allow to
+use the javascript code to modify the page being rendered.
+
+To execute JavaScript code we use a POST request with the content-type set to
+'application/javascript'. The body of the request should contain the code to
+be executed.
+
+Curl example::
+
+    # Render page and modify its title dynamically
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'document.title="My Title";' \
+        'http://localhost:8050/render.html?url=http://domain.com'
+
+To get the result of a javascript function executed within page
+context use render.json endpoint with script=1 parameter.
+
+Javascript Profiles
+-------------------
+
+Splash supports "javascript profiles" that allows to preload javascript files.
+Javascript files defined in a profile are executed after the page is loaded
+and before any javascript code defined in the request.
+
+The preloaded files can be used in the user's POST'ed code.
+
+To enable javascript profiles support, run splash server with the
+``--js-profiles-path=<path to a folder with js profiles>`` option::
+
+    python -m splash.server --js-profiles-path=/etc/splash/js-profiles
+
+Then create a directory with the name of the profile and place inside it the
+javascript files to load (note they must be utf-8 encoded).
+The files are loaded in the order they appear in the filesystem.
+Directory example::
+
+    /etc/splash/js-profiles/
+                        mywebsite/
+                              lib1.js
+
+To apply this javascript profile add the parameter
+``js=mywebsite`` to the request::
+
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'myfunc("Hello");' \
+        'http://localhost:8050/render.html?js=mywebsite&url=http://domain.com'
+
+Note that this example assumes that myfunc is a javascript function
+defined in lib1.js.
+
+Javascript Security
+-------------------
+
+By default Splash allows javascript code to access the content of iframes
+loaded from a security origin diferent to the original page (browsers usually
+disallow that). This feature is useful for scraping, e.g. to extract the
+html of a iframe page. An example of its usage:
+
+    curl -X POST -H 'content-type: application/javascript' \
+        -d 'function getContents(){ var f = document.getElementById("external"); return f.contentDocument.getElementsByTagName("body")[0].innerHTML; }; getContents();' \
+        'http://localhost:8050/render.html?url=http://domain.com'
+
+The javascript function 'getContents' will look for a iframe with
+the id 'external' and extract its html contents.
+
+Note that allowing cross origin javascript calls is a potential
+security issue, since it is possible that secret information (i.e cookies)
+is exposed when this support is enabled. It is possible to disable
+this feature with the ``--js-disable-cross-domain-access`` option::
+
+    python -m splash.server --js-disable-cross-domain-access
 
 
 Proxy Profiles
