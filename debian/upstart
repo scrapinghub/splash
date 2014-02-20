@@ -10,9 +10,10 @@ script
     logdir=${SPLASH_LOGDIR:-/var/log/splash}
     proxyprofilespath=${SPLASH_PROXYPROFILESPATH:-/etc/splash/proxy-profiles}
     jsprofilespath=${SPLASH_JSPROFILESPATH:-/etc/splash/js-profiles}
+    filterspath=${SPLASH_FILTERSPATH:-/etc/splash/filters}
     maxrss=${SPLASH_MAXRSS:-$(awk '/MemTotal/{print $2*0.75/1024}' /proc/meminfo)}
 
-    chown proxy:proxy $logdir $proxyprofilespath $cachepath $jsprofilespath
+    chown proxy:proxy $logdir $proxyprofilespath $cachepath $jsprofilespath $filterspath
 
     exec start-stop-daemon --start \
         --chuid proxy:proxy \
@@ -24,6 +25,7 @@ script
             --logfile $logdir/splash.log \
             --proxy-profiles-path=$proxyprofilespath \
             --js-profiles-path=$jsprofilespath \
+            --filters-path=$filterspath \
             --manhole \
             >$logdir/splash.out 2>$logdir/splash.err
 end script

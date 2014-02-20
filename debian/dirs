@@ -1,3 +1,4 @@
 var/log/splash
 etc/splash/proxy-profiles
 etc/splash/js-profiles
+etc/splash/filters
