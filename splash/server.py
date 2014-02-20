@@ -45,7 +45,7 @@ def parse_opts():
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
     op.add_option("--filters-path",
-        help="path to a folder with network filters")
+        help="path to a folder with network request filters")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are 0, 1, 2 and 3")
 
