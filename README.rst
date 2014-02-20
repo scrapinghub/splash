@@ -361,7 +361,7 @@ Request Filters
 ===============
 
 Splash supports filtering requests based on
-`Adblock Plus <https://adblockplus.org/ru/firefox>`_ rules. You can use
+`Adblock Plus <https://adblockplus.org/>`_ rules. You can use
 filters from `EasyList`_ to remove ads and tracking codes
 (and thus speedup page loading), and/or write filters manually to block
 some of the requests (e.g. to prevent rendering of images, mp3 files,
