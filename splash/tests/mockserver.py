@@ -8,12 +8,26 @@ from twisted.internet.task import deferLater
 from splash.utils import getarg
 
 
-class JsRender(Resource):
+def _html_resource(html):
 
-    isLeaf = True
+    class HtmlResource(Resource):
+        isLeaf = True
 
-    def render(self, request):
-        return """
+        def __init__(self, http_port=None, https_port=None):
+            Resource.__init__(self)
+            self.http_port = http_port
+            self.https_port = https_port
+
+        def render(self, request):
+            return html % dict(
+                http_port=self.http_port,
+                https_port=self.https_port
+            )
+
+    return HtmlResource
+
+
+JsRender = _html_resource("""
 <html>
 <body>
 
@@ -25,15 +39,9 @@ document.getElementById("p1").innerHTML="After";
 
 </body>
 </html>
-"""
+""")
 
-
-class JsAlert(Resource):
-
-    isLeaf = True
-
-    def render(self, request):
-        return """
+JsAlert = _html_resource("""
 <html>
 <body>
 <p id="p1">Before</p>
@@ -43,15 +51,9 @@ document.getElementById("p1").innerHTML="After";
 </script>
 </body>
 </html>
-"""
+""")
 
-
-class JsConfirm(Resource):
-
-    isLeaf = True
-
-    def render(self, request):
-        return """
+JsConfirm = _html_resource("""
 <html>
 <body>
 <p id="p1">Before</p>
@@ -61,15 +63,9 @@ document.getElementById("p1").innerHTML="After";
 </script>
 </body>
 </html>
-"""
+""")
 
-
-class JsInterval(Resource):
-
-    isLeaf = True
-
-    def render(self, request):
-        return """
+JsInterval = _html_resource("""
 <html><body>
 <div id='num'>not started</div>
 <script>
@@ -80,13 +76,10 @@ setInterval(function(){
 }, 1);
 </script>
 </body></html>
-"""
+""")
 
 
-class JsViewport(Resource):
-    isLeaf = True
-    def render(self, request):
-        return """
+JsViewport = _html_resource("""
 <html><body>
 <script>
 document.write(window.innerWidth);
@@ -94,15 +87,14 @@ document.write('x');
 document.write(window.innerHeight);
 </script>
 </body></html>
-"""
+""")
 
 
-class TallPage(Resource):
-
-    isLeaf = True
-
-    def render(self, request):
-        return "<html style='height:2000px'><body>Hello</body></html>"
+TallPage = _html_resource("""
+<html style='height:2000px'>
+<body>Hello</body>
+</html>
+""")
 
 
 class BaseUrl(Resource):
@@ -146,14 +138,6 @@ class Delay(Resource):
         request.write("Response delayed for %0.3f seconds\n" % n)
         if not request._disconnected:
             request.finish()
-
-
-def _html_resource(html):
-    class HtmlResource(Resource):
-        isLeaf = True
-        def render(self, request):
-            return html
-    return HtmlResource
 
 
 class IframeResource(Resource):
@@ -260,39 +244,26 @@ class PostResource(Resource):
 """ % (headers, payload)
 
 
-class ExternalIFrameResource(Resource):
-
-    isLeaf = True
-
-    def __init__(self, https_port):
-        Resource.__init__(self)
-        self.https_port = https_port
-
-    def render(self, request):
-        return """
+ExternalIFrameResource = _html_resource("""
 <html>
 <body>
-<iframe id='external' src="https://localhost:{https_port}/external">
+<iframe id='external' src="https://localhost:%(https_port)s/external">
 </iframe>
 </body>
 </html>
-""".format(https_port=self.https_port)
+""")
 
-class ExternalResource(Resource):
 
-    isLeaf = True
-
-    def render(self, request):
-        return """
+ExternalResource = _html_resource("""
 <html>
 <body>EXTERNAL</body>
 </html>
-"""
+""")
 
 
 class Root(Resource):
 
-    def __init__(self, port_num, sslport_num, proxyport_num):
+    def __init__(self, http_port, https_port, proxy_port):
         Resource.__init__(self)
         self.log = []
         self.putChild("jsrender", JsRender())
@@ -303,9 +274,9 @@ class Root(Resource):
         self.putChild("tall", TallPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
-        self.putChild("iframes", IframeResource(port_num))
+        self.putChild("iframes", IframeResource(http_port))
         self.putChild("postrequest", PostResource())
-        self.putChild("externaliframe", ExternalIFrameResource(sslport_num))
+        self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
         self.putChild("external", ExternalResource())
 
 
