@@ -1,5 +1,5 @@
 import os, json, base64
-from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
+from PyQt4.QtWebKit import QWebPage, QWebSettings
 from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
@@ -28,12 +28,9 @@ class WebpageRender(object):
 
     def __init__(self, network_manager, splash_proxy_factory, splash_request, verbose=False):
         self.network_manager = network_manager
-        self.web_view = QWebView()
         self.web_page = SplashQWebPage()
         self.web_page.setNetworkAccessManager(self.network_manager)
-        self.web_view.setPage(self.web_page)
-        self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
-        settings = self.web_view.settings()
+        settings = self.web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
@@ -85,17 +82,15 @@ class WebpageRender(object):
                 self.web_page.mainFrame().load(request)
 
     def close(self):
-        self.web_view.stop()
-        self.web_view.close()
+        self.web_page.triggerAction(QWebPage.Stop)
         self.web_page.deleteLater()
-        self.web_view.deleteLater()
 
     def _requestFinished(self):
         self.log("_requestFinished %s" % id(self.splash_request))
-        self.web_view.loadFinished.connect(self._loadFinished)
+        self.web_page.loadFinished.connect(self._loadFinished)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
         data = self._reply.readAll()
-        self.web_view.page().mainFrame().setContent(data, mimeType, self._baseUrl)
+        self.web_page.mainFrame().setContent(data, mimeType, self._baseUrl)
         if self._reply.error():
             log.msg("Error loading %s: %s" % (self.url, self._reply.errorString()), system='render')
         self._reply.close()
@@ -124,7 +119,7 @@ class WebpageRender(object):
     # ======= Rendering methods that subclasses can use:
 
     def _getHtml(self):
-        frame = self.web_view.page().mainFrame()
+        frame = self.web_page.mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
     def _getPng(self, width=None, height=None):
@@ -141,7 +136,7 @@ class WebpageRender(object):
         return bytes(b.data())
 
     def _getIframes(self, children=True, html=True):
-        frame = self.web_view.page().mainFrame()
+        frame = self.web_page.mainFrame()
         return self._frameToDict(frame, children, html)
 
     def _render(self):
@@ -174,7 +169,7 @@ class WebpageRender(object):
         js_output = None
         js_console_output = None
         if js_source:
-            frame = self.web_view.page().mainFrame()
+            frame = self.web_page.mainFrame()
             if self.console:
                 js_console = JavascriptConsole()
                 frame.addToJavaScriptWindowObject('console', js_console)
