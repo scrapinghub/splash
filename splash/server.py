@@ -53,13 +53,17 @@ def parse_opts():
 
 
 def start_logging(opts):
+    import twisted
     from twisted.python import log
     from twisted.python.logfile import DailyLogFile
     if opts.logfile:
         logfile = DailyLogFile.fromFullPath(opts.logfile)
     else:
         logfile = sys.stderr
-    log.startLogging(logfile)
+    flo = log.startLogging(logfile)
+
+    if twisted.version.major >= 13:  # add microseconds to log
+        flo.timeFormat = "%Y-%m-%d %H:%M:%S.%f%z"
 
 
 def splash_started(opts, stderr):
