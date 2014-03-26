@@ -107,15 +107,16 @@ class WebpageRender(object):
         self._reply.deleteLater()
 
     def _loadFinished(self, ok):
-        self.log("_loadFinished %s" % id(self.splash_request))
         if self.deferred.called:
             # sometimes this callback is called multiple times
-            self.log("_loadFinished called multiple times", min_level=1)
+            self.log("loadFinished called multiple times", min_level=1)
             return
         if ok:
+            self.log("loadFinished %s" % id(self.splash_request))
             time_ms = int(self.wait_time * 1000)
             QTimer.singleShot(time_ms, self._loadFinishedOK)
         else:
+            self.log("loadFinished %s: error" % id(self.splash_request), min_level=1)
             self.deferred.errback(RenderError())
 
     def _loadFinishedOK(self):
