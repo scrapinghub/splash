@@ -244,6 +244,26 @@ class PostResource(Resource):
 """ % (headers, payload)
 
 
+class GetResource(Resource):
+
+    def render_GET(self, request):
+        headers = request.getAllHeaders()
+        payload = request.args
+        return """
+<html>
+<body>
+<p id="p1">GET request</p>
+<p id="headers">
+%s
+</p>
+<p id="arguments">
+%s
+</p>
+</body>
+</html>
+""" % (headers, payload)
+
+
 ExternalIFrameResource = _html_resource("""
 <html>
 <body>
@@ -253,7 +273,6 @@ ExternalIFrameResource = _html_resource("""
 </html>
 """)
 
-
 ExternalResource = _html_resource("""
 <html>
 <body>EXTERNAL</body>
@@ -261,11 +280,122 @@ ExternalResource = _html_resource("""
 """)
 
 
+JsRedirect = _html_resource("""
+<html><body>
+Redirecting now..
+<script> window.location = '/jsredirect-target'; </script>
+</body></html>
+""")
+
+JsRedirectOnload = _html_resource("""
+<html>
+<head>
+<script>
+window.onload = function(){
+    window.location = '/jsredirect-target';
+}
+</script>
+</head>
+<body>Redirecting on window.load...</body>
+</html>
+""")
+
+JsRedirectTimer = _html_resource("""
+<html>
+<head>
+<script>
+window.setTimeout(function(){
+    window.location = '/jsredirect-target';
+}, 100);
+</script>
+</head>
+<body>Redirecting on setTimeout callback...</body>
+</html>
+""")
+
+JsRedirectInfinite = _html_resource("""
+<html>
+<head><script> window.location = '/jsredirect-infinite2'; </script></head>
+<body>Redirecting infinitely, step #1</body>
+</html>
+""")
+
+JsRedirectInfinite2 = _html_resource("""
+<html>
+<head><script> window.location = '/jsredirect-infinite'; </script></head>
+<body>Redirecting infinitely, step #2</body>
+</html>
+""")
+
+JsRedirectToJsRedirect = _html_resource("""
+<html><body>
+Redirecting to an another redirecting page..
+<script>
+window.location = '/jsredirect';
+</script>
+</body></html>
+""")
+
+JsRedirectTarget = _html_resource("""
+<html><body> JS REDIRECT TARGET </body></html>
+""")
+
+MetaRedirect0 = _html_resource("""
+<html><head>
+<meta http-equiv="REFRESH" content="0; URL=/meta-redirect-target/">
+</head>
+<body>
+""")
+
+MetaRedirect1 = _html_resource("""
+<html><head>
+<meta http-equiv="REFRESH" content="0.2; URL=/meta-redirect-target/">
+</head>
+<body>
+""")
+
+MetaRedirectTarget = _html_resource("""
+<html><body> META REDIRECT TARGET </body></html>
+""")
+
+
+class HttpRedirectResource(Resource):
+    def render_GET(self, request):
+        code = request.args['code'][0]
+        url = '/getrequest?http_code=%s' % code
+        request.setResponseCode(int(code))
+        request.setHeader(b"location", url)
+        request.finish()
+        return NOT_DONE_YET
+
+
+class Index(Resource):
+    isLeaf = True
+
+    def __init__(self, rootChildren):
+        self.rootChildren = rootChildren
+
+    def render(self, request):
+
+        links = "\n".join([
+            "<li><a href='%s'>%s</a></li>" % (path, path)
+            for (path, child) in self.rootChildren.items() if path
+        ])
+        return """
+        <html>
+        <body><ul>%s</ul></body>
+        </html>
+        """ % links
+
+
 class Root(Resource):
 
     def __init__(self, http_port, https_port, proxy_port):
         Resource.__init__(self)
         self.log = []
+        self.putChild("postrequest", PostResource())
+        self.putChild("getrequest", GetResource())
+
         self.putChild("jsrender", JsRender())
         self.putChild("jsalert", JsAlert())
         self.putChild("jsconfirm", JsConfirm())
@@ -275,9 +405,23 @@ class Root(Resource):
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("iframes", IframeResource(http_port))
-        self.putChild("postrequest", PostResource())
         self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
         self.putChild("external", ExternalResource())
+
+        self.putChild("jsredirect", JsRedirect())
+        self.putChild("jsredirect-onload", JsRedirectOnload())
+        self.putChild("jsredirect-timer", JsRedirectTimer())
+        self.putChild("jsredirect-chain", JsRedirectToJsRedirect())
+        self.putChild("jsredirect-target", JsRedirectTarget())
+        self.putChild("jsredirect-infinite", JsRedirectInfinite())
+        self.putChild("jsredirect-infinite2", JsRedirectInfinite2())
+
+        self.putChild("meta-redirect0", MetaRedirect0())
+        self.putChild("meta-redirect1", MetaRedirect1())
+        self.putChild("meta-redirect-target", MetaRedirectTarget())
+        self.putChild("http-redirect", HttpRedirectResource())
+
+        self.putChild("", Index(self.children))
 
 
 def cert_path():
