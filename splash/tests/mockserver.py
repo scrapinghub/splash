@@ -1,5 +1,6 @@
 import os
 import optparse
+import base64
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web import proxy, http
@@ -136,6 +137,27 @@ class Delay(Resource):
 
     def _delayedRender(self, (request, n)):
         request.write("Response delayed for %0.3f seconds\n" % n)
+        if not request._disconnected:
+            request.finish()
+
+
+class SlowImage(Resource):
+    """ 1x1 black gif that loads n seconds """
+
+    isLeaf = True
+
+    def render_GET(self, request):
+        request.setHeader("Content-Type", "image/gif")
+        request.write("GIF89a")
+        n = getarg(request, "n", 1, type=float)
+        d = deferLater(reactor, n, lambda: (request, n))
+        d.addCallback(self._delayedRender)
+        return NOT_DONE_YET
+
+    def _delayedRender(self, (request, n)):
+        # write 1px black gif
+        gif_data = b'AQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
+        request.write(base64.decodestring(gif_data))
         if not request._disconnected:
             request.finish()
 
@@ -287,6 +309,14 @@ Redirecting now..
 </body></html>
 """)
 
+JsRedirectSlowImage = _html_resource("""
+<html><body>
+Redirecting now..
+<img width=10 heigth=10 src="/slow.gif?n=2">
+<script> window.location = '/jsredirect-target'; </script>
+</body></html>
+""")
+
 JsRedirectOnload = _html_resource("""
 <html>
 <head>
@@ -344,7 +374,21 @@ MetaRedirect0 = _html_resource("""
 <html><head>
 <meta http-equiv="REFRESH" content="0; URL=/meta-redirect-target/">
 </head>
-<body>
+<body></body></html>
+""")
+
+MetaRedirectSlowLoad = _html_resource("""
+<html><head>
+<meta http-equiv="REFRESH" content="0; URL=/meta-redirect-target/">
+</head>
+<body><img src="/delay?n=0.2"></body></html>
+""")
+
+MetaRedirectSlowLoad2 = _html_resource("""
+<html><head>
+<meta http-equiv="REFRESH" content="0; URL=/meta-redirect-target/">
+</head>
+<body><img width=10 heigth=10 src="/slow.gif?n=2"></body></html>
 """)
 
 MetaRedirect1 = _html_resource("""
@@ -404,11 +448,13 @@ class Root(Resource):
         self.putChild("tall", TallPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
+        self.putChild("slow.gif", SlowImage())
         self.putChild("iframes", IframeResource(http_port))
         self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
         self.putChild("external", ExternalResource())
 
         self.putChild("jsredirect", JsRedirect())
+        self.putChild("jsredirect-slowimage", JsRedirectSlowImage())
         self.putChild("jsredirect-onload", JsRedirectOnload())
         self.putChild("jsredirect-timer", JsRedirectTimer())
         self.putChild("jsredirect-chain", JsRedirectToJsRedirect())
@@ -417,6 +463,8 @@ class Root(Resource):
         self.putChild("jsredirect-infinite2", JsRedirectInfinite2())
 
         self.putChild("meta-redirect0", MetaRedirect0())
+        self.putChild("meta-redirect-slowload", MetaRedirectSlowLoad())
+        self.putChild("meta-redirect-slowload2", MetaRedirectSlowLoad2())
         self.putChild("meta-redirect1", MetaRedirect1())
         self.putChild("meta-redirect-target", MetaRedirectTarget())
         self.putChild("http-redirect", HttpRedirectResource())

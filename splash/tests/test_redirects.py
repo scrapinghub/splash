@@ -60,6 +60,42 @@ class MetaRedirectTest(BaseRenderTest):
         })
         self.assertRedirected(r)
 
+    def test_meta_redirect_slowload(self):
+        r = self.request({'url': ts.mockserver.url('meta-redirect-slowload')})
+        self.assertNotRedirected(r)
+
+    def test_meta_redirect_slowload_wait(self):
+        r = self.request({
+            'url': ts.mockserver.url('meta-redirect-slowload'),
+            'wait': 0.1,
+        })
+        self.assertRedirected(r)
+
+    def test_meta_redirect_slowload_wait_more(self):
+        r = self.request({
+            'url': ts.mockserver.url('meta-redirect-slowload'),
+            'wait': 0.3,
+        })
+        self.assertRedirected(r)
+
+    def test_meta_redirect_slowload2(self):
+        r = self.request({'url': ts.mockserver.url('meta-redirect-slowload2')})
+        self.assertNotRedirected(r)
+
+    def test_meta_redirect_slowload2_wait(self):
+        r = self.request({
+            'url': ts.mockserver.url('meta-redirect-slowload2'),
+            'wait': 0.1,
+        })
+        self.assertRedirected(r)
+
+    def test_meta_redirect_slowload2_wait_more(self):
+        r = self.request({
+            'url': ts.mockserver.url('meta-redirect-slowload2'),
+            'wait': 0.3,
+        })
+        self.assertRedirected(r)
+
 
 class JsRedirectTest(BaseRenderTest):
     def assertRedirected(self, resp):
@@ -97,6 +133,37 @@ class JsRedirectTest(BaseRenderTest):
 
     def test_redirect_timer_wait_enough(self):
         r = self.request({'url': ts.mockserver.url('jsredirect-timer'), 'wait': 0.2})
+        self.assertRedirected(r)
+
+    def test_redirect_chain_nowait(self):
+        r = self.request({'url': ts.mockserver.url('jsredirect-chain')})
+        self.assertNotRedirected(r)
+
+    def test_redirect_chain_wait(self):
+        r = self.request({'url': ts.mockserver.url('jsredirect-chain'), 'wait': 0.2})
+        self.assertRedirected(r)
+
+    def test_redirect_slowimage_nowait(self):
+        r = self.request({'url': ts.mockserver.url('jsredirect-slowimage')})
+        self.assertNotRedirected(r)
+
+    def test_redirect_slowimage_wait(self):
+        r = self.request({'url': ts.mockserver.url('jsredirect-slowimage'), 'wait': 0.1})
+        self.assertRedirected(r)
+
+    def test_redirect_slowimage_nowait_baseurl(self):
+        r = self.request({
+            'url': ts.mockserver.url('jsredirect-slowimage'),
+            'baseurl': ts.mockserver.url('/'),
+        })
+        self.assertNotRedirected(r)
+
+    def test_redirect_slowimage_wait_baseurl(self):
+        r = self.request({
+            'url': ts.mockserver.url('jsredirect-slowimage'),
+            'baseurl': ts.mockserver.url('/'),
+            'wait': 0.1
+        })
         self.assertRedirected(r)
 
     # TODO: support for jsredirect-infinite
