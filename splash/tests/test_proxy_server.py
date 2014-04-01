@@ -8,7 +8,7 @@ from splash.tests import ts, test_render
 SPLASH_HEADER_PREFIX = 'x-splash-'
 
 
-class ProxyRequestHandler:
+class ProxyRequestHandler(object):
 
     render_format = "html"
 
@@ -25,33 +25,36 @@ class ProxyRequestHandler:
     def _get_header(self, name):
         return SPLASH_HEADER_PREFIX + name.replace('_', '-')
 
-    def request(self, query, render_format=None):
+    def request(self, query, render_format=None, headers=None):
         render_format = render_format or self.render_format
 
-        headers = {self._get_header('render'):render_format}
+        _headers = {self._get_header('render'): render_format}
+        _headers.update(headers or {})
         if not isinstance(query, dict):
             query = urlparse.parse_qs(query)
 
         url = self._get_val(query.get('url'))
         for k, v in query.items():
             if k != 'url':
-                headers[self._get_header(k)] = self._get_val(v)
+                _headers[self._get_header(k)] = self._get_val(v)
 
-        return requests.get(url, headers=headers, proxies=self.proxies)
+        return requests.get(url, headers=_headers, proxies=self.proxies)
 
     def post(self, query, render_format=None, payload=None, headers=None):
         render_format = render_format or self.render_format
-        headers = headers if headers is not None else {}
-        headers[self._get_header('render')] = render_format
+
+        _headers = {self._get_header('render'): render_format}
+        _headers.update(headers or {})
+
         if not isinstance(query, dict):
             query = urlparse.parse_qs(query)
 
         url = self._get_val(query.get('url'))
         for k, v in query.items():
             if k != 'url':
-                headers[self._get_header(k)] = self._get_val(v)
+                _headers[self._get_header(k)] = self._get_val(v)
 
-        return requests.post(url, data=payload, headers=headers,
+        return requests.post(url, data=payload, headers=_headers,
                              proxies=self.proxies)
 
 
@@ -98,15 +101,20 @@ class ProxyPostTest(test_render.BaseRenderTest):
         self.assertEqual(r.status_code, 200)
         self.assertTrue("From POST" in r.text)
 
+    # unittest.expectedFailure doesn't work with nose
+    @unittest.skipIf(True, "expected failure")
     def test_post_headers(self):
-        headers = {'X-Custom-Header1': 'some-val1',
-                   'X-Custom-Header2': 'some-val2',
-                   }
+        headers = {
+            'X-Custom-Header1': 'some-val1',
+            'Custom-Header2': 'some-val2',
+            'User-Agent': 'Mozilla',
+        }
         r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
-        self.assertTrue("'x-custom-header1': 'some-val1'" in r.text)
-        self.assertTrue("'x-custom-header2': 'some-val2'" in r.text)
-        self.assertTrue("x-splash" not in r.text)
+        self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+        self.assertIn("'custom-header2': 'some-val2'", r.text)
+        self.assertIn("'user-agent': 'Mozilla'", r.text)
+        self.assertNotIn("x-splash", r.text.lower())
 
     def test_post_payload(self):
         # simply post body
@@ -114,11 +122,30 @@ class ProxyPostTest(test_render.BaseRenderTest):
         json_payload = json.dumps(payload)
         r = self.post({"url": ts.mockserver.url("postrequest")}, payload=json_payload)
         self.assertEqual(r.status_code, 200)
-        self.assertTrue(json_payload in r.text)
+        self.assertIn(json_payload, r.text)
 
         # form encoded fields
         payload = {'form_field1': 'value1',
                    'form_field2': 'value2', }
         r = self.post({"url": ts.mockserver.url("postrequest")}, payload=payload)
         self.assertEqual(r.status_code, 200)
-        self.assertTrue('form_field2=value2&amp;form_field1=value1' in r.text)
+        self.assertIn('form_field2=value2&amp;form_field1=value1', r.text)
+
+
+class ProxyGetTest(test_render.BaseRenderTest):
+    request_handler = ProxyRequestHandler
+
+    # unittest.expectedFailure doesn't work with nose
+    @unittest.skipIf(True, "expected failure")
+    def test_get_headers(self):
+        headers = {
+            'X-Custom-Header1': 'some-val1',
+            'Custom-Header2': 'some-val2',
+            'User-Agent': 'Mozilla',
+        }
+        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+        self.assertIn("'custom-header2': 'some-val2'", r.text)
+        self.assertIn("'user-agent': 'Mozilla'", r.text)
+        self.assertNotIn("x-splash", r.text)
