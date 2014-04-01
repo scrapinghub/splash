@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod
 from twisted.python import log, failure
-from resources import RenderHtml, RenderPng, RenderJson
+from splash.resources import RenderHtml, RenderPng, RenderJson
 
 
 NOT_DONE_YET = 1
@@ -67,14 +68,14 @@ class SplashProxyRequest(http.Request):
             resource = resource_cls(self.pool, True)
             self.render(resource)
 
-        except Exception, e:
+        except Exception as e:
             print e
             self.processingFailed(failure.Failure())
 
     def render(self, resource):
         try:
             body = resource.render(self)
-        except UnsupportedMethod as e:
+        except UnsupportedMethod:
             return self.methodNotAllowed()
 
         if body == NOT_DONE_YET:

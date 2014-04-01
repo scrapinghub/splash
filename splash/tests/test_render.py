@@ -36,14 +36,14 @@ class DirectRequestHandler(object):
     def host(self):
         return "localhost:%s" % ts.splashserver.portnum
 
-    def request(self, query, render_format=None):
+    def request(self, query, render_format=None, headers=None):
         render_format = render_format or self.render_format
         if isinstance(query, dict):
             url = "http://%s/render.%s" % (self.host, render_format)
-            return requests.get(url, params=query)
+            return requests.get(url, params=query, headers=headers)
         else:
             url = "http://%s/render.%s?%s" % (self.host, render_format, query)
-            return requests.get(url)
+            return requests.get(url, headers=headers)
 
     def post(self, query, render_format=None, payload=None, headers=None):
         render_format = render_format or self.render_format
@@ -70,8 +70,8 @@ class BaseRenderTest(unittest.TestCase):
         handler.render_format = self.render_format
         return handler
 
-    def request(self, query, render_format=None):
-        return self._get_handler().request(query, render_format)
+    def request(self, query, render_format=None, headers=None):
+        return self._get_handler().request(query, render_format, headers)
 
     def post(self, query, render_format=None, payload=None, headers=None):
         return self._get_handler().post(query, render_format, payload, headers)
