@@ -79,6 +79,13 @@ class WebpageRender(object):
             self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
+            self.web_page.loadStarted.connect(self._loadStarted)
+
+            self.web_page.mainFrame().loadFinished.connect(self._frameLoadFinished)
+            self.web_page.mainFrame().loadStarted.connect(self._frameLoadStarted)
+            self.web_page.mainFrame().initialLayoutCompleted.connect(self._initialLayoutCompleted)
+            self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._javaScriptWindowObjectCleared)
+
             if self.splash_request.method == 'POST':
                 headers = self.splash_request.getAllHeaders()
                 for header_name, header_value in headers.items():
@@ -112,8 +119,8 @@ class WebpageRender(object):
             self.log("loadFinished called multiple times", min_level=1)
             return
         if ok:
-            self.log("loadFinished %s" % id(self.splash_request))
             time_ms = int(self.wait_time * 1000)
+            self.log("loadFinished %s; waiting %sms" % (id(self.splash_request), time_ms))
             QTimer.singleShot(time_ms, self._loadFinishedOK)
         else:
             self.log("loadFinished %s: error" % id(self.splash_request), min_level=1)
@@ -126,6 +133,21 @@ class WebpageRender(object):
             self.deferred.callback(self._render())
         except:
             self.deferred.errback()
+
+    def _frameLoadFinished(self, ok):
+        self.log("mainFrame().LoadFinished %s %s" % (id(self.splash_request), ok), min_level=4)
+
+    def _loadStarted(self):
+        self.log("loadStarted %s" % id(self.splash_request), min_level=4)
+
+    def _frameLoadStarted(self):
+        self.log("mainFrame().loadStarted %s" % id(self.splash_request), min_level=4)
+
+    def _initialLayoutCompleted(self):
+        self.log("mainFrame().initialLayoutCompleted %s" % id(self.splash_request), min_level=3)
+
+    def _javaScriptWindowObjectCleared(self):
+        self.log("mainFrame().javaScriptWindowObjectCleared %s" % id(self.splash_request), min_level=3)
 
     # ======= Rendering methods that subclasses can use:
 
