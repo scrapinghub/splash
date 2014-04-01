@@ -101,20 +101,54 @@ class ProxyPostTest(test_render.BaseRenderTest):
         self.assertEqual(r.status_code, 200)
         self.assertTrue("From POST" in r.text)
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_post_headers(self):
         headers = {
             'X-Custom-Header1': 'some-val1',
             'Custom-Header2': 'some-val2',
-            'User-Agent': 'Mozilla',
         }
         r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
-        self.assertIn("'user-agent': 'Mozilla'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
+
+    # unittest.expectedFailure doesn't work with nose
+    @unittest.skipIf(True, "expected failure")
+    def test_post_request_baseurl(self):
+        r = self.post({
+            "url": ts.mockserver.url("postrequest"),
+            "baseurl": ts.mockserver.url("postrequest"),
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue("From POST" in r.text)
+
+    # unittest.expectedFailure doesn't work with nose
+    @unittest.skipIf(True, "expected failure")
+    def test_post_headers_baseurl(self):
+        headers = {
+            'X-Custom-Header1': 'some-val1',
+            'Custom-Header2': 'some-val2',
+        }
+        r = self.post({
+                "url": ts.mockserver.url("postrequest"),
+                "baseurl": ts.mockserver.url("postrequest")
+            },
+            headers=headers
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+        self.assertIn("'custom-header2': 'some-val2'", r.text)
+        self.assertNotIn("x-splash", r.text.lower())
+
+    # unittest.expectedFailure doesn't work with nose
+    @unittest.skipIf(True, "expected failure")
+    def test_post_user_agent(self):
+        r = self.post({"url": ts.mockserver.url("postrequest")}, headers={
+            'User-Agent': 'Mozilla',
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("x-splash", r.text.lower())
+        self.assertIn("'user-agent': 'Mozilla'", r.text)
 
     def test_post_payload(self):
         # simply post body
