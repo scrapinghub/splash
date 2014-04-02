@@ -1,4 +1,4 @@
-import os, sys, optparse, resource, traceback, signal
+import os, sys, optparse, resource, traceback, signal, time
 from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
@@ -6,11 +6,33 @@ from splash import defaults
 qtapp = None
 
 
-def install_qtreactor():
+def install_qtreactor(verbose):
     global qtapp
 
+    from twisted.python import log
     from PyQt4.QtGui import QApplication
-    qtapp = QApplication(sys.argv)
+    from PyQt4.QtCore import QAbstractEventDispatcher
+
+    class QApp(QApplication):
+
+        blockedAt = 0
+
+        def __init__(self, *args):
+            super(QApp, self).__init__(*args)
+            if verbose:
+                disp = QAbstractEventDispatcher.instance()
+                disp.aboutToBlock.connect(self.aboutToBlock)
+                disp.awake.connect(self.awake)
+
+        def aboutToBlock(self):
+            self.blockedAt = time.time()
+            log.msg("aboutToBlock", system="QAbstractEventDispatcher")
+
+        def awake(self):
+            diff = time.time() - self.blockedAt
+            log.msg("awake; block time: %0.4f" % diff, system="QAbstractEventDispatcher")
+
+    qtapp = QApp(sys.argv)
     import qt4reactor
     qt4reactor.install()
 
@@ -222,8 +244,9 @@ def _set_global_render_settings(js_disable_cross_domain_access):
 
 
 def main():
-    install_qtreactor()
     opts, _ = parse_opts()
+
+    install_qtreactor(opts.verbosity >= 5)
 
     start_logging(opts)
     bump_nofile_limit()
