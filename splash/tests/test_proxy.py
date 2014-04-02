@@ -105,8 +105,8 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
 
-    def ts_request(self, ts, query, render_format='html'):
-        url = "http://localhost:%s/render.%s" % (ts.splashserver.portnum, render_format)
+    def ts2_request(self, ts2, query, render_format='html'):
+        url = "http://localhost:%s/render.%s" % (ts2.splashserver.portnum, render_format)
         return requests.get(url, params=query)
 
     def create_default_ini(self, ts2):
@@ -119,52 +119,51 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
         os.unlink(dst)
 
     def test_ts_setup(self):
-        with TestServers(start_mockserver=False) as ts2:
-            r1 = self.ts_request(ts2, {'url': ts.mockserver.url('jsrender')})
+        with TestServers() as ts2:
+            r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender')})
             self.assertNotProxied(r1.text)
 
-            r2 = self.ts_request(ts2, {
-                'url': ts.mockserver.url('jsrender'),
+            r2 = self.ts2_request(ts2, {
+                'url': ts2.mockserver.url('jsrender'),
                 'proxy': 'test',
             })
             self.assertProxied(r2.text)
 
     def test_default_profile_works(self):
-        with TestServers(start_mockserver=False) as ts2:
+        with TestServers() as ts2:
             self.create_default_ini(ts2)
             try:
                 # default.ini present, proxy is used by default
-                r1 = self.ts_request(ts2, {'url': ts.mockserver.url('jsrender')})
+                r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender')})
                 self.assertProxied(r1.text)
 
                 # another proxy
-                r2 = self.ts_request(ts2, {
-                    'url': ts.mockserver.url('jsrender'),
+                r2 = self.ts2_request(ts2, {
+                    'url': ts2.mockserver.url('jsrender'),
                     'proxy': 'test',
                 })
                 self.assertProxied(r2.text)
 
                 # invalid proxy profile
-                r3 = self.ts_request(ts2, {
-                    'url': ts.mockserver.url('jsrender'),
+                r3 = self.ts2_request(ts2, {
+                    'url': ts2.mockserver.url('jsrender'),
                     'proxy': 'nonexisting',
                 })
                 self.assertEqual(r3.status_code, 400)
 
                 # 'none' disables default.ini
-                r4 = self.ts_request(ts2, {
-                    'url': ts.mockserver.url('jsrender'),
+                r4 = self.ts2_request(ts2, {
+                    'url': ts2.mockserver.url('jsrender'),
                     'proxy': 'none',
                 })
                 self.assertNotProxied(r4.text)
 
                 # empty 'proxy' argument disables default.ini
-                r5 = self.ts_request(ts2, {
-                    'url': ts.mockserver.url('jsrender'),
+                r5 = self.ts2_request(ts2, {
+                    'url': ts2.mockserver.url('jsrender'),
                     'proxy': '',
                 })
                 self.assertNotProxied(r5.text)
 
             finally:
                 self.remove_default_ini(ts2)
-
