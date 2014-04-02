@@ -14,6 +14,10 @@ class RenderError(Exception):
 
 class SplashQWebPage(QWebPage):
 
+    def __init__(self, *args, **kwargs):
+        super(SplashQWebPage, self).__init__(*args, **kwargs)
+        self.custom_user_agent = None
+
     def javaScriptAlert(self, frame, msg):
         return
 
@@ -22,6 +26,12 @@ class SplashQWebPage(QWebPage):
 
     def javaScriptConsoleMessage(self, msg, line_number, source_id):
         log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
+
+    def userAgentForUrl(self, url):
+        if self.custom_user_agent is None:
+            return super(SplashQWebPage, self).userAgentForUrl(url)
+        else:
+            return self.custom_user_agent
 
 
 class WebpageRender(object):
@@ -67,6 +77,13 @@ class WebpageRender(object):
             # viewport='full' can't be set if content is not loaded yet
             self._setViewportSize(self.viewport)
 
+        if self.splash_request.proxy_mode:
+            headers = self.splash_request.getAllHeaders()
+            for name, value in headers.items():
+                request.setRawHeader(name, value)
+                if name.lower() == 'user-agent':
+                    self.web_page.custom_user_agent = value
+
         if baseurl:
             self._baseUrl = QUrl(baseurl)
             request.setOriginatingObject(self.web_page.mainFrame())
@@ -75,9 +92,6 @@ class WebpageRender(object):
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
             if self.splash_request.method == 'POST':
-                headers = self.splash_request.getAllHeaders()
-                for header_name, header_value in headers.items():
-                    request.setRawHeader(header_name, header_value)
                 self.web_page.mainFrame().load(request,
                                                QNetworkAccessManager.PostOperation,
                                                self.splash_request.content.getvalue())

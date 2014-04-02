@@ -24,6 +24,7 @@ class SplashProxyRequest(http.Request):
     def __init__(self, channel, queued):
         http.Request.__init__(self, channel, queued)
         self.pool = channel.pool
+        self.proxy_mode = True
 
     def _get_header(self, name):
         return self.getHeader(SPLASH_HEADER_PREFIX + name)
@@ -38,9 +39,9 @@ class SplashProxyRequest(http.Request):
 
     def _remove_splash_headers(self):
         headers = self.getAllHeaders()
-        for header_name, header_value in headers.items():
-            if SPLASH_HEADER_PREFIX in header_name.lower():
-                self.requestHeaders.removeHeader(header_name)
+        for name, value in headers.items():
+            if SPLASH_HEADER_PREFIX in name.lower():
+                self.requestHeaders.removeHeader(name)
 
     def process(self):
         try:
@@ -105,12 +106,10 @@ class SplashProxyRequest(http.Request):
 
 
 class SplashProxy(http.HTTPChannel):
-
     requestFactory = SplashProxyRequest
 
 
 class SplashProxyFactory(http.HTTPFactory):
-
     protocol = SplashProxy
 
     def __init__(self, pool, logPath=None, timeout=60 * 60 * 12):
