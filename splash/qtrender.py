@@ -65,6 +65,18 @@ class WebpageRender(object):
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
 
+        # setup logging
+        if self.verbosity >= 4:
+            self.web_page.loadStarted.connect(self._loadStarted)
+            self.web_page.mainFrame().loadFinished.connect(self._frameLoadFinished)
+            self.web_page.mainFrame().loadStarted.connect(self._frameLoadStarted)
+            self.web_page.mainFrame().contentsSizeChanged.connect(self._contentsSizeChanged)
+
+        if self.verbosity >= 3:
+            self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._javaScriptWindowObjectCleared)
+            self.web_page.mainFrame().initialLayoutCompleted.connect(self._initialLayoutCompleted)
+
+        # do the request
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
 
@@ -79,12 +91,6 @@ class WebpageRender(object):
             self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
-            self.web_page.loadStarted.connect(self._loadStarted)
-
-            self.web_page.mainFrame().loadFinished.connect(self._frameLoadFinished)
-            self.web_page.mainFrame().loadStarted.connect(self._frameLoadStarted)
-            self.web_page.mainFrame().initialLayoutCompleted.connect(self._initialLayoutCompleted)
-            self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._javaScriptWindowObjectCleared)
 
             if self.splash_request.method == 'POST':
                 headers = self.splash_request.getAllHeaders()
@@ -148,6 +154,12 @@ class WebpageRender(object):
 
     def _javaScriptWindowObjectCleared(self):
         self.log("mainFrame().javaScriptWindowObjectCleared %s" % id(self.splash_request), min_level=3)
+
+    def _contentsSizeChanged(self):
+        self.log("mainFrame().contentsSizeChanged %s" % id(self.splash_request), min_level=4)
+
+    def _repaintRequested(self):
+        self.log("mainFrame().repaintRequested %s" % id(self.splash_request), min_level=4)
 
     # ======= Rendering methods that subclasses can use:
 
