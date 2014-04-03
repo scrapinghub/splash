@@ -77,16 +77,12 @@ class WebpageRender(object):
             # viewport='full' can't be set if content is not loaded yet
             self._setViewportSize(self.viewport)
 
-        try:
-            if getattr(self.splash_request, 'pass_headers'):
-                headers = self.splash_request.getAllHeaders()
-                for name, value in headers.items():
-                    request.setRawHeader(name, value)
-                    if name.lower() == 'user-agent':
-                        self.web_page.custom_user_agent = value
-        except AttributeError:
-            # if pass_headers is not present, assume a non proxy request.
-            pass
+        if getattr(self.splash_request, 'pass_headers', False):
+            headers = self.splash_request.getAllHeaders()
+            for name, value in headers.items():
+                request.setRawHeader(name, value)
+                if name.lower() == 'user-agent':
+                    self.web_page.custom_user_agent = value
 
         if baseurl:
             self._baseUrl = QUrl(baseurl)
