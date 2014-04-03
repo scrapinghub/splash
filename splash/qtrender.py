@@ -1,6 +1,9 @@
+from __future__ import absolute_import
 import os, json, base64
+from collections import namedtuple
+import sip
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot
+from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot, QByteArray
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
@@ -12,7 +15,11 @@ class RenderError(Exception):
     pass
 
 
+RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
+
+
 class SplashQWebPage(QWebPage):
+    errorInfo = None
 
     custom_user_agent = None
 
@@ -30,6 +37,56 @@ class SplashQWebPage(QWebPage):
             return super(SplashQWebPage, self).userAgentForUrl(url)
         else:
             return self.custom_user_agent
+
+    # loadFinished signal handler receives ok=False at least in two cases:
+    # 1. when there is an error with the page (e.g. the page is not available);
+    # 2. when a redirect happened before all related resource are loaded.
+    # By implementing ErrorPageExtension we can catch (1) and
+    # distinguish it from (2).
+    def extension(self, extension, info=None, errorPage=None):
+        if extension == QWebPage.ErrorPageExtension:
+            # catch the error, populate self.errorInfo and return an error page
+
+            info = sip.cast(info, QWebPage.ErrorPageExtensionOption)
+
+            domain = 'Unknown'
+            if info.domain == QWebPage.QtNetwork:
+                domain = 'Network'
+            elif info.domain == QWebPage.Http:
+                domain = 'HTTP'
+            elif info.domain == QWebPage.WebKit:
+                domain = 'WebKit'
+
+            self.errorInfo = RenderErrorInfo(
+                domain,
+                int(info.error),
+                unicode(info.errorString),
+                unicode(info.url.toString())
+            )
+
+            # XXX: this page currently goes nowhere
+            content = u"""
+                <html><head><title>Failed loading page</title></head>
+                <body>
+                    <h1>Failed loading page ({0.text})</h1>
+                    <h2>{0.url}</h2>
+                    <p>{0.type} error #{0.code}</p>
+                </body></html>""".format(self.errorInfo)
+
+            errorPage = sip.cast(errorPage, QWebPage.ErrorPageExtensionReturn)
+            errorPage.content = QByteArray(content.encode('utf-8'))
+            return True
+
+        # XXX: this method always returns True, even if we haven't
+        # handled the extension. Is it correct? When can this method be
+        # called with extension which is not ErrorPageExtension if we
+        # are returning False in ``supportsExtension`` for such extensions?
+        return True
+
+    def supportsExtension(self, extension):
+        if extension == QWebPage.ErrorPageExtension:
+            return True
+        return False
 
 
 class WebpageRender(object):
@@ -119,10 +176,29 @@ class WebpageRender(object):
             # sometimes this callback is called multiple times
             self.log("_loadFinished called multiple times")
             return
-        if ok:
+
+        page_ok = ok and self.web_page.errorInfo is None
+        maybe_redirect = not ok and self.web_page.errorInfo is None
+        error_loading = ok and self.web_page.errorInfo is not None
+
+        if maybe_redirect:
+            self.log("Redirect detected %s" % id(self.splash_request))
+            # XXX: It assumes loadFinished will be called again because
+            # redirect happens. If redirect is detected improperly,
+            # loadFinished won't be called again, and Splash will return
+            # the result only after a timeout.
+            return
+
+        if page_ok:
             time_ms = int(self.wait_time * 1000)
             QTimer.singleShot(time_ms, self._loadFinishedOK)
+        elif error_loading:
+            self.log("loadFinished %s: %s" % (id(self.splash_request), str(self.web_page.errorInfo))) #, min_level=1)
+            # XXX: maybe return a meaningful error page instead of generic
+            # error message?
+            self.deferred.errback(RenderError())
         else:
+            self.log("loadFinished %s: unknown error" % id(self.splash_request)) #, min_level=1)
             self.deferred.errback(RenderError())
 
     def _loadFinishedOK(self):
