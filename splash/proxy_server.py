@@ -20,6 +20,7 @@ JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 
 
 class SplashProxyRequest(http.Request):
+    pass_headers = True
 
     def __init__(self, channel, queued):
         http.Request.__init__(self, channel, queued)
@@ -38,9 +39,9 @@ class SplashProxyRequest(http.Request):
 
     def _remove_splash_headers(self):
         headers = self.getAllHeaders()
-        for header_name, header_value in headers.items():
-            if SPLASH_HEADER_PREFIX in header_name.lower():
-                self.requestHeaders.removeHeader(header_name)
+        for name, value in headers.items():
+            if SPLASH_HEADER_PREFIX in name.lower():
+                self.requestHeaders.removeHeader(name)
 
     def process(self):
         try:
@@ -105,12 +106,10 @@ class SplashProxyRequest(http.Request):
 
 
 class SplashProxy(http.HTTPChannel):
-
     requestFactory = SplashProxyRequest
 
 
 class SplashProxyFactory(http.HTTPFactory):
-
     protocol = SplashProxy
 
     def __init__(self, pool, logPath=None, timeout=60 * 60 * 12):

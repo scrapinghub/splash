@@ -50,8 +50,8 @@ class FiltersTestHTML(BaseFiltersTest):
 
 
 class DefaultFiltersTest(BaseFiltersTest):
-    def ts_request(self, ts, query=None, render_format='html'):
-        url = "http://localhost:%s/render.%s" % (ts.splashserver.portnum, render_format)
+    def ts_request(self, ts2, query=None, render_format='html'):
+        url = "http://localhost:%s/render.%s" % (ts2.splashserver.portnum, render_format)
         return requests.get(url, params=self.params(**(query or {})))
 
     def create_default_txt(self, ts2, copy_from):
@@ -64,7 +64,7 @@ class DefaultFiltersTest(BaseFiltersTest):
         os.unlink(dst)
 
     def test_testing_setup(self):
-        with TestServers(start_mockserver=False) as ts2:
+        with TestServers() as ts2:
             # no filters, no default.txt
             r = self.ts_request(ts2)
             self.assertFilters(r, noscript=False, noscript2=False)
@@ -76,7 +76,7 @@ class DefaultFiltersTest(BaseFiltersTest):
 
     def test_default_works(self):
 
-        ts2 = TestServers(start_mockserver=False)
+        ts2 = TestServers()
 
         # create default.txt. It is the same as 'noscript.txt'.
         self.create_default_txt(ts2, copy_from='noscript.txt')

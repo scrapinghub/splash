@@ -14,6 +14,8 @@ class RenderError(Exception):
 
 class SplashQWebPage(QWebPage):
 
+    custom_user_agent = None
+
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
@@ -28,6 +30,12 @@ class SplashQWebPage(QWebPage):
         if self.verbosity >= 2:
             log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
 
+    def userAgentForUrl(self, url):
+        if self.custom_user_agent is None:
+            return super(SplashQWebPage, self).userAgentForUrl(url)
+        else:
+            return self.custom_user_agent
+
 
 class WebpageRender(object):
 
@@ -38,7 +46,7 @@ class WebpageRender(object):
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
-        settings = self.web_view.settings()
+        settings = self.web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
@@ -84,6 +92,13 @@ class WebpageRender(object):
             # viewport='full' can't be set if content is not loaded yet
             self._setViewportSize(self.viewport)
 
+        if getattr(self.splash_request, 'pass_headers', False):
+            headers = self.splash_request.getAllHeaders()
+            for name, value in headers.items():
+                request.setRawHeader(name, value)
+                if name.lower() == 'user-agent':
+                    self.web_page.custom_user_agent = value
+
         if baseurl:
             self._baseUrl = QUrl(baseurl)
             request.setOriginatingObject(self.web_page.mainFrame())
@@ -93,9 +108,6 @@ class WebpageRender(object):
             self.web_page.loadFinished.connect(self._loadFinished)
 
             if self.splash_request.method == 'POST':
-                headers = self.splash_request.getAllHeaders()
-                for header_name, header_value in headers.items():
-                    request.setRawHeader(header_name, header_value)
                 self.web_page.mainFrame().load(request,
                                                QNetworkAccessManager.PostOperation,
                                                self.splash_request.content.getvalue())
@@ -110,10 +122,10 @@ class WebpageRender(object):
 
     def _requestFinished(self):
         self.log("_requestFinished %s" % id(self.splash_request))
-        self.web_view.loadFinished.connect(self._loadFinished)
+        self.web_page.loadFinished.connect(self._loadFinished)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
         data = self._reply.readAll()
-        self.web_view.page().mainFrame().setContent(data, mimeType, self._baseUrl)
+        self.web_page.mainFrame().setContent(data, mimeType, self._baseUrl)
         if self._reply.error():
             self.log("Error loading %s: %s" % (self.url, self._reply.errorString()), min_level=1)
         self._reply.close()
@@ -165,8 +177,7 @@ class WebpageRender(object):
 
     def _getHtml(self):
         self.log("getting HTML %s" % id(self.splash_request))
-
-        frame = self.web_view.page().mainFrame()
+        frame = self.web_page.mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
     def _getPng(self, width=None, height=None):
@@ -186,7 +197,7 @@ class WebpageRender(object):
 
     def _getIframes(self, children=True, html=True):
         self.log("getting iframes %s" % id(self.splash_request))
-        frame = self.web_view.page().mainFrame()
+        frame = self.web_page.mainFrame()
         return self._frameToDict(frame, children, html)
 
     def _render(self):
@@ -219,7 +230,7 @@ class WebpageRender(object):
         js_output = None
         js_console_output = None
         if js_source:
-            frame = self.web_view.page().mainFrame()
+            frame = self.web_page.mainFrame()
             if self.console:
                 js_console = JavascriptConsole()
                 frame.addToJavaScriptWindowObject('console', js_console)

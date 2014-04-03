@@ -15,7 +15,7 @@ def get_testenv():
     return env
 
 
-def _ephemeral_port():
+def get_ephemeral_port():
     s = socket.socket()
     s.bind(("", 0))
     return s.getsockname()[1]
@@ -51,9 +51,9 @@ class SplashServer(object):
         self.proxy_profiles_path = proxy_profiles_path
         self.js_profiles_path = js_profiles_path
         self.filters_path = filters_path
-        self.portnum = portnum if portnum is not None else _ephemeral_port()
-        self.proxy_portnum = proxy_portnum if proxy_portnum is not None else _ephemeral_port()
         self.verbosity = verbosity
+        self.portnum = portnum if portnum is not None else get_ephemeral_port()
+        self.proxy_portnum = proxy_portnum if proxy_portnum is not None else get_ephemeral_port()
         self.tempdir = tempfile.mkdtemp()
 
     def __enter__(self):
@@ -93,10 +93,10 @@ class SplashServer(object):
 
 class MockServer(object):
 
-    def __init__(self, http_port=None, https_port=None, proxy_port=8990):
-        self.http_port = http_port if http_port is not None else _ephemeral_port()
-        self.https_port = https_port if https_port is not None else _ephemeral_port()
-        self.proxy_port = proxy_port if proxy_port is not None else _ephemeral_port()
+    def __init__(self, http_port=None, https_port=None, proxy_port=None):
+        self.http_port = http_port if http_port is not None else get_ephemeral_port()
+        self.https_port = https_port if https_port is not None else get_ephemeral_port()
+        self.proxy_port = proxy_port if proxy_port is not None else get_ephemeral_port()
 
     def __enter__(self):
         self.proc = Popen([
@@ -127,13 +127,21 @@ class MockServer(object):
 
 class TestServers(object):
 
-    def __init__(self, logfile=None, start_mockserver=True):
+    def __init__(self, logfile=None):
         self.logfile = logfile
         self.tmp_folder = tempfile.mkdtemp("splash-tests-tmp")
         self.proxy_profiles_path = self._copy_test_folder('proxy_profiles')
         self.js_profiles_path = self._copy_test_folder('js_profiles')
         self.filters_path = self._copy_test_folder('filters')
-        self.start_mockserver = start_mockserver
+
+        self.mock_http_port = get_ephemeral_port()
+        self.mock_https_port = get_ephemeral_port()
+        self.mock_proxy_port = get_ephemeral_port()
+
+        print("mock ports: %s http, %s https, %s proxy" % (
+            self.mock_http_port, self.mock_https_port, self.mock_proxy_port))
+
+        self._fix_testproxy_port()
 
     def _copy_test_folder(self, src, dst=None):
         src_path = _path(src)
@@ -141,10 +149,22 @@ class TestServers(object):
         shutil.copytree(src_path, dst_path)
         return dst_path
 
+    def _fix_testproxy_port(self):
+        filename = os.path.join(self.proxy_profiles_path, 'test.ini')
+        with open(filename, 'rb') as f:
+            data = f.read()
+        data = data.replace('8990', str(self.mock_proxy_port))
+        with open(filename, 'wb') as f:
+            f.write(data)
+
     def __enter__(self):
-        if self.start_mockserver:
-            self.mockserver = MockServer()
-            self.mockserver.__enter__()
+        self.mockserver = MockServer(
+            self.mock_http_port,
+            self.mock_https_port,
+            self.mock_proxy_port,
+        )
+        self.mockserver.__enter__()
+
         self.splashserver = SplashServer(
             logfile=self.logfile,
             proxy_profiles_path=self.proxy_profiles_path,
@@ -156,8 +176,7 @@ class TestServers(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.splashserver.__exit__(None, None, None)
-        if self.start_mockserver:
-            self.mockserver.__exit__(None, None, None)
+        self.mockserver.__exit__(None, None, None)
         shutil.rmtree(self.tmp_folder)
 
     def print_output(self):
