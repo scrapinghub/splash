@@ -210,6 +210,7 @@ class NoProxyPostTest(test_render.BaseRenderTest):
         self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertNotIn("'custom-header2': 'some-val2'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
+        self.assertNotIn("'content-type': 'application/javascript'", r.text)
 
     def test_post_user_agent(self):
         r = self.post({"url": ts.mockserver.url("postrequest")}, headers={
@@ -219,4 +220,4 @@ class NoProxyPostTest(test_render.BaseRenderTest):
         self.assertEqual(r.status_code, 200)
         self.assertNotIn("x-splash", r.text.lower())
         self.assertNotIn("'user-agent': 'Mozilla'", r.text)
-
+        self.assertNotIn("'content-type': 'application/javascript'", r.text)
