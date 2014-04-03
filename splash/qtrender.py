@@ -14,9 +14,7 @@ class RenderError(Exception):
 
 class SplashQWebPage(QWebPage):
 
-    def __init__(self, *args, **kwargs):
-        super(SplashQWebPage, self).__init__(*args, **kwargs)
-        self.custom_user_agent = None
+    custom_user_agent = None
 
     def javaScriptAlert(self, frame, msg):
         return
