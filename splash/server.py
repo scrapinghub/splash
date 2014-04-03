@@ -97,7 +97,6 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
     from twisted.web.server import Site
     from splash.resources import Root
     from splash.pool import RenderPool
-    from splash.request import SplashSite
     from twisted.python import log
 
     slots = defaults.SLOTS if slots is None else slots
@@ -112,7 +111,7 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
 
     # HTTP API
     root = Root(pool)
-    factory = SplashSite(root)
+    factory = Site(root)
     reactor.listenTCP(portnum, factory)
 
     # HTTP Proxy

@@ -77,7 +77,7 @@ class WebpageRender(object):
             # viewport='full' can't be set if content is not loaded yet
             self._setViewportSize(self.viewport)
 
-        if self.splash_request.proxy_mode:
+        if hasattr(self.splash_request, 'pass_headers'):
             headers = self.splash_request.getAllHeaders()
             for name, value in headers.items():
                 request.setRawHeader(name, value)

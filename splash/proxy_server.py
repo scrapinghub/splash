@@ -20,11 +20,11 @@ JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 
 
 class SplashProxyRequest(http.Request):
+    pass_headers = True
 
     def __init__(self, channel, queued):
         http.Request.__init__(self, channel, queued)
         self.pool = channel.pool
-        self.proxy_mode = True
 
     def _get_header(self, name):
         return self.getHeader(SPLASH_HEADER_PREFIX + name)
