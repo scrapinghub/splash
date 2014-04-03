@@ -140,8 +140,6 @@ class ProxyPostTest(test_render.BaseRenderTest):
         self.assertIn("'custom-header2': 'some-val2'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_post_user_agent(self):
         r = self.post({"url": ts.mockserver.url("postrequest")}, headers={
             'User-Agent': 'Mozilla',
@@ -169,8 +167,6 @@ class ProxyPostTest(test_render.BaseRenderTest):
 class ProxyGetTest(test_render.BaseRenderTest):
     request_handler = ProxyRequestHandler
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_get_headers(self):
         headers = {
             'X-Custom-Header1': 'some-val1',
@@ -183,3 +179,45 @@ class ProxyGetTest(test_render.BaseRenderTest):
         self.assertIn("'custom-header2': 'some-val2'", r.text)
         self.assertIn("'user-agent': 'Mozilla'", r.text)
         self.assertNotIn("x-splash", r.text)
+
+
+class NoProxyGetTest(test_render.BaseRenderTest):
+
+    def test_get_headers(self):
+        headers = {
+            'X-Custom-Header1': 'some-val1',
+            'Custom-Header2': 'some-val2',
+            'User-Agent': 'Mozilla',
+        }
+        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
+        self.assertNotIn("'custom-header2': 'some-val2'", r.text)
+        self.assertNotIn("'user-agent': 'Mozilla'", r.text)
+        self.assertNotIn("x-splash", r.text)
+
+
+class NoProxyPostTest(test_render.BaseRenderTest):
+
+    def test_post_headers(self):
+        headers = {
+            'X-Custom-Header1': 'some-val1',
+            'Custom-Header2': 'some-val2',
+            'Content-Type': 'application/javascript', # required by non-proxy POSTs
+        }
+        r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
+        self.assertNotIn("'custom-header2': 'some-val2'", r.text)
+        self.assertNotIn("x-splash", r.text.lower())
+        self.assertNotIn("'content-type': 'application/javascript'", r.text)
+
+    def test_post_user_agent(self):
+        r = self.post({"url": ts.mockserver.url("postrequest")}, headers={
+            'User-Agent': 'Mozilla',
+            'Content-Type': 'application/javascript',  # required by non-proxy POSTs
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("x-splash", r.text.lower())
+        self.assertNotIn("'user-agent': 'Mozilla'", r.text)
+        self.assertNotIn("'content-type': 'application/javascript'", r.text)
