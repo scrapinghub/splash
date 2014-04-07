@@ -126,7 +126,7 @@ class WebpageRender(object):
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
 
         request = QNetworkRequest()
-        request.setUrl(QUrl(url))
+        request.setUrl(QUrl(url.decode('utf8')))
 
         if self.viewport != 'full':
             # viewport='full' can't be set if content is not loaded yet
@@ -140,7 +140,7 @@ class WebpageRender(object):
                     self.web_page.custom_user_agent = value
 
         if baseurl:
-            self._baseUrl = QUrl(baseurl)
+            self._baseUrl = QUrl(baseurl.decode('utf8'))
             request.setOriginatingObject(self.web_page.mainFrame())
             self._reply = self.network_manager.get(request)
             self._reply.finished.connect(self._requestFinished)
