@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import unittest, requests, json, base64, urllib
 from functools import wraps
 from cStringIO import StringIO
@@ -168,7 +169,18 @@ class RenderHtmlTest(_RenderTest):
     def test_viewport(self):
         r = self.request({'url': ts.mockserver.url('jsviewport'), 'viewport': '300x400'})
         self.assertEqual(r.status_code, 200)
-        self.assertTrue('300x400' in r.text)
+        self.assertIn('300x400', r.text)
+
+    def test_nonascii_url(self):
+        nonascii_value =  u'тест'.encode('utf8')
+        url = ts.mockserver.url('getrequest') + '?param=' + nonascii_value
+        r = self.request({'url': url})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(
+            repr(nonascii_value) in r.text or  # direct request
+            urllib.quote(nonascii_value) in r.text,  # request in proxy mode
+            r.text
+        )
 
 
 class RenderPngTest(_RenderTest):

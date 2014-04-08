@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import unittest
 from splash.tests.test_render import BaseRenderTest
 from splash.tests import ts
 
@@ -144,29 +143,21 @@ class JsRedirectTest(BaseRenderTest):
         r = self.request({'url': ts.mockserver.url('jsredirect-chain'), 'wait': 0.2})
         self.assertRedirected(r)
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_redirect_slowimage_nowait(self):
         r = self.request({'url': ts.mockserver.url('jsredirect-slowimage')})
-        self.assertNotRedirected(r)
+        self.assertRedirected(r)
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_redirect_slowimage_wait(self):
         r = self.request({'url': ts.mockserver.url('jsredirect-slowimage'), 'wait': 0.1})
         self.assertRedirected(r)
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_redirect_slowimage_nowait_baseurl(self):
         r = self.request({
             'url': ts.mockserver.url('jsredirect-slowimage'),
             'baseurl': ts.mockserver.url('/'),
         })
-        self.assertNotRedirected(r)
+        self.assertRedirected(r)
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
     def test_redirect_slowimage_wait_baseurl(self):
         r = self.request({
             'url': ts.mockserver.url('jsredirect-slowimage'),
