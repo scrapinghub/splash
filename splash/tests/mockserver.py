@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
 import os
 import optparse
 import base64
@@ -413,6 +415,25 @@ class HttpRedirectResource(Resource):
         return NOT_DONE_YET
 
 
+class CP1251Resource(Resource):
+    def render_GET(self, request):
+        request.setHeader("Content-Type", "text/html; charset=windows-1251")
+        return u'''
+                <html>
+                <head>
+                <meta http-equiv="Content-Type" content="text/html;charset=windows-1251">
+                </head>
+                <body>проверка</body>
+                </html>
+                '''.strip().encode('cp1251')
+
+
+class InvalidContentTypeResource(Resource):
+    def render_GET(self, request):
+        request.setHeader("Content-Type", "ABRACADABRA: text/html; charset=windows-1251")
+        return u'''проверка'''.encode('cp1251')
+
+
 class Index(Resource):
     isLeaf = True
 
@@ -452,6 +473,8 @@ class Root(Resource):
         self.putChild("iframes", IframeResource(http_port))
         self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
         self.putChild("external", ExternalResource())
+        self.putChild("cp1251", CP1251Resource())
+        self.putChild("cp1251-invalid", InvalidContentTypeResource())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-slowimage", JsRedirectSlowImage())

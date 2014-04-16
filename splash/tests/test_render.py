@@ -182,6 +182,17 @@ class RenderHtmlTest(_RenderTest):
             r.text
         )
 
+    def test_result_encoding(self):
+        r1 = requests.get(ts.mockserver.url('cp1251'))
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r1.encoding, 'windows-1251')
+        self.assertTrue(u'проверка' in r1.text)
+
+        r2 = self.request({'url': ts.mockserver.url('cp1251')})
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.encoding, 'utf-8')
+        self.assertTrue(u'проверка' in r2.text)
+
 
 class RenderPngTest(_RenderTest):
 
@@ -369,6 +380,13 @@ class RenderJsonTest(_RenderTest):
         html3 = r3.json()['html']
         self.assertEqual(html1, html2)
         self.assertNotEqual(html1, html3)
+
+    def test_result_encoding(self):
+        r = self.request({'url': ts.mockserver.url('cp1251'), 'html': 1})
+        self.assertEqual(r.status_code, 200)
+        html = r.json()['html']
+        self.assertTrue(u'проверка' in html)
+        self.assertTrue(u'1251' in html)
 
 
     def assertFieldsInResponse(self, res, fields):

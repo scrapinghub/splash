@@ -87,6 +87,14 @@ Curl example::
 
     curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
 
+The result is always encoded to utf-8. Always decode HTML data returned
+by render.html endpoint from utf-8 even if there are tags like
+
+::
+
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+in the result.
 
 render.png
 ----------
