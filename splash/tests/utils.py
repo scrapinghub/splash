@@ -132,7 +132,7 @@ class TestServers(object):
         self.mock_https_port = get_ephemeral_port()
         self.mock_proxy_port = get_ephemeral_port()
 
-        print("mock ports: %s http, %s https, %s proxy" % (
+        print("TestServers mock ports: %s http, %s https, %s proxy" % (
             self.mock_http_port, self.mock_https_port, self.mock_proxy_port))
 
         self._fix_testproxy_port()
