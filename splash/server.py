@@ -16,6 +16,8 @@ def install_qtreactor():
 
 
 def parse_opts():
+    _bool_default = {True:' (default)', False: ''}
+
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
@@ -28,9 +30,17 @@ def parse_opts():
         help="path to a folder with proxy profiles")
     op.add_option("--js-profiles-path",
         help="path to a folder with javascript profiles")
-    op.add_option("--js-disable-cross-domain-access", action="store_true", default=False,
-        help="disable support for cross domain access when executing custom javascript")
-    _bool_default = {True:' (default)', False: ''}
+    op.add_option("--no-js-cross-domain-access",
+        action="store_false",
+        dest="js_cross_domain_enabled",
+        default=not defaults.JS_CROSS_DOMAIN_ENABLED,
+        help="disable support for cross domain access when executing custom javascript" + _bool_default[not defaults.JS_CROSS_DOMAIN_ENABLED])
+    op.add_option("--js-cross-domain-access",
+        action="store_true",
+        dest="js_cross_domain_enabled",
+        default=defaults.JS_CROSS_DOMAIN_ENABLED,
+        help="enable support for cross domain access when executing custom javascript "
+             "(WARNING: it could break rendering for some of the websites)" + _bool_default[defaults.JS_CROSS_DOMAIN_ENABLED])
     op.add_option("--no-cache", action="store_false", dest="cache_enabled",
         help="disable local cache" + _bool_default[not defaults.CACHE_ENABLED])
     op.add_option("--cache", action="store_true", dest="cache_enabled",
@@ -219,7 +229,7 @@ def main():
                   cache_size=opts.cache_size,
                   proxy_profiles_path=opts.proxy_profiles_path,
                   js_profiles_path=opts.js_profiles_path,
-                  js_disable_cross_domain_access=opts.js_disable_cross_domain_access,
+                  js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
                   disable_proxy=opts.disable_proxy,
                   proxy_portnum=opts.proxy_portnum)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
