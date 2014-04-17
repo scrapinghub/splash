@@ -341,7 +341,13 @@ defined in lib1.js.
 Javascript Security
 -------------------
 
-By default Splash allows javascript code to access the content of iframes
+If Splash is started with ``--js-cross-domain-access`` option
+
+::
+
+    python -m splash.server --js-cross-domain-access
+
+then javascript code is allowed to access the content of iframes
 loaded from a security origin diferent to the original page (browsers usually
 disallow that). This feature is useful for scraping, e.g. to extract the
 html of a iframe page. An example of its usage:
@@ -355,10 +361,8 @@ the id 'external' and extract its html contents.
 
 Note that allowing cross origin javascript calls is a potential
 security issue, since it is possible that secret information (i.e cookies)
-is exposed when this support is enabled. It is possible to disable
-this feature with the ``--js-disable-cross-domain-access`` option::
-
-    python -m splash.server --js-disable-cross-domain-access
+is exposed when this support is enabled; also, some websites don't load
+when cross-domain security is disabled, so this feature is OFF by default.
 
 
 Proxy Profiles

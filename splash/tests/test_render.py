@@ -5,6 +5,7 @@ from cStringIO import StringIO
 from PIL import Image
 from splash.tests import ts
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
+from splash.tests.utils import SplashServer
 
 
 def https_only(func):
@@ -470,6 +471,14 @@ class IframesRenderTest(BaseRenderTest):
 class RunJsTest(BaseRenderTest):
     render_format = 'json'
 
+    CROSS_DOMAIN_JS = """
+    function getContents(){
+        var iframe = document.getElementById('external');
+        return iframe.contentDocument.getElementsByTagName('body')[0].innerHTML;
+    };
+    getContents();"""
+
+
     def test_simple_js(self):
         js_source = "function test(x){ return x; } test('abc');"
         r = self._runjs_request(js_source).json()
@@ -513,14 +522,24 @@ test('Changed');"""
         self.assertEqual(r['console'], [u'abc\xae'])
 
     def test_js_external_iframe(self):
-        js_source = """function getContents(){
-                            var iframe = document.getElementById('external');
-                            return iframe.contentDocument.getElementsByTagName('body')[0].innerHTML;
-                       };
-                       getContents();"""
+        # by default, cross-domain access is disabled, so this does nothing
         params = {'url': ts.mockserver.url("externaliframe")}
-        r = self._runjs_request(js_source, params=params).json()
-        self.assertEqual(r['script'], u'EXTERNAL\n\n')
+        r = self._runjs_request(self.CROSS_DOMAIN_JS, params=params).json()
+        self.assertNotIn('script', r)
+
+    @skip_proxy
+    def test_js_external_iframe_cross_domain_enabled(self):
+        # cross-domain access should work if we enable it
+        with SplashServer(extra_args=['--js-cross-domain-access']) as splash:
+            query = {'url': ts.mockserver.url("externaliframe"), 'script': 1}
+            headers = {'content-type': 'application/javascript'}
+            response = requests.post(
+                splash.url("render.json"),
+                params=query,
+                headers=headers,
+                data=self.CROSS_DOMAIN_JS,
+            )
+            self.assertEqual(response.json()['script'], u'EXTERNAL\n\n')
 
     @skip_proxy
     def test_js_incorrect_content_type(self):
@@ -547,8 +566,7 @@ test('Changed');"""
         self.assertEqual(r.status_code, 400)
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
-        query = {'url': ts.mockserver.url("jsrender"),
-                 'script': 1}
+        query = {'url': ts.mockserver.url("jsrender"), 'script': 1}
         query.update(params or {})
         req_headers = {'content-type': 'application/javascript'}
         req_headers.update(headers or {})

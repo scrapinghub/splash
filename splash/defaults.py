@@ -35,3 +35,6 @@ SLOTS = 50
 CACHE_ENABLED = False
 CACHE_SIZE = 50  # MB
 CACHE_PATH = '.splash-cache'
+
+# JS rendering options
+JS_CROSS_DOMAIN_ENABLED = False
