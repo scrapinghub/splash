@@ -43,11 +43,13 @@ class SplashQWebPage(QWebPage):
         else:
             return self.custom_user_agent
 
-    # loadFinished signal handler receives ok=False at least in two cases:
+    # loadFinished signal handler receives ok=False at least these cases:
     # 1. when there is an error with the page (e.g. the page is not available);
-    # 2. when a redirect happened before all related resource are loaded.
+    # 2. when a redirect happened before all related resource are loaded;
+    # 3. when page sends headers that are not parsed correctly
+    #    (e.g. a bad Content-Type).
     # By implementing ErrorPageExtension we can catch (1) and
-    # distinguish it from (2).
+    # distinguish it from (2) and (3).
     def extension(self, extension, info=None, errorPage=None):
         if extension == QWebPage.ErrorPageExtension:
             # catch the error, populate self.errorInfo and return an error page
@@ -199,11 +201,15 @@ class WebpageRender(object):
         error_loading = ok and self.web_page.errorInfo is not None
 
         if maybe_redirect:
-            self.log("Redirect detected %s" % id(self.splash_request))
+            self.log("Redirect or other non-fatal error detected %s" % id(self.splash_request))
             # XXX: It assumes loadFinished will be called again because
             # redirect happens. If redirect is detected improperly,
             # loadFinished won't be called again, and Splash will return
             # the result only after a timeout.
+            #
+            # FIXME: This can happen if server returned incorrect
+            # Content-Type header; there is no an additional loadFinished
+            # signal in this case.
             return
 
         if page_ok:

@@ -5,6 +5,7 @@ from cStringIO import StringIO
 from PIL import Image
 from splash.tests import ts
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
+from splash.tests.utils import SplashServer
 
 
 def https_only(func):
@@ -181,6 +182,17 @@ class RenderHtmlTest(_RenderTest):
             urllib.quote(nonascii_value) in r.text,  # request in proxy mode
             r.text
         )
+
+    def test_result_encoding(self):
+        r1 = requests.get(ts.mockserver.url('cp1251'))
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r1.encoding, 'windows-1251')
+        self.assertTrue(u'проверка' in r1.text)
+
+        r2 = self.request({'url': ts.mockserver.url('cp1251')})
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.encoding, 'utf-8')
+        self.assertTrue(u'проверка' in r2.text)
 
 
 class RenderPngTest(_RenderTest):
@@ -370,6 +382,13 @@ class RenderJsonTest(_RenderTest):
         self.assertEqual(html1, html2)
         self.assertNotEqual(html1, html3)
 
+    def test_result_encoding(self):
+        r = self.request({'url': ts.mockserver.url('cp1251'), 'html': 1})
+        self.assertEqual(r.status_code, 200)
+        html = r.json()['html']
+        self.assertTrue(u'проверка' in html)
+        self.assertTrue(u'1251' in html)
+
 
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
@@ -452,6 +471,14 @@ class IframesRenderTest(BaseRenderTest):
 class RunJsTest(BaseRenderTest):
     render_format = 'json'
 
+    CROSS_DOMAIN_JS = """
+    function getContents(){
+        var iframe = document.getElementById('external');
+        return iframe.contentDocument.getElementsByTagName('body')[0].innerHTML;
+    };
+    getContents();"""
+
+
     def test_simple_js(self):
         js_source = "function test(x){ return x; } test('abc');"
         r = self._runjs_request(js_source).json()
@@ -495,14 +522,24 @@ test('Changed');"""
         self.assertEqual(r['console'], [u'abc\xae'])
 
     def test_js_external_iframe(self):
-        js_source = """function getContents(){
-                            var iframe = document.getElementById('external');
-                            return iframe.contentDocument.getElementsByTagName('body')[0].innerHTML;
-                       };
-                       getContents();"""
+        # by default, cross-domain access is disabled, so this does nothing
         params = {'url': ts.mockserver.url("externaliframe")}
-        r = self._runjs_request(js_source, params=params).json()
-        self.assertEqual(r['script'], u'EXTERNAL\n\n')
+        r = self._runjs_request(self.CROSS_DOMAIN_JS, params=params).json()
+        self.assertNotIn('script', r)
+
+    @skip_proxy
+    def test_js_external_iframe_cross_domain_enabled(self):
+        # cross-domain access should work if we enable it
+        with SplashServer(extra_args=['--js-cross-domain-access']) as splash:
+            query = {'url': ts.mockserver.url("externaliframe"), 'script': 1}
+            headers = {'content-type': 'application/javascript'}
+            response = requests.post(
+                splash.url("render.json"),
+                params=query,
+                headers=headers,
+                data=self.CROSS_DOMAIN_JS,
+            )
+            self.assertEqual(response.json()['script'], u'EXTERNAL\n\n')
 
     @skip_proxy
     def test_js_incorrect_content_type(self):
@@ -529,8 +566,7 @@ test('Changed');"""
         self.assertEqual(r.status_code, 400)
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
-        query = {'url': ts.mockserver.url("jsrender"),
-                 'script': 1}
+        query = {'url': ts.mockserver.url("jsrender"), 'script': 1}
         query.update(params or {})
         req_headers = {'content-type': 'application/javascript'}
         req_headers.update(headers or {})

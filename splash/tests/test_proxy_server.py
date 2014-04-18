@@ -1,7 +1,4 @@
-import unittest, requests, json, base64, urllib, urlparse, json
-from cStringIO import StringIO
-from PIL import Image
-from splash import defaults
+import unittest, requests, urlparse, json
 from splash.tests import ts, test_render
 
 

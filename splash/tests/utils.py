@@ -46,7 +46,7 @@ class SplashServer(object):
 
     def __init__(self, logfile=None, proxy_profiles_path=None,
                  js_profiles_path=None, filters_path=None, portnum=None,
-                 proxy_portnum=None, verbosity=3):
+                 proxy_portnum=None, extra_args=None, verbosity=3):
         self.logfile = logfile
         self.proxy_profiles_path = proxy_profiles_path
         self.js_profiles_path = js_profiles_path
@@ -55,6 +55,7 @@ class SplashServer(object):
         self.portnum = portnum if portnum is not None else get_ephemeral_port()
         self.proxy_portnum = proxy_portnum if proxy_portnum is not None else get_ephemeral_port()
         self.tempdir = tempfile.mkdtemp()
+        self.extra_args = extra_args or []
 
     def __enter__(self):
         args = [sys.executable, '-u', '-m', 'splash.server']
@@ -72,6 +73,8 @@ class SplashServer(object):
         if self.proxy_portnum:
             args += ['--proxy-portnum', str(self.proxy_portnum)]
 
+        args.extend(self.extra_args)
+
         self.proc = Popen(args, stderr=PIPE, env=get_testenv())
         self.proc.poll()
         if self.proc.returncode:
@@ -84,11 +87,19 @@ class SplashServer(object):
         finally:
             print(_non_block_read(self.proc.stderr))
 
+        return self
+
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
         self.proc.wait()
         time.sleep(0.2)
         shutil.rmtree(self.tempdir)
+
+    def url(self, path):
+        return "http://localhost:%s/%s" % (self.portnum, path.lstrip('/'))
+
+    def proxy_url(self, path):
+        return "http://localhost:%s/%s" % (self.proxy_portnum, path.lstrip('/'))
 
 
 class MockServer(object):
@@ -138,7 +149,7 @@ class TestServers(object):
         self.mock_https_port = get_ephemeral_port()
         self.mock_proxy_port = get_ephemeral_port()
 
-        print("mock ports: %s http, %s https, %s proxy" % (
+        print("TestServers mock ports: %s http, %s https, %s proxy" % (
             self.mock_http_port, self.mock_https_port, self.mock_proxy_port))
 
         self._fix_testproxy_port()
