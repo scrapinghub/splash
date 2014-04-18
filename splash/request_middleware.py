@@ -118,7 +118,7 @@ class AdblockMiddleware(object):
         return url, options
 
 
-class RulesRegistry(object):
+class AdblockRulesRegistry(object):
 
     RE2_WARN_THRESHOLD = 100
 

@@ -11,7 +11,7 @@ from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,
     RequestLoggingMiddleware,
-    RulesRegistry,
+    AdblockRulesRegistry,
 )
 
 
@@ -141,12 +141,12 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         self.request_middlewares += [AllowedDomainsMiddleware(verbosity=verbosity)]
 
         if filters_path is not None:
-            self.rules = RulesRegistry(filters_path, verbosity=verbosity)
+            self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
             self.request_middlewares += [
-                AdblockMiddleware(self.rules, verbosity=verbosity)
+                AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
             ]
         else:
-            self.rules = None
+            self.adblock_rules = None
 
     def createRequest(self, operation, request, outgoingData=None):
         splash_request = self._getSplashRequest(request)
@@ -157,7 +157,7 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
 
     def unknownFilters(self, filter_names):
         names = [f for f in filter_names.split(',') if f]
-        if self.rules is None:
+        if self.adblock_rules is None:
             return names
         return [name for name in names
-                if not (self.rules.filter_is_known(name) or name=='none')]
+                if not (self.adblock_rules.filter_is_known(name) or name=='none')]
