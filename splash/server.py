@@ -76,6 +76,8 @@ def parse_opts():
         help="enable proxy server")
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
+    op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
+        help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
@@ -185,11 +187,17 @@ def default_splash_server(portnum, slots=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
-                          filters_path=None, verbosity=None):
+                          filters_path=None, allowed_schemes=None,
+                          verbosity=None):
     from splash import network_manager
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    if allowed_schemes is None:
+        allowed_schemes = defaults.ALLOWED_SCHEMES
+    else:
+        allowed_schemes = allowed_schemes.split(',')
     manager = network_manager.SplashQNetworkAccessManager(
         filters_path=filters_path,
+        allowed_schemes=allowed_schemes,
         verbosity=verbosity
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
@@ -223,7 +231,8 @@ def _default_proxy_config(proxy_profiles_path):
     from splash import proxy
 
     if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
-        log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
+        log.msg("--proxy-profiles-path does not exist or it is not a folder; "
+                "proxy won't be used")
         proxy_enabled = False
     else:
         proxy_enabled = proxy_profiles_path is not None
@@ -239,7 +248,8 @@ def _check_js_profiles_path(js_profiles_path):
     from twisted.python import log
 
     if js_profiles_path is not None and not os.path.isdir(js_profiles_path):
-        log.msg("--js-profiles-path does not exist or it is not a folder; js profiles won't be used")
+        log.msg("--js-profiles-path does not exist or it is not a folder; "
+                "js profiles won't be used")
     return js_profiles_path
 
 
@@ -275,6 +285,7 @@ def main():
                   disable_proxy=opts.disable_proxy,
                   proxy_portnum=opts.proxy_portnum,
                   filters_path=opts.filters_path,
+                  allowed_schemes=opts.allowed_schemes,
                   verbosity=opts.verbosity)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 

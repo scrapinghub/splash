@@ -5,6 +5,7 @@ import shutil
 import requests
 from splash.tests import ts
 from splash.tests.utils import TestServers
+from splash.tests.utils import TestServers, SplashServer
 from splash.tests.test_render import BaseRenderTest
 
 
@@ -107,3 +108,26 @@ class DefaultFiltersTest(BaseFiltersTest):
             finally:
                 self.remove_default_ini(ts2)
 
+
+class AllowedSchemesTest(BaseRenderTest):
+
+    FILE_PATH = os.path.join(
+        os.path.dirname(__file__), 'filters', 'noscript.txt'
+    )
+    FILE_URL = 'file://' + FILE_PATH
+
+    def test_file_scheme_disabled_by_default(self):
+        assert os.path.isfile(self.FILE_PATH)
+        r = self.request({'url': self.FILE_URL})
+        self.assertEqual(r.status_code, 502)
+        self.assertNotIn('script.js', r.text)
+
+    def test_file_scheme_can_be_enabled(self):
+        assert os.path.isfile(self.FILE_PATH)
+
+        with SplashServer(extra_args=['--allowed-schemes=http,file']) as splash:
+            url = splash.url('render.html')
+            r = requests.get(url, params={'url': self.FILE_URL})
+
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('script.js', r.text)

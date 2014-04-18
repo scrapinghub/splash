@@ -69,6 +69,26 @@ class AllowedDomainsMiddleware(object):
         return re.compile(regex, re.IGNORECASE)
 
 
+class AllowedSchemesMiddleware(object):
+    """
+    This request middleware filters requests based on URI scheme.
+    """
+    def __init__(self, allowed_schemes, verbosity=0):
+        self.allowed_schemes = set(allowed_schemes)
+        self.verbosity = verbosity
+
+    def process(self, request, splash_request, operation, data):
+        scheme = str(request.url().scheme()).lower()
+        if scheme not in self.allowed_schemes:
+            if self.verbosity >= 2:
+                log.msg(
+                    "Dropped %s because of URI scheme" % (request_repr(request, operation),),
+                    system='request_middleware'
+                )
+            _drop_request(request)
+        return request
+
+
 class RequestLoggingMiddleware(object):
     """ Request middleware for logging requests """
     def process(self, request, splash_request, operation, data):

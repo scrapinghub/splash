@@ -10,6 +10,7 @@ from splash.utils import qurl2ascii
 from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,
+    AllowedSchemesMiddleware,
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
 )
@@ -131,20 +132,25 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     This QNetworkAccessManager provides proxy support and request
     middleware support.
     """
-    def __init__(self, filters_path, verbosity):
+    def __init__(self, filters_path, allowed_schemes, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
 
         self.request_middlewares = []
         if self.verbosity >= 2:
-            self.request_middlewares += [RequestLoggingMiddleware()]
+            self.request_middlewares.append(RequestLoggingMiddleware())
 
-        self.request_middlewares += [AllowedDomainsMiddleware(verbosity=verbosity)]
+        if allowed_schemes:
+            self.request_middlewares.append(
+                AllowedSchemesMiddleware(allowed_schemes, verbosity=verbosity)
+            )
+
+        self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
 
         if filters_path is not None:
             self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
-            self.request_middlewares += [
+            self.request_middlewares.append(
                 AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
-            ]
+            )
         else:
             self.adblock_rules = None
 
