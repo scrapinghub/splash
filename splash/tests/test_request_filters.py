@@ -4,15 +4,21 @@ import os
 import shutil
 import requests
 from splash.tests import ts
-from splash.tests.utils import TestServers
 from splash.tests.utils import TestServers, SplashServer
 from splash.tests.test_render import BaseRenderTest
 
 
 class BaseFiltersTest(BaseRenderTest):
-    def assertFilters(self, resp, noscript, noscript2):
-        # resp must be a response returned by a request to 'iframes'
-        # endpoint of mock server
+    def assertFiltersWork(self, resp, noscript, noscript2):
+        """
+        Check that filters work. There are two testing filters
+        (see splash/tests/filters), "noscript" that filters script.js,
+        and "noscript2" that filters script2.js.
+
+        ``resp`` must be a response returned by a request to 'iframes'
+        endpoint of mock server. ``noscript`` and ``noscript2`` are boolean
+        variables.
+        """
         if noscript:
             self.assertNotIn('SAME_DOMAIN', resp.text)
         else:
@@ -32,17 +38,17 @@ class FiltersTestHTML(BaseFiltersTest):
 
     def test_filtering_work(self):
         r = self.request(self.params())
-        self.assertFilters(r, noscript=False, noscript2=False)
+        self.assertFiltersWork(r, noscript=False, noscript2=False)
 
         r = self.request(self.params(filters='noscript'))
-        self.assertFilters(r, noscript=True, noscript2=False)
+        self.assertFiltersWork(r, noscript=True, noscript2=False)
 
         r = self.request(self.params(filters='noscript2'))
-        self.assertFilters(r, noscript=False, noscript2=True)
+        self.assertFiltersWork(r, noscript=False, noscript2=True)
 
     def test_multiple_filters(self):
         r = self.request(self.params(filters='noscript,noscript2'))
-        self.assertFilters(r, noscript=True, noscript2=True)
+        self.assertFiltersWork(r, noscript=True, noscript2=True)
 
     def test_invalid_filters(self):
         r = self.request(self.params(filters='foo,noscript2'))
@@ -68,7 +74,7 @@ class DefaultFiltersTest(BaseFiltersTest):
         with TestServers() as ts2:
             # no filters, no default.txt
             r = self.ts_request(ts2)
-            self.assertFilters(r, noscript=False, noscript2=False)
+            self.assertFiltersWork(r, noscript=False, noscript2=False)
 
             # default.txt does not exist yet
             r = self.ts_request(ts2, {'filters': 'default'})
@@ -85,25 +91,25 @@ class DefaultFiltersTest(BaseFiltersTest):
         with ts2:
             try:
                 r = self.ts_request(ts2, {'filters': 'default'})
-                self.assertFilters(r, noscript=True, noscript2=False)
+                self.assertFiltersWork(r, noscript=True, noscript2=False)
 
                 r = self.ts_request(ts2)
-                self.assertFilters(r, noscript=True, noscript2=False)
+                self.assertFiltersWork(r, noscript=True, noscript2=False)
 
                 r = self.ts_request(ts2, {'filters': 'noscript'})
-                self.assertFilters(r, noscript=True, noscript2=False)
+                self.assertFiltersWork(r, noscript=True, noscript2=False)
 
                 r = self.ts_request(ts2, {'filters': 'noscript2'})
-                self.assertFilters(r, noscript=False, noscript2=True)
+                self.assertFiltersWork(r, noscript=False, noscript2=True)
 
                 r = self.ts_request(ts2, {'filters': 'noscript2,default'})
-                self.assertFilters(r, noscript=True, noscript2=True)
+                self.assertFiltersWork(r, noscript=True, noscript2=True)
 
                 r = self.ts_request(ts2, {'filters': 'noscript,default'})
-                self.assertFilters(r, noscript=True, noscript2=False)
+                self.assertFiltersWork(r, noscript=True, noscript2=False)
 
                 r = self.ts_request(ts2, {'filters': 'none'})
-                self.assertFilters(r, noscript=False, noscript2=False)
+                self.assertFiltersWork(r, noscript=False, noscript2=False)
 
             finally:
                 self.remove_default_ini(ts2)
