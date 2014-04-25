@@ -2,13 +2,24 @@
 Splash - A javascript rendering service
 =======================================
 
-Introduction
-============
+Splash is a javascript rendering service with an HTTP API. It's a lightweight
+browser with an HTTP API, implemented in Python using Twisted and QT.
 
-Splash is a javascript rendering service with a HTTP API. It runs on top of
-twisted and QT webkit for rendering pages.
+It's fast, lightweight and state-less which makes it easy to distribute.
 
-The (twisted) QT reactor is used to make the sever fully asynchronous allowing
-to take advantage of webkit concurrency via QT main loop.
+Documentation
+-------------
 
-See documentation in ``docs/index.rst``
+Documentation is available here:
+http://splash.readthedocs.org/
+
+Support
+-------
+
+Open source support is provided here in Github. Please `create a question
+issue`_ (ie. issue with "question" label).
+
+Commercial support is also available by `Scrapinghub`_.
+
+.. _create a question issue: https://github.com/scrapinghub/splash/issues/new?labels=question
+.. _Scrapinghub: http://scrapinghub.com
