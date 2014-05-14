@@ -1,4 +1,5 @@
 import os, sys, optparse, resource, traceback, signal
+from psutil import phymem_usage
 from splash import defaults
 
 # A global reference must be kept to QApplication, otherwise the process will
@@ -21,7 +22,7 @@ def parse_opts():
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
-        help="exit if max RSS reaches this value (in MB) (default: %default)")
+        help="exit if max RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
     op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
         help="port to listen to (default: %default)")
     op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
@@ -135,6 +136,11 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
 def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
     from twisted.python import log
+
+    # Support maxrss as a percent of total physical memory
+    if 0.0 < maxrss < 1.0:
+        maxrss = phymem_usage().total * maxrss / (1024 ** 2)
+
     def check_maxrss():
         if resource.getrusage(resource.RUSAGE_SELF).ru_maxrss > maxrss * 1024:
             log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
