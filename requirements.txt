@@ -7,3 +7,6 @@ psutil
 pyOpenSSL
 requests >= 1.0
 Pillow
+
+# Probably you would like to install pdb4qt for debugging
+# https://pypi.python.org/pypi/pdb4qt/
