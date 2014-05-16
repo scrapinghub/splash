@@ -10,5 +10,6 @@ RUN python /get-pip.py
 ADD . /app
 RUN pip install qt4reactor psutil raven supervisor supervisor-stdout
 RUN pip install /app
+RUN ln -s /app/bin/start /bin/start
 EXPOSE 8050 8051 5023
 CMD ["/usr/local/bin/supervisord", "-c", "/app/supervisord.conf"] 

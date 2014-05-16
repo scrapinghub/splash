@@ -1,0 +1,14 @@
+#!/bin/bash
+
+cd /app
+
+case "$1" in
+    web)
+        command="python -m splash.server --port $PORT"
+        ;;
+    *)
+        command="$@"
+        ;;
+esac
+
+exec $command
