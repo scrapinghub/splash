@@ -2,6 +2,7 @@
 build
 dist
 splash.egg-info
+docs/_build
 
 # temp files & IDE settings
 _trial_temp
