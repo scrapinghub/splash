@@ -37,8 +37,12 @@ Return the HTML of the javascript-rendered page.
 
 Arguments:
 
+.. _arg-url:
+
 url : string : required
   The url to render (required)
+
+.. _arg-baseurl:
 
 baseurl : string : optional
   The base url to render the page with.
@@ -46,8 +50,12 @@ baseurl : string : optional
   If given, base HTML content will be feched from the URL given in the url
   argument, and render using this as the base url.
 
+.. _arg-timeout:
+
 timeout : float : optional
   A timeout (in seconds) for the render (defaults to 30)
+
+.. _arg-wait:
 
 wait : float : optional
   Time (in seconds) to wait for updates after page is loaded
@@ -57,13 +65,24 @@ wait : float : optional
   'wait' is also required for PNG rendering when viewport=full
   (see later).
 
+.. _arg-proxy:
+
 proxy : string : optional
   Proxy profile name. See :ref:`Proxy Profiles`.
+
+.. _arg-js:
+
+js : string : optional
+  Javascript profile name. See :ref:`Javascript Profiles`.
+
+.. _arg-allowed-domains:
 
 allowed_domains : string : optional
   Comma-separated list of allowed domain names.
   If present, Splash won't load anything neither from domains
   not in this list nor from subdomains of domains not in this list.
+
+.. _arg-viewport:
 
 viewport : string : optional
   View width and height (in pixels) of the browser viewport
@@ -104,9 +123,13 @@ Arguments:
 
 Same as `render.html`_ plus the following ones:
 
+.. _arg-width:
+
 width : integer : optional
   Resize the rendered image to the given width (in pixels) keeping the aspect
   ratio.
+
+.. _arg-height:
 
 height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
@@ -132,23 +155,33 @@ Arguments:
 
 Same as `render.png`_ plus the following ones:
 
+.. _arg-html:
+
 html : integer : optional
     Whether to include HTML in output. Possible values are
     ``1`` (include) and ``0`` (exclude). Default is 0.
 
+.. _arg-png:
+
 png : integer : optional
     Whether to include PNG in output. Possible values are
     ``1`` (include) and ``0`` (exclude). Default is 0.
+
+.. _arg-iframes:
 
 iframes : integer : optional
     Whether to include information about child frames in output.
     Possible values are  ``1`` (include) and ``0`` (exclude).
     Default is 0.
 
+.. _arg-script:
+
 script : integer : optional
     Whether to include the result of the executed javascript final
     statement in output. Possible values are ``1`` (include) and ``0``
     (exclude). Default is 0.
+
+.. _arg-console:
 
 console : integer : optional
     Whether to include the executed javascript console messages in output.
@@ -304,6 +337,8 @@ Curl example::
 To get the result of a javascript function executed within page
 context use render.json endpoint with script=1 parameter.
 
+.. _javascript profiles:
+
 Javascript Profiles
 -------------------
 
@@ -425,46 +460,51 @@ will be proxied and the response will be rendered based in the following HTTP he
 
 X-Splash-render : string : required
   The render mode to use, valid modes are: html, png and json. These modes have
-  the same behavior as the endpoints: render.html, render.png and render.json respectively.
+  the same behavior as the endpoints: `render.html`_, `render.png`_
+  and `render.json`_ respectively.
 
 X-Splash-js-source : string
-  Allow to execute javascript code same as POST js code to render.html
+  Allow to execute javascript code same as POST js code to `render.html`_.
+
+X-Splash-js : string
+  Same as :ref:`'js' <arg-js>` argument for `render.html`_.
+  See :ref:`Javascript Profiles`.
 
 X-Splash-timeout : string
-  Same as 'timeout' argument for render.html
+  Same as :ref:`'timeout' <arg-timeout>` argument for `render.html`_.
 
 X-Splash-wait : string
-  Same as 'wait' argument for render.html
+  Same as :ref:`'wait' <arg-wait>` argument for `render.html`_.
 
 X-Splash-proxy : string
-  Same as 'proxy' argument for render.html
+  Same as :ref:`'proxy' <arg-proxy>` argument for `render.html`_.
 
 X-Splash-allowed-domains : string
-  Same as 'allowed_domains' argument for render.html
+  Same as :ref:`'allowed_domains' <arg-allowed-domains>` argument for `render.html`_.
 
 X-Splash-viewport : string
-  Same as 'viewport' argument for render.html
+  Same as :ref:`'viewport' <arg-viewport>` argument for `render.html`_.
 
 X-Splash-width : string
-  Same as 'width' argument for render.png
+  Same as :ref:`'width' <arg-width>` argument for `render.png`_.
 
 X-Splash-height : string
-  Same as 'height' argument for render.png
+  Same as :ref:`'height' <arg-height>` argument for `render.png`_.
 
 X-Splash-html : string
-  Same as 'html' argument for render.json
+  Same as :ref:`'html' <arg-html>` argument for `render.json`_.
 
 X-Splash-png : string
-  Same as 'png' argument for render.json
+  Same as :ref:`'png' <arg-png>` argument for `render.json`_.
 
 X-Splash-iframes : string
-  Same as 'iframes' argument for render.json
+  Same as :ref:`'iframes' <arg-iframes>` argument for `render.json`_.
 
 X-Splash-script : string
-  Same as 'script' argument for render.json
+  Same as :ref:`'script' <arg-script>` argument for `render.json`_.
 
 X-Splash-console : string
-  Same as 'console' argument for render.json
+  Same as :ref:`'console' <arg-console>` argument for `render.json`_.
 
 
 Splash proxy mode is enabled by default. To disable it run splash
