@@ -384,7 +384,7 @@ If Splash is started with ``--js-cross-domain-access`` option
 then javascript code is allowed to access the content of iframes
 loaded from a security origin diferent to the original page (browsers usually
 disallow that). This feature is useful for scraping, e.g. to extract the
-html of a iframe page. An example of its usage:
+html of a iframe page. An example of its usage::
 
     curl -X POST -H 'content-type: application/javascript' \
         -d 'function getContents(){ var f = document.getElementById("external"); return f.contentDocument.getElementsByTagName("body")[0].innerHTML; }; getContents();' \
