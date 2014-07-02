@@ -103,7 +103,7 @@ viewport : string : optional
 
 Curl example::
 
-    curl http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5
+    curl 'http://localhost:8050/render.html?url=http://domain.com/page-with-javascript.html&timeout=10&wait=0.5'
 
 The result is always encoded to utf-8. Always decode HTML data returned
 by render.html endpoint from utf-8 even if there are tags like
@@ -138,10 +138,10 @@ height : integer : optional
 Curl examples::
 
     # render with timeout
-    curl http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&timeout=10
+    curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&timeout=10'
 
     # 320x240 thumbnail
-    curl http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240
+    curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240'
 
 
 render.json
@@ -293,16 +293,16 @@ Add 'console=1' to the request to include the console output in the result::
 Curl examples::
 
     # full information
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&png=1&html=1&iframes=1
+    curl 'http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&png=1&html=1&iframes=1'
 
     # HTML and meta information of page itself and all its iframes
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&iframes=1
+    curl 'http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&iframes=1'
 
     # only meta information (like page/iframes titles and urls)
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&iframes=1
+    curl 'http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&iframes=1'
 
     # render html and 320x240 thumbnail at once; do not return info about iframes
-    curl http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&png=1&width=320&height=240
+    curl 'http://localhost:8050/render.json?url=http://domain.com/page-with-iframes.html&html=1&png=1&width=320&height=240'
 
     # Render page and execute simple Javascript function, display the js output
     curl -X POST -H 'content-type: application/javascript' \
@@ -445,7 +445,7 @@ no proxy is used otherwise.
 Then, to apply proxy rules according to this profile,
 add ``proxy=mywebsite`` parameter to request::
 
-    curl http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite
+    curl 'http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite'
 
 If ``default.ini`` profile is present, it will be used when ``proxy``
 GET argument is not specified. If you have ``default.ini`` profile
