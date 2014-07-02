@@ -28,6 +28,11 @@ Run ``python -m splash.server --help`` to see options available.
 API
 ===
 
+By default, Splash API endpoints listen to port 8050 on all available
+IPv4 addresses. To change the port use ``--port`` option::
+
+    python -m splash.server --port=5000
+
 The following endpoints are supported:
 
 render.html
@@ -455,8 +460,9 @@ but don't want to apply it pass ``none`` as ``proxy`` value.
 Splash as a Proxy
 =================
 
-Splash supports working as HTTP proxy. In this mode all the HTTP requests received
-will be proxied and the response will be rendered based in the following HTTP headers:
+Splash supports working as HTTP proxy. In this mode all the HTTP requests
+received will be proxied and the response will be rendered based in the
+following HTTP headers:
 
 X-Splash-render : string : required
   The render mode to use, valid modes are: html, png and json. These modes have
@@ -506,13 +512,6 @@ X-Splash-script : string
 X-Splash-console : string
   Same as :ref:`'console' <arg-console>` argument for `render.json`_.
 
-
-Splash proxy mode is enabled by default. To disable it run splash
-server with ``--disable-proxy`` option::
-
-    python -m splash.server --disable-proxy
-
-
 Curl examples::
 
     # Display json stats
@@ -537,6 +536,15 @@ Curl examples::
     curl -X POST -d '{"key":"val"}' -x localhost:8051 -o screenshot.png \
         -H 'X-Splash-render: png' \
         http://www.domain.com
+
+Splash proxy mode is enabled by default; it uses port 8051. To change the port
+use ``--proxy-portnum`` option::
+
+    python -m splash.server --proxy-portnum=8888
+
+To disable Splash proxy mode run splash server with ``--disable-proxy`` option::
+
+    python -m splash.server --disable-proxy
 
 
 Functional Tests
