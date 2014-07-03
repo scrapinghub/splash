@@ -320,6 +320,8 @@ Curl examples::
         'http://localhost:8050/render.json?url=http://domain.com&script=1&console=1'
 
 
+.. _execute javascript:
+
 Executing custom Javascript code within page context
 ====================================================
 
@@ -341,6 +343,9 @@ Curl example::
 
 To get the result of a javascript function executed within page
 context use render.json endpoint with script=1 parameter.
+
+In :ref:`Splash-as-a-proxy <splash as a proxy>` mode use ``X-Splash-js-source``
+header instead of a POST request.
 
 .. _javascript profiles:
 
@@ -457,6 +462,8 @@ GET argument is not specified. If you have ``default.ini`` profile
 but don't want to apply it pass ``none`` as ``proxy`` value.
 
 
+.. _splash as a proxy:
+
 Splash as a Proxy
 =================
 
@@ -470,7 +477,8 @@ X-Splash-render : string : required
   and `render.json`_ respectively.
 
 X-Splash-js-source : string
-  Allow to execute javascript code same as POST js code to `render.html`_.
+  Allow to execute custom javascript code in page context.
+  See :ref:`execute javascript`.
 
 X-Splash-js : string
   Same as :ref:`'js' <arg-js>` argument for `render.html`_.
