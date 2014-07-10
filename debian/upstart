@@ -11,7 +11,7 @@ script
     proxyprofilespath=${SPLASH_PROXYPROFILESPATH:-/etc/splash/proxy-profiles}
     jsprofilespath=${SPLASH_JSPROFILESPATH:-/etc/splash/js-profiles}
     filterspath=${SPLASH_FILTERSPATH:-/etc/splash/filters}
-    maxrss=${SPLASH_MAXRSS:-$(awk '/MemTotal/{print $2*0.75/1024}' /proc/meminfo)}
+    maxrss=${SPLASH_MAXRSS:-0.75}
 
     chown proxy:proxy $logdir $proxyprofilespath $cachepath $jsprofilespath $filterspath
 
