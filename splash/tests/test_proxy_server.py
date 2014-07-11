@@ -62,57 +62,93 @@ class ProxyRenderHtmlTest(test_render.RenderHtmlTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
+    use_gzip = False
+
+
+class GzipProxyRenderHtmlTest(ProxyRenderHtmlTest):
+    use_gzip = True
 
 
 class ProxyRenderPngTest(test_render.RenderPngTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
+    use_gzip = False
+
+
+class GzipProxyRenderPngTest(ProxyRenderPngTest):
+    use_gzip = True
 
 
 class ProxyRenderJsonTest(test_render.RenderJsonTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
+    use_gzip = False
+
+
+class GzipProxyRenderJsonTest(ProxyRenderJsonTest):
+    use_gzip = True
 
 
 class ProxyHttpRedirectTest(test_redirects.HttpRedirectTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
+    use_gzip = False
+
+
+class GzipProxyHttpRedirectTest(ProxyHttpRedirectTest):
+    use_gzip = True
 
 
 class ProxyMetaRedirectTest(test_redirects.MetaRedirectTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
+    use_gzip = False
+
+
+class GzipProxyMetaRedirectTest(ProxyMetaRedirectTest):
+    use_gzip = True
 
 
 class ProxyJsRedirectTest(test_redirects.JsRedirectTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
+    use_gzip = False
+
+
+class GzipProxyJsRedirectTest(ProxyJsRedirectTest):
+    use_gzip = True
 
 
 class ProxyRunJsTest(test_render.RunJsTest):
 
     request_handler = ProxyRequestHandler
     proxy_test = True
+    use_gzip = False
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
-        query = {'url': ts.mockserver.url("jsrender"),
+        query = {'url': self.mockurl("jsrender"),
                  'js_source': js_source,
                  'script': 1}
         query.update(params or {})
         return self.request(query, render_format=render_format)
 
 
+class GzipProxyRunJsTest(ProxyRunJsTest):
+    use_gzip = True
+
+
 class ProxyPostTest(test_render.BaseRenderTest):
 
     request_handler = ProxyRequestHandler
+    use_gzip = False
 
     def test_post_request(self):
-        r = self.post({"url": ts.mockserver.url("postrequest")})
+        r = self.post({"url": self.mockurl("postrequest")})
         self.assertEqual(r.status_code, 200)
         self.assertTrue("From POST" in r.text)
 
@@ -123,7 +159,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
             'Custom-Header3': 'some-val3',
             'Connection': 'custom-Header3, Foo, Bar',
         }
-        r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
+        r = self.post({"url": self.mockurl("postrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
@@ -140,8 +176,8 @@ class ProxyPostTest(test_render.BaseRenderTest):
     @unittest.skipIf(True, "expected failure")
     def test_post_request_baseurl(self):
         r = self.post({
-            "url": ts.mockserver.url("postrequest"),
-            "baseurl": ts.mockserver.url("postrequest"),
+            "url": self.mockurl("postrequest"),
+            "baseurl": self.mockurl("postrequest"),
         })
         self.assertEqual(r.status_code, 200)
         self.assertTrue("From POST" in r.text)
@@ -154,8 +190,8 @@ class ProxyPostTest(test_render.BaseRenderTest):
             'Custom-Header2': 'some-val2',
         }
         r = self.post({
-                "url": ts.mockserver.url("postrequest"),
-                "baseurl": ts.mockserver.url("postrequest")
+                "url": self.mockurl("postrequest"),
+                "baseurl": self.mockurl("postrequest")
             },
             headers=headers
         )
@@ -165,7 +201,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
         self.assertNotIn("x-splash", r.text.lower())
 
     def test_post_user_agent(self):
-        r = self.post({"url": ts.mockserver.url("postrequest")}, headers={
+        r = self.post({"url": self.mockurl("postrequest")}, headers={
             'User-Agent': 'Mozilla',
         })
         self.assertEqual(r.status_code, 200)
@@ -176,20 +212,25 @@ class ProxyPostTest(test_render.BaseRenderTest):
         # simply post body
         payload = {'some': 'data'}
         json_payload = json.dumps(payload)
-        r = self.post({"url": ts.mockserver.url("postrequest")}, payload=json_payload)
+        r = self.post({"url": self.mockurl("postrequest")}, payload=json_payload)
         self.assertEqual(r.status_code, 200)
         self.assertIn(json_payload, r.text)
 
         # form encoded fields
         payload = {'form_field1': 'value1',
                    'form_field2': 'value2', }
-        r = self.post({"url": ts.mockserver.url("postrequest")}, payload=payload)
+        r = self.post({"url": self.mockurl("postrequest")}, payload=payload)
         self.assertEqual(r.status_code, 200)
         self.assertIn('form_field2=value2&amp;form_field1=value1', r.text)
 
 
+class GzipProxyPostTest(ProxyPostTest):
+    use_gzip = True
+
+
 class ProxyGetTest(test_render.BaseRenderTest):
     request_handler = ProxyRequestHandler
+    use_gzip = False
 
     def test_get_headers(self):
         headers = {
@@ -199,7 +240,7 @@ class ProxyGetTest(test_render.BaseRenderTest):
             'User-Agent': 'Mozilla',
             'Connection': 'custom-Header3, Foo, Bar',
         }
-        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
@@ -215,7 +256,7 @@ class ProxyGetTest(test_render.BaseRenderTest):
 
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
-        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
@@ -224,10 +265,14 @@ class ProxyGetTest(test_render.BaseRenderTest):
             'User-Agent': 'Mozilla123',
             'Connection': 'User-agent',
         }
-        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertNotIn("'user-agent': 'Mozilla123'", r.text)
         self.assertNotIn("mozilla123", r.text.lower())
+
+
+class GzipProxyGetTest(ProxyGetTest):
+    use_gzip = True
 
 
 class NoProxyGetTest(test_render.BaseRenderTest):
@@ -238,7 +283,7 @@ class NoProxyGetTest(test_render.BaseRenderTest):
             'Custom-Header2': 'some-val2',
             'User-Agent': 'Mozilla',
         }
-        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertNotIn("'custom-header2': 'some-val2'", r.text)
@@ -254,7 +299,7 @@ class NoProxyPostTest(test_render.BaseRenderTest):
             'Custom-Header2': 'some-val2',
             'Content-Type': 'application/javascript', # required by non-proxy POSTs
         }
-        r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
+        r = self.post({"url": self.mockurl("postrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertNotIn("'custom-header2': 'some-val2'", r.text)
@@ -262,7 +307,7 @@ class NoProxyPostTest(test_render.BaseRenderTest):
         self.assertNotIn("'content-type': 'application/javascript'", r.text)
 
     def test_post_user_agent(self):
-        r = self.post({"url": ts.mockserver.url("postrequest")}, headers={
+        r = self.post({"url": self.mockurl("postrequest")}, headers={
             'User-Agent': 'Mozilla',
             'Content-Type': 'application/javascript',  # required by non-proxy POSTs
         })
