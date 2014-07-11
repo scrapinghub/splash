@@ -43,6 +43,17 @@ class SplashProxyRequest(http.Request):
             if SPLASH_HEADER_PREFIX in name.lower():
                 self.requestHeaders.removeHeader(name)
 
+    def _remove_host_header(self):
+        # According to RFC2616 Section 5.1.2 clients MUST send
+        # Request-URI as absoluteURI when working with a proxy
+        # (see http://tools.ietf.org/html/rfc2616#section-5.1.2).
+        # And according to the same RFC Section 5.2
+        # (see http://tools.ietf.org/html/rfc2616#section-5.2),
+        # any Host header field value in the request MUST be
+        # ignored if an absolute URI is used - that's what we're
+        # doing here.
+        self.requestHeaders.removeHeader('host')
+
     def process(self):
         try:
 
@@ -65,6 +76,10 @@ class SplashProxyRequest(http.Request):
 
             # make sure no splash headers are sent to the target
             self._remove_splash_headers()
+
+            # remove some other headers to be a good proxy
+            self._remove_host_header()
+
 
             resource = resource_cls(self.pool, True)
             self.render(resource)
