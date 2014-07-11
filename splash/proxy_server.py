@@ -43,6 +43,21 @@ class SplashProxyRequest(http.Request):
             if SPLASH_HEADER_PREFIX in name.lower():
                 self.requestHeaders.removeHeader(name)
 
+    def _remove_accept_gzip_encoding(self):
+        headers = self.getAllHeaders()
+        for name, value in headers.items():
+            if 'accept-encoding' in name.lower():
+                encodings = [enc.lower().strip() for enc in value.split(',')]
+                try:
+                    encodings.remove("gzip")
+                    if not encodings:
+                        self.requestHeaders.removeHeader(name)
+                    else:
+                        self.requestHeaders.setRawHeaders(name, [",".join(encodings)])
+                except ValueError:
+                    # gzip not there, we are ok, leave it to QT
+                    pass
+
     def process(self):
         try:
 
@@ -65,6 +80,11 @@ class SplashProxyRequest(http.Request):
 
             # make sure no splash headers are sent to the target
             self._remove_splash_headers()
+
+            # QT4 has a bug with Accept-Encoding header and gzip:
+            # either not set the header at all (QT4 will add that itself)
+            # or remove "gzip" (and keep "deflate" usually)
+            self._remove_accept_gzip_encoding()
 
             resource = resource_cls(self.pool, True)
             self.render(resource)
