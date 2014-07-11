@@ -1,0 +1,25 @@
+language: python
+
+python:
+    - 2.7
+
+env:
+    global:
+        - DISPLAY=:0
+    matrix:
+        - SYSTEM_TWISTED=false
+        - SYSTEM_TWISTED=true
+
+virtualenv:
+    system_site_packages: true
+
+before_install:
+    - sudo apt-get install python-twisted python-qt4
+    - pip install qt4reactor psutil requests Pillow
+    - "if [[ $SYSTEM_TWISTED == 'false' ]]; then pip install -UI twisted; fi"
+
+install:
+    - python setup.py install
+
+script:
+    - xvfb-run nosetests

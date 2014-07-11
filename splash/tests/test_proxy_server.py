@@ -1,5 +1,8 @@
-import unittest, requests, urlparse, json
-from splash.tests import ts, test_render
+import unittest
+import urlparse
+import json
+import requests
+from splash.tests import ts, test_render, test_redirects
 
 
 SPLASH_HEADER_PREFIX = 'x-splash-'
@@ -56,21 +59,36 @@ class ProxyRequestHandler(object):
 
 
 class ProxyRenderHtmlTest(test_render.RenderHtmlTest):
-
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
 
 
 class ProxyRenderPngTest(test_render.RenderPngTest):
-
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True
 
 
 class ProxyRenderJsonTest(test_render.RenderJsonTest):
+    request_handler = ProxyRequestHandler
+    https_supported = False
+    proxy_test = True
 
+
+class ProxyHttpRedirectTest(test_redirects.HttpRedirectTest):
+    request_handler = ProxyRequestHandler
+    https_supported = False
+    proxy_test = True
+
+
+class ProxyMetaRedirectTest(test_redirects.MetaRedirectTest):
+    request_handler = ProxyRequestHandler
+    https_supported = False
+    proxy_test = True
+
+
+class ProxyJsRedirectTest(test_redirects.JsRedirectTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True

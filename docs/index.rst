@@ -188,8 +188,8 @@ iframes : integer : optional
 
 script : integer : optional
     Whether to include the result of the executed javascript final
-    statement in output. Possible values are ``1`` (include) and ``0``
-    (exclude). Default is 0.
+    statement in output (see :ref:`execute javascript`).
+    Possible values are ``1`` (include) and ``0`` (exclude). Default is 0.
 
 .. _arg-console:
 
@@ -276,8 +276,8 @@ as well as for the main page::
 
 Unlike 'html=1', 'png=1' does not affect data in childFrames.
 
-When executing JavaScript code add the parameter 'script=1' to the request
-to include the code output in the result::
+When executing JavaScript code (see :ref:`execute javascript`) add the
+parameter 'script=1' to the request to include the code output in the result::
 
     {
         "url": "http://crawlera.com/",
@@ -347,7 +347,7 @@ Curl example::
         'http://localhost:8050/render.html?url=http://domain.com'
 
 To get the result of a javascript function executed within page
-context use render.json endpoint with script=1 parameter.
+context use `render.json`_ endpoint with script=1 parameter.
 
 In :ref:`Splash-as-a-proxy <splash as a proxy>` mode use ``X-Splash-js-source``
 header instead of a POST request.
@@ -635,10 +635,12 @@ To disable Splash proxy mode run splash server with ``--disable-proxy`` option::
 Functional Tests
 ================
 
+.. image:: https://secure.travis-ci.org/scrapinghub/splash.png?branch=master
+   :target: http://travis-ci.org/scrapinghub/splash
+
 Run with::
 
     nosetests
-
 
 Stress tests
 ============
