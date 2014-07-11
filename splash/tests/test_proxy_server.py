@@ -120,12 +120,21 @@ class ProxyPostTest(test_render.BaseRenderTest):
         headers = {
             'X-Custom-Header1': 'some-val1',
             'Custom-Header2': 'some-val2',
+            'Custom-Header3': 'some-val3',
+            'Connection': 'custom-Header3, Foo, Bar',
         }
         r = self.post({"url": ts.mockserver.url("postrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
+
+        # X-Splash headers should be removed
         self.assertNotIn("x-splash", r.text.lower())
+
+        # Connection header is handled correctly
+        self.assertNotIn("custom-header3", r.text.lower())
+        self.assertNotIn("foo", r.text.lower())
+        self.assertNotIn("bar", r.text.lower())
 
     # unittest.expectedFailure doesn't work with nose
     @unittest.skipIf(True, "expected failure")
@@ -186,14 +195,39 @@ class ProxyGetTest(test_render.BaseRenderTest):
         headers = {
             'X-Custom-Header1': 'some-val1',
             'Custom-Header2': 'some-val2',
+            'Custom-Header3': 'some-val3',
             'User-Agent': 'Mozilla',
+            'Connection': 'custom-Header3, Foo, Bar',
         }
         r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
         self.assertEqual(r.status_code, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
         self.assertIn("'user-agent': 'Mozilla'", r.text)
-        self.assertNotIn("x-splash", r.text)
+
+        # X-Splash headers should be removed
+        self.assertNotIn("x-splash", r.text.lower())
+
+        # Connection header is handled correctly
+        self.assertNotIn("custom-header3", r.text.lower())
+        self.assertNotIn("foo", r.text.lower())
+        self.assertNotIn("bar", r.text.lower())
+
+    def test_get_user_agent(self):
+        headers = {'User-Agent': 'Mozilla123'}
+        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+
+    def test_connection_user_agent(self):
+        headers = {
+            'User-Agent': 'Mozilla123',
+            'Connection': 'User-agent',
+        }
+        r = self.request({"url": ts.mockserver.url("getrequest")}, headers=headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertNotIn("mozilla123", r.text.lower())
 
 
 class NoProxyGetTest(test_render.BaseRenderTest):

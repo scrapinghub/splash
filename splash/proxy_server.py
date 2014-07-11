@@ -18,6 +18,16 @@ HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
 PNG_PARAMS = ['width', 'height']
 JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 
+HOP_BY_HOP_HEADERS = [
+    'Connection',
+    'Keep-Alive',
+    'Proxy-Authenticate',
+    'Proxy-Authorization',
+    'TE',
+    'Trailer',
+    'Transfer-Encoding',
+    'Upgrade',
+]
 
 class SplashProxyRequest(http.Request):
     pass_headers = True
@@ -54,9 +64,18 @@ class SplashProxyRequest(http.Request):
         # doing here.
         self.requestHeaders.removeHeader('host')
 
+    def _remove_hop_by_hop_headers(self):
+        # See http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-7.1.3.1
+        connection = self.requestHeaders.getRawHeaders('Connection', [])
+        for value in connection:
+            for name in value.split(','):
+                self.requestHeaders.removeHeader(name.strip())
+
+        for name in HOP_BY_HOP_HEADERS:
+            self.requestHeaders.removeHeader(name)
+
     def process(self):
         try:
-
             # load resource class
             resource_name = self._get_header('render')
             resource_cls = SPLASH_RESOURCES.get(resource_name)
@@ -79,7 +98,7 @@ class SplashProxyRequest(http.Request):
 
             # remove some other headers to be a good proxy
             self._remove_host_header()
-
+            self._remove_hop_by_hop_headers()
 
             resource = resource_cls(self.pool, True)
             self.render(resource)
