@@ -453,6 +453,23 @@ class Index(Resource):
         """ % links
 
 
+class GzipRoot(Resource):
+    def __init__(self, original_children):
+        Resource.__init__(self)
+
+        try:
+            from twisted.web.server import GzipEncoderFactory
+            from twisted.web.resource import EncodingResourceWrapper
+
+            for path, child in original_children.items():
+                self.putChild(
+                    path,
+                    EncodingResourceWrapper(child, [GzipEncoderFactory()])
+                )
+        except ImportError:
+            pass
+
+
 class Root(Resource):
 
     def __init__(self, http_port, https_port, proxy_port):
@@ -493,6 +510,8 @@ class Root(Resource):
         self.putChild("http-redirect", HttpRedirectResource())
 
         self.putChild("", Index(self.children))
+
+        self.putChild("gzip", GzipRoot(self.children))
 
 
 def cert_path():
