@@ -558,10 +558,12 @@ To disable Splash proxy mode run splash server with ``--disable-proxy`` option::
 Functional Tests
 ================
 
+.. image:: https://secure.travis-ci.org/scrapinghub/splash.png?branch=master
+   :target: http://travis-ci.org/scrapinghub/splash
+
 Run with::
 
     nosetests
-
 
 Stress tests
 ============
