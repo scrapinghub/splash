@@ -142,9 +142,11 @@ def monitor_maxrss(maxrss):
         maxrss = phymem_usage().total * maxrss / (1024 ** 2)
 
     def check_maxrss():
-        if resource.getrusage(resource.RUSAGE_SELF).ru_maxrss > maxrss * 1024:
+        resident_set_size = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if resident_set_size > maxrss * 1024 and reactor.running:
             log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
             reactor.stop()
+
     if maxrss:
         log.msg("maxrss limit: %d MB" % maxrss)
         t = task.LoopingCall(check_maxrss)
