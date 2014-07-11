@@ -31,7 +31,7 @@ def _non_block_read(output):
         return ""
 
 
-def _wait_for_port(portnum, delay=0.1, attempts=30):
+def _wait_for_port(portnum, delay=0.1, attempts=100):
     while attempts > 0:
         s = socket.socket()
         if s.connect_ex(('127.0.0.1', portnum)) == 0:
