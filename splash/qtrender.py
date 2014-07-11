@@ -137,6 +137,17 @@ class WebpageRender(object):
         if getattr(self.splash_request, 'pass_headers', False):
             headers = self.splash_request.getAllHeaders()
             for name, value in headers.items():
+                if name.lower() == 'host':
+                    # According to RFC2616 Section 5.1.2 clients MUST send
+                    # Request-URI as absoluteURI when working with a proxy
+                    # (see http://tools.ietf.org/html/rfc2616#section-5.1.2).
+                    # And according to the same RFC Section 5.2
+                    # (see http://tools.ietf.org/html/rfc2616#section-5.2),
+                    # any Host header field value in the request MUST be
+                    # ignored if an absolute URI is used - that's what we're
+                    # doing here.
+                    continue
+
                 request.setRawHeader(name, value)
                 if name.lower() == 'user-agent':
                     self.web_page.custom_user_agent = value
