@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import os
 import shutil
 import requests
-from splash.tests import ts
 from splash.tests.utils import TestServers, SplashServer
 from splash.tests.test_render import BaseRenderTest
 
@@ -30,7 +29,7 @@ class BaseFiltersTest(BaseRenderTest):
             self.assertIn('OTHER_DOMAIN', resp.text)
 
     def params(self, **kwargs):
-        kwargs.setdefault('url', ts.mockserver.url('iframes'))
+        kwargs.setdefault('url', self.mockurl('iframes'))
         return kwargs
 
 
