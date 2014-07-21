@@ -74,7 +74,7 @@ def parse_opts():
     op.add_option("--manhole", action="store_true",
         help="enable manhole server")
     op.add_option("--disable-proxy", action="store_true", default=False,
-        help="enable proxy server")
+        help="disable proxy server")
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
     op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
