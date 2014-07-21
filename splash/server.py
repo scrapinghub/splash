@@ -1,4 +1,4 @@
-import os, sys, optparse, resource, traceback, signal
+import os, sys, optparse, resource, traceback, signal, time
 from psutil import phymem_usage
 from splash import defaults
 
@@ -7,11 +7,33 @@ from splash import defaults
 qtapp = None
 
 
-def install_qtreactor():
+def install_qtreactor(verbose):
     global qtapp
 
+    from twisted.python import log
     from PyQt4.QtGui import QApplication
-    qtapp = QApplication(sys.argv)
+    from PyQt4.QtCore import QAbstractEventDispatcher
+
+    class QApp(QApplication):
+
+        blockedAt = 0
+
+        def __init__(self, *args):
+            super(QApp, self).__init__(*args)
+            if verbose:
+                disp = QAbstractEventDispatcher.instance()
+                disp.aboutToBlock.connect(self.aboutToBlock)
+                disp.awake.connect(self.awake)
+
+        def aboutToBlock(self):
+            self.blockedAt = time.time()
+            log.msg("aboutToBlock", system="QAbstractEventDispatcher")
+
+        def awake(self):
+            diff = time.time() - self.blockedAt
+            log.msg("awake; block time: %0.4f" % diff, system="QAbstractEventDispatcher")
+
+    qtapp = QApp(sys.argv)
     import qt4reactor
     qt4reactor.install()
 
@@ -55,18 +77,28 @@ def parse_opts():
         help="enable proxy server")
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
+    op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
+        help="comma-separated list of allowed URI schemes (defaut: %default)")
+    op.add_option("--filters-path",
+        help="path to a folder with network request filters")
+    op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
+        help="verbosity level; valid values are 0, 1, 2 and 3")
 
     return op.parse_args()
 
 
 def start_logging(opts):
+    import twisted
     from twisted.python import log
     from twisted.python.logfile import DailyLogFile
     if opts.logfile:
         logfile = DailyLogFile.fromFullPath(opts.logfile)
     else:
         logfile = sys.stderr
-    log.startLogging(logfile)
+    flo = log.startLogging(logfile)
+
+    if twisted.version.major >= 13:  # add microseconds to log
+        flo.timeFormat = "%Y-%m-%d %H:%M:%S.%f%z"
 
 
 def splash_started(opts, stderr):
@@ -103,12 +135,16 @@ def manhole_server(portnum=None, username=None, password=None):
 
 
 def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
-                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None):
+                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
+                  verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
     from splash.pool import RenderPool
     from twisted.python import log
+
+    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    log.msg("verbosity=%d" % verbosity)
 
     slots = defaults.SLOTS if slots is None else slots
     log.msg("slots=%s" % slots)
@@ -117,7 +153,8 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
         slots=slots,
         network_manager=network_manager,
         get_splash_proxy_factory=get_splash_proxy_factory,
-        js_profiles_path=js_profiles_path
+        js_profiles_path=js_profiles_path,
+        verbosity=verbosity,
     )
 
     # HTTP API
@@ -155,15 +192,27 @@ def default_splash_server(portnum, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
-                          disable_proxy=False, proxy_portnum=None):
+                          disable_proxy=False, proxy_portnum=None,
+                          filters_path=None, allowed_schemes=None,
+                          verbosity=None):
     from splash import network_manager
-    manager = network_manager.FilteringQNetworkAccessManager()
+    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    if allowed_schemes is None:
+        allowed_schemes = defaults.ALLOWED_SCHEMES
+    else:
+        allowed_schemes = allowed_schemes.split(',')
+    manager = network_manager.SplashQNetworkAccessManager(
+        filters_path=filters_path,
+        allowed_schemes=allowed_schemes,
+        verbosity=verbosity
+    )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
-                         js_profiles_path, disable_proxy, proxy_portnum)
+                         js_profiles_path, disable_proxy, proxy_portnum,
+                         verbosity)
 
 
 def _default_cache(cache_enabled, cache_path, cache_size):
@@ -188,7 +237,8 @@ def _default_proxy_config(proxy_profiles_path):
     from splash import proxy
 
     if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
-        log.msg("--proxy-profiles-path does not exist or it is not a folder; proxy won't be used")
+        log.msg("--proxy-profiles-path does not exist or it is not a folder; "
+                "proxy won't be used")
         proxy_enabled = False
     else:
         proxy_enabled = proxy_profiles_path is not None
@@ -204,7 +254,8 @@ def _check_js_profiles_path(js_profiles_path):
     from twisted.python import log
 
     if js_profiles_path is not None and not os.path.isdir(js_profiles_path):
-        log.msg("--js-profiles-path does not exist or it is not a folder; js profiles won't be used")
+        log.msg("--js-profiles-path does not exist or it is not a folder; "
+                "js profiles won't be used")
     return js_profiles_path
 
 
@@ -219,8 +270,9 @@ def _set_global_render_settings(js_disable_cross_domain_access):
 
 
 def main():
-    install_qtreactor()
     opts, _ = parse_opts()
+
+    install_qtreactor(opts.verbosity >= 5)
 
     start_logging(opts)
     bump_nofile_limit()
@@ -237,7 +289,10 @@ def main():
                   js_profiles_path=opts.js_profiles_path,
                   js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
                   disable_proxy=opts.disable_proxy,
-                  proxy_portnum=opts.proxy_portnum)
+                  proxy_portnum=opts.proxy_portnum,
+                  filters_path=opts.filters_path,
+                  allowed_schemes=opts.allowed_schemes,
+                  verbosity=opts.verbosity)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
     from twisted.internet import reactor

@@ -45,11 +45,13 @@ def _wait_for_port(portnum, delay=0.1, attempts=100):
 class SplashServer(object):
 
     def __init__(self, logfile=None, proxy_profiles_path=None,
-                 js_profiles_path=None, portnum=None,
-                 proxy_portnum=None, extra_args=None):
+                 js_profiles_path=None, filters_path=None, portnum=None,
+                 proxy_portnum=None, extra_args=None, verbosity=3):
         self.logfile = logfile
         self.proxy_profiles_path = proxy_profiles_path
         self.js_profiles_path = js_profiles_path
+        self.filters_path = filters_path
+        self.verbosity = verbosity
         self.portnum = portnum if portnum is not None else get_ephemeral_port()
         self.proxy_portnum = proxy_portnum if proxy_portnum is not None else get_ephemeral_port()
         self.tempdir = tempfile.mkdtemp()
@@ -59,12 +61,15 @@ class SplashServer(object):
         args = [sys.executable, '-u', '-m', 'splash.server']
         args += ['--cache-path', self.tempdir]
         args += ['--port', str(self.portnum)]
+        args += ['--verbosity', str(self.verbosity)]
         if self.logfile:
             args += ['-f', self.logfile]
         if self.proxy_profiles_path:
             args += ['--proxy-profiles-path', self.proxy_profiles_path]
         if self.js_profiles_path:
             args += ['--js-profiles-path', self.js_profiles_path]
+        if self.filters_path:
+            args += ['--filters-path', self.filters_path]
         if self.proxy_portnum:
             args += ['--proxy-portnum', str(self.proxy_portnum)]
 
@@ -141,6 +146,7 @@ class TestServers(object):
         self.tmp_folder = tempfile.mkdtemp("splash-tests-tmp")
         self.proxy_profiles_path = self._copy_test_folder('proxy_profiles')
         self.js_profiles_path = self._copy_test_folder('js_profiles')
+        self.filters_path = self._copy_test_folder('filters')
 
         self.mock_http_port = get_ephemeral_port()
         self.mock_https_port = get_ephemeral_port()
@@ -152,7 +158,7 @@ class TestServers(object):
         self._fix_testproxy_port()
 
     def _copy_test_folder(self, src, dst=None):
-        src_path = os.path.join(os.path.dirname(__file__), src)
+        src_path = _path(src)
         dst_path = os.path.join(self.tmp_folder, dst or src)
         shutil.copytree(src_path, dst_path)
         return dst_path
@@ -172,8 +178,13 @@ class TestServers(object):
             self.mock_proxy_port,
         )
         self.mockserver.__enter__()
-        self.splashserver = SplashServer(self.logfile, self.proxy_profiles_path,
-                                         self.js_profiles_path)
+
+        self.splashserver = SplashServer(
+            logfile=self.logfile,
+            proxy_profiles_path=self.proxy_profiles_path,
+            js_profiles_path=self.js_profiles_path,
+            filters_path=self.filters_path,
+        )
         self.splashserver.__enter__()
         return self
 
@@ -186,3 +197,6 @@ class TestServers(object):
         print(_non_block_read(self.splashserver.proc.stderr))
         print(_non_block_read(self.mockserver.proc.stdout))
 
+
+def _path(*args):
+    return os.path.join(os.path.dirname(__file__), *args)

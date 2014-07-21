@@ -22,6 +22,7 @@ class RenderBase(Resource):
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
+        _check_filters(self.pool, request)
         pool_d = self._getRender(request)
         timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
         wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
@@ -60,7 +61,7 @@ class RenderBase(Resource):
         return _
 
     def _writeOutput(self, html, request):
-        #log.msg("_writeOutput: %s" % id(request))
+        # log.msg("_writeOutput: %s" % id(request))
         stats = {
             "path": request.path,
             "args": request.args,
@@ -121,12 +122,23 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
         raise BadRequest("Invalid viewport format: %s" % viewport)
 
 
+def _check_filters(pool, request):
+    network_manager = pool.network_manager
+    if not hasattr(network_manager, 'unknownFilters'):
+        return
+
+    filter_names = getarg(request, 'filters', "")
+    unknown_filters = network_manager.unknownFilters(filter_names)
+    if unknown_filters:
+        raise BadRequest("Invalid filter names: %s" % unknown_filters)
+
+
 def _get_javascript_params(request, js_profiles_path):
     js_profile = _check_js_profile(request, js_profiles_path, getarg(request, 'js', None))
     js_source = getarg(request, 'js_source', None)
     if js_source is not None:
         return js_source, js_profile
-    
+
     if request.method == 'POST':
         return request.content.getvalue(), js_profile
     else:

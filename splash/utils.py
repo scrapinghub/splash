@@ -4,8 +4,10 @@ import psutil
 
 _REQUIRED = object()
 
+
 class BadRequest(Exception):
     pass
+
 
 def getarg(request, name, default=_REQUIRED, type=str, range=None):
     if name in request.args:
@@ -18,10 +20,12 @@ def getarg(request, name, default=_REQUIRED, type=str, range=None):
     else:
         return default
 
+
 PID = os.getpid()
 def get_num_fds():
     proc = psutil.Process(PID)
     return proc.get_num_fds()
+
 
 def get_leaks():
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
@@ -35,3 +39,7 @@ def get_leaks():
             if cname in relevant_types:
                 leaks[cname] += 1
     return leaks
+
+
+def qurl2ascii(url):
+    return unicode(url.toString()).encode('unicode-escape').decode('ascii')

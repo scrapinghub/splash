@@ -80,6 +80,11 @@ proxy : string : optional
 js : string : optional
   Javascript profile name. See :ref:`Javascript Profiles`.
 
+.. _arg-filters:
+
+filters : string : optional
+  Comma-separated list of request filter names. See `Request Filters`_
+
 .. _arg-allowed-domains:
 
 allowed_domains : string : optional
@@ -407,6 +412,78 @@ Note that allowing cross origin javascript calls is a potential
 security issue, since it is possible that secret information (i.e cookies)
 is exposed when this support is enabled; also, some websites don't load
 when cross-domain security is disabled, so this feature is OFF by default.
+
+.. _request filters:
+
+Request Filters
+===============
+
+Splash supports filtering requests based on
+`Adblock Plus <https://adblockplus.org/>`_ rules. You can use
+filters from `EasyList`_ to remove ads and tracking codes
+(and thus speedup page loading), and/or write filters manually to block
+some of the requests (e.g. to prevent rendering of images, mp3 files,
+custom fonts, etc.)
+
+To activate request filtering support start splash with ``--filters-path``
+option::
+
+    python -m splash.server --filters-path=/etc/splash/filters
+
+The folder ``--filters-path`` points to should contain ``.txt`` files with
+filter rules in Adblock Plus format. You may download ``easylist.txt``
+from EasyList_ and put it there, or create ``.txt`` files with your own rules.
+
+For example, let's create a filter that will prevent custom fonts
+in ``ttf`` and ``woff`` formats from loading (due to qt bugs they may cause
+splash to segfault on Mac OS X)::
+
+    ! put this to a /etc/splash/filters/nofonts.txt file
+    ! comments start with an exclamation mark
+
+    .ttf|
+    .woff|
+
+To use this filter in a request add ``filters=nofonts`` GET parameter
+to the query::
+
+    curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-fonts.html&filters=nofonts'
+
+You can apply several filters; separate them by comma::
+
+    curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-fonts.html&filters=nofonts,easylist'
+
+If ``default.txt`` file is present in ``--filters-path`` folder it is
+used by default when ``filters`` GET argument is not specified. Pass
+``filters=none`` if you don't want default filters to be applied.
+
+To learn about Adblock Plus filter syntax check these links:
+
+* https://adblockplus.org/en/filter-cheatsheet
+* https://adblockplus.org/en/filters
+
+Splash doesn't support full Adblock Plus filters syntax, there are some
+limitations:
+
+* element hiding rules are not supported; filters can prevent network
+  request from happening, but they can't hide parts of an already loaded page;
+* only ``domain`` option is supported.
+
+Unsupported rules are silently discarded.
+
+.. warning::
+
+    It is very important to have `pyre2 <https://github.com/axiak/pyre2>`_
+    library installed if you are going to use filters with a large number
+    of rules (this is the case for files downloaded from EasyList_).
+
+    Without pyre2 library splash (via `adblockparser`_) relies on re module
+    from stdlib, and it can be 1000x+ times slower than re2 - it may be
+    faster to download files than to discard them if you have a large number
+    of rules and don't use re2. With re2 matching becomes very fast.
+
+.. _adblockparser: https://github.com/scrapinghub/adblockparser
+.. _EasyList: https://easylist.adblockplus.org/en/
 
 
 .. _proxy profiles:

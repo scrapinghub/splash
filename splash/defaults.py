@@ -36,5 +36,9 @@ CACHE_ENABLED = False
 CACHE_SIZE = 50  # MB
 CACHE_PATH = '.splash-cache'
 
-# JS rendering options
+# security options
+ALLOWED_SCHEMES = ['http', 'https', 'data', 'ftp', 'sftp', 'ws', 'wss']
 JS_CROSS_DOMAIN_ENABLED = False
+
+# logging
+VERBOSITY = 1

@@ -30,6 +30,8 @@ try:
 except ImportError:
     from distutils.core import setup
 else:
-    setup_args['install_requires'] = ['Twisted', 'qt4reactor', 'psutil']
+    setup_args['install_requires'] = [
+        'Twisted', 'qt4reactor', 'psutil', 'adblockparser'
+    ]
 
 setup(**setup_args)

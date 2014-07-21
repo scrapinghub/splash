@@ -6,15 +6,15 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, network_manager, get_splash_proxy_factory, js_profiles_path, verbose=0):
+    def __init__(self, slots, network_manager, get_splash_proxy_factory, js_profiles_path, verbosity=1):
         self.network_manager = network_manager
         self.get_splash_proxy_factory = get_splash_proxy_factory
         self.js_profiles_path = js_profiles_path
         self.active = set()
         self.queue = defer.DeferredQueue()
-        self.verbose = verbose
+        self.verbosity = verbosity
         for n in range(slots):
-            self._wait_for_render(None, n)
+            self._wait_for_render(None, n, log=False)
 
     def render(self, rendercls, splash_request, *args):
         if self.get_splash_proxy_factory:
@@ -27,8 +27,9 @@ class RenderPool(object):
         self.queue.put((rendercls, splash_request, splash_proxy_factory, args, pool_d))
         return pool_d
 
-    def _wait_for_render(self, _, slot):
-        self.log("SLOT %d available" % slot)
+    def _wait_for_render(self, _, slot, log=True):
+        if log:
+            self.log("SLOT %d is available" % slot)
         d = self.queue.get()
         d.addCallback(self._start_render, slot)
         d.addBoth(self._wait_for_render, slot)
@@ -40,20 +41,20 @@ class RenderPool(object):
             network_manager=self.network_manager,
             splash_proxy_factory=splash_proxy_factory,
             splash_request=splash_request,
-            verbose=self.verbose >= 2,
+            verbosity=self.verbosity,
         )
         self.active.add(render)
         render.deferred.chainDeferred(pool_d)
         pool_d.addBoth(self._close_render, render, slot)
 
-        self.log("SLOT %d creating request %s" % (slot, id(splash_request)))
+        self.log("SLOT %d is creating request %s" % (slot, id(splash_request)))
         render.doRequest(*args)
         self.log("SLOT %d is working on %s" % (slot, id(splash_request)))
 
         return render.deferred
 
     def _close_render(self, _, render, slot):
-        self.log("SLOT %d closing %s %s" % (slot, id(render.splash_request), render))
+        self.log("SLOT %d is closing %s %s" % (slot, id(render.splash_request), render))
         self.active.remove(render)
         render.deferred.cancel()
         render.close()
@@ -61,5 +62,5 @@ class RenderPool(object):
         return _
 
     def log(self, text):
-        if self.verbose:
+        if self.verbosity >= 2:
             log.msg(text, system='pool')

@@ -23,6 +23,10 @@ class SplashQWebPage(QWebPage):
 
     custom_user_agent = None
 
+    def __init__(self, verbosity=0):
+        super(QWebPage, self).__init__()
+        self.verbosity = verbosity
+
     def javaScriptAlert(self, frame, msg):
         return
 
@@ -30,7 +34,8 @@ class SplashQWebPage(QWebPage):
         return False
 
     def javaScriptConsoleMessage(self, msg, line_number, source_id):
-        log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
+        if self.verbosity >= 2:
+            log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
 
     def userAgentForUrl(self, url):
         if self.custom_user_agent is None:
@@ -93,10 +98,10 @@ class SplashQWebPage(QWebPage):
 
 class WebpageRender(object):
 
-    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbose=False):
+    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
         self.network_manager = network_manager
         self.web_view = QWebView()
-        self.web_page = SplashQWebPage()
+        self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
@@ -112,7 +117,7 @@ class WebpageRender(object):
         self.splash_request = splash_request
         self.web_page.splash_request = splash_request
         self.web_page.splash_proxy_factory = splash_proxy_factory
-        self.verbose = verbose
+        self.verbosity = verbosity
 
         self.deferred = defer.Deferred()
 
@@ -127,6 +132,18 @@ class WebpageRender(object):
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
 
+        # setup logging
+        if self.verbosity >= 4:
+            self.web_page.loadStarted.connect(self._loadStarted)
+            self.web_page.mainFrame().loadFinished.connect(self._frameLoadFinished)
+            self.web_page.mainFrame().loadStarted.connect(self._frameLoadStarted)
+            self.web_page.mainFrame().contentsSizeChanged.connect(self._contentsSizeChanged)
+
+        if self.verbosity >= 3:
+            self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._javaScriptWindowObjectCleared)
+            self.web_page.mainFrame().initialLayoutCompleted.connect(self._initialLayoutCompleted)
+
+        # do the request
         request = QNetworkRequest()
         request.setUrl(QUrl(url.decode('utf8')))
 
@@ -148,6 +165,7 @@ class WebpageRender(object):
             self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
+
             if self.splash_request.method == 'POST':
                 self.web_page.mainFrame().load(request,
                                                QNetworkAccessManager.PostOperation,
@@ -168,15 +186,14 @@ class WebpageRender(object):
         data = self._reply.readAll()
         self.web_page.mainFrame().setContent(data, mimeType, self._baseUrl)
         if self._reply.error():
-            log.msg("Error loading %s: %s" % (self.url, self._reply.errorString()), system='render')
+            self.log("Error loading %s: %s" % (self.url, self._reply.errorString()), min_level=1)
         self._reply.close()
         self._reply.deleteLater()
 
     def _loadFinished(self, ok):
-        self.log("_loadFinished %s" % id(self.splash_request))
         if self.deferred.called:
             # sometimes this callback is called multiple times
-            self.log("_loadFinished called multiple times")
+            self.log("loadFinished called multiple times", min_level=1)
             return
 
         page_ok = ok and self.web_page.errorInfo is None
@@ -197,14 +214,15 @@ class WebpageRender(object):
 
         if page_ok:
             time_ms = int(self.wait_time * 1000)
+            self.log("loadFinished %s; waiting %sms" % (id(self.splash_request), time_ms))
             QTimer.singleShot(time_ms, self._loadFinishedOK)
         elif error_loading:
-            self.log("loadFinished %s: %s" % (id(self.splash_request), str(self.web_page.errorInfo))) #, min_level=1)
+            self.log("loadFinished %s: %s" % (id(self.splash_request), str(self.web_page.errorInfo)), min_level=1)
             # XXX: maybe return a meaningful error page instead of generic
             # error message?
             self.deferred.errback(RenderError())
         else:
-            self.log("loadFinished %s: unknown error" % id(self.splash_request)) #, min_level=1)
+            self.log("loadFinished %s: unknown error" % id(self.splash_request), min_level=1)
             self.deferred.errback(RenderError())
 
     def _loadFinishedOK(self):
@@ -215,13 +233,37 @@ class WebpageRender(object):
         except:
             self.deferred.errback()
 
+    def _frameLoadFinished(self, ok):
+        self.log("mainFrame().LoadFinished %s %s" % (id(self.splash_request), ok), min_level=4)
+
+    def _loadStarted(self):
+        self.log("loadStarted %s" % id(self.splash_request), min_level=4)
+
+    def _frameLoadStarted(self):
+        self.log("mainFrame().loadStarted %s" % id(self.splash_request), min_level=4)
+
+    def _initialLayoutCompleted(self):
+        self.log("mainFrame().initialLayoutCompleted %s" % id(self.splash_request), min_level=3)
+
+    def _javaScriptWindowObjectCleared(self):
+        self.log("mainFrame().javaScriptWindowObjectCleared %s" % id(self.splash_request), min_level=3)
+
+    def _contentsSizeChanged(self):
+        self.log("mainFrame().contentsSizeChanged %s" % id(self.splash_request), min_level=4)
+
+    def _repaintRequested(self):
+        self.log("mainFrame().repaintRequested %s" % id(self.splash_request), min_level=4)
+
     # ======= Rendering methods that subclasses can use:
 
     def _getHtml(self):
+        self.log("getting HTML %s" % id(self.splash_request))
         frame = self.web_page.mainFrame()
         return bytes(frame.toHtml().toUtf8())
 
     def _getPng(self, width=None, height=None):
+        self.log("getting PNG %s" % id(self.splash_request))
+
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.web_page.mainFrame().render(painter)
@@ -235,6 +277,7 @@ class WebpageRender(object):
         return bytes(b.data())
 
     def _getIframes(self, children=True, html=True):
+        self.log("getting iframes %s" % id(self.splash_request))
         frame = self.web_page.mainFrame()
         return self._frameToDict(frame, children, html)
 
@@ -251,7 +294,7 @@ class WebpageRender(object):
     def _setFullViewport(self):
         size = self.web_page.mainFrame().contentsSize()
         if size.isEmpty():
-            self.log("contentsSize method doesn't work %s" % id(self.splash_request))
+            self.log("contentsSize method doesn't work %s" % id(self.splash_request), min_level=1)
             self._setViewportSize(defaults.VIEWPORT_FALLBACK)
         else:
             self.web_page.setViewportSize(size)
@@ -302,8 +345,10 @@ class WebpageRender(object):
             self._setFullViewport()
         self.js_output, self.js_console_output = self._runJS(self.js_source, self.js_profile)
 
-    def log(self, text):
-        if self.verbose:
+    def log(self, text, min_level=2):
+        if self.verbosity >= min_level:
+            if isinstance(text, unicode):
+                text = text.encode('unicode-escape').decode('ascii')
             log.msg(text, system='render')
 
 
