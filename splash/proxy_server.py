@@ -18,6 +18,16 @@ HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
 PNG_PARAMS = ['width', 'height']
 JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 
+HOP_BY_HOP_HEADERS = [
+    'Connection',
+    'Keep-Alive',
+    'Proxy-Authenticate',
+    'Proxy-Authorization',
+    'TE',
+    'Trailer',
+    'Transfer-Encoding',
+    'Upgrade',
+]
 
 class SplashProxyRequest(http.Request):
     pass_headers = True
@@ -43,9 +53,46 @@ class SplashProxyRequest(http.Request):
             if SPLASH_HEADER_PREFIX in name.lower():
                 self.requestHeaders.removeHeader(name)
 
+    def _remove_host_header(self):
+        # According to RFC2616 Section 5.1.2 clients MUST send
+        # Request-URI as absoluteURI when working with a proxy
+        # (see http://tools.ietf.org/html/rfc2616#section-5.1.2).
+        # And according to the same RFC Section 5.2
+        # (see http://tools.ietf.org/html/rfc2616#section-5.2),
+        # any Host header field value in the request MUST be
+        # ignored if an absolute URI is used - that's what we're
+        # doing here.
+        self.requestHeaders.removeHeader('Host')
+
+    def _remove_hop_by_hop_headers(self):
+        # See http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-7.1.3.1
+        connection = self.requestHeaders.getRawHeaders('Connection', [])
+        for value in connection:
+            for name in value.split(','):
+                self.requestHeaders.removeHeader(name.strip())
+
+        for name in HOP_BY_HOP_HEADERS:
+            self.requestHeaders.removeHeader(name)
+
+    def _remove_accept_encoding_header(self):
+        # Splash renders the contents and returns a snapshot of the
+        # rendered DOM. The data is rendered using QWebKit, and it is
+        # QWebKit who knows which content encodings it can handle.
+        # That's why the original Accept-Encoding header is not passed
+        # to the remote server when Splash works as a proxy server.
+
+        # Another reason is https://bugs.webkit.org/show_bug.cgi?id=63696.
+        # Passing custom Accept-Encoding header disables automatic
+        # gzip decompression in WebKit and thus makes Splash return raw gzip
+        # data instead of the rendered HTML page - we don't want this.
+
+        # XXX: Should we respect Accept-Encoding by returning
+        # *rendered* data properly compressed? Or maybe users should put
+        # another proxy (e.g. nginx) in front of Splash to handle this?
+        self.requestHeaders.removeHeader('Accept-Encoding')
+
     def process(self):
         try:
-
             # load resource class
             resource_name = self._get_header('render')
             resource_cls = SPLASH_RESOURCES.get(resource_name)
@@ -65,6 +112,11 @@ class SplashProxyRequest(http.Request):
 
             # make sure no splash headers are sent to the target
             self._remove_splash_headers()
+
+            # remove some other headers to be a good proxy
+            self._remove_host_header()
+            self._remove_hop_by_hop_headers()
+            self._remove_accept_encoding_header()
 
             resource = resource_cls(self.pool, True)
             self.render(resource)

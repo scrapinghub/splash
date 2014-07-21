@@ -61,6 +61,18 @@ class BaseRenderTest(unittest.TestCase):
 
     render_format = "html"
     request_handler = DirectRequestHandler
+    use_gzip = False
+
+    def setUp(self):
+        if self.use_gzip:
+            try:
+                from twisted.web.server import GzipEncoderFactory
+            except ImportError:
+                from nose import SkipTest
+                raise SkipTest("Gzip support is not available in old Twisted")
+
+    def mockurl(self, path):
+        return ts.mockserver.url(path, self.use_gzip)
 
     def tearDown(self):
         # we must consume splash output because subprocess.PIPE is used
@@ -87,11 +99,11 @@ class _RenderTest(BaseRenderTest):
         self.assertEqual(r.status_code, 502)
 
     def test_timeout(self):
-        r = self.request({"url": ts.mockserver.url("delay?n=10"), "timeout": "0.5"})
+        r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "0.5"})
         self.assertEqual(r.status_code, 504)
 
     def test_timeout_out_of_range(self):
-        r = self.request({"url": ts.mockserver.url("delay?n=10"), "timeout": "999"})
+        r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "999"})
         self.assertEqual(r.status_code, 400)
 
     @skip_proxy
@@ -101,21 +113,21 @@ class _RenderTest(BaseRenderTest):
         self.assertTrue("url" in r.text)
 
     def test_jsalert(self):
-        r = self.request({"url": ts.mockserver.url("jsalert"), "timeout": "3"})
+        r = self.request({"url": self.mockurl("jsalert"), "timeout": "3"})
         self.assertEqual(r.status_code, 200)
 
     def test_jsconfirm(self):
-        r = self.request({"url": ts.mockserver.url("jsconfirm"), "timeout": "3"})
+        r = self.request({"url": self.mockurl("jsconfirm"), "timeout": "3"})
         self.assertEqual(r.status_code, 200)
 
     def test_iframes(self):
-        r = self.request({"url": ts.mockserver.url("iframes"), "timeout": "3"})
+        r = self.request({"url": self.mockurl("iframes"), "timeout": "3"})
         self.assertEqual(r.status_code, 200)
 
     def test_wait(self):
-        r1 = self.request({"url": ts.mockserver.url("jsinterval")})
-        r2 = self.request({"url": ts.mockserver.url("jsinterval")})
-        r3 = self.request({"url": ts.mockserver.url("jsinterval"), "wait": "0.2"})
+        r1 = self.request({"url": self.mockurl("jsinterval")})
+        r2 = self.request({"url": self.mockurl("jsinterval")})
+        r3 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.2"})
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r3.status_code, 200)
@@ -128,7 +140,7 @@ class RenderHtmlTest(_RenderTest):
     render_format = "html"
 
     def test_ok(self):
-        self._test_ok(ts.mockserver.url("jsrender"))
+        self._test_ok(self.mockurl("jsrender"))
 
     @https_only
     def test_ok_https(self):
@@ -143,38 +155,38 @@ class RenderHtmlTest(_RenderTest):
 
     def test_baseurl(self):
         # first make sure that script.js is served under the right url
-        self.assertEqual(404, requests.get(ts.mockserver.url("script.js")).status_code)
-        self.assertEqual(200, requests.get(ts.mockserver.url("baseurl/script.js")).status_code)
+        self.assertEqual(404, requests.get(self.mockurl("script.js")).status_code)
+        self.assertEqual(200, requests.get(self.mockurl("baseurl/script.js")).status_code)
 
         # r = self.request("url=http://localhost:8998/baseurl&baseurl=http://localhost:8998/baseurl/")
         r = self.request({
-            "url": ts.mockserver.url("baseurl"),
-            "baseurl": ts.mockserver.url("baseurl/"),
+            "url": self.mockurl("baseurl"),
+            "baseurl": self.mockurl("baseurl/"),
         })
         self.assertEqual(r.status_code, 200)
         self.assertTrue("Before" not in r.text)
         self.assertTrue("After" in r.text)
 
     def test_otherdomain(self):
-        r = self.request({"url": ts.mockserver.url("iframes")})
+        r = self.request({"url": self.mockurl("iframes")})
         self.assertEqual(r.status_code, 200)
         self.assertTrue('SAME_DOMAIN' in r.text)
         self.assertTrue('OTHER_DOMAIN' in r.text)
 
     def test_allowed_domains(self):
-        r = self.request({'url': ts.mockserver.url('iframes'), 'allowed_domains': 'localhost'})
+        r = self.request({'url': self.mockurl('iframes'), 'allowed_domains': 'localhost'})
         self.assertEqual(r.status_code, 200)
         self.assertTrue('SAME_DOMAIN' in r.text)
         self.assertFalse('OTHER_DOMAIN' in r.text)
 
     def test_viewport(self):
-        r = self.request({'url': ts.mockserver.url('jsviewport'), 'viewport': '300x400'})
+        r = self.request({'url': self.mockurl('jsviewport'), 'viewport': '300x400'})
         self.assertEqual(r.status_code, 200)
         self.assertIn('300x400', r.text)
 
     def test_nonascii_url(self):
         nonascii_value =  u'тест'.encode('utf8')
-        url = ts.mockserver.url('getrequest') + '?param=' + nonascii_value
+        url = self.mockurl('getrequest') + '?param=' + nonascii_value
         r = self.request({'url': url})
         self.assertEqual(r.status_code, 200)
         self.assertTrue(
@@ -184,12 +196,12 @@ class RenderHtmlTest(_RenderTest):
         )
 
     def test_result_encoding(self):
-        r1 = requests.get(ts.mockserver.url('cp1251'))
+        r1 = requests.get(self.mockurl('cp1251'))
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r1.encoding, 'windows-1251')
         self.assertTrue(u'проверка' in r1.text)
 
-        r2 = self.request({'url': ts.mockserver.url('cp1251')})
+        r2 = self.request({'url': self.mockurl('cp1251')})
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r2.encoding, 'utf-8')
         self.assertTrue(u'проверка' in r2.text)
@@ -200,7 +212,7 @@ class RenderPngTest(_RenderTest):
     render_format = "png"
 
     def test_ok(self):
-        self._test_ok(ts.mockserver.url("jsrender"))
+        self._test_ok(self.mockurl("jsrender"))
 
     @https_only
     def test_ok_https(self):
@@ -211,34 +223,34 @@ class RenderPngTest(_RenderTest):
         self.assertPng(r, width=1024, height=768)
 
     def test_width(self):
-        r = self.request({"url": ts.mockserver.url("jsrender"), "width": "300"})
+        r = self.request({"url": self.mockurl("jsrender"), "width": "300"})
         self.assertPng(r, width=300)
 
     def test_width_height(self):
-        r = self.request({"url": ts.mockserver.url("jsrender"), "width": "300", "height": "100"})
+        r = self.request({"url": self.mockurl("jsrender"), "width": "300", "height": "100"})
         self.assertPng(r, width=300, height=100)
 
     def test_range_checks(self):
         for arg in ('width', 'height'):
             for val in (-1, 99999):
-                url = ts.mockserver.url("jsrender")
+                url = self.mockurl("jsrender")
                 r = self.request("url=%s&%s=%d" % (url, arg, val))
                 self.assertEqual(r.status_code, 400)
 
     def test_viewport_full_wait(self):
-        r = self.request({'url': ts.mockserver.url("jsrender"), 'viewport': 'full'})
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
         self.assertEqual(r.status_code, 400)
 
-        r = self.request({'url': ts.mockserver.url("jsrender"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
         self.assertEqual(r.status_code, 200)
 
     def test_viewport_checks(self):
         for viewport in ['99999x1', '1x99999', 'foo', '1xfoo', 'axe', '9000x9000', '-1x300']:
-            r = self.request({'url': ts.mockserver.url("jsrender"), 'viewport': viewport})
+            r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertEqual(r.status_code, 400)
 
     def test_viewport_full(self):
-        r = self.request({'url': ts.mockserver.url("tall"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
     def assertPng(self, response, width=None, height=None):
@@ -258,52 +270,52 @@ class RenderJsonTest(_RenderTest):
     render_format = 'json'
 
     def test_jsrender_html(self):
-        self.assertSameHtml(ts.mockserver.url("jsrender"))
+        self.assertSameHtml(self.mockurl("jsrender"))
 
     @https_only
     def test_jsrender_https_html(self):
         self.assertSameHtml(ts.mockserver.https_url("jsrender"))
 
     def test_jsalert_html(self):
-        self.assertSameHtml(ts.mockserver.url("jsalert"), {'timeout': 3})
+        self.assertSameHtml(self.mockurl("jsalert"), {'timeout': 3})
 
     def test_jsconfirm_html(self):
-        self.assertSameHtml(ts.mockserver.url("jsconfirm"), {'timeout': 3})
+        self.assertSameHtml(self.mockurl("jsconfirm"), {'timeout': 3})
 
     def test_iframes_html(self):
-        self.assertSameHtml(ts.mockserver.url("iframes"), {'timeout': 3})
+        self.assertSameHtml(self.mockurl("iframes"), {'timeout': 3})
 
     def test_allowed_domains_html(self):
-        self.assertSameHtml(ts.mockserver.url("iframes"), {'allowed_domains': 'localhost'})
+        self.assertSameHtml(self.mockurl("iframes"), {'allowed_domains': 'localhost'})
 
 
     def test_jsrender_png(self):
-        self.assertSamePng(ts.mockserver.url("jsrender"))
+        self.assertSamePng(self.mockurl("jsrender"))
 
     @https_only
     def test_jsrender_https_png(self):
         self.assertSamePng(ts.mockserver.https_url("jsrender"))
 
     def test_jsalert_png(self):
-        self.assertSamePng(ts.mockserver.url("jsalert"), {'timeout': 3})
+        self.assertSamePng(self.mockurl("jsalert"), {'timeout': 3})
 
     def test_jsconfirm_png(self):
-        self.assertSamePng(ts.mockserver.url("jsconfirm"), {'timeout': 3})
+        self.assertSamePng(self.mockurl("jsconfirm"), {'timeout': 3})
 
     def test_iframes_png(self):
-        self.assertSamePng(ts.mockserver.url("iframes"), {'timeout': 3})
+        self.assertSamePng(self.mockurl("iframes"), {'timeout': 3})
 
     def test_png_size(self):
-        self.assertSamePng(ts.mockserver.url("jsrender"), {'width': 100})
-        self.assertSamePng(ts.mockserver.url("jsrender"), {'width': 100, 'height': 200})
-        self.assertSamePng(ts.mockserver.url("jsrender"),
+        self.assertSamePng(self.mockurl("jsrender"), {'width': 100})
+        self.assertSamePng(self.mockurl("jsrender"), {'width': 100, 'height': 200})
+        self.assertSamePng(self.mockurl("jsrender"),
                            {'width': 100, 'height': 200, 'vwidth': 100, 'vheight': 200})
-        self.assertSamePng(ts.mockserver.url("jsrender"),
+        self.assertSamePng(self.mockurl("jsrender"),
                            {'vwidth': 100})
 
     def test_png_size_viewport(self):
-        self.assertSamePng(ts.mockserver.url("jsrender"), {'wait': 0.1, 'viewport': 'full'})
-        self.assertSamePng(ts.mockserver.url("tall"), {'wait': 0.1, 'viewport': 'full'})
+        self.assertSamePng(self.mockurl("jsrender"), {'wait': 0.1, 'viewport': 'full'})
+        self.assertSamePng(self.mockurl("tall"), {'wait': 0.1, 'viewport': 'full'})
 
     @https_only
     def test_fields_all(self):
@@ -369,9 +381,9 @@ class RenderJsonTest(_RenderTest):
 
     def test_wait(self):
         # override parent's test to make it aware of render.json endpoint
-        r1 = self.request({"url": ts.mockserver.url("jsinterval"), 'html': 1})
-        r2 = self.request({"url": ts.mockserver.url("jsinterval"), 'html': 1})
-        r3 = self.request({"url": ts.mockserver.url("jsinterval"), 'wait': 0.2, 'html': 1})
+        r1 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
+        r2 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
+        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': 0.2, 'html': 1})
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r3.status_code, 200)
@@ -383,7 +395,7 @@ class RenderJsonTest(_RenderTest):
         self.assertNotEqual(html1, html3)
 
     def test_result_encoding(self):
-        r = self.request({'url': ts.mockserver.url('cp1251'), 'html': 1})
+        r = self.request({'url': self.mockurl('cp1251'), 'html': 1})
         self.assertEqual(r.status_code, 200)
         html = r.json()['html']
         self.assertTrue(u'проверка' in html)
@@ -497,33 +509,33 @@ test('abc');"""
     def test_js_modify_html(self):
         js_source = """function test(x){ document.getElementById("p1").innerHTML=x; }
 test('Changed');"""
-        params = {'url': ts.mockserver.url("jsrender")}
+        params = {'url': self.mockurl("jsrender")}
         r = self._runjs_request(js_source, render_format='html', params=params)
         self.assertTrue("Before" not in r.text)
         self.assertTrue("Changed" in r.text)
 
     def test_js_profile(self):
         js_source = """test('abc');"""
-        params = {'url': ts.mockserver.url("jsrender"), 'js' : 'test'}
+        params = {'url': self.mockurl("jsrender"), 'js' : 'test'}
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], "abc")
 
     def test_js_profile_another_lib(self):
         js_source = """test2('abc');"""
-        params = {'url': ts.mockserver.url("jsrender"), 'js' : 'test'}
+        params = {'url': self.mockurl("jsrender"), 'js' : 'test'}
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], "abcabc")
 
     def test_js_utf8_lib(self):
         js_source = """console.log(test_utf8('abc')); test_utf8('abc');"""
-        params = {'url': ts.mockserver.url("jsrender"), 'js' : 'test', 'console': '1'}
+        params = {'url': self.mockurl("jsrender"), 'js' : 'test', 'console': '1'}
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], u'abc\xae')
         self.assertEqual(r['console'], [u'abc\xae'])
 
     def test_js_external_iframe(self):
         # by default, cross-domain access is disabled, so this does nothing
-        params = {'url': ts.mockserver.url("externaliframe")}
+        params = {'url': self.mockurl("externaliframe")}
         r = self._runjs_request(self.CROSS_DOMAIN_JS, params=params).json()
         self.assertNotIn('script', r)
 
@@ -531,7 +543,7 @@ test('Changed');"""
     def test_js_external_iframe_cross_domain_enabled(self):
         # cross-domain access should work if we enable it
         with SplashServer(extra_args=['--js-cross-domain-access']) as splash:
-            query = {'url': ts.mockserver.url("externaliframe"), 'script': 1}
+            query = {'url': self.mockurl("externaliframe"), 'script': 1}
             headers = {'content-type': 'application/javascript'}
             response = requests.post(
                 splash.url("render.json"),
@@ -561,12 +573,12 @@ test('Changed');"""
 
     def test_js_invalid_profile(self):
         js_source = """test('abc');"""
-        params = {'url': ts.mockserver.url("jsrender"), 'js' : 'not_a_profile'}
+        params = {'url': self.mockurl("jsrender"), 'js' : 'not_a_profile'}
         r = self._runjs_request(js_source, params=params)
         self.assertEqual(r.status_code, 400)
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
-        query = {'url': ts.mockserver.url("jsrender"), 'script': 1}
+        query = {'url': self.mockurl("jsrender"), 'script': 1}
         query.update(params or {})
         req_headers = {'content-type': 'application/javascript'}
         req_headers.update(headers or {})
@@ -580,7 +592,7 @@ class TestTestSetup(unittest.TestCase):
         ts.print_output()
 
     def test_mockserver_works(self):
-        r = requests.get(ts.mockserver.url("jsrender"))
+        r = requests.get(ts.mockserver.url("jsrender", gzip=False))
         self.assertEqual(r.status_code, 200)
 
     def test_mockserver_https_works(self):

@@ -6,7 +6,6 @@ import unittest
 import requests
 from splash.proxy import BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
 from splash.tests.test_render import BaseRenderTest
-from splash.tests import ts
 from splash.tests.utils import TestServers
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
@@ -52,6 +51,8 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
 
 class BaseHtmlProxyTest(BaseRenderTest):
+    use_gzip = False  # our simple testing proxy dosn't work with gzip
+
     def assertProxied(self, html):
         assert 'PROXY_USED' in html
 
@@ -62,14 +63,14 @@ class BaseHtmlProxyTest(BaseRenderTest):
 class HtmlProxyRenderTest(BaseHtmlProxyTest):
 
     def test_proxy_works(self):
-        r1 = self.request({'url': ts.mockserver.url('jsrender')})
+        r1 = self.request({'url': self.mockurl('jsrender')})
         self.assertNotProxied(r1.text)
 
-        r2 = self.request({'url': ts.mockserver.url('jsrender'), 'proxy': 'test'})
+        r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'test'})
         self.assertProxied(r2.text)
 
     def test_blacklist(self):
-        params = {'url': ts.mockserver.url('iframes'),
+        params = {'url': self.mockurl('iframes'),
                   'proxy': 'test', 'html': 1, 'iframes': 1}
         r = self.request(params, render_format='json')
         data = r.json()
@@ -85,20 +86,20 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
                 self.assertProxied(frame['html'])
 
     def test_insecure(self):
-        r = self.request({'url': ts.mockserver.url('jsrender'),
+        r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
 
     def test_nonexisting(self):
-        r = self.request({'url': ts.mockserver.url('jsrender'),
+        r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_no_proxy_settings(self):
-        r = self.request({'url': ts.mockserver.url('jsrender'),
+        r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'no-proxy-settings'})
         self.assertEqual(r.status_code, 400)
 
@@ -120,11 +121,11 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
 
     def test_ts_setup(self):
         with TestServers() as ts2:
-            r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender')})
+            r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender', gzip=False)})
             self.assertNotProxied(r1.text)
 
             r2 = self.ts2_request(ts2, {
-                'url': ts2.mockserver.url('jsrender'),
+                'url': ts2.mockserver.url('jsrender', gzip=False),
                 'proxy': 'test',
             })
             self.assertProxied(r2.text)
@@ -134,33 +135,33 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
             self.create_default_ini(ts2)
             try:
                 # default.ini present, proxy is used by default
-                r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender')})
+                r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender', gzip=False)})
                 self.assertProxied(r1.text)
 
                 # another proxy
                 r2 = self.ts2_request(ts2, {
-                    'url': ts2.mockserver.url('jsrender'),
+                    'url': ts2.mockserver.url('jsrender', gzip=False),
                     'proxy': 'test',
                 })
                 self.assertProxied(r2.text)
 
                 # invalid proxy profile
                 r3 = self.ts2_request(ts2, {
-                    'url': ts2.mockserver.url('jsrender'),
+                    'url': ts2.mockserver.url('jsrender', gzip=False),
                     'proxy': 'nonexisting',
                 })
                 self.assertEqual(r3.status_code, 400)
 
                 # 'none' disables default.ini
                 r4 = self.ts2_request(ts2, {
-                    'url': ts2.mockserver.url('jsrender'),
+                    'url': ts2.mockserver.url('jsrender', gzip=False),
                     'proxy': 'none',
                 })
                 self.assertNotProxied(r4.text)
 
                 # empty 'proxy' argument disables default.ini
                 r5 = self.ts2_request(ts2, {
-                    'url': ts2.mockserver.url('jsrender'),
+                    'url': ts2.mockserver.url('jsrender', gzip=False),
                     'proxy': '',
                 })
                 self.assertNotProxied(r5.text)
