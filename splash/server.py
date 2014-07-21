@@ -173,15 +173,17 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
 def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
     from twisted.python import log
+    from splash.utils import get_ru_maxrss
 
-    # Support maxrss as a percent of total physical memory
+    # Support maxrss as a ratio of total physical memory
     if 0.0 < maxrss < 1.0:
         maxrss = phymem_usage().total * maxrss / (1024 ** 2)
 
     def check_maxrss():
-        if resource.getrusage(resource.RUSAGE_SELF).ru_maxrss > maxrss * 1024:
+        if get_ru_maxrss() > maxrss * (1024 ** 2):
             log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
             reactor.stop()
+
     if maxrss:
         log.msg("maxrss limit: %d MB" % maxrss)
         t = task.LoopingCall(check_maxrss)

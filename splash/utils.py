@@ -1,4 +1,8 @@
-import os, gc, inspect
+import os
+import gc
+import sys
+import inspect
+import resource
 from collections import defaultdict
 import psutil
 
@@ -39,6 +43,15 @@ def get_leaks():
             if cname in relevant_types:
                 leaks[cname] += 1
     return leaks
+
+
+def get_ru_maxrss():
+    """ Return max RSS usage (in bytes) """
+    size = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if sys.platform != 'darwin':
+        # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
+        size *= 1024
+    return size
 
 
 def qurl2ascii(url):
