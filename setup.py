@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 setup_args = {
     'name': 'splash',
     'version': '1.0',
