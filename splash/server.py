@@ -82,7 +82,7 @@ def parse_opts():
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
-        help="verbosity level; valid values are 0, 1, 2 and 3")
+        help="verbosity level; valid values are integers from 0 to 5")
 
     return op.parse_args()
 
