@@ -16,6 +16,8 @@ VIEWPORT_MAX_AREA = 4000*4000
 MAX_WIDTH = 1920
 MAX_HEIGTH = 1080
 
+AUTOLOAD_IMAGES = 1
+
 # defaults for render.json endpoint
 DO_HTML = 0
 DO_IFRAMES = 0

@@ -14,7 +14,7 @@ SPLASH_RESOURCES = {'html': RenderHtml,
 
 # Note the http header use '-' instead of '_' for the parameter names
 HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
-               'viewport', 'js', 'js-source']
+               'viewport', 'js', 'js-source', 'images']
 PNG_PARAMS = ['width', 'height']
 JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
 

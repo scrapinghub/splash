@@ -124,13 +124,16 @@ class WebpageRender(object):
     # ======= General request/response handling:
 
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, js_profile=None, console=False):
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
+                  js_source=None, js_profile=None, images=None, console=False):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
+
+        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, images)
 
         # setup logging
         if self.verbosity >= 4:
@@ -359,11 +362,20 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, js_profile=None,
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
+                        js_source=None, js_profile=None, images=None,
                         width=None, height=None):
         self.width = width
         self.height = height
-        super(PngRender, self).doRequest(url, baseurl, wait_time, viewport, js_source, js_profile)
+        super(PngRender, self).doRequest(
+            url=url,
+            baseurl=baseurl,
+            wait_time=wait_time,
+            viewport=viewport,
+            js_source=js_source,
+            js_profile=js_profile,
+            images=images
+        )
 
     def _render(self):
         return self._getPng(self.width, self.height)
@@ -371,14 +383,24 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None, js_source=None, js_profile=None,
+    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
+                        js_source=None, js_profile=None, images=None,
                         html=True, iframes=True, png=True, script=True, console=False,
                         width=None, height=None):
         self.width = width
         self.height = height
         self.include = {'html': html, 'png': png, 'iframes': iframes,
                         'script': script, 'console': console}
-        super(JsonRender, self).doRequest(url, baseurl, wait_time, viewport, js_source, js_profile, console)
+        super(JsonRender, self).doRequest(
+            url=url,
+            baseurl=baseurl,
+            wait_time=wait_time,
+            viewport=viewport,
+            js_source=js_source,
+            js_profile=js_profile,
+            images=images,
+            console=console
+        )
 
     def _render(self):
         res = {}
