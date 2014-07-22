@@ -110,6 +110,15 @@ viewport : string : optional
     an unfortunate restriction, but it seems that this is the only
     way to make rendering work reliably with viewport=full.
 
+.. _arg-images:
+
+images : integer : optional
+    Whether to download images. Possible values are
+    ``1`` (download images) and ``0`` (don't downoad images). Default is 1.
+
+    Note that cached images may be displayed even if this parameter is 0.
+    You can also use `Request Filters`_ to strip unwanted contents based on URL.
+
 
 Curl example::
 
@@ -471,6 +480,12 @@ limitations:
 
 Unsupported rules are silently discarded.
 
+.. note::
+
+    If you want to stop downloading images check :ref:`'images' <arg-images>`
+    GET parameter. It doesn't require URL-based filters to work, and it can
+    filter images that are hard to detect using URL-based patterns.
+
 .. warning::
 
     It is very important to have `pyre2 <https://github.com/axiak/pyre2>`_
@@ -481,6 +496,9 @@ Unsupported rules are silently discarded.
     from stdlib, and it can be 1000x+ times slower than re2 - it may be
     faster to download files than to discard them if you have a large number
     of rules and don't use re2. With re2 matching becomes very fast.
+
+    Make sure you are not using re2==0.2.20 installed from PyPI (it is broken);
+    use the latest version from github.
 
 .. _adblockparser: https://github.com/scrapinghub/adblockparser
 .. _EasyList: https://easylist.adblockplus.org/en/
@@ -575,6 +593,9 @@ X-Splash-allowed-domains : string
 
 X-Splash-viewport : string
   Same as :ref:`'viewport' <arg-viewport>` argument for `render.html`_.
+
+X-Splash-images : string
+  Same as :ref:`'images' <arg-images>` argument for `render.html`_.
 
 X-Splash-width : string
   Same as :ref:`'width' <arg-width>` argument for `render.png`_.

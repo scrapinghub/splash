@@ -159,10 +159,10 @@ def _check_js_profile(request, js_profiles_path, js_profile):
 
 
 def _get_png_params(request, js_profiles_path):
-    url, baseurl, wait_time, viewport, js_source, js_profile = _get_common_params(request, js_profiles_path)
+    url, baseurl, wait_time, viewport, js_source, js_profile, images = _get_common_params(request, js_profiles_path)
     width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
     height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
-    return url, baseurl, wait_time, viewport, js_source, js_profile, width, height
+    return url, baseurl, wait_time, viewport, js_source, js_profile, images, width, height
 
 
 def _get_common_params(request, js_profiles_path):
@@ -170,12 +170,13 @@ def _get_common_params(request, js_profiles_path):
     baseurl = getarg(request, "baseurl", None)
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
     js_source, js_profile = _get_javascript_params(request, js_profiles_path)
+    images = getarg(request, "images", defaults.AUTOLOAD_IMAGES, type=int, range=(0, 1))
 
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
-    return url, baseurl, wait_time, viewport, js_source, js_profile
+    return url, baseurl, wait_time, viewport, js_source, js_profile, images
 
 
 class RenderHtml(RenderBase):
@@ -199,7 +200,7 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        url, baseurl, wait_time, viewport, js_source, js_profile, width, height = _get_png_params(request, self.js_profiles_path)
+        url, baseurl, wait_time, viewport, js_source, js_profile, images, width, height = _get_png_params(request, self.js_profiles_path)
 
         html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
         iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
@@ -208,7 +209,7 @@ class RenderJson(RenderBase):
         console = getarg(request, "console", defaults.SHOW_CONSOLE, type=int, range=(0, 1))
 
         return self.pool.render(JsonRender, request,
-                                url, baseurl, wait_time, viewport, js_source, js_profile,
+                                url, baseurl, wait_time, viewport, js_source, js_profile, images,
                                 html, iframes, png, script, console,
                                 width, height)
 

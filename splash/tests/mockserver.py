@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import optparse
 import base64
+import random
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web import proxy, http
@@ -158,10 +159,21 @@ class SlowImage(Resource):
 
     def _delayedRender(self, (request, n)):
         # write 1px black gif
-        gif_data = b'AQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
+        gif_data = b'AQABAIAAAAAAAAAAACH5BAAAAAAALAAAAAABAAEAAAICTAEAOw=='
         request.write(base64.decodestring(gif_data))
         if not request._disconnected:
             request.finish()
+
+
+class HtmlWithImage(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        token = random.random()  # prevent caching
+        return """<html><body>
+        <img width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
+        </body></html>
+        """ % token
 
 
 class IframeResource(Resource):
@@ -487,6 +499,7 @@ class Root(Resource):
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("slow.gif", SlowImage())
+        self.putChild("show-image", HtmlWithImage())
         self.putChild("iframes", IframeResource(http_port))
         self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
         self.putChild("external", ExternalResource())

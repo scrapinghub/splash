@@ -253,6 +253,14 @@ class RenderPngTest(_RenderTest):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    def test_images_enabled(self):
+        r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
+        self.assertPixelColor(r, 30, 30, (0,0,0,255))
+
+    def test_images_disabled(self):
+        r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
+        self.assertPixelColor(r, 30, 30, (255,255,255,255))
+
     def assertPng(self, response, width=None, height=None):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
@@ -263,6 +271,11 @@ class RenderPngTest(_RenderTest):
         if height is not None:
             self.assertEqual(img.size[1], height)
         return img.size
+
+    def assertPixelColor(self, response, x, y, color):
+        img = Image.open(StringIO(response.content))
+        self.assertEqual(color, img.getpixel((x, y)))
+
 
 
 class RenderJsonTest(_RenderTest):
@@ -316,6 +329,10 @@ class RenderJsonTest(_RenderTest):
     def test_png_size_viewport(self):
         self.assertSamePng(self.mockurl("jsrender"), {'wait': 0.1, 'viewport': 'full'})
         self.assertSamePng(self.mockurl("tall"), {'wait': 0.1, 'viewport': 'full'})
+
+    def test_png_images(self):
+        self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100"})
+        self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100", "images": 0})
 
     @https_only
     def test_fields_all(self):
