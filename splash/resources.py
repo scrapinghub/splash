@@ -1,8 +1,18 @@
-import os, time, resource, json
+"""
+This module contains Splash twisted.web Resources (HTTP API endpoints
+exposed to the user).
+"""
+from __future__ import absolute_import
+import os
+import time
+import resource
+import json
+
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
+
 from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
 from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
 from splash import sentry

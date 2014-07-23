@@ -2,7 +2,7 @@
 """
 Classes that process (and maybe filter) requests based on
 various conditions. They should be used with
-``splash.network_manager.SplashQNetworkAccessManager``.
+:class:`splash.network_manager.SplashQNetworkAccessManager`.
 """
 from __future__ import absolute_import
 import re

@@ -50,8 +50,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     This QNetworkAccessManager subclass enables "splash proxy factories"
     support. Qt provides similar functionality via setProxyFactory method,
     but standard QNetworkProxyFactory is not flexible enough.
-    """
 
+    It also sets up some extra logging and provides a way to get
+    the "source" request (that was made to Splash itself).
+    """
     def __init__(self, verbosity):
         super(ProxiedQNetworkAccessManager, self).__init__()
         self.sslErrors.connect(self._sslErrors)
@@ -129,8 +131,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
-    This QNetworkAccessManager provides proxy support and request
-    middleware support.
+    This QNetworkAccessManager provides:
+
+    * proxy support;
+    * request middleware support;
+    * additional logging.
+
     """
     def __init__(self, filters_path, allowed_schemes, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)

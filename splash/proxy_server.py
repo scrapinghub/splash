@@ -1,3 +1,10 @@
+"""
+Splash can act as an HTTP proxy server. When request is made through
+the Splash Proxy an user gets a rendered DOM snapshot instead of a raw HTML.
+
+Not to be confused with Splash support for proxying outgoing requests
+(see :mod:`splash.proxy`).
+"""
 from __future__ import absolute_import
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod

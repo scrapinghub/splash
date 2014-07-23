@@ -1,4 +1,11 @@
-import os, sys, optparse, resource, traceback, signal, time
+from __future__ import absolute_import
+import os
+import sys
+import optparse
+import resource
+import traceback
+import signal
+import time
 from psutil import phymem_usage
 from splash import defaults
 

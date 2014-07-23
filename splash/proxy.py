@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Splash can send outgoing network requests through an HTTP proxy server.
+This modules provides classes which define which requests to proxy.
+
+Not to be confused with Splash Proxy mode when Splash itself works as
+an HTTP proxy (see :mod:`splash.proxy_server`).
+"""
 from __future__ import absolute_import
 import re, os, ConfigParser
 from PyQt4.QtNetwork import QNetworkProxy

@@ -19,6 +19,14 @@ RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
 
 class SplashQWebPage(QWebPage):
+    """
+    QWebPage subclass that:
+
+    * changes user agent;
+    * logs JS console messages;
+    * handles alert and confirm windows;
+    * returns additional info about render errors.
+    """
     errorInfo = None
 
     custom_user_agent = None
@@ -97,7 +105,14 @@ class SplashQWebPage(QWebPage):
 
 
 class WebpageRender(object):
+    """
+    WebpageRender object renders a webpage: it downloads the page using
+    network_manager and renders it using QWebView according to options
+    passed to :meth:`WebpageRender.doRequest`.
 
+    This class is not used directly; its subclasses are used.
+    Subclasses choose how to return the result (as html, json, png).
+    """
     def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
         self.network_manager = network_manager
         self.web_view = QWebView()
@@ -122,7 +137,6 @@ class WebpageRender(object):
         self.deferred = defer.Deferred()
 
     # ======= General request/response handling:
-
 
     def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False):
@@ -176,7 +190,19 @@ class WebpageRender(object):
             else:
                 self.web_page.mainFrame().load(request)
 
+    def render(self):
+        """
+        This method is called to get the result after the requested page is
+        downloaded and rendered. Subcalles should implement it to customize
+        which data to return.
+        """
+        raise NotImplementedError()
+
     def close(self):
+        """
+        This method is called by a Pool after the rendering is done and
+        the WebpageRender object is no longer needed.
+        """
         self.web_view.stop()
         self.web_view.close()
         self.web_page.deleteLater()
@@ -231,8 +257,8 @@ class WebpageRender(object):
     def _loadFinishedOK(self):
         self.log("_loadFinishedOK %s" % id(self.splash_request))
         try:
-            self._prerender()
-            self.deferred.callback(self._render())
+            self._prepareRender()
+            self.deferred.callback(self.render())
         except:
             self.deferred.errback()
 
@@ -284,9 +310,6 @@ class WebpageRender(object):
         frame = self.web_page.mainFrame()
         return self._frameToDict(frame, children, html)
 
-    def _render(self):
-        raise NotImplementedError()
-
     # ======= Other helper methods:
 
     def _setViewportSize(self, viewport):
@@ -301,7 +324,6 @@ class WebpageRender(object):
             self._setViewportSize(defaults.VIEWPORT_FALLBACK)
         else:
             self.web_page.setViewportSize(size)
-
 
     def _loadJsLibs(self, frame, js_profile):
         if js_profile:
@@ -343,7 +365,7 @@ class WebpageRender(object):
 
         return res
 
-    def _prerender(self):
+    def _prepareRender(self):
         if self.viewport == 'full':
             self._setFullViewport()
         self.js_output, self.js_console_output = self._runJS(self.js_source, self.js_profile)
@@ -356,7 +378,7 @@ class WebpageRender(object):
 
 
 class HtmlRender(WebpageRender):
-    def _render(self):
+    def render(self):
         return self._getHtml()
 
 
@@ -377,7 +399,7 @@ class PngRender(WebpageRender):
             images=images
         )
 
-    def _render(self):
+    def render(self):
         return self._getPng(self.width, self.height)
 
 
@@ -402,7 +424,7 @@ class JsonRender(WebpageRender):
             console=console
         )
 
-    def _render(self):
+    def render(self):
         res = {}
 
         if self.include['png']:
