@@ -1,4 +1,4 @@
-# install PyQt4 and the following packages:
+# install PyQt4 (Splash is tested on PyQT 4.9.x) and the following packages:
 twisted
 qt4reactor
 psutil
