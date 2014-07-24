@@ -6,7 +6,8 @@ from PyQt4.QtNetwork import (
 )
 from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
-from splash.utils import qurl2ascii
+
+from splash.qtutils import qurl2ascii
 from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,

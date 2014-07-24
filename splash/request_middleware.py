@@ -8,30 +8,9 @@ from __future__ import absolute_import
 import re
 import os
 import urlparse
-from PyQt4.QtCore import QUrl
-from PyQt4.QtNetwork import QNetworkAccessManager
-from splash.utils import getarg, qurl2ascii
+from splash.utils import getarg
+from splash.qtutils import request_repr, drop_request
 from twisted.python import log
-
-
-OPERATION_NAMES = {
-    QNetworkAccessManager.HeadOperation: 'HEAD',
-    QNetworkAccessManager.GetOperation: 'GET',
-    QNetworkAccessManager.PostOperation: 'POST',
-    QNetworkAccessManager.PutOperation: 'PUT',
-    QNetworkAccessManager.DeleteOperation: 'DELETE',
-}
-
-
-def _drop_request(request):
-    # hack: set invalid URL
-    request.setUrl(QUrl(''))
-
-
-def request_repr(request, operation=None):
-    method = OPERATION_NAMES.get(operation, '?')
-    url = qurl2ascii(request.url())
-    return "%s %s" % (method, url)
 
 
 class AllowedDomainsMiddleware(object):
@@ -49,7 +28,7 @@ class AllowedDomainsMiddleware(object):
         if not host_re.match(unicode(request.url().host())):
             if self.verbosity >= 2:
                 log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
-            _drop_request(request)
+            drop_request(request)
         return request
 
     def _get_allowed_domains(self, splash_request):
@@ -85,7 +64,7 @@ class AllowedSchemesMiddleware(object):
                     "Dropped %s because of URI scheme" % (request_repr(request, operation),),
                     system='request_middleware'
                 )
-            _drop_request(request)
+            drop_request(request)
         return request
 
 
@@ -128,7 +107,7 @@ class AdblockMiddleware(object):
                     request_repr(request, operation)
                 )
                 log.msg(msg, system='request_middleware')
-            _drop_request(request)
+            drop_request(request)
         return request
 
     def _url_and_options(self, request, splash_request):

@@ -52,7 +52,3 @@ def get_ru_maxrss():
         # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
         size *= 1024
     return size
-
-
-def qurl2ascii(url):
-    return unicode(url.toString()).encode('unicode-escape').decode('ascii')
