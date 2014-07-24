@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import datetime
+from functools import partial
+
 from PyQt4.QtNetwork import (
     QNetworkAccessManager, QNetworkProxyQuery,
     QNetworkReply, QNetworkRequest
@@ -8,6 +11,7 @@ from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
 
 from splash.qtutils import qurl2ascii
+from splash import har
 from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,
@@ -70,6 +74,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
+        start_time = datetime.datetime.utcnow()
+
         request = QNetworkRequest(request)
         old_proxy = self.proxy()
 
@@ -84,13 +90,43 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             operation, request, outgoingData
         )
 
-        reply.error.connect(self._handleError)
-        reply.finished.connect(self._handleFinished)
+        options = {
+            'start_time': start_time,
+            'operation': operation,
+            'outgoingData': outgoingData,
+        }
+
+        reply.error.connect(partial(self._handleError, options=options))
+        reply.finished.connect(partial(self._handleFinished, options=options))
         reply.metaDataChanged.connect(self._handleMetaData)
         reply.downloadProgress.connect(self._handleDownloadProgress)
 
         self.setProxy(old_proxy)
+
         return reply
+
+    def _addHarEntry(self, reply, options):
+        cur_time = datetime.datetime.utcnow()
+        request = reply.request()
+
+        network_entries = self._getWebPageAttribute(request, 'network_entries')
+        if network_entries is not None:
+            operation = options['operation']
+            outgoingData = options['outgoingData']
+
+            start_time = options['start_time']
+            elapsed = (cur_time-start_time).total_seconds()
+
+            network_entries.append({
+                # "pageref": "page_0",
+                "startedDateTime": options['start_time'].isoformat(),
+                "time": elapsed*1000,  # ms
+                "request": har.request2har(request, operation, outgoingData),
+                "response": har.reply2har(reply),
+                # "cache": {},
+                # "timings": {},
+            })
+
 
     def _getSplashProxyFactory(self, request):
         return self._getWebPageAttribute(request, 'splash_proxy_factory')
@@ -100,12 +136,15 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if isinstance(web_frame, QWebFrame):
             return getattr(web_frame.page(), attribute, None)
 
-    def _handleError(self, error_id):
+    def _handleError(self, error_id, options):
+        self._addHarEntry(self.sender(), options)
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
         self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=1)
 
-    def _handleFinished(self):
-        self.log("Finished downloading {url}", self.sender())
+    def _handleFinished(self, options):
+        reply = self.sender()
+        self._addHarEntry(reply, options)
+        self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
         self.log("Headers received for {url}", self.sender(), min_level=3)
