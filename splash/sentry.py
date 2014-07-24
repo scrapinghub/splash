@@ -1,6 +1,6 @@
 import os
 
-class SentryLogger():
+class SentryLogger(object):
 
     def __init__(self):
         try:
