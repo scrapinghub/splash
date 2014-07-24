@@ -9,6 +9,7 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
+from splash.qtutils import qurl2ascii
 
 
 class RenderError(Exception):
@@ -160,6 +161,8 @@ class WebpageRender(object):
             self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._javaScriptWindowObjectCleared)
             self.web_page.mainFrame().initialLayoutCompleted.connect(self._initialLayoutCompleted)
 
+        self.web_page.mainFrame().urlChanged.connect(self._urlChanged)
+
         # do the request
         request = QNetworkRequest()
         request.setUrl(QUrl(url.decode('utf8')))
@@ -278,6 +281,10 @@ class WebpageRender(object):
 
     def _loadStarted(self):
         self.log("loadStarted %s" % id(self.splash_request), min_level=4)
+
+    def _urlChanged(self, url):
+        msg = "mainFrame().urlChanged %s: %s" % (id(self.splash_request), qurl2ascii(url))
+        self.log(msg, min_level=4)
 
     def _frameLoadStarted(self):
         self.log("mainFrame().loadStarted %s" % id(self.splash_request), min_level=4)
