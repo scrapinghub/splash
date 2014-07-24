@@ -139,15 +139,15 @@ class RenderHtmlTest(_RenderTest):
 
     render_format = "html"
 
-    def test_ok(self):
-        self._test_ok(self.mockurl("jsrender"))
+    def test_jsrender(self):
+        self._test_jsrender(self.mockurl("jsrender"))
 
     @https_only
-    def test_ok_https(self):
-        self._test_ok(ts.mockserver.https_url("jsrender"))
+    def test_jsrender_https(self):
+        self._test_jsrender(ts.mockserver.https_url("jsrender"))
 
-    def _test_ok(self, url):
-        r = self.request("url=%s" % url)
+    def _test_jsrender(self, url):
+        r = self.request({"url": url})
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers["content-type"].lower(), "text/html; charset=utf-8")
         self.assertTrue("Before" not in r.text)
@@ -205,6 +205,28 @@ class RenderHtmlTest(_RenderTest):
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r2.encoding, 'utf-8')
         self.assertTrue(u'проверка' in r2.text)
+
+    @skip_proxy
+    def test_404_get(self):
+        self.assertResponse200Get(404)
+
+    @skip_proxy
+    def test_403_get(self):
+        self.assertResponse200Get(403)
+
+    @skip_proxy
+    def test_500_get(self):
+        self.assertResponse200Get(500)
+
+    @skip_proxy
+    def test_503_get(self):
+        self.assertResponse200Get(503)
+
+    def assertResponse200Get(self, code):
+        url = self.mockurl('getrequest') + '?code=%d' % code
+        r = self.request({'url': url})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("GET request", r.text)
 
 
 class RenderPngTest(_RenderTest):

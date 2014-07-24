@@ -263,6 +263,8 @@ window.onload = function(){
 class PostResource(Resource):
 
     def render_POST(self, request):
+        code = request.args.get('code', [200])[0]
+        request.setResponseCode(int(code))
         headers = request.getAllHeaders()
         payload = request.content.getvalue() if request.content is not None else ''
         return """
@@ -283,6 +285,8 @@ class PostResource(Resource):
 class GetResource(Resource):
 
     def render_GET(self, request):
+        code = request.args.get('code', [200])[0]
+        request.setResponseCode(int(code))
         headers = request.getAllHeaders()
         payload = request.args
         return """
