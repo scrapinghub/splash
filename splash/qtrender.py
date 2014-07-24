@@ -176,6 +176,9 @@ class WebpageRender(object):
                     self.web_page.custom_user_agent = value
 
         if baseurl:
+            # If baseurl is used, we download the page manually,
+            # then set its contents to the QWebPage and let it
+            # download related resources and render the result.
             self._baseUrl = QUrl(baseurl.decode('utf8'))
             request.setOriginatingObject(self.web_page.mainFrame())
             self._reply = self.network_manager.get(request)
@@ -184,9 +187,10 @@ class WebpageRender(object):
             self.web_page.loadFinished.connect(self._loadFinished)
 
             if self.splash_request.method == 'POST':
-                self.web_page.mainFrame().load(request,
-                                               QNetworkAccessManager.PostOperation,
-                                               self.splash_request.content.getvalue())
+                body = self.splash_request.content.getvalue()
+                self.web_page.mainFrame().load(
+                    request, QNetworkAccessManager.PostOperation, body
+                )
             else:
                 self.web_page.mainFrame().load(request)
 
@@ -209,6 +213,10 @@ class WebpageRender(object):
         self.web_view.deleteLater()
 
     def _requestFinished(self):
+        """
+        This method is called when ``baseurl`` is used and a
+        reply for the first request is received.
+        """
         self.log("_requestFinished %s" % id(self.splash_request))
         self.web_page.loadFinished.connect(self._loadFinished)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
@@ -220,6 +228,9 @@ class WebpageRender(object):
         self._reply.deleteLater()
 
     def _loadFinished(self, ok):
+        """
+        This method is called when a QWebPage finished loading its contents.
+        """
         if self.deferred.called:
             # sometimes this callback is called multiple times
             self.log("loadFinished called multiple times", min_level=1)
