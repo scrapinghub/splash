@@ -35,7 +35,12 @@ class SplashQWebPage(QWebPage):
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
-        self.network_entries = []
+        self.network_entries_map = {}
+
+    @property
+    def network_entries(self):
+        keys = sorted(self.network_entries_map.keys())
+        return [self.network_entries_map[key] for key in keys]
 
     def javaScriptAlert(self, frame, msg):
         return

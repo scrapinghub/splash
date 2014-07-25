@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import datetime
-from functools import partial
+from contextlib import contextmanager
 
 from PyQt4.QtNetwork import (
     QNetworkAccessManager, QNetworkProxyQuery,
@@ -10,7 +10,7 @@ from PyQt4.QtNetwork import (
 from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
 
-from splash.qtutils import qurl2ascii
+from splash.qtutils import qurl2ascii, OPERATION_NAMES
 from splash import har
 from splash.request_middleware import (
     AdblockMiddleware,
@@ -59,11 +59,19 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     It also sets up some extra logging and provides a way to get
     the "source" request (that was made to Splash itself).
     """
+
+    _REQUEST_ID = QNetworkRequest.User + 1
+
+    REQUEST_CREATED = "created"
+    REQUEST_FINISHED = "finished"
+    REQUEST_HEADERS_RECEIVED = "headers"
+
     def __init__(self, verbosity):
         super(ProxiedQNetworkAccessManager, self).__init__()
         self.sslErrors.connect(self._sslErrors)
         self.finished.connect(self._finished)
         self.verbosity = verbosity
+        self._next_id = 0
 
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -74,59 +82,86 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
+        """
+        This method is called when a new request is sent;
+        it must return a reply object to work with.
+        """
         start_time = datetime.datetime.utcnow()
 
-        request = QNetworkRequest(request)
-        old_proxy = self.proxy()
+        request = self._wrapRequest(request)
+        har_entry = self._harEntry(request, create=True)
+        if har_entry is not None:
+            har_entry.update({
+                '_tmp': {
+                    'start_time': start_time,
+                    # 'outgoingData': outgoingData,
+                    'state': self.REQUEST_CREATED,
+                },
+                "startedDateTime": start_time.isoformat(),
+                "request": {
+                    "url": unicode(request.url().toString()),
+                    "method": OPERATION_NAMES.get(operation, '?')
+                },
+                "response": {},
+            })
 
+        with self._proxyApplied(request):
+            reply = super(ProxiedQNetworkAccessManager, self).createRequest(
+                operation, request, outgoingData
+            )
+            reply.error.connect(self._handleError)
+            reply.finished.connect(self._handleFinished)
+            reply.metaDataChanged.connect(self._handleMetaData)
+            reply.downloadProgress.connect(self._handleDownloadProgress)
+
+        return reply
+
+    @contextmanager
+    def _proxyApplied(self, request):
+        """
+        This context manager temporary sets a proxy based on request options.
+        """
+        old_proxy = self.proxy()
         splash_proxy_factory = self._getSplashProxyFactory(request)
         if splash_proxy_factory:
             proxy_query = QNetworkProxyQuery(request.url())
             proxy = splash_proxy_factory.queryProxy(proxy_query)[0]
             self.setProxy(proxy)
+        try:
+            yield
+        finally:
+            self.setProxy(old_proxy)
 
-        # this method is called createRequest, but in fact it creates a reply
-        reply = super(ProxiedQNetworkAccessManager, self).createRequest(
-            operation, request, outgoingData
-        )
+    def _wrapRequest(self, request):
+        request = QNetworkRequest(request)
+        request.setAttribute(self._REQUEST_ID, self._next_id)
+        self._next_id += 1
+        return request
 
-        options = {
-            'start_time': start_time,
-            'operation': operation,
-            'outgoingData': outgoingData,
-        }
+    def _getRequestId(self, request=None):
+        if request is None:
+            request = self.sender().request()
+        return request.attribute(self._REQUEST_ID).toPyObject()
 
-        reply.error.connect(partial(self._handleError, options=options))
-        reply.finished.connect(partial(self._handleFinished, options=options))
-        reply.metaDataChanged.connect(self._handleMetaData)
-        reply.downloadProgress.connect(self._handleDownloadProgress)
+    def _harEntry(self, request=None, create=False):
+        """
+        Return a mutable dictionary for request/response
+        information storage.
+        """
+        if request is None:
+            request = self.sender().request()
 
-        self.setProxy(old_proxy)
+        entries = self._getWebPageAttribute(request, 'network_entries_map')
+        if entries is None:
+            return
 
-        return reply
-
-    def _addHarEntry(self, reply, options):
-        cur_time = datetime.datetime.utcnow()
-        request = reply.request()
-
-        network_entries = self._getWebPageAttribute(request, 'network_entries')
-        if network_entries is not None:
-            operation = options['operation']
-            outgoingData = options['outgoingData']
-
-            start_time = options['start_time']
-            elapsed = (cur_time-start_time).total_seconds()
-
-            network_entries.append({
-                # "pageref": "page_0",
-                "startedDateTime": options['start_time'].isoformat(),
-                "time": elapsed*1000,  # ms
-                "request": har.request2har(request, operation, outgoingData),
-                "response": har.reply2har(reply),
-                # "cache": {},
-                # "timings": {},
-            })
-
+        req_id = self._getRequestId(request)
+        if create:
+            assert req_id not in entries
+            entries[req_id] = {
+                "_idx": req_id,
+            }
+        return entries[req_id]
 
     def _getSplashProxyFactory(self, request):
         return self._getWebPageAttribute(request, 'splash_proxy_factory')
@@ -136,18 +171,32 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if isinstance(web_frame, QWebFrame):
             return getattr(web_frame.page(), attribute, None)
 
-    def _handleError(self, error_id, options):
-        self._addHarEntry(self.sender(), options)
+    def _handleError(self, error_id):
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
         self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=1)
 
-    def _handleFinished(self, options):
+    def _handleFinished(self):
         reply = self.sender()
-        self._addHarEntry(reply, options)
+        har_entry = self._harEntry()
+        if har_entry is not None:
+            har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
+
+            cur_time = datetime.datetime.utcnow()
+            start_time = har_entry['_tmp']['start_time']
+            elapsed = (cur_time-start_time).total_seconds()
+            har_entry["time"] = elapsed*1000  # ms
+
+            har_entry["response"].update(har.reply2har(reply))
+
         self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
-        self.log("Headers received for {url}", self.sender(), min_level=3)
+        reply = self.sender()
+        har_entry = self._harEntry()
+        if har_entry is not None:
+            har_entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
+            har_entry["response"].update(har.reply2har(reply))
+        self.log("Headers received for {url}", reply, min_level=3)
 
     def _handleDownloadProgress(self, received, total):
         if total == -1:
@@ -158,15 +207,18 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         return self._getWebPageAttribute(request, 'splash_request')
 
     def log(self, msg, reply=None, min_level=2):
+        if self.verbosity < min_level:
+            return
+
         if not reply:
             url = ''
         else:
             url = qurl2ascii(reply.url())
             if not url:
                 return
-        if self.verbosity >= min_level:
-            msg = msg.format(url=url)
-            log.msg(msg, system='network')
+
+        msg = msg.format(url=url)
+        log.msg(msg, system='network2')
 
 
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
