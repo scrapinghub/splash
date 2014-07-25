@@ -2,7 +2,7 @@ import unittest
 import urlparse
 import json
 import requests
-from splash.tests import ts, test_render, test_redirects
+from splash.tests import ts, test_render, test_redirects, test_request_filters
 
 
 SPLASH_HEADER_PREFIX = 'x-splash-'
@@ -307,3 +307,9 @@ class NoProxyPostTest(test_render.BaseRenderTest):
         self.assertNotIn("x-splash", r.text.lower())
         self.assertNotIn("'user-agent': 'Mozilla'", r.text)
         self.assertNotIn("'content-type': 'application/javascript'", r.text)
+
+
+class FiltersHTMLProxyTest(test_request_filters.FiltersTestHTML):
+    request_handler = ProxyRequestHandler
+    proxy_test = True
+

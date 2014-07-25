@@ -588,6 +588,9 @@ X-Splash-wait : string
 X-Splash-proxy : string
   Same as :ref:`'proxy' <arg-proxy>` argument for `render.html`_.
 
+X-Splash-filters : string
+  Same as :ref:`'proxy' <arg-filters>` argument for `render.html`_.
+
 X-Splash-allowed-domains : string
   Same as :ref:`'allowed_domains' <arg-allowed-domains>` argument for `render.html`_.
 
