@@ -84,11 +84,11 @@ class BaseRenderTest(unittest.TestCase):
         handler.render_format = self.render_format
         return handler
 
-    def request(self, query, render_format=None, headers=None):
-        return self._get_handler().request(query, render_format, headers)
+    def request(self, query, render_format=None, headers=None, **kwargs):
+        return self._get_handler().request(query, render_format, headers, **kwargs)
 
-    def post(self, query, render_format=None, payload=None, headers=None):
-        return self._get_handler().post(query, render_format, payload, headers)
+    def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
+        return self._get_handler().post(query, render_format, payload, headers, **kwargs)
 
 
 class _RenderTest(BaseRenderTest):

@@ -14,7 +14,31 @@ class ProxyRequestHandler(object):
 
     @property
     def proxies(self):
-        return {'http': 'http://localhost:%d' % ts.splashserver.proxy_portnum}
+        return {'http': ts.splashserver.proxy_url()}
+
+    def request(self, query, render_format=None, headers=None, proxies=None):
+        url, headers = self._request_params(query, render_format, headers)
+        proxies = proxies if proxies is not None else self.proxies
+        return requests.get(url, headers=headers, proxies=proxies)
+
+    def post(self, query, render_format=None, payload=None, headers=None, proxies=None):
+        url, headers = self._request_params(query, render_format, headers)
+        proxies = proxies if proxies is not None else self.proxies
+        return requests.post(url, data=payload, headers=headers, proxies=proxies)
+
+    def _request_params(self, query, render_format, headers):
+        render_format = render_format or self.render_format
+        _headers = {self._get_header('render'): render_format}
+        _headers.update(headers or {})
+        if not isinstance(query, dict):
+            query = urlparse.parse_qs(query)
+
+        url = self._get_val(query.get('url'))
+        for k, v in query.items():
+            if k != 'url':
+                _headers[self._get_header(k)] = self._get_val(v)
+
+        return url, _headers
 
     def _get_val(self, v):
         if isinstance(v, list):
@@ -24,38 +48,6 @@ class ProxyRequestHandler(object):
 
     def _get_header(self, name):
         return SPLASH_HEADER_PREFIX + name.replace('_', '-')
-
-    def request(self, query, render_format=None, headers=None):
-        render_format = render_format or self.render_format
-
-        _headers = {self._get_header('render'): render_format}
-        _headers.update(headers or {})
-        if not isinstance(query, dict):
-            query = urlparse.parse_qs(query)
-
-        url = self._get_val(query.get('url'))
-        for k, v in query.items():
-            if k != 'url':
-                _headers[self._get_header(k)] = self._get_val(v)
-
-        return requests.get(url, headers=_headers, proxies=self.proxies)
-
-    def post(self, query, render_format=None, payload=None, headers=None):
-        render_format = render_format or self.render_format
-
-        _headers = {self._get_header('render'): render_format}
-        _headers.update(headers or {})
-
-        if not isinstance(query, dict):
-            query = urlparse.parse_qs(query)
-
-        url = self._get_val(query.get('url'))
-        for k, v in query.items():
-            if k != 'url':
-                _headers[self._get_header(k)] = self._get_val(v)
-
-        return requests.post(url, data=payload, headers=_headers,
-                             proxies=self.proxies)
 
 
 class ProxyRenderHtmlTest(test_render.RenderHtmlTest):

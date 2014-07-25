@@ -98,8 +98,8 @@ class SplashServer(object):
     def url(self, path):
         return "http://localhost:%s/%s" % (self.portnum, path.lstrip('/'))
 
-    def proxy_url(self, path):
-        return "http://localhost:%s/%s" % (self.proxy_portnum, path.lstrip('/'))
+    def proxy_url(self):
+        return "http://localhost:%s" % self.proxy_portnum
 
 
 class MockServer(object):
