@@ -14,7 +14,7 @@ from twisted.internet import reactor, defer
 from twisted.python import log
 
 from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
-from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
+from splash.utils import getarg, getarg_bool, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 from splash import defaults
 
@@ -180,7 +180,7 @@ def _get_common_params(request, js_profiles_path):
     baseurl = getarg(request, "baseurl", None)
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
     js_source, js_profile = _get_javascript_params(request, js_profiles_path)
-    images = getarg(request, "images", defaults.AUTOLOAD_IMAGES, type=int, range=(0, 1))
+    images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES)
 
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
@@ -212,11 +212,11 @@ class RenderJson(RenderBase):
     def _getRender(self, request):
         url, baseurl, wait_time, viewport, js_source, js_profile, images, width, height = _get_png_params(request, self.js_profiles_path)
 
-        html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
-        iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
-        png = getarg(request, "png", defaults.DO_PNG, type=int, range=(0, 1))
-        script = getarg(request, "script", defaults.SHOW_SCRIPT, type=int, range=(0, 1))
-        console = getarg(request, "console", defaults.SHOW_CONSOLE, type=int, range=(0, 1))
+        html = getarg_bool(request, "html", defaults.DO_HTML)
+        iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES)
+        png = getarg_bool(request, "png", defaults.DO_PNG)
+        script = getarg_bool(request, "script", defaults.SHOW_SCRIPT)
+        console = getarg_bool(request, "console", defaults.SHOW_CONSOLE)
 
         return self.pool.render(JsonRender, request,
                                 url, baseurl, wait_time, viewport, js_source, js_profile, images,
