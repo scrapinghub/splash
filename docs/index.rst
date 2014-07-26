@@ -119,6 +119,8 @@ images : integer : optional
     Note that cached images may be displayed even if this parameter is 0.
     You can also use `Request Filters`_ to strip unwanted contents based on URL.
 
+Examples
+~~~~~~~~
 
 Curl example::
 
@@ -153,6 +155,9 @@ width : integer : optional
 height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
+
+Examples
+~~~~~~~~
 
 Curl examples::
 
@@ -205,6 +210,21 @@ script : integer : optional
 console : integer : optional
     Whether to include the executed javascript console messages in output.
     Possible values are ``1`` (include) and ``0`` (exclude). Default is 0.
+
+.. _arg-history:
+
+history : integer : optional
+    Whether to include the history of requests/responses for webpage main
+    frame. Possible values are ``1`` (include) and ``0`` (exclude).
+    Default is 0.
+
+    Use it to get HTTP status codes, cookies and headers.
+    Only information about "main" requests/responses is returned
+    (i.e. information about related resources like images and AJAX queries
+    is not returned).
+
+Examples
+~~~~~~~~
 
 By default, URL, requested URL, page title and frame geometry is returned::
 
@@ -620,6 +640,9 @@ X-Splash-script : string
 
 X-Splash-console : string
   Same as :ref:`'console' <arg-console>` argument for `render.json`_.
+
+X-Splash-history : string
+  Same as :ref:`'history' <arg-history>` argument for `render.json`_.
 
 Curl examples::
 
