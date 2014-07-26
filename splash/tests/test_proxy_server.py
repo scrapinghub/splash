@@ -83,6 +83,13 @@ class GzipProxyRenderJsonTest(ProxyRenderJsonTest):
     use_gzip = True
 
 
+class ProxyRenderJsonHistoryTest(test_render.RenderJsonHistoryTest):
+    request_handler = ProxyRequestHandler
+    https_supported = False
+    proxy_test = True
+    use_gzip = False
+
+
 class ProxyHttpRedirectTest(test_redirects.HttpRedirectTest):
     request_handler = ProxyRequestHandler
     https_supported = False

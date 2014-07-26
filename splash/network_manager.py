@@ -56,8 +56,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     support. Qt provides similar functionality via setProxyFactory method,
     but standard QNetworkProxyFactory is not flexible enough.
 
-    It also sets up some extra logging and provides a way to get
-    the "source" request (that was made to Splash itself).
+    It also sets up some extra logging, provides a way to get
+    the "source" request (that was made to Splash itself) and tracks
+    information about requests/responses.
     """
 
     _REQUEST_ID = QNetworkRequest.User + 1
@@ -99,8 +100,14 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 },
                 "startedDateTime": start_time.isoformat(),
                 "request": {
+                    "method": OPERATION_NAMES.get(operation, '?'),
                     "url": unicode(request.url().toString()),
-                    "method": OPERATION_NAMES.get(operation, '?')
+                    "httpVersion": "HTTP/1.1",
+                    "cookies": har.request_cookies2har(request),
+                    "queryString": har.querystring2har(request.url()),
+                    "headers": har.headers2har(request),
+                    # "headersSize" : -1,
+                    # "bodySize": -1,
                 },
                 "response": {},
             })

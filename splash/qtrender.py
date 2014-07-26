@@ -1,5 +1,8 @@
 from __future__ import absolute_import
-import os, json, base64
+import os
+import json
+import base64
+import copy
 from collections import namedtuple
 import sip
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
@@ -39,8 +42,17 @@ class SplashQWebPage(QWebPage):
 
     @property
     def network_entries(self):
+        # FIXME: use OrderedDict to maintain the order?
         keys = sorted(self.network_entries_map.keys())
         return [self.network_entries_map[key] for key in keys]
+
+    def last_network_entry(self, url):
+        if isinstance(url, QUrl):
+            url = unicode(url.toString())
+
+        for entry in reversed(self.network_entries):
+            if entry['request']['url'] == url:
+                return entry
 
     def javaScriptAlert(self, frame, msg):
         return
@@ -148,6 +160,7 @@ class WebpageRender(object):
     def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False):
         self.url = url
+        self.history = []
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
         self.js_profile = js_profile
@@ -289,6 +302,7 @@ class WebpageRender(object):
         self.log("loadStarted %s" % id(self.splash_request), min_level=4)
 
     def _urlChanged(self, url):
+        self.history.append(self.web_page.last_network_entry(url))
         msg = "mainFrame().urlChanged %s: %s" % (id(self.splash_request), qurl2ascii(url))
         self.log(msg, min_level=4)
 
@@ -333,6 +347,15 @@ class WebpageRender(object):
         self.log("getting iframes %s" % id(self.splash_request))
         frame = self.web_page.mainFrame()
         return self._frameToDict(frame, children, html)
+
+    def _getHistory(self):
+        hist = copy.deepcopy(self.history)
+        for entry in hist:
+            if entry is not None:
+                del entry['_tmp']
+                del entry['_idx']
+                del entry['request']['queryString']
+        return hist
 
     # ======= Other helper methods:
 
@@ -432,11 +455,12 @@ class JsonRender(WebpageRender):
     def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
                         js_source=None, js_profile=None, images=None,
                         html=True, iframes=True, png=True, script=True, console=False,
-                        width=None, height=None):
+                        width=None, height=None, history=None):
         self.width = width
         self.height = height
         self.include = {'html': html, 'png': png, 'iframes': iframes,
-                        'script': script, 'console': console}
+                        'script': script, 'console': console,
+                        'history': history}
         super(JsonRender, self).doRequest(
             url=url,
             baseurl=baseurl,
@@ -457,8 +481,12 @@ class JsonRender(WebpageRender):
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output
+
         if self.include['console'] and self.js_console_output:
             res['console'] = self.js_console_output
+
+        if self.include['history']:
+            res['history'] = self._getHistory()
 
         res.update(self._getIframes(
             children=self.include['iframes'],

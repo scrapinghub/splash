@@ -23,7 +23,7 @@ SPLASH_RESOURCES = {'html': RenderHtml,
 HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
                'viewport', 'js', 'js-source', 'images', 'filters']
 PNG_PARAMS = ['width', 'height']
-JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
+JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console', 'history']
 
 HOP_BY_HOP_HEADERS = [
     'Connection',
