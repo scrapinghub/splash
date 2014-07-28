@@ -7,7 +7,7 @@ import traceback
 import signal
 import time
 from psutil import phymem_usage
-from splash import defaults
+from splash import defaults, __version__
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -90,6 +90,8 @@ def parse_opts():
         help="path to a folder with network request filters")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5")
+    op.add_option("--version", action="store_true",
+        help="print Splash version number and exit")
 
     return op.parse_args()
 
@@ -128,6 +130,11 @@ def bump_nofile_limit():
             break
     else:
         log.msg("Can't bump open files limit")
+
+
+def log_splash_version():
+    from twisted.python import log
+    log.msg("Splash version: %s" % __version__)
 
 
 def manhole_server(portnum=None, username=None, password=None):
@@ -280,10 +287,14 @@ def _set_global_render_settings(js_disable_cross_domain_access):
 
 def main():
     opts, _ = parse_opts()
+    if opts.version:
+        print(__version__)
+        sys.exit(0)
 
     install_qtreactor(opts.verbosity >= 5)
 
     start_logging(opts)
+    log_splash_version()
     bump_nofile_limit()
     monitor_maxrss(opts.maxrss)
     if opts.manhole:
