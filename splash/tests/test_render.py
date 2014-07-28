@@ -461,7 +461,9 @@ class RenderJsonTest(_RenderTest):
         defaults = {'png': 1}
         defaults.update(params or {})
         r1, r2 = self._do_same_requests(url, defaults, 'png')
-        png1 = base64.decodestring(r1.json()['png'])
+        png_json = r1.json()['png']
+        assert b'\n' not in png_json
+        png1 = base64.b64decode(png_json)
         png2 = r2.content
         self.assertEqual(png1, png2)
 

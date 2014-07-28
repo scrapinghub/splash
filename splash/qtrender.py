@@ -447,7 +447,7 @@ class JsonRender(WebpageRender):
 
         if self.include['png']:
             png = self._getPng(self.width, self.height)
-            res['png'] = base64.encodestring(png)
+            res['png'] = base64.b64encode(png)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output
