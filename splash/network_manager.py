@@ -98,7 +98,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     # 'outgoingData': outgoingData,
                     'state': self.REQUEST_CREATED,
                 },
-                "startedDateTime": start_time.isoformat(),
+                "startedDateTime": start_time.isoformat() + 'Z',
                 "request": {
                     "method": OPERATION_NAMES.get(operation, '?'),
                     "url": unicode(request.url().toString()),
@@ -106,6 +106,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     "cookies": har.request_cookies2har(request),
                     "queryString": har.querystring2har(request.url()),
                     "headers": har.headers2har(request),
+
                     # "headersSize" : -1,
                     # "bodySize": -1,
                 },

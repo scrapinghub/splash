@@ -58,9 +58,10 @@ def querystring2har(url):
 def reply2har(reply):
     """ Serialize QNetworkReply to HAR. """
     res = {
-        # "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
+        "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
         "cookies": reply_cookies2har(reply),
         "headers": headers2har(reply),
+
         # "content": {},
         # "headersSize" : -1,
         # "bodySize" : -1,

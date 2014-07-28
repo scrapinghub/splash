@@ -5,12 +5,14 @@ import base64
 import copy
 from collections import namedtuple
 import sip
-from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot, QByteArray
+from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView, qWebKitVersion
+from PyQt4.QtCore import (Qt, QUrl, QBuffer, QSize, QTimer, QObject,
+                          pyqtSlot, QByteArray, PYQT_VERSION_STR, QT_VERSION_STR)
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
+import splash
 from splash import defaults
 from splash.qtutils import qurl2ascii
 
@@ -44,7 +46,11 @@ class SplashQWebPage(QWebPage):
     def network_entries(self):
         # FIXME: use OrderedDict to maintain the order?
         keys = sorted(self.network_entries_map.keys())
-        return [self.network_entries_map[key] for key in keys]
+        entries = [self.network_entries_map[key] for key in keys]
+        return [
+            {k:v for (k,v) in entry.items() if not k.startswith('_')}
+            for entry in entries
+        ]
 
     def last_network_entry(self, url):
         if isinstance(url, QUrl):
@@ -357,6 +363,25 @@ class WebpageRender(object):
                 del entry['request']['queryString']
         return hist
 
+    def _getHAR(self):
+        res = {
+            "log": {
+                "version" : "1.2",
+                "creator" : {
+                    "name": "Splash",
+                    "version": splash.__version__,
+                },
+                "browser": {
+                    "name": "QWebKit",
+                    "version": unicode(qWebKitVersion()),
+                    "comment": "PyQt %s, Qt %s" % (PYQT_VERSION_STR, QT_VERSION_STR),
+                },
+                # "pages": [],
+                "entries": self.web_page.network_entries,
+            }
+        }
+        return res
+
     # ======= Other helper methods:
 
     def _setViewportSize(self, viewport):
@@ -455,12 +480,12 @@ class JsonRender(WebpageRender):
     def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
                         js_source=None, js_profile=None, images=None,
                         html=True, iframes=True, png=True, script=True, console=False,
-                        width=None, height=None, history=None):
+                        width=None, height=None, history=None, har=None):
         self.width = width
         self.height = height
         self.include = {'html': html, 'png': png, 'iframes': iframes,
                         'script': script, 'console': console,
-                        'history': history}
+                        'history': history, 'har': har}
         super(JsonRender, self).doRequest(
             url=url,
             baseurl=baseurl,
@@ -487,6 +512,9 @@ class JsonRender(WebpageRender):
 
         if self.include['history']:
             res['history'] = self._getHistory()
+
+        if self.include['har']:
+            res['har'] = self._getHAR()
 
         res.update(self._getIframes(
             children=self.include['iframes'],

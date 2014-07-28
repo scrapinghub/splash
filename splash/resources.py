@@ -218,11 +218,12 @@ class RenderJson(RenderBase):
         script = getarg_bool(request, "script", defaults.SHOW_SCRIPT)
         console = getarg_bool(request, "console", defaults.SHOW_CONSOLE)
         history = getarg_bool(request, "history", defaults.SHOW_HISTORY)
+        har = getarg_bool(request, "har", defaults.SHOW_HAR)
 
         return self.pool.render(JsonRender, request,
                                 url, baseurl, wait_time, viewport, js_source, js_profile, images,
                                 html, iframes, png, script, console,
-                                width, height, history)
+                                width, height, history, har)
 
 
 class Debug(Resource):
