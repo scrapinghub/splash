@@ -10,3 +10,5 @@ _trial_temp
 .idea
 .ipynb_checkpoints
 .splash-cache*
+.coverage
+notebooks

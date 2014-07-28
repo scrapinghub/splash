@@ -688,3 +688,4 @@ Typical output::
       504: 200/200
       502: 300/300
 
+.. include:: ../CHANGES.rst
