@@ -14,11 +14,15 @@ RUN sed 's/main$/main universe/' -i /etc/apt/sources.list && \
 
 ADD https://raw.github.com/pypa/pip/master/contrib/get-pip.py /get-pip.py
 RUN python /get-pip.py
+RUN pip install \
+            qt4reactor==1.0 \
+            psutil==2.1.1 \
+            adblockparser==0.3 \
+            git+https://github.com/axiak/pyre2.git@382bb743f16722b582cc2bac8fc08ff121dec20e#egg=re2 \
+            raven==5.0.0 \
+            supervisor==3.0 \
+            supervisor-stdout==0.1.1
 ADD . /app
-RUN pip install qt4reactor psutil raven \
-                supervisor supervisor-stdout \
-                adblockparser \
-                git+https://github.com/axiak/pyre2.git@382bb743f16722b582cc2bac8fc08ff121dec20e#egg=re2
 RUN pip install /app
 EXPOSE 8050 8051 5023
 CMD ["/usr/local/bin/supervisord", "-c", "/app/supervisord.conf"]
