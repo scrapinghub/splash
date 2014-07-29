@@ -93,6 +93,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         har_entry = self._harEntry(request, create=True)
         if har_entry is not None:
             page_id = self._getWebPageAttribute(request, "page_id")
+            if outgoingData is None:
+                bodySize = -1
+            else:
+                bodySize = outgoingData.size()
             har_entry.update({
                 '_tmp': {
                     'start_time': start_time,
@@ -112,8 +116,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     "queryString": har.querystring2har(request.url()),
                     "headers": har.headers2har(request),
 
-                    "headersSize" : -1,
-                    "bodySize": -1,
+                    "headersSize" : har.headers_size(request),
+                    "bodySize": bodySize,
                 },
                 "response": {},
                 "cache": {},

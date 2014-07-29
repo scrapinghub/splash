@@ -43,6 +43,15 @@ def headers2har(request_or_reply):
     ]
 
 
+def headers_size(request_or_reply):
+    """ Return the total size of request or reply headers. """
+    # XXX: this is not 100% correct, but should be a good approximation.
+    size = 0
+    for name, value in _header_pairs(request_or_reply):
+        size += name.size() + 2 + value.size() + 2  # 2==len(": ")==len("\n\r")
+    return size
+
+
 def request_cookies2har(request):
     """ Return HAR-encoded cookies of QNetworkRequest """
     cookies = request.header(QNetworkRequest.CookieHeader)
@@ -88,7 +97,7 @@ def reply2har(reply):
             "size": 0,
             "mimeType": "",
         },
-        "headersSize" : -1,
+        "headersSize" : headers_size(reply),
     }
 
     content_type = reply.header(QNetworkRequest.ContentTypeHeader)
