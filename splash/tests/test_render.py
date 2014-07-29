@@ -71,8 +71,8 @@ class BaseRenderTest(unittest.TestCase):
                 from nose import SkipTest
                 raise SkipTest("Gzip support is not available in old Twisted")
 
-    def mockurl(self, path):
-        return ts.mockserver.url(path, self.use_gzip)
+    def mockurl(self, path, host='localhost'):
+        return ts.mockserver.url(path, self.use_gzip, host=host)
 
     def tearDown(self):
         # we must consume splash output because subprocess.PIPE is used
@@ -474,6 +474,7 @@ class RenderJsonTest(_RenderTest):
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
         return r1, r2
+
 
 class RenderJsonHistoryTest(BaseRenderTest):
     render_format = 'json'
