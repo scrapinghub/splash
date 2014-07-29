@@ -217,6 +217,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             if not har_entry["timings"]["send"]:
                 wait_time = har_entry["timings"]["wait"]
                 har_entry["timings"]["send"] = total_time - receive_time - wait_time
+                if har_entry["timings"]["send"] < 1e-6:
+                    har_entry["timings"]["send"] = 0
 
             har_entry["response"].update(har.reply2har(reply))
             if 'bodySize' not in har_entry["response"]:
