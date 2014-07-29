@@ -23,14 +23,23 @@ def get_duration(start, end=None):
     return elapsed * 1000  # ms
 
 
+def _header_pairs(request_or_reply):
+    if hasattr(request_or_reply, 'rawHeaderPairs'):
+        return request_or_reply.rawHeaderPairs()
+    return [
+        (name, request_or_reply.rawHeader(name))
+        for name in request_or_reply.rawHeaderList()
+    ]
+
+
 def headers2har(request_or_reply):
     """ Return HAR-encoded request or reply headers """
     return [
         {
-            "name": bytes(header_name).decode('latin1'),
-            "value": bytes(request_or_reply.rawHeader(header_name)).decode('latin1'),
+            "name": bytes(name).decode('latin1'),
+            "value": bytes(value).decode('latin1'),
         }
-        for header_name in request_or_reply.rawHeaderList()
+        for name, value in _header_pairs(request_or_reply)
     ]
 
 
