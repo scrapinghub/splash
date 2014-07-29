@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import datetime
+from datetime import datetime
 from contextlib import contextmanager
 
 from PyQt4.QtNetwork import (
@@ -87,17 +87,22 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         This method is called when a new request is sent;
         it must return a reply object to work with.
         """
-        start_time = datetime.datetime.utcnow()
+        start_time = datetime.utcnow()
 
         request = self._wrapRequest(request)
         har_entry = self._harEntry(request, create=True)
         if har_entry is not None:
+            page_id = self._getWebPageAttribute(request, "page_id")
             har_entry.update({
                 '_tmp': {
                     'start_time': start_time,
+                    'request_start_sending_time': start_time,
+                    'request_sent_time': start_time,
+
                     # 'outgoingData': outgoingData,
                     'state': self.REQUEST_CREATED,
                 },
+                "pageref": page_id,
                 "startedDateTime": har.format_datetime(start_time),
                 "request": {
                     "method": OPERATION_NAMES.get(operation, '?'),
@@ -107,10 +112,16 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     "queryString": har.querystring2har(request.url()),
                     "headers": har.headers2har(request),
 
-                    # "headersSize" : -1,
-                    # "bodySize": -1,
+                    "headersSize" : -1,
+                    "bodySize": -1,
                 },
                 "response": {},
+                "cache": {},
+                "timings": {
+                    "send": 0,
+                    "wait": 0,
+                    "receive": 0,
+                },
             })
 
         with self._proxyApplied(request):
@@ -189,12 +200,23 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if har_entry is not None:
             har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
 
-            cur_time = datetime.datetime.utcnow()
+            now = datetime.utcnow()
             start_time = har_entry['_tmp']['start_time']
-            elapsed = (cur_time-start_time).total_seconds()
-            har_entry["time"] = elapsed*1000  # ms
+            response_start_time = har_entry['_tmp']['response_start_time']
+
+            receive_time = har.get_duration(response_start_time, now)
+            total_time = har.get_duration(start_time, now)
+
+            har_entry["timings"]["receive"] = receive_time
+            har_entry["time"] = total_time
+
+            if not har_entry["timings"]["send"]:
+                wait_time = har_entry["timings"]["wait"]
+                har_entry["timings"]["send"] = total_time - receive_time - wait_time
 
             har_entry["response"].update(har.reply2har(reply))
+            if 'bodySize' not in har_entry["response"]:
+                har_entry["response"]["bodySize"] = -1
 
         self.log("Finished downloading {url}", reply)
 
@@ -204,12 +226,42 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if har_entry is not None:
             har_entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
             har_entry["response"].update(har.reply2har(reply))
+
+            now = datetime.utcnow()
+            request_sent = har_entry["_tmp"]["request_sent_time"]
+            har_entry["_tmp"]["response_start_time"] = now
+            har_entry["timings"]["wait"] = har.get_duration(request_sent, now)
+
         self.log("Headers received for {url}", reply, min_level=3)
 
     def _handleDownloadProgress(self, received, total):
+        har_entry = self._harEntry()
+        har_entry["response"]["bodySize"] = int(received)
+
         if total == -1:
             total = '?'
         self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=3)
+
+    def _handleUploadProgress(self, sent, total):
+        har_entry = self._harEntry()
+        har_entry["request"]["bodySize"] = int(sent)
+
+        now = datetime.utcnow()
+        if sent == 0:
+            # it is a moment the sending is started
+            start_time = har_entry["_tmp"]["request_start_time"]
+            har_entry["_tmp"]["request_start_sending_time"] = now
+            har_entry["timings"]["blocked"] = har.get_duration(start_time, now)
+
+        har_entry["_tmp"]["request_sent_time"] = now
+
+        if sent == total:
+            start_sending_time = har_entry["_tmp"]["request_start_sending_time"]
+            har_entry["timings"]["send"] = har.get_duration(start_sending_time, now)
+
+        if total == -1:
+            total = '?'
+        self.log("Uploaded %d/%s of {url}" % (sent, total), self.sender(), min_level=3)
 
     def _getSplashRequest(self, request):
         return self._getWebPageAttribute(request, 'splash_request')

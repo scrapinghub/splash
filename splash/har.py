@@ -4,6 +4,7 @@ Module with helper utilities to serialize QWebkit objects to HAR.
 See http://www.softwareishard.com/blog/har-12-spec/.
 """
 from __future__ import absolute_import
+from datetime import datetime
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
@@ -12,6 +13,14 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
 def format_datetime(dt):
     """ Format datetime.datetime object to make HAR validator happy """
     return dt.isoformat() + 'Z'
+
+
+def get_duration(start, end=None):
+    """ Return duration between `start` and `end` datetimes in HAR format """
+    if end is None:
+        end = datetime.utcnow()
+    elapsed = (end-start).total_seconds()
+    return elapsed * 1000  # ms
 
 
 def headers2har(request_or_reply):
@@ -66,23 +75,39 @@ def reply2har(reply):
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
         "cookies": reply_cookies2har(reply),
         "headers": headers2har(reply),
-
-        # "content": {},
-        # "headersSize" : -1,
-        # "bodySize" : -1,
+        "content": {
+            "size": 0,
+            "mimeType": "",
+        },
+        "headersSize" : -1,
     }
+
+    content_type = reply.header(QNetworkRequest.ContentTypeHeader)
+    if not content_type.isNull():
+        res["content"]["mimeType"] = unicode(content_type.toString())
+
+    content_length = reply.header(QNetworkRequest.ContentLengthHeader)
+    if not content_length.isNull():
+        # this is not a correct way to get the size!
+        res["content"]["size"] = content_length.toInt()[0]
 
     status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
     if not status.isNull():
         status, ok = status.toInt()
         res["status"] = int(status)
+    else:
+        res["status"] = 0
 
     status_text = reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
     if not status_text.isNull():
         res["statusText"] = bytes(status_text.toByteArray()).decode('latin1')
+    else:
+        res["statusText"] = "?"
 
     redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
     if not redirect_url.isNull():
         res["redirectURL"] = unicode(redirect_url.toString())
+    else:
+        res["redirectURL"] = ""
 
     return res

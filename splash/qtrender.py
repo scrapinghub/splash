@@ -3,6 +3,7 @@ import os
 import json
 import base64
 import copy
+import datetime
 from collections import namedtuple
 import sip
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView, qWebKitVersion
@@ -15,6 +16,7 @@ from twisted.python import log
 import splash
 from splash import defaults
 from splash.qtutils import qurl2ascii
+from splash import har
 
 
 class RenderError(Exception):
@@ -41,6 +43,29 @@ class SplashQWebPage(QWebPage):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
         self.network_entries_map = {}
+        self.created_at = datetime.datetime.utcnow()
+        self.page_id = "page_0"
+        self.har_page_info = {
+            "startedDateTime": har.format_datetime(self.created_at),
+            "id": self.page_id,
+            "pageTimings": {
+                "onContentLoad": -1,
+                "onLoad": -1,
+            },
+        }
+
+        self.mainFrame().titleChanged.connect(self.onTitleChanged)
+        self.mainFrame().loadFinished.connect(self.onLoadFinished)
+        self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
+
+    def onTitleChanged(self, title):
+        self.har_page_info['title'] = unicode(title)
+
+    def onLoadFinished(self, ok):
+        self.har_page_info["pageTimings"]["onLoad"] = har.get_duration(self.created_at)
+
+    def onLayoutCompleted(self):
+        self.har_page_info["pageTimings"]["onContentLoad"] = har.get_duration(self.created_at)
 
     @property
     def network_entries(self):
@@ -374,7 +399,7 @@ class WebpageRender(object):
                     "version": unicode(qWebKitVersion()),
                     "comment": "PyQt %s, Qt %s" % (PYQT_VERSION_STR, QT_VERSION_STR),
                 },
-                # "pages": [],
+                "pages": [self.web_page.har_page_info],
                 "entries": self.web_page.network_entries,
             }
         }
