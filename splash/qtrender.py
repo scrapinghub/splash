@@ -358,8 +358,6 @@ class WebpageRender(object):
         hist = copy.deepcopy(self.history)
         for entry in hist:
             if entry is not None:
-                del entry['_tmp']
-                del entry['_idx']
                 del entry['request']['queryString']
         return hist
 
