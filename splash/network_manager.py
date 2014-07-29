@@ -98,7 +98,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     # 'outgoingData': outgoingData,
                     'state': self.REQUEST_CREATED,
                 },
-                "startedDateTime": start_time.isoformat() + 'Z',
+                "startedDateTime": har.format_datetime(start_time),
                 "request": {
                     "method": OPERATION_NAMES.get(operation, '?'),
                     "url": unicode(request.url().toString()),

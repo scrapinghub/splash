@@ -9,6 +9,11 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
 
 
+def format_datetime(dt):
+    """ Format datetime.datetime object to make HAR validator happy """
+    return dt.isoformat() + 'Z'
+
+
 def headers2har(request_or_reply):
     """ Return HAR-encoded request or reply headers """
     return [
