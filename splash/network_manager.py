@@ -102,6 +102,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     'start_time': start_time,
                     'request_start_sending_time': start_time,
                     'request_sent_time': start_time,
+                    'response_start_time': start_time,
 
                     # 'outgoingData': outgoingData,
                     'state': self.REQUEST_CREATED,
@@ -221,6 +222,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     har_entry["timings"]["send"] = 0
 
             har_entry["response"].update(har.reply2har(reply))
+
             if 'bodySize' not in har_entry["response"]:
                 har_entry["response"]["bodySize"] = -1
 
@@ -242,7 +244,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleDownloadProgress(self, received, total):
         har_entry = self._harEntry()
-        har_entry["response"]["bodySize"] = int(received)
+        if har_entry is not None:
+            har_entry["response"]["bodySize"] = int(received)
 
         if total == -1:
             total = '?'
@@ -250,20 +253,22 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleUploadProgress(self, sent, total):
         har_entry = self._harEntry()
-        har_entry["request"]["bodySize"] = int(sent)
+        if har_entry is not None:
+            har_entry["request"]["bodySize"] = int(sent)
 
-        now = datetime.utcnow()
-        if sent == 0:
-            # it is a moment the sending is started
-            start_time = har_entry["_tmp"]["request_start_time"]
-            har_entry["_tmp"]["request_start_sending_time"] = now
-            har_entry["timings"]["blocked"] = har.get_duration(start_time, now)
+            now = datetime.utcnow()
+            if sent == 0:
+                # it is a moment the sending is started
+                start_time = har_entry["_tmp"]["request_start_time"]
+                har_entry["_tmp"]["request_start_sending_time"] = now
+                har_entry["timings"]["blocked"] = har.get_duration(start_time, now)
 
-        har_entry["_tmp"]["request_sent_time"] = now
+            har_entry["_tmp"]["request_sent_time"] = now
 
-        if sent == total:
-            start_sending_time = har_entry["_tmp"]["request_start_sending_time"]
-            har_entry["timings"]["send"] = har.get_duration(start_sending_time, now)
+            if sent == total:
+                har_entry["_tmp"]["response_start_time"] = now
+                start_sending_time = har_entry["_tmp"]["request_start_sending_time"]
+                har_entry["timings"]["send"] = har.get_duration(start_sending_time, now)
 
         if total == -1:
             total = '?'
