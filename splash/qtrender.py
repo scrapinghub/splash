@@ -546,6 +546,11 @@ class JsonRender(WebpageRender):
         return json.dumps(res)
 
 
+class HarRender(WebpageRender):
+    def render(self):
+        return json.dumps(self._getHAR())
+
+
 class JavascriptConsole(QObject):
     def __init__(self, parent=None):
         self.messages = []

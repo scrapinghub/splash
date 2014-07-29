@@ -13,7 +13,9 @@ from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python import log
 
-from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
+from splash.qtrender import (
+    HtmlRender, PngRender, JsonRender, HarRender, RenderError,
+)
 from splash.utils import getarg, getarg_bool, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 from splash import defaults
@@ -194,7 +196,8 @@ class RenderHtml(RenderBase):
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request):
-        return self.pool.render(HtmlRender, request, *_get_common_params(request, self.js_profiles_path))
+        params = _get_common_params(request, self.js_profiles_path)
+        return self.pool.render(HtmlRender, request, *params)
 
 
 class RenderPng(RenderBase):
@@ -202,7 +205,8 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        return self.pool.render(PngRender, request, *_get_png_params(request, self.js_profiles_path))
+        params = _get_png_params(request, self.js_profiles_path)
+        return self.pool.render(PngRender, request, *params)
 
 
 class RenderJson(RenderBase):
@@ -224,6 +228,14 @@ class RenderJson(RenderBase):
                                 url, baseurl, wait_time, viewport, js_source, js_profile, images,
                                 html, iframes, png, script, console,
                                 width, height, history, har)
+
+class RenderHar(RenderBase):
+
+    content_type = "application/json"
+
+    def _getRender(self, request):
+        params = _get_common_params(request, self.js_profiles_path)
+        return self.pool.render(HarRender, request, *params)
 
 
 class Debug(Resource):
@@ -252,6 +264,7 @@ class Root(Resource):
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
+        self.putChild("render.har", RenderHar(pool))
         self.putChild("debug", Debug(pool))
 
     def getChild(self, name, request):
