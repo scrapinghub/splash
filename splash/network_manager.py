@@ -123,6 +123,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 "response": {},
                 "cache": {},
                 "timings": {
+                    "blocked": -1,
+                    "dns": -1,
+                    "connect": -1,
+                    "ssl": -1,
+
                     "send": 0,
                     "wait": 0,
                     "receive": 0,
