@@ -132,12 +132,16 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     "wait": 0,
                     "receive": 0,
                 },
+                "time": 0,
             })
 
         with self._proxyApplied(request):
             reply = super(ProxiedQNetworkAccessManager, self).createRequest(
                 operation, request, outgoingData
             )
+            if har_entry is not None:
+                har_entry["response"].update(har.reply2har(reply))
+
             reply.error.connect(self._handleError)
             reply.finished.connect(self._handleFinished)
             reply.metaDataChanged.connect(self._handleMetaData)
