@@ -305,6 +305,7 @@ class HarViewer(Resource):
                 table { border-collapse: inherit; }
                 #content pre { border: 0; padding: 1px; }
                 #content * { box-sizing: content-box; }
+                #content {padding-bottom: 2em;}
                 .netInfoHeadersText { font-size: 13px; }
 
                 /* styles for custom events */
