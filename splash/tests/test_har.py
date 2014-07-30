@@ -107,6 +107,11 @@ class HarRenderTest(BaseRenderTest):
             self.mockurl('slow.gif?n=2'),
         ])
 
+    def assertValidHarData(self, data, url):
+        har.validate(data)
+        first_url = data["log"]["entries"][0]["request"]["url"]
+        self.assertEqual(first_url, url)
+
     def assertValidHar(self, url, **params):
         query = {"url": url}
         query.update(params)
@@ -115,13 +120,24 @@ class HarRenderTest(BaseRenderTest):
         data = resp.json()
         # from pprint import pprint
         # pprint(data)
-        har.validate(data)
-
-        first_url = data["log"]["entries"][0]["request"]["url"]
-        self.assertEqual(first_url, url)
-
+        self.assertValidHarData(data, url)
         return data
 
     def assertRequestedUrls(self, data, urls):
         requested_urls = {e["request"]["url"] for e in data["log"]["entries"]}
         self.assertEqual(requested_urls, set(urls))
+
+
+class RenderJsonHarTest(HarRenderTest):
+    render_format = 'json'
+
+    def assertValidHar(self, url, **params):
+        query = {"url": url, "har": 1}
+        query.update(params)
+        resp = self.request(query)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()["har"]
+        # from pprint import pprint
+        # pprint(data)
+        self.assertValidHarData(data, url)
+        return data
