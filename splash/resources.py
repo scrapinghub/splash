@@ -10,9 +10,11 @@ import json
 
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
+from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
 
+import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError,
 )
@@ -257,7 +259,165 @@ class Debug(Resource):
         })
 
 
+class HarViewer(Resource):
+    isLeaf = True
+    content_type = "text/html; charset=utf-8"
+
+    PATH = 'info'
+
+    def __init__(self, pool):
+        Resource.__init__(self)
+        self.pool = pool
+
+    def _validate_params(self, request):
+        _check_filters(self.pool, request)
+        return _get_common_params(request, self.pool.js_profiles_path)
+
+    def render_GET(self, request):
+        url, baseurl, wait_time, viewport, js_source, js_profile, images = self._validate_params(request)
+        if not url.lower().startswith('http'):
+            url = 'http://' + url
+
+        params = {
+            'url': url,
+            'baseurl': baseurl,
+            'wait_time': wait_time,
+            'viewport': viewport,
+            'js_source': js_source,
+            'js_profile': js_profile,
+            'images': images,
+
+            'har': 1,
+            'png': 1,
+            'html': 1,
+        }
+        params = {k:v for k,v in params.items() if v is not None}
+
+        return """<html>
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <title>Splash %(version)s | %(url)s</title>
+            <link rel="stylesheet" href="_harviewer/css/harViewer.css" type="text/css"/>
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+            <style>
+                /* fix bootstrap + harviewer compatibility issues */
+                .label {
+                    color: #000;
+                    font-weight: normal;
+                    font-size: 100%%;
+                }
+                table {border-collapse: inherit;}
+            </style>
+        </head>
+        <body class="harBody" style="color:#000">
+            <div class="container"> <!-- style="margin: 0 auto; width: 95%%;"-->
+
+                <div class="navbar navbar-default">
+                  <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-responsive-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="/">Splash v%(version)s</a>
+                  </div>
+                  <div class="navbar-collapse collapse navbar-responsive-collapse">
+                    <ul class="nav navbar-nav">
+                      <li><a href="http://splash.readthedocs.org">Documentation</a></li>
+                      <li><a href="https://github.com/scrapinghub/splash">Source Code</a></li>
+                    </ul>
+
+                    <form class="navbar-form navbar-right" method="GET" action="/info">
+                      <input type="hidden" name="wait" value="0.5">
+                      <input type="hidden" name="images" value="1">
+                      <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
+                      <button class="btn btn-success" type="submit">Render!</button>
+                    </form>
+
+                    <ul class="nav navbar-nav navbar-right">
+                      <li><a id="status">Initializing...</a></li>
+                    </ul>
+
+                  </div>
+                </div>
+
+                <div id="pagePreview" style="display:none">
+                    <img>
+                    <br>
+                    <h3>HTML</h4>
+                    <textarea style="width: 100%%;" rows=5 id="renderedHTML"></textarea>
+                    <h3>Network</h4>
+                </div>
+
+                <div id="content" version="Splash %(version)s"></div>
+            </div>
+
+            <script src="_harviewer/scripts/jquery.js"></script>
+            <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
+
+            <script>
+            var params = %(params)s;
+            $("#content").bind("onViewerPreInit", function(event){
+                // Get application object
+                var viewer = event.target.repObject;
+
+                // Remove unnecessary tabs
+                viewer.removeTab("Home");
+                viewer.removeTab("DOM");
+                viewer.removeTab("About");
+                viewer.removeTab("Schema");
+
+                // Remove toolbar buttons
+                var preview = viewer.getTab("Preview");
+                preview.toolbar.removeButton("download");
+                preview.toolbar.removeButton("clear");
+                preview.toolbar.removeButton("showTimeline");
+                // preview.toolbar.removeButton("showStats");
+
+                // Make sure stats are visible to the user by default
+                preview.showStats(true);
+
+                // Hide the tab bar
+                viewer.showTabBar(false);
+            });
+
+            $("#content").bind("onViewerHARLoaded", function(event){
+                $("#status").hide();
+            });
+
+            $("#content").bind("onViewerInit", function(event){
+                var viewer = event.target.repObject;
+                $("#status").text("Rendering, please wait..");
+
+                $.getJSON("/render.json", params).done(function(data){
+                    var har = data['har'];
+                    var png = data['png'];
+                    var html = data['html'];
+
+                    viewer.appendPreview(har);
+                    $("#status").text("Building UI..");
+
+                    $("#pagePreview img").attr("src", "data:image/png;base64,"+png);
+
+                    $("#renderedHTML").val(html);
+                    $("#pagePreview").show();
+                }).fail(function(data){
+                    $("#status").text("Error occured");
+                });
+            });
+            </script>
+        </body>
+        </html>
+        """ % dict(version=splash.__version__, params=json.dumps(params), url=url)
+
+
 class Root(Resource):
+    HARVIEWER_PATH = os.path.join(
+        os.path.dirname(__file__),
+        'vendor',
+        'harviewer',
+        'webapp',
+    )
 
     def __init__(self, pool):
         Resource.__init__(self)
@@ -266,6 +426,9 @@ class Root(Resource):
         self.putChild("render.json", RenderJson(pool))
         self.putChild("render.har", RenderHar(pool))
         self.putChild("debug", Debug(pool))
+        self.putChild("_harviewer", File(self.HARVIEWER_PATH))
+        self.putChild(HarViewer.PATH, HarViewer(pool))
+
 
     def getChild(self, name, request):
         if name == "":
@@ -273,4 +436,66 @@ class Root(Resource):
         return Resource.getChild(self, name, request)
 
     def render_GET(self, request):
-        return ""
+        return """<html>
+        <head>
+            <title>Splash %(version)s</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body>
+            <div class="container">
+                <div class="page-header">
+                    <h1>Splash v%(version)s</h1>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-6">
+                        <p class="lead">
+                        Splash is a javascript rendering service.
+                        It's a lightweight browser with an HTTP API,
+                        implemented in Python using Twisted and QT.
+                        </p>
+
+                        <ul>
+                            <li>Process multiple webpages in parallel</li>
+                            <li>Get HTML results and/or take screenshots</li>
+                            <li>Turn OFF images or use <a href="https://adblockplus.org">Adblock Plus</a>
+                                rules to make rendering faster</li>
+                            <li>Execute custom JavaScript in page context</li>
+                            <li>Transparently plug into existing software using Proxy interface</li>
+                            <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format</li>
+                        </ul>
+
+                        <p class="lead">
+                            Splash is free & open source.
+                            Commercial support is also available by
+                            <a href="http://scrapinghub.com/">Scrapinghub</a>.
+                        </p>
+
+                    </div>
+                    <div class="col-lg-6">
+                        <form class="form-horizontal" method="GET" action="/info">
+                          <input type="hidden" name="wait" value="0.5">
+                          <input type="hidden" name="images" value="1">
+
+                          <fieldset>
+                            <div class="">
+                              <div class="input-group col-lg-10">
+                                <input class="form-control" type="text" placeholder="Paste an URL" value="http://google.com" type="text" name="url">
+                                <span class="input-group-btn">
+                                  <button class="btn btn-success" type="submit">Render me!</button>
+                                </span>
+                              </div>
+                            </div>
+                          </fieldset>
+                        </form>
+                        <p>
+                            <a class="btn btn-default" href="http://splash.readthedocs.org/">Documentation</a>
+                            <a class="btn btn-default" href="https://github.com/scrapinghub/splash">Source code</a>
+                        </p>
+
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>""" % dict(version=splash.__version__)
