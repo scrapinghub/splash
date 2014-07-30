@@ -62,10 +62,13 @@ class SplashQWebPage(QWebPage):
         self.har_page_info['title'] = unicode(title)
 
     def onLoadFinished(self, ok):
-        self.har_page_info["pageTimings"]["onLoad"] = har.get_duration(self.created_at)
+        self.logEvent("onLoad")
 
     def onLayoutCompleted(self):
-        self.har_page_info["pageTimings"]["onContentLoad"] = har.get_duration(self.created_at)
+        self.logEvent("onContentLoad")
+
+    def logEvent(self, name):
+        self.har_page_info["pageTimings"][name] = har.get_duration(self.created_at)
 
     @property
     def network_entries(self):
@@ -247,6 +250,8 @@ class WebpageRender(object):
             else:
                 self.web_page.mainFrame().load(request)
 
+        self.web_page.logEvent("_onStarted")
+
     def render(self):
         """
         This method is called to get the result after the requested page is
@@ -320,6 +325,7 @@ class WebpageRender(object):
 
     def _loadFinishedOK(self):
         self.log("_loadFinishedOK %s" % id(self.splash_request))
+        self.web_page.logEvent("_onPrepareStart")
         try:
             self._prepareRender()
             self.deferred.callback(self.render())
@@ -357,27 +363,37 @@ class WebpageRender(object):
     def _getHtml(self):
         self.log("getting HTML %s" % id(self.splash_request))
         frame = self.web_page.mainFrame()
-        return bytes(frame.toHtml().toUtf8())
+        result = bytes(frame.toHtml().toUtf8())
+        self.web_page.logEvent("_onHtmlRendered")
+        return result
 
-    def _getPng(self, width=None, height=None):
+    def _getPng(self, width=None, height=None, b64=False):
         self.log("getting PNG %s" % id(self.splash_request))
 
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.web_page.mainFrame().render(painter)
         painter.end()
+        self.web_page.logEvent("_onScreenshotPrepared")
+
         if width:
             image = image.scaledToWidth(width, Qt.SmoothTransformation)
         if height:
             image = image.copy(0, 0, width, height)
         b = QBuffer()
         image.save(b, "png")
-        return bytes(b.data())
+        result = bytes(b.data())
+        if b64:
+            result = base64.b64encode(result)
+        self.web_page.logEvent("_onPngRendered")
+        return result
 
     def _getIframes(self, children=True, html=True):
         self.log("getting iframes %s" % id(self.splash_request))
         frame = self.web_page.mainFrame()
-        return self._frameToDict(frame, children, html)
+        result = self._frameToDict(frame, children, html)
+        self.web_page.logEvent("_onIframesRendered")
+        return result
 
     def _getHistory(self):
         hist = copy.deepcopy(self.history)
@@ -419,6 +435,7 @@ class WebpageRender(object):
             self._setViewportSize(defaults.VIEWPORT_FALLBACK)
         else:
             self.web_page.setViewportSize(size)
+        self.web_page.logEvent("_onFullViewportSet")
 
     def _loadJsLibs(self, frame, js_profile):
         if js_profile:
@@ -441,6 +458,8 @@ class WebpageRender(object):
             js_output = bytes(ret.toString().toUtf8())
             if self.console:
                 js_console_output = [bytes(s.toUtf8()) for s in js_console.messages]
+
+        self.web_page.logEvent('_onCustomJsExecuted')
         return js_output, js_console_output
 
     def _frameToDict(self, frame, children=True, html=True):
@@ -524,8 +543,7 @@ class JsonRender(WebpageRender):
         res = {}
 
         if self.include['png']:
-            png = self._getPng(self.width, self.height)
-            res['png'] = base64.b64encode(png)
+            res['png'] = self._getPng(self.width, self.height, b64=True)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output
@@ -533,16 +551,17 @@ class JsonRender(WebpageRender):
         if self.include['console'] and self.js_console_output:
             res['console'] = self.js_console_output
 
+        res.update(self._getIframes(
+            children=self.include['iframes'],
+            html=self.include['html'],
+        ))
+
         if self.include['history']:
             res['history'] = self._getHistory()
 
         if self.include['har']:
             res['har'] = self._getHAR()
 
-        res.update(self._getIframes(
-            children=self.include['iframes'],
-            html=self.include['html'],
-        ))
         return json.dumps(res)
 
 

@@ -301,24 +301,22 @@ class HarViewer(Resource):
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
             <style>
                 /* fix bootstrap + harviewer compatibility issues */
-                .label {
-                    color: #000;
-                    font-weight: normal;
-                    font-size: 100%%;
-                }
-                table {
-                    border-collapse: inherit;
-                }
-                #content pre {
-                    border: 0;
-                    padding: 1px;
-                }
-                #content * {
-                    box-sizing: content-box;
-                }
-                .netInfoHeadersText {
-                    font-size: 13px;
-                }
+                .label { color: #000; font-weight: normal; font-size: 100%%; }
+                table { border-collapse: inherit; }
+                #content pre { border: 0; padding: 1px; }
+                #content * { box-sizing: content-box; }
+                .netInfoHeadersText { font-size: 13px; }
+
+                /* styles for custom events */
+                .netPageTimingBar {opacity: 0.3; width: 2px; }
+                .timeInfoTip { width: 80px; }
+                .customEventBar { background-color: gray; }
+                ._onStarted { background-color: marine; }
+                ._onPrepareStart { background-color: green; }
+                ._onCustomJsExecuted { background-color: green; }
+                ._onScreenshotPrepared { background-color: magenta; }
+                ._onPngRendered { background-color: magenta; }
+                ._onIframesRendered { background-color: black; }
             </style>
         </head>
         <body class="harBody" style="color:#000">
@@ -386,6 +384,24 @@ class HarViewer(Resource):
                 preview.toolbar.removeButton("download");
                 preview.toolbar.removeButton("clear");
                 preview.toolbar.removeButton("showTimeline");
+
+                var events = [
+                    {name: "_onStarted", description: "Page processing is started"},
+                    {name: "_onPrepareStart", description: "Rendering begins"},
+                    {name: "_onFullViewportSet", description: "Viewport is changed to full"},
+                    {name: "_onCustomJsExecuted", description: "Custom JavaScript is executed"},
+                    {name: "_onScreenshotPrepared", description: "Screenshot is taken"},
+                    {name: "_onPngRendered", description: "Screenshot is encoded"},
+                    {name: "_onHtmlRendered", description: "HTML is rendered"},
+                    {name: "_onIframesRendered", description: "Iframes info is calculated"},
+                ];
+
+                for (var i=0; i<events.length; i++){
+                    var obj = events[i];
+                    obj["classes"] = "customEventBar " + obj["name"];
+                    preview.addPageTiming(obj);
+                }
+
                 // preview.toolbar.removeButton("showStats");
 
                 // Make sure stats are visible to the user by default
