@@ -306,7 +306,19 @@ class HarViewer(Resource):
                     font-weight: normal;
                     font-size: 100%%;
                 }
-                table {border-collapse: inherit;}
+                table {
+                    border-collapse: inherit;
+                }
+                #content pre {
+                    border: 0;
+                    padding: 1px;
+                }
+                #content * {
+                    box-sizing: content-box;
+                }
+                .netInfoHeadersText {
+                    font-size: 13px;
+                }
             </style>
         </head>
         <body class="harBody" style="color:#000">
@@ -366,6 +378,8 @@ class HarViewer(Resource):
                 viewer.removeTab("DOM");
                 viewer.removeTab("About");
                 viewer.removeTab("Schema");
+                // Hide the tab bar
+                viewer.showTabBar(false);
 
                 // Remove toolbar buttons
                 var preview = viewer.getTab("Preview");
@@ -377,8 +391,6 @@ class HarViewer(Resource):
                 // Make sure stats are visible to the user by default
                 preview.showStats(true);
 
-                // Hide the tab bar
-                viewer.showTabBar(false);
             });
 
             $("#content").bind("onViewerHARLoaded", function(event){
