@@ -281,10 +281,10 @@ class HarViewer(Resource):
         params = {
             'url': url,
             'baseurl': baseurl,
-            'wait_time': wait_time,
+            'wait': wait_time,
             'viewport': viewport,
             'js_source': js_source,
-            'js_profile': js_profile,
+            'js': js_profile,
             'images': images,
 
             'har': 1,
