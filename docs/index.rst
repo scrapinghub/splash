@@ -168,6 +168,26 @@ Curl examples::
     curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240'
 
 
+render.har
+----------
+
+Return information about Splash interaction with a website in HAR_ format.
+It includes information about requests made, responses received, timings,
+headers, cookies, etc.
+
+You can use online `HAR viewer`_ to visualize information returned from
+this endpoint; It will be very similar to "Network" tabs in Firefox and Chrome
+developer tools.
+
+Currently this endpoint doesn't expose raw request and response contents;
+only meta-information like headers and timings is available.
+
+Arguments for this endpoint are the same as for `render.html`_.
+
+.. _HAR: http://www.softwareishard.com/blog/har-12-spec/
+.. _HAR viewer: http://www.softwareishard.com/har/viewer/
+
+
 render.json
 -----------
 
@@ -222,6 +242,14 @@ history : integer : optional
     Only information about "main" requests/responses is returned
     (i.e. information about related resources like images and AJAX queries
     is not returned).
+
+.. _arg-har:
+
+har : integer : optional
+    Whether to include HAR_ in output. Possible values are
+    ``1`` (include) and ``0`` (exclude). Default is 0.
+    If this option is ON the result will contain the same data
+    as `render.har`_ provides under 'har' key.
 
 Examples
 ~~~~~~~~
@@ -643,6 +671,9 @@ X-Splash-console : string
 
 X-Splash-history : string
   Same as :ref:`'history' <arg-history>` argument for `render.json`_.
+
+X-Splash-har : string
+  Same as :ref:`'har' <arg-har>` argument for `render.json`_.
 
 Curl examples::
 
