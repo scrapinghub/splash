@@ -321,7 +321,7 @@ class HarViewer(Resource):
 
                 /* styles for custom events */
                 .netPageTimingBar {opacity: 0.3; width: 2px; }
-                .timeInfoTip { width: 80px; }
+                .timeInfoTip { width: 250px !important; }
                 .customEventBar { background-color: gray; }
                 ._onStarted { background-color: marine; }
                 ._onPrepareStart { background-color: green; }
