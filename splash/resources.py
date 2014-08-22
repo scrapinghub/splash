@@ -303,10 +303,21 @@ class HarViewer(Resource):
                 /* fix bootstrap + harviewer compatibility issues */
                 .label { color: #000; font-weight: normal; font-size: 100%%; }
                 table { border-collapse: inherit; }
-                #content pre { border: 0; padding: 1px; }
+                #content pre {
+                    border: 0;
+                    padding: 1px;
+                    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+                    font-size: 13px;
+                }
+                .netInfoParamName { font-size: 13px; }
                 #content * { box-sizing: content-box; }
-                #content {padding-bottom: 2em;}
                 .netInfoHeadersText { font-size: 13px; }
+                .tab {font-weight: inherit}  /* nicer Headers tabs */
+                .netInfoHeadersGroup, .netInfoCookiesGroup { font-weight: normal; }
+                .harBody { margin-bottom: 2em; }
+
+                /* remove unsupported buttons */
+                .netCol.netOptionsCol {display: none;}
 
                 /* styles for custom events */
                 .netPageTimingBar {opacity: 0.3; width: 2px; }
@@ -352,15 +363,19 @@ class HarViewer(Resource):
                   </div>
                 </div>
 
-                <div id="pagePreview" style="display:none">
-                    <img>
+                <div class="pagePreview" style="display:none">
+                    <img class='center-block'>
                     <br>
-                    <h3>HTML</h4>
-                    <textarea style="width: 100%%;" rows=5 id="renderedHTML"></textarea>
-                    <h3>Network</h4>
+                    <h3>Network Activity</h3>
                 </div>
 
                 <div id="content" version="Splash %(version)s"></div>
+
+                <div class="pagePreview" style="display:none">
+                    <h3>HTML</h3>
+                    <textarea style="width: 100%%;" rows=15 id="renderedHTML"></textarea>
+                    <br>
+                </div>
             </div>
 
             <script src="_harviewer/scripts/jquery.js"></script>
@@ -426,10 +441,10 @@ class HarViewer(Resource):
                     viewer.appendPreview(har);
                     $("#status").text("Building UI..");
 
-                    $("#pagePreview img").attr("src", "data:image/png;base64,"+png);
+                    $(".pagePreview img").attr("src", "data:image/png;base64,"+png);
 
                     $("#renderedHTML").val(html);
-                    $("#pagePreview").show();
+                    $(".pagePreview").show();
                 }).fail(function(data){
                     $("#status").text("Error occured");
                 });
