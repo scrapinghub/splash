@@ -20,7 +20,7 @@ def get_duration(start, end=None):
     if end is None:
         end = datetime.utcnow()
     elapsed = (end-start).total_seconds()
-    return elapsed * 1000  # ms
+    return int(elapsed * 1000)  # ms
 
 
 def _header_pairs(request_or_reply):
