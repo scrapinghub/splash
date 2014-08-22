@@ -120,7 +120,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     "headersSize" : har.headers_size(request),
                     "bodySize": bodySize,
                 },
-                "response": {},
+                "response": {
+                    "bodySize": -1,
+                },
                 "cache": {},
                 "timings": {
                     "blocked": -1,
@@ -231,9 +233,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     har_entry["timings"]["send"] = 0
 
             har_entry["response"].update(har.reply2har(reply))
-
-            if 'bodySize' not in har_entry["response"]:
-                har_entry["response"]["bodySize"] = -1
 
         self.log("Finished downloading {url}", reply)
 
