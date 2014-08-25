@@ -315,6 +315,7 @@ class HarViewer(Resource):
                 .tab {font-weight: inherit}  /* nicer Headers tabs */
                 .netInfoHeadersGroup, .netInfoCookiesGroup { font-weight: normal; }
                 .harBody { margin-bottom: 2em; }
+                .tabBodies {overflow: hidden;}  /* fix an issue with extra horizontal scrollbar */
 
                 /* remove unsupported buttons */
                 .netCol.netOptionsCol {display: none;}
