@@ -17,7 +17,10 @@ OPERATION_NAMES = {
 
 def qurl2ascii(url):
     """ Convert QUrl to ASCII text """
-    return unicode(url.toString()).encode('unicode-escape').decode('ascii')
+    url = unicode(url.toString()).encode('unicode-escape').decode('ascii')
+    if url.lower().startswith('data:') and len(url) > 80:
+        url = url[:60] + '...[data uri truncated]'
+    return url
 
 
 def drop_request(request):
