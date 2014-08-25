@@ -257,7 +257,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         if total == -1:
             total = '?'
-        self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=3)
+        self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=4)
 
     def _handleUploadProgress(self, sent, total):
         har_entry = self._harEntry()
@@ -280,7 +280,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         if total == -1:
             total = '?'
-        self.log("Uploaded %d/%s of {url}" % (sent, total), self.sender(), min_level=3)
+        self.log("Uploaded %d/%s of {url}" % (sent, total), self.sender(), min_level=4)
 
     def _getSplashRequest(self, request):
         return self._getWebPageAttribute(request, 'splash_request')
