@@ -293,6 +293,8 @@ class HarViewer(Resource):
         }
         params = {k:v for k,v in params.items() if v is not None}
 
+        request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
+
         return """<html>
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -353,6 +355,7 @@ class HarViewer(Resource):
                     <form class="navbar-form navbar-right" method="GET" action="/info">
                       <input type="hidden" name="wait" value="0.5">
                       <input type="hidden" name="images" value="1">
+                      <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
                       <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
                       <button class="btn btn-success" type="submit">Render!</button>
                     </form>
@@ -388,7 +391,7 @@ class HarViewer(Resource):
                 // Get application object
                 var viewer = event.target.repObject;
 
-                // Remove unnecessary tabs
+                // Remove unnecessary/unsupported tabs
                 viewer.removeTab("Home");
                 viewer.removeTab("DOM");
                 viewer.removeTab("About");
@@ -522,6 +525,7 @@ class Root(Resource):
                         <form class="form-horizontal" method="GET" action="/info">
                           <input type="hidden" name="wait" value="0.5">
                           <input type="hidden" name="images" value="1">
+                          <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
 
                           <fieldset>
                             <div class="">
