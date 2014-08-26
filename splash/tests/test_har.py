@@ -123,9 +123,9 @@ class HarRenderTest(BaseRenderTest):
         self.assertValidHarData(data, url)
         return data
 
-    def assertRequestedUrls(self, data, urls):
+    def assertRequestedUrls(self, data, correct_urls):
         requested_urls = {e["request"]["url"] for e in data["log"]["entries"]}
-        self.assertEqual(requested_urls, set(urls))
+        self.assertEqual(requested_urls, set(correct_urls))
 
 
 class RenderJsonHarTest(HarRenderTest):

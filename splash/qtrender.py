@@ -26,6 +26,10 @@ class RenderError(Exception):
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
 
+def _without_private(dct):
+    return {k:v for (k,v) in dct.items() if not k.startswith('_')}
+
+
 class SplashQWebPage(QWebPage):
     """
     QWebPage subclass that:
@@ -33,33 +37,33 @@ class SplashQWebPage(QWebPage):
     * changes user agent;
     * logs JS console messages;
     * handles alert and confirm windows;
-    * returns additional info about render errors.
+    * returns additional info about render errors;
+    * logs HAR events.
     """
     errorInfo = None
-
     custom_user_agent = None
+
+    _next_page_id = 1
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
         self.network_entries_map = {}
-        self.created_at = datetime.datetime.utcnow()
-        self.page_id = "page_0"
-        self.har_page_info = {
-            "startedDateTime": har.format_datetime(self.created_at),
-            "id": self.page_id,
-            "pageTimings": {
-                "onContentLoad": -1,
-                "onLoad": -1,
-            },
-        }
+        self._frozen = False
+        self._pages = []
+        self._start_new_page()
 
+        self.mainFrame().urlChanged.connect(self.onUrlChanged)
         self.mainFrame().titleChanged.connect(self.onTitleChanged)
         self.mainFrame().loadFinished.connect(self.onLoadFinished)
         self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
 
     def onTitleChanged(self, title):
-        self.har_page_info['title'] = unicode(title)
+        if not self._frozen:
+            self.last_page['title'] = unicode(title)
+
+    def onUrlChanged(self, url):
+        self._start_new_page(url)
 
     def onLoadFinished(self, ok):
         self.logEvent("onLoad")
@@ -68,25 +72,80 @@ class SplashQWebPage(QWebPage):
         self.logEvent("onContentLoad")
 
     def logEvent(self, name):
-        self.har_page_info["pageTimings"][name] = har.get_duration(self.created_at)
+        if self._frozen:
+            return
+        start_time = self.last_page['_startedDateTime']
+        self.last_page["pageTimings"][name] = har.get_duration(start_time)
+
+    def _start_new_page(self, url=None):
+        self.page_id = self._next_page_id
+        page = {
+            "id": str(self.page_id),
+            "title": "[no title]",
+            "pageTimings": {
+                "onContentLoad": -1,
+                "onLoad": -1,
+            },
+        }
+        if url is None:
+            page["_startedDateTime"] = datetime.datetime.utcnow()
+        else:
+            # In fact, page was started earlier - last network entry
+            # belongs to this page.
+            last_entry = self.last_network_entry(url)
+            # if not last_entry:
+            #     page["_startedDateTime"] = datetime.datetime.utcnow()
+            # else:
+            last_entry['pageref'] = str(self.page_id)
+            page["_startedDateTime"] = last_entry['_tmp']['start_time']
+
+            if self._pages:
+                prev_page = self._pages[-1]
+                entries = self.get_page_entries(str(prev_page['id']))
+                if not entries:
+                    self._pages.pop()
+
+        page["startedDateTime"] = har.format_datetime(page["_startedDateTime"])
+
+        self._pages.append(page)
+        self._next_page_id += 1
+
+    def freeze(self):
+        self._frozen = True
+
+    @property
+    def last_page(self):
+        return self._pages[-1]
+
+    @property
+    def pages(self):
+        return list(map(_without_private, self._pages))
 
     @property
     def network_entries(self):
         # FIXME: use OrderedDict to maintain the order?
         keys = sorted(self.network_entries_map.keys())
-        entries = [self.network_entries_map[key] for key in keys]
-        return [
-            {k:v for (k,v) in entry.items() if not k.startswith('_')}
-            for entry in entries
-        ]
+        return [_without_private(self.network_entries_map[key]) for key in keys]
 
-    def last_network_entry(self, url):
+    def last_network_entry(self, url, direct=True):
         if isinstance(url, QUrl):
             url = unicode(url.toString())
 
-        for entry in reversed(self.network_entries):
-            if entry['request']['url'] == url:
-                return entry
+        entries = [
+            (key, entry) for key, entry in self.network_entries_map.items()
+            if entry['request']['url'] == url
+        ]
+        # if not entries:
+        #     return
+        entry = max(entries, key=lambda r: r[0])[1]
+        if direct:
+            return entry
+        else:
+            return _without_private(entry)
+
+    def get_page_entries(self, pageref):
+        return [entry for entry in self.network_entries_map.values()
+                if entry['pageref'] == str(pageref)]
 
     def javaScriptAlert(self, frame, msg):
         return
@@ -166,6 +225,7 @@ class WebpageRender(object):
     This class is not used directly; its subclasses are used.
     Subclasses choose how to return the result (as html, json, png).
     """
+
     def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
         self.network_manager = network_manager
         self.web_view = QWebView()
@@ -188,6 +248,8 @@ class WebpageRender(object):
         self.verbosity = verbosity
 
         self.deferred = defer.Deferred()
+        self._finished_timer = None
+        self._closing = False
 
     # ======= General request/response handling:
 
@@ -265,10 +327,13 @@ class WebpageRender(object):
         This method is called by a Pool after the rendering is done and
         the WebpageRender object is no longer needed.
         """
+        self.web_page.freeze()
+        self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+        self._closing = True
 
     def _requestFinished(self):
         """
@@ -289,6 +354,9 @@ class WebpageRender(object):
         """
         This method is called when a QWebPage finished loading its contents.
         """
+        if self._closing:
+            return
+
         if self.deferred.called:
             # sometimes this callback is called multiple times
             self.log("loadFinished called multiple times", min_level=1)
@@ -310,10 +378,20 @@ class WebpageRender(object):
             # signal in this case.
             return
 
-        if page_ok:
-            time_ms = int(self.wait_time * 1000)
-            self.log("loadFinished %s; waiting %sms" % (id(self.splash_request), time_ms))
-            QTimer.singleShot(time_ms, self._loadFinishedOK)
+        if page_ok:  # or maybe_redirect:
+            if self.wait_time == 0:
+                self.log("loadFinished %s; not waiting" % (id(self.splash_request)))
+                self._loadFinishedOK()
+            else:
+                time_ms = int(self.wait_time * 1000)
+                self.log("loadFinished %s; waiting %sms" % (id(self.splash_request), time_ms))
+                if self._finished_timer is not None:
+                    raise Exception("timer is not None!")
+
+                self._finished_timer = QTimer()
+                self._finished_timer.setSingleShot(True)
+                self._finished_timer.timeout.connect(self._loadFinishedOK)
+                self._finished_timer.start(time_ms)
         elif error_loading:
             self.log("loadFinished %s: %s" % (id(self.splash_request), str(self.web_page.errorInfo)), min_level=1)
             # XXX: maybe return a meaningful error page instead of generic
@@ -324,7 +402,12 @@ class WebpageRender(object):
             self.deferred.errback(RenderError())
 
     def _loadFinishedOK(self):
+        self._finished_timer = None
         self.log("_loadFinishedOK %s" % id(self.splash_request))
+
+        self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
+        self.web_view.stop()
+
         self.web_page.logEvent("_onPrepareStart")
         try:
             self._prepareRender()
@@ -339,9 +422,14 @@ class WebpageRender(object):
         self.log("loadStarted %s" % id(self.splash_request), min_level=4)
 
     def _urlChanged(self, url):
-        self.history.append(self.web_page.last_network_entry(url))
+        self.history.append(self.web_page.last_network_entry(url, direct=False))
         msg = "mainFrame().urlChanged %s: %s" % (id(self.splash_request), qurl2ascii(url))
-        self.log(msg, min_level=4)
+        self.log(msg, min_level=3)
+
+        if self._finished_timer is not None:
+            self.log("Cancelling wait timer %s" % (id(self.splash_request)))
+            self._finished_timer.stop()
+            self._finished_timer = None
 
     def _frameLoadStarted(self):
         self.log("mainFrame().loadStarted %s" % id(self.splash_request), min_level=4)
@@ -389,13 +477,15 @@ class WebpageRender(object):
         return result
 
     def _getIframes(self, children=True, html=True):
-        self.log("getting iframes %s" % id(self.splash_request))
+        self.log("getting iframes %s" % id(self.splash_request), min_level=3)
         frame = self.web_page.mainFrame()
         result = self._frameToDict(frame, children, html)
         self.web_page.logEvent("_onIframesRendered")
         return result
 
     def _getHistory(self):
+        self.log("getting history %s" % id(self.splash_request), min_level=3)
+
         hist = copy.deepcopy(self.history)
         for entry in hist:
             if entry is not None:
@@ -403,6 +493,7 @@ class WebpageRender(object):
         return hist
 
     def _getHAR(self):
+        self.log("getting HAR %s" % id(self.splash_request), min_level=3)
         res = {
             "log": {
                 "version" : "1.2",
@@ -415,7 +506,7 @@ class WebpageRender(object):
                     "version": unicode(qWebKitVersion()),
                     "comment": "PyQt %s, Qt %s" % (PYQT_VERSION_STR, QT_VERSION_STR),
                 },
-                "pages": [self.web_page.har_page_info],
+                "pages": self.web_page.pages,
                 "entries": self.web_page.network_entries,
             }
         }
@@ -562,6 +653,8 @@ class JsonRender(WebpageRender):
         if self.include['har']:
             res['har'] = self._getHAR()
 
+        # import pprint
+        # pprint.pprint(res)
         return json.dumps(res)
 
 
