@@ -3,6 +3,7 @@ import unittest, requests, json, base64, urllib
 from functools import wraps
 from cStringIO import StringIO
 from PIL import Image
+from splash import defaults
 from splash.tests import ts
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 from splash.tests.utils import SplashServer
@@ -242,7 +243,8 @@ class RenderPngTest(_RenderTest):
 
     def _test_ok(self, url):
         r = self.request("url=%s" % url)
-        self.assertPng(r, width=1024, height=768)
+        w, h = map(int, defaults.VIEWPORT.split('x'))
+        self.assertPng(r, width=w, height=h)
 
     def test_width(self):
         r = self.request({"url": self.mockurl("jsrender"), "width": "300"})
