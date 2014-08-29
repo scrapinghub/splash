@@ -335,7 +335,13 @@ class WebpageRender(object):
         size = QSize(w, h)
         self.web_page.setViewportSize(size)
 
+    def _setPreferredContentsSize(self, viewport):
+        w, h = map(int, viewport.split('x'))
+        size = QSize(w, h)
+        self.web_page.setPreferredContentsSize(size)
+
     def _setFullViewport(self):
+        self._setPreferredContentsSize(defaults.VIEWPORT)
         size = self.web_page.mainFrame().contentsSize()
         if size.isEmpty():
             self.log("contentsSize method doesn't work %s" % id(self.splash_request), min_level=1)
