@@ -11,10 +11,10 @@ twisted and QT webkit for rendering pages.
 The (twisted) QT reactor is used to make the sever fully asynchronous allowing
 to take advantage of webkit concurrency via QT main loop.
 
-Requirements
-============
+.. toctree::
+   :maxdepth: 2
 
-.. literalinclude:: ../requirements.txt
+   install
 
 Usage
 =====
