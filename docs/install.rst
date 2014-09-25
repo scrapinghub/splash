@@ -7,11 +7,11 @@ Linux + Docker
 1. Install Docker_.
 2. Pull the image::
 
-       $ docker pull scrapinghub/splash
+       $ sudo docker pull scrapinghub/splash
 
 3. Start the container::
 
-       $ docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash
+       $ sudo docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash
 
 4. Splash is now available at 0.0.0.0 at ports
    8050 (http), 8051 (https) and 5023 (telnet).
