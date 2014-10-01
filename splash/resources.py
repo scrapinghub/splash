@@ -38,7 +38,7 @@ class RenderBase(Resource):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
         _check_filters(self.pool, request)
         pool_d = self._getRender(request)
-        timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
+        timeout = _get_timeout_arg(request)
         wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
@@ -116,6 +116,10 @@ class RenderBase(Resource):
 
     def _getRender(self, request):
         raise NotImplementedError()
+
+
+def _get_timeout_arg(request):
+    return getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
 
 
 def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
@@ -286,6 +290,7 @@ class HarViewer(Resource):
             'js_source': js_source,
             'js': js_profile,
             'images': images,
+            'timeout': _get_timeout_arg(request),
 
             'har': 1,
             'png': 1,
