@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from datetime import datetime
+from contextlib import contextmanager
+
 from PyQt4.QtNetwork import (
     QNetworkAccessManager, QNetworkProxyQuery,
     QNetworkReply, QNetworkRequest
@@ -7,7 +10,8 @@ from PyQt4.QtNetwork import (
 from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
 
-from splash.qtutils import qurl2ascii
+from splash.qtutils import qurl2ascii, OPERATION_NAMES
+from splash import har
 from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,
@@ -52,14 +56,23 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     support. Qt provides similar functionality via setProxyFactory method,
     but standard QNetworkProxyFactory is not flexible enough.
 
-    It also sets up some extra logging and provides a way to get
-    the "source" request (that was made to Splash itself).
+    It also sets up some extra logging, provides a way to get
+    the "source" request (that was made to Splash itself) and tracks
+    information about requests/responses.
     """
+
+    _REQUEST_ID = QNetworkRequest.User + 1
+
+    REQUEST_CREATED = "created"
+    REQUEST_FINISHED = "finished"
+    REQUEST_HEADERS_RECEIVED = "headers"
+
     def __init__(self, verbosity):
         super(ProxiedQNetworkAccessManager, self).__init__()
         self.sslErrors.connect(self._sslErrors)
         self.finished.connect(self._finished)
         self.verbosity = verbosity
+        self._next_id = 0
 
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -70,27 +83,120 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
-        request = QNetworkRequest(request)
-        old_proxy = self.proxy()
+        """
+        This method is called when a new request is sent;
+        it must return a reply object to work with.
+        """
+        start_time = datetime.utcnow()
 
+        request = self._wrapRequest(request)
+        har_entry = self._harEntry(request, create=True)
+        if har_entry is not None:
+            page_id = self._getWebPageAttribute(request, "page_id")
+            if outgoingData is None:
+                bodySize = -1
+            else:
+                bodySize = outgoingData.size()
+            har_entry.update({
+                '_tmp': {
+                    'start_time': start_time,
+                    'request_start_sending_time': start_time,
+                    'request_sent_time': start_time,
+                    'response_start_time': start_time,
+
+                    # 'outgoingData': outgoingData,
+                    'state': self.REQUEST_CREATED,
+                },
+                "pageref": str(page_id),
+                "startedDateTime": har.format_datetime(start_time),
+                "request": {
+                    "method": OPERATION_NAMES.get(operation, '?'),
+                    "url": unicode(request.url().toString()),
+                    "httpVersion": "HTTP/1.1",
+                    "cookies": har.request_cookies2har(request),
+                    "queryString": har.querystring2har(request.url()),
+                    "headers": har.headers2har(request),
+
+                    "headersSize" : har.headers_size(request),
+                    "bodySize": bodySize,
+                },
+                "response": {
+                    "bodySize": -1,
+                },
+                "cache": {},
+                "timings": {
+                    "blocked": -1,
+                    "dns": -1,
+                    "connect": -1,
+                    "ssl": -1,
+
+                    "send": 0,
+                    "wait": 0,
+                    "receive": 0,
+                },
+                "time": 0,
+            })
+
+        with self._proxyApplied(request):
+            reply = super(ProxiedQNetworkAccessManager, self).createRequest(
+                operation, request, outgoingData
+            )
+            if har_entry is not None:
+                har_entry["response"].update(har.reply2har(reply))
+
+            reply.error.connect(self._handleError)
+            reply.finished.connect(self._handleFinished)
+            reply.metaDataChanged.connect(self._handleMetaData)
+            reply.downloadProgress.connect(self._handleDownloadProgress)
+
+        return reply
+
+    @contextmanager
+    def _proxyApplied(self, request):
+        """
+        This context manager temporary sets a proxy based on request options.
+        """
+        old_proxy = self.proxy()
         splash_proxy_factory = self._getSplashProxyFactory(request)
         if splash_proxy_factory:
             proxy_query = QNetworkProxyQuery(request.url())
             proxy = splash_proxy_factory.queryProxy(proxy_query)[0]
             self.setProxy(proxy)
+        try:
+            yield
+        finally:
+            self.setProxy(old_proxy)
 
-        # this method is called createRequest, but in fact it creates a reply
-        reply = super(ProxiedQNetworkAccessManager, self).createRequest(
-            operation, request, outgoingData
-        )
+    def _wrapRequest(self, request):
+        request = QNetworkRequest(request)
+        request.setAttribute(self._REQUEST_ID, self._next_id)
+        self._next_id += 1
+        return request
 
-        reply.error.connect(self._handleError)
-        reply.finished.connect(self._handleFinished)
-        reply.metaDataChanged.connect(self._handleMetaData)
-        reply.downloadProgress.connect(self._handleDownloadProgress)
+    def _getRequestId(self, request=None):
+        if request is None:
+            request = self.sender().request()
+        return request.attribute(self._REQUEST_ID).toPyObject()
 
-        self.setProxy(old_proxy)
-        return reply
+    def _harEntry(self, request=None, create=False):
+        """
+        Return a mutable dictionary for request/response
+        information storage.
+        """
+        if request is None:
+            request = self.sender().request()
+
+        entries = self._getWebPageAttribute(request, 'network_entries_map')
+        if entries is None:
+            return
+
+        req_id = self._getRequestId(request)
+        if create:
+            assert req_id not in entries
+            entries[req_id] = {
+                "_idx": req_id,
+            }
+        return entries[req_id]
 
     def _getSplashProxyFactory(self, request):
         return self._getWebPageAttribute(request, 'splash_proxy_factory')
@@ -105,29 +211,93 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=1)
 
     def _handleFinished(self):
-        self.log("Finished downloading {url}", self.sender())
+        reply = self.sender()
+        har_entry = self._harEntry()
+        if har_entry is not None:
+            har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
+
+            now = datetime.utcnow()
+            start_time = har_entry['_tmp']['start_time']
+            response_start_time = har_entry['_tmp']['response_start_time']
+
+            receive_time = har.get_duration(response_start_time, now)
+            total_time = har.get_duration(start_time, now)
+
+            har_entry["timings"]["receive"] = receive_time
+            har_entry["time"] = total_time
+
+            if not har_entry["timings"]["send"]:
+                wait_time = har_entry["timings"]["wait"]
+                har_entry["timings"]["send"] = total_time - receive_time - wait_time
+                if har_entry["timings"]["send"] < 1e-6:
+                    har_entry["timings"]["send"] = 0
+
+            har_entry["response"].update(har.reply2har(reply))
+
+        self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
-        self.log("Headers received for {url}", self.sender(), min_level=3)
+        reply = self.sender()
+        har_entry = self._harEntry()
+        if har_entry is not None:
+            har_entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
+            har_entry["response"].update(har.reply2har(reply))
+
+            now = datetime.utcnow()
+            request_sent = har_entry["_tmp"]["request_sent_time"]
+            har_entry["_tmp"]["response_start_time"] = now
+            har_entry["timings"]["wait"] = har.get_duration(request_sent, now)
+
+        self.log("Headers received for {url}", reply, min_level=3)
 
     def _handleDownloadProgress(self, received, total):
+        har_entry = self._harEntry()
+        if har_entry is not None:
+            har_entry["response"]["bodySize"] = int(received)
+
         if total == -1:
             total = '?'
-        self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=3)
+        self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=4)
+
+    def _handleUploadProgress(self, sent, total):
+        har_entry = self._harEntry()
+        if har_entry is not None:
+            har_entry["request"]["bodySize"] = int(sent)
+
+            now = datetime.utcnow()
+            if sent == 0:
+                # it is a moment the sending is started
+                start_time = har_entry["_tmp"]["request_start_time"]
+                har_entry["_tmp"]["request_start_sending_time"] = now
+                har_entry["timings"]["blocked"] = har.get_duration(start_time, now)
+
+            har_entry["_tmp"]["request_sent_time"] = now
+
+            if sent == total:
+                har_entry["_tmp"]["response_start_time"] = now
+                start_sending_time = har_entry["_tmp"]["request_start_sending_time"]
+                har_entry["timings"]["send"] = har.get_duration(start_sending_time, now)
+
+        if total == -1:
+            total = '?'
+        self.log("Uploaded %d/%s of {url}" % (sent, total), self.sender(), min_level=4)
 
     def _getSplashRequest(self, request):
         return self._getWebPageAttribute(request, 'splash_request')
 
     def log(self, msg, reply=None, min_level=2):
+        if self.verbosity < min_level:
+            return
+
         if not reply:
             url = ''
         else:
             url = qurl2ascii(reply.url())
             if not url:
                 return
-        if self.verbosity >= min_level:
-            msg = msg.format(url=url)
-            log.msg(msg, system='network')
+
+        msg = msg.format(url=url)
+        log.msg(msg, system='network2')
 
 
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):

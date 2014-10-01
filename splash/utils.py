@@ -24,6 +24,9 @@ def getarg(request, name, default=_REQUIRED, type=str, range=None):
     else:
         return default
 
+def getarg_bool(request, name, default=_REQUIRED):
+    return getarg(request, name, default, type=int, range=(0, 1))
+
 
 PID = os.getpid()
 def get_num_fds():

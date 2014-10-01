@@ -15,7 +15,7 @@ virtualenv:
 
 before_install:
     - sudo apt-get install python-twisted python-qt4
-    - pip install qt4reactor psutil requests Pillow
+    - pip install qt4reactor psutil requests Pillow jsonschema strict-rfc3339
     - "if [[ $SYSTEM_TWISTED == 'false' ]]; then pip install -UI twisted; fi"
 
 install:

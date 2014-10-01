@@ -119,6 +119,8 @@ images : integer : optional
     Note that cached images may be displayed even if this parameter is 0.
     You can also use `Request Filters`_ to strip unwanted contents based on URL.
 
+Examples
+~~~~~~~~
 
 Curl example::
 
@@ -154,6 +156,9 @@ height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
 
+Examples
+~~~~~~~~
+
 Curl examples::
 
     # render with timeout
@@ -161,6 +166,26 @@ Curl examples::
 
     # 320x240 thumbnail
     curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240'
+
+
+render.har
+----------
+
+Return information about Splash interaction with a website in HAR_ format.
+It includes information about requests made, responses received, timings,
+headers, cookies, etc.
+
+You can use online `HAR viewer`_ to visualize information returned from
+this endpoint; It will be very similar to "Network" tabs in Firefox and Chrome
+developer tools.
+
+Currently this endpoint doesn't expose raw request and response contents;
+only meta-information like headers and timings is available.
+
+Arguments for this endpoint are the same as for `render.html`_.
+
+.. _HAR: http://www.softwareishard.com/blog/har-12-spec/
+.. _HAR viewer: http://www.softwareishard.com/har/viewer/
 
 
 render.json
@@ -205,6 +230,29 @@ script : integer : optional
 console : integer : optional
     Whether to include the executed javascript console messages in output.
     Possible values are ``1`` (include) and ``0`` (exclude). Default is 0.
+
+.. _arg-history:
+
+history : integer : optional
+    Whether to include the history of requests/responses for webpage main
+    frame. Possible values are ``1`` (include) and ``0`` (exclude).
+    Default is 0.
+
+    Use it to get HTTP status codes, cookies and headers.
+    Only information about "main" requests/responses is returned
+    (i.e. information about related resources like images and AJAX queries
+    is not returned).
+
+.. _arg-har:
+
+har : integer : optional
+    Whether to include HAR_ in output. Possible values are
+    ``1`` (include) and ``0`` (exclude). Default is 0.
+    If this option is ON the result will contain the same data
+    as `render.har`_ provides under 'har' key.
+
+Examples
+~~~~~~~~
 
 By default, URL, requested URL, page title and frame geometry is returned::
 
@@ -620,6 +668,12 @@ X-Splash-script : string
 
 X-Splash-console : string
   Same as :ref:`'console' <arg-console>` argument for `render.json`_.
+
+X-Splash-history : string
+  Same as :ref:`'history' <arg-history>` argument for `render.json`_.
+
+X-Splash-har : string
+  Same as :ref:`'har' <arg-har>` argument for `render.json`_.
 
 Curl examples::
 
