@@ -107,7 +107,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     # 'outgoingData': outgoingData,
                     'state': self.REQUEST_CREATED,
                 },
-                "pageref": page_id,
+                "pageref": str(page_id),
                 "startedDateTime": har.format_datetime(start_time),
                 "request": {
                     "method": OPERATION_NAMES.get(operation, '?'),
