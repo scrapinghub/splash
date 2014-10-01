@@ -240,6 +240,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply = self.sender()
         har_entry = self._harEntry()
         if har_entry is not None:
+            if har_entry["_tmp"]["state"] == self.REQUEST_FINISHED:
+                self.log("Headers received for {url}; ignoring", reply, min_level=3)
+                return
+
             har_entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
             har_entry["response"].update(har.reply2har(reply))
 
