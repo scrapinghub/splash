@@ -5,13 +5,47 @@ from splash import har
 from .test_render import BaseRenderTest
 
 
-class HarRenderTest(BaseRenderTest):
+class BaseHarRenderTest(BaseRenderTest):
     render_format = 'har'
+
+    def assertValidHarData(self, data, url):
+        har.validate(data)
+        first_url = data["log"]["entries"][0]["request"]["url"]
+        self.assertEqual(first_url, url)
+
+    def assertValidHar(self, url, **params):
+        query = {"url": url}
+        query.update(params)
+        resp = self.request(query)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # from pprint import pprint
+        # pprint(data)
+        self.assertValidHarData(data, url)
+        return data
+
+    def assertRequestedUrls(self, data, correct_urls):
+        requested_urls = {e["request"]["url"] for e in data["log"]["entries"]}
+        self.assertEqual(requested_urls, set(correct_urls))
+
+    def assertRequestedUrlsStatuses(self, data, correct_urls_statuses):
+        urls_statuses = {
+            (e["request"]["url"], e["response"]["status"])
+            for e in data["log"]["entries"]
+        }
+        self.assertEqual(urls_statuses, set(correct_urls_statuses))
+
+    def assertNumRequests(self, data, num):
+        self.assertEqual(len(data["log"]["entries"]), num, msg=data)
+
+
+class HarRenderTest(BaseHarRenderTest):
+    """ Tests for HAR data in render.har endpoint """
 
     def test_jsrender(self):
         url = self.mockurl("jsrender")
         data = self.assertValidHar(url)
-        self.assertRequestedUrls(data, [url])
+        self.assertRequestedUrlsStatuses(data, [(url, 200)])
 
     def test_jsalert(self):
         self.assertValidHar(self.mockurl("jsalert"), timeout=3)
@@ -34,6 +68,21 @@ class HarRenderTest(BaseRenderTest):
             self.mockurl('iframes/nested.html'),
         ])
 
+    def test_iframes_wait(self):
+        data = self.assertValidHar(self.mockurl("iframes"), timeout=3, wait=0.5)
+        self.assertRequestedUrls(data, [
+            self.mockurl("iframes"),
+            self.mockurl('iframes/1.html'),
+            self.mockurl('iframes/2.html'),
+            self.mockurl('iframes/3.html'),
+            self.mockurl('iframes/4.html'),  # wait is not zero, delayed iframe
+            self.mockurl('iframes/5.html'),
+            self.mockurl('iframes/6.html'),
+            self.mockurl('iframes/script.js'),
+            self.mockurl('iframes/script2.js', host="0.0.0.0"),
+            self.mockurl('iframes/nested.html'),
+        ])
+
     def test_timeout(self):
         r = self.request({"url": self.mockurl("delay?n=10"), "timeout": 0.5})
         self.assertEqual(r.status_code, 504)
@@ -44,91 +93,100 @@ class HarRenderTest(BaseRenderTest):
 
     def test_meta_redirect_nowait(self):
         data = self.assertValidHar(self.mockurl('meta-redirect0'))
-        self.assertRequestedUrls(data, [
-            self.mockurl('meta-redirect0'),
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('meta-redirect0'), 200),
         ])
 
     def test_meta_redirect_wait(self):
         data = self.assertValidHar(self.mockurl('meta-redirect0'), wait=0.1)
-        self.assertRequestedUrls(data, [
-            self.mockurl('meta-redirect0'),
-            self.mockurl('meta-redirect-target/'),
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('meta-redirect0'), 200),
+            (self.mockurl('meta-redirect-target/'), 200),
         ])
 
     def test_meta_redirect_delay_wait(self):
-        self.assertValidHar(self.mockurl('meta-redirect1'), wait=0.1)
+        data = self.assertValidHar(self.mockurl('meta-redirect1'), wait=0.1)
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('meta-redirect1'), 200),
+        ])
 
     def test_meta_redirect_delay_wait_enough(self):
-        self.assertValidHar(self.mockurl('meta-redirect1'), wait=0.3)
+        data = self.assertValidHar(self.mockurl('meta-redirect1'), wait=0.3)
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('meta-redirect1'), 200),
+            (self.mockurl('meta-redirect-target/'), 200),
+        ])
 
     def test_meta_redirect_slowload2_wait_more(self):
-        self.assertValidHar(self.mockurl('meta-redirect1-slowload2'), wait=0.3)
+        data = self.assertValidHar(self.mockurl('meta-redirect-slowload2'), wait=0.3)
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('meta-redirect-slowload2'), 200),
+            (self.mockurl('slow.gif?n=2'), 200),
+            (self.mockurl('meta-redirect-target/'), 200),
+        ])
 
     def test_redirect_nowait(self):
-        self.assertValidHar(self.mockurl('jsredirect'))
+        data = self.assertValidHar(self.mockurl('jsredirect'))
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect'), 200),
+        ])
 
     def test_redirect_wait(self):
-        self.assertValidHar(self.mockurl('jsredirect'), wait=0.1)
+        data = self.assertValidHar(self.mockurl('jsredirect'), wait=0.1)
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect'), 200),
+            (self.mockurl('jsredirect-target'), 200),
+        ])
 
     def test_redirect_onload_nowait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-onload'))
-        self.assertRequestedUrls(data, [
-            self.mockurl('jsredirect-onload'), # not redirected
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect-onload'), 200)  # not redirected
         ])
 
     def test_redirect_onload_wait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-onload'), wait=0.1)
-        self.assertRequestedUrls(data, [
-            self.mockurl('jsredirect-onload'),
-            self.mockurl('jsredirect-target'),
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect-onload'), 200),
+            (self.mockurl('jsredirect-target'), 200),
         ])
 
     def test_redirect_chain_nowait(self):
-        self.assertValidHar(self.mockurl('jsredirect-chain'))
+        data = self.assertValidHar(self.mockurl('jsredirect-chain'))
         # not redirected
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect-chain'), 200),
+        ])
 
     def test_redirect_chain_wait(self):
-        self.assertValidHar(self.mockurl('jsredirect-chain'), wait=0.2)
+        data = self.assertValidHar(self.mockurl('jsredirect-chain'), wait=0.2)
         # redirected
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect-chain'), 200),
+            (self.mockurl('jsredirect'), 200),
+            (self.mockurl('jsredirect-target'), 200),
+        ])
 
     def test_redirect_slowimage_nowait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-slowimage'))
-        self.assertRequestedUrls(data, [
-            self.mockurl('jsredirect-slowimage'),
-            self.mockurl('jsredirect-target'),
-            self.mockurl('slow.gif?n=2'),
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect-slowimage'), 200),
+            (self.mockurl('jsredirect-target'), 200),
+            (self.mockurl('slow.gif?n=2'), 0),
         ])
 
     def test_redirect_slowimage_wait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-slowimage'), wait=0.1)
-        self.assertRequestedUrls(data, [
-            self.mockurl('jsredirect-slowimage'),
-            self.mockurl('jsredirect-target'),
-            self.mockurl('slow.gif?n=2'),
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('jsredirect-slowimage'), 200),
+            (self.mockurl('jsredirect-target'), 200),
+            (self.mockurl('slow.gif?n=2'), 0),
         ])
-
-    def assertValidHarData(self, data, url):
-        har.validate(data)
-        first_url = data["log"]["entries"][0]["request"]["url"]
-        self.assertEqual(first_url, url)
-
-    def assertValidHar(self, url, **params):
-        query = {"url": url}
-        query.update(params)
-        resp = self.request(query)
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        # from pprint import pprint
-        # pprint(data)
-        self.assertValidHarData(data, url)
-        return data
-
-    def assertRequestedUrls(self, data, correct_urls):
-        requested_urls = {e["request"]["url"] for e in data["log"]["entries"]}
-        self.assertEqual(requested_urls, set(correct_urls))
 
 
 class RenderJsonHarTest(HarRenderTest):
+    """ Tests for HAR data in render.json endpoint """
+
     render_format = 'json'
 
     def assertValidHar(self, url, **params):
