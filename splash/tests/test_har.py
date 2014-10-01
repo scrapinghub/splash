@@ -4,6 +4,8 @@ from __future__ import absolute_import
 from splash import har
 from .test_render import BaseRenderTest
 
+from splash.tests import test_redirects
+
 
 class BaseHarRenderTest(BaseRenderTest):
     render_format = 'har'
@@ -182,6 +184,24 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('jsredirect-target'), 200),
             (self.mockurl('slow.gif?n=2'), 0),
         ])
+
+
+class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):
+
+    def assertHttpRedirectWorks(self, code):
+        url = self.mockurl("http-redirect?code=%s" % code)
+        r = self.request({"url": url})
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+
+        self.assertValidHarData(data, url)
+        self.assertRequestedUrlsStatuses(data, [
+            (url, code),
+            (self.mockurl('getrequest?http_code=%s' % code), 200)
+        ])
+
+        redir_url = data["log"]["entries"][0]["response"]["redirectURL"]
+        self.assertEqual(redir_url, "/getrequest?http_code=%s" % code)
 
 
 class RenderJsonHarTest(HarRenderTest):
