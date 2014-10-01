@@ -557,7 +557,7 @@ class ProxyFactory(http.HTTPFactory):
     protocol = Proxy
 
 
-def run(port_num, sslport_num, proxyport_num):
+def run(port_num, sslport_num, proxyport_num, verbose=True):
     root = Root(port_num, sslport_num, proxyport_num)
     factory = Site(root)
     port = reactor.listenTCP(port_num, factory)
@@ -570,7 +570,13 @@ def run(port_num, sslport_num, proxyport_num):
         p = proxyport.getHost()
         print "Mock server running at http://%s:%d (http), https://%s:%d (https) and http://%s:%d (proxy)" % \
             (h.host, h.port, s.host, s.port, p.host, p.port)
-    reactor.callWhenRunning(print_listening)
+
+    if verbose:
+        import sys
+        from twisted.python import log
+        log.startLogging(sys.stdout)
+        reactor.callWhenRunning(print_listening)
+
     reactor.run()
 
 
@@ -579,6 +585,7 @@ if __name__ == "__main__":
     op.add_option("--http-port", type=int, default=8998)
     op.add_option("--https-port", type=int, default=8999)
     op.add_option("--proxy-port", type=int, default=8990)
+    op.add_option("-q", "--quiet", action="store_true", dest="quiet", default=False)
     opts, _ = op.parse_args()
 
-    run(opts.http_port, opts.https_port, opts.proxy_port)
+    run(opts.http_port, opts.https_port, opts.proxy_port, not opts.quiet)
