@@ -45,6 +45,7 @@ class RenderPool(object):
         )
         self.active.add(render)
         render.deferred.chainDeferred(pool_d)
+        pool_d.addErrback(self._error, render, slot)
         pool_d.addBoth(self._close_render, render, slot)
 
         self.log("SLOT %d is creating request %s" % (slot, id(splash_request)))
@@ -52,6 +53,10 @@ class RenderPool(object):
         self.log("SLOT %d is working on %s" % (slot, id(splash_request)))
 
         return render.deferred
+
+    def _error(self, _, render, slot):
+        self.log("SLOT %d finished with an error %s %s" % (slot, id(render.splash_request), render))
+        return _
 
     def _close_render(self, _, render, slot):
         self.log("SLOT %d is closing %s %s" % (slot, id(render.splash_request), render))
