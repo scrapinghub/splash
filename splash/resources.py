@@ -472,19 +472,21 @@ class Root(Resource):
         'webapp',
     )
 
-    def __init__(self, pool):
+    def __init__(self, pool, ui_enabled):
         Resource.__init__(self)
+        self.ui_enabled = ui_enabled
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("render.har", RenderHar(pool))
         self.putChild("debug", Debug(pool))
-        self.putChild("_harviewer", File(self.HARVIEWER_PATH))
-        self.putChild(HarViewer.PATH, HarViewer(pool))
 
+        if self.ui_enabled:
+            self.putChild("_harviewer", File(self.HARVIEWER_PATH))
+            self.putChild(HarViewer.PATH, HarViewer(pool))
 
     def getChild(self, name, request):
-        if name == "":
+        if name == "" and self.ui_enabled:
             return self
         return Resource.getChild(self, name, request)
 

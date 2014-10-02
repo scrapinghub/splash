@@ -82,6 +82,8 @@ def parse_opts():
         help="enable manhole server")
     op.add_option("--disable-proxy", action="store_true", default=False,
         help="disable proxy server")
+    op.add_option("--disable-ui", action="store_true", default=False,
+        help="disable web UI")
     op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
     op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
@@ -150,7 +152,7 @@ def manhole_server(portnum=None, username=None, password=None):
 
 def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
-                  verbosity=None):
+                  ui_enabled=True, verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -172,7 +174,7 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
     )
 
     # HTTP API
-    root = Root(pool)
+    root = Root(pool, ui_enabled=ui_enabled)
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
 
@@ -210,6 +212,7 @@ def default_splash_server(portnum, slots=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
+                          ui_enabled=True,
                           verbosity=None):
     from splash import network_manager
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
@@ -228,6 +231,7 @@ def default_splash_server(portnum, slots=None,
     _set_global_render_settings(js_disable_cross_domain_access)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
                          js_profiles_path, disable_proxy, proxy_portnum,
+                         ui_enabled,
                          verbosity)
 
 
@@ -312,6 +316,7 @@ def main():
                   proxy_portnum=opts.proxy_portnum,
                   filters_path=opts.filters_path,
                   allowed_schemes=opts.allowed_schemes,
+                  ui_enabled=not opts.disable_ui,
                   verbosity=opts.verbosity)
     signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
