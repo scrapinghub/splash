@@ -185,7 +185,6 @@ class HarRenderTest(BaseHarRenderTest):
         self.assertEqual(len(pages[1]), 1)  # jsredirect-target
         self.assertEqual(pages[0][1]["response"]["statusText"], "cancelled")
 
-
     def test_redirect_slowimage_wait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-slowimage'), wait=0.1)
         self.assertRequestedUrlsStatuses(data, [
@@ -193,6 +192,17 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('jsredirect-target'), 200),
             (self.mockurl('slow.gif?n=2'), 0),
         ])
+
+    def test_bad_related(self):
+        data = self.assertValidHar(self.mockurl("bad-related"))
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('bad-related'), 200),
+            ('http://non-existing/', 0),
+        ])
+        pages = entries2pages(data["log"]["entries"])
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(len(pages[0]), 2)
+        self.assertEqual(pages[0][1]["response"]["statusText"], "invalid_hostname")
 
 
 class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):

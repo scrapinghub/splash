@@ -156,4 +156,11 @@ class JsRedirectTest(BaseRenderTest):
         })
         self.assertRedirected(r)
 
+    def test_redirect_to_non_existing(self):
+        r = self.request({
+            "url": self.mockurl("jsredirect-non-existing"),
+            "wait": 0.1,
+        })
+        self.assertEqual(r.status_code, 502)
+
     # TODO: support for jsredirect-infinite

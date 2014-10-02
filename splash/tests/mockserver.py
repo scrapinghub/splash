@@ -101,6 +101,15 @@ TallPage = _html_resource("""
 """)
 
 
+BadRelatedResource = _html_resource("""
+<html>
+<body>
+<img src="http://non-existing">
+</body>
+</html>
+""")
+
+
 class BaseUrl(Resource):
 
     def render_GET(self, request):
@@ -384,6 +393,16 @@ window.location = '/jsredirect';
 </body></html>
 """)
 
+JsRedirectToNonExisting = _html_resource("""
+<html><body>
+Redirecting to non-existing domain..
+<script>
+window.location = 'http://non-existing';
+</script>
+</body></html>
+""")
+
+
 JsRedirectTarget = _html_resource("""
 <html><body> JS REDIRECT TARGET </body></html>
 """)
@@ -509,6 +528,7 @@ class Root(Resource):
         self.putChild("external", ExternalResource())
         self.putChild("cp1251", CP1251Resource())
         self.putChild("cp1251-invalid", InvalidContentTypeResource())
+        self.putChild("bad-related", BadRelatedResource())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-slowimage", JsRedirectSlowImage())
@@ -518,6 +538,7 @@ class Root(Resource):
         self.putChild("jsredirect-target", JsRedirectTarget())
         self.putChild("jsredirect-infinite", JsRedirectInfinite())
         self.putChild("jsredirect-infinite2", JsRedirectInfinite2())
+        self.putChild("jsredirect-non-existing", JsRedirectToNonExisting())
 
         self.putChild("meta-redirect0", MetaRedirect0())
         self.putChild("meta-redirect-slowload", MetaRedirectSlowLoad())
