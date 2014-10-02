@@ -41,16 +41,16 @@ def headers_size(request_or_reply):
 def request_cookies2har(request):
     """ Return HAR-encoded cookies of QNetworkRequest """
     cookies = request.header(QNetworkRequest.CookieHeader)
-    return cookies2har(cookies)
+    return _cookies2har(cookies)
 
 
 def reply_cookies2har(reply):
     """ Return HAR-encoded cookies of QNetworkReply """
     cookies = reply.header(QNetworkRequest.SetCookieHeader)
-    return cookies2har(cookies)
+    return _cookies2har(cookies)
 
 
-def cookies2har(cookies):
+def _cookies2har(cookies):
     cookies = cookies.toPyObject() or []
     return [
         {
