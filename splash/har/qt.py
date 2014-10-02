@@ -9,6 +9,17 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
 
 
+ERRORS_SHORT = {
+    QNetworkReply.OperationCanceledError: 'cancelled',
+    QNetworkReply.ConnectionRefusedError: 'connection_refused',
+    QNetworkReply.RemoteHostClosedError : 'connection_closed',
+    QNetworkReply.HostNotFoundError : 'invalid_hostname',
+    QNetworkReply.TimeoutError : 'timed_out',
+    QNetworkReply.SslHandshakeFailedError : 'ssl_error',
+    QNetworkReply.TemporaryNetworkFailureError : 'temp_network_failure',
+}
+
+
 def _header_pairs(request_or_reply):
     if hasattr(request_or_reply, 'rawHeaderPairs'):
         return request_or_reply.rawHeaderPairs()
@@ -106,7 +117,7 @@ def reply2har(reply):
     if not status_text.isNull():
         res["statusText"] = bytes(status_text.toByteArray()).decode('latin1')
     else:
-        res["statusText"] = "?"
+        res["statusText"] = ERRORS_SHORT.get(reply.error(), "?")
 
     redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
     if not redirect_url.isNull():
