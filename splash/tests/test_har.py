@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 from splash.har.schema import validate
+from splash.har.utils import entries2pages
 from splash.tests import test_redirects
 from .test_render import BaseRenderTest
 
@@ -23,6 +24,7 @@ class BaseHarRenderTest(BaseRenderTest):
         # from pprint import pprint
         # pprint(data)
         self.assertValidHarData(data, url)
+        self.assertValidTimings(data)
         return data
 
     def assertRequestedUrls(self, data, correct_urls):
@@ -36,8 +38,9 @@ class BaseHarRenderTest(BaseRenderTest):
         }
         self.assertEqual(urls_statuses, set(correct_urls_statuses))
 
-    def assertNumRequests(self, data, num):
-        self.assertEqual(len(data["log"]["entries"]), num, msg=data)
+    def assertValidTimings(self, data):
+        page0 = data['log']['pages'][0]
+        self.assertIn("_onStarted", page0["pageTimings"])
 
 
 class HarRenderTest(BaseHarRenderTest):
@@ -175,6 +178,13 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('jsredirect-target'), 200),
             (self.mockurl('slow.gif?n=2'), 0),
         ])
+
+        pages = entries2pages(data["log"]["entries"])
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(len(pages[0]), 2)  # jsredirect-slowimage and slow.gif?n=2
+        self.assertEqual(len(pages[1]), 1)  # jsredirect-target
+        self.assertEqual(pages[0][1]["response"]["statusText"], "cancelled")
+
 
     def test_redirect_slowimage_wait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-slowimage'), wait=0.1)

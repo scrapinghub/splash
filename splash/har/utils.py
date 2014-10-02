@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from operator import itemgetter
+import itertools
 from datetime import datetime
 
 
@@ -19,3 +21,10 @@ def get_duration(start, end=None):
 def without_private(dct):
     return {k:v for (k,v) in dct.items() if not k.startswith('_')}
 
+
+def entries2pages(entries):
+    """ Group HAR entries into pages by pageref """
+    pages = []
+    for pageref, group in itertools.groupby(entries, key=itemgetter("pageref")):
+        pages.append(list(group))
+    return pages
