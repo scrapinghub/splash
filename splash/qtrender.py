@@ -419,7 +419,7 @@ class WebpageRender(object):
 
     def _getHAR(self):
         self.log("getting HAR %s" % id(self.splash_request), min_level=3)
-        return self.web_page.har_log.todict(split_by_pages=False)
+        return self.web_page.har_log.todict()
 
     # ======= Other helper methods:
 

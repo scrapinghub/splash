@@ -57,7 +57,7 @@ class HarLog(object):
             HarEvent(HAR_TIMING, {"name": name, "time": datetime.utcnow()})
         )
 
-    def todict(self, split_by_pages=True):
+    def todict(self):
         """ Return HAR log as a Python dict. """
 
         # import pprint
