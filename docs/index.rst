@@ -675,6 +675,10 @@ X-Splash-history : string
 X-Splash-har : string
   Same as :ref:`'har' <arg-har>` argument for `render.json`_.
 
+.. note::
+
+    Proxying of HTTPS requests is not supported.
+
 Curl examples::
 
     # Display json stats
