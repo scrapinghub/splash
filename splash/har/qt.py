@@ -10,6 +10,7 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
 
 
 ERRORS_SHORT = {
+    QNetworkReply.NoError: 'OK',
     QNetworkReply.OperationCanceledError: 'cancelled',
     QNetworkReply.ConnectionRefusedError: 'connection_refused',
     QNetworkReply.RemoteHostClosedError : 'connection_closed',
