@@ -26,7 +26,7 @@ setup_args = {
     'maintainer_email': 'info@scrapinghub.com',
     'license': 'BSD',
     'scripts': ['bin/splash'],
-    'packages': ['splash'],
+    'packages': ['splash', 'splash.har'],
     'package_data': {'splash': [
         'vendor/harviewer/webapp/css/*.css',
         'vendor/harviewer/webapp/css/images/*.*',

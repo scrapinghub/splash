@@ -12,6 +12,7 @@ from twisted.python import log
 
 from splash.qtutils import qurl2ascii, OPERATION_NAMES
 from splash import har
+from splash.har import qt as har_qt
 from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,
@@ -113,11 +114,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     "method": OPERATION_NAMES.get(operation, '?'),
                     "url": unicode(request.url().toString()),
                     "httpVersion": "HTTP/1.1",
-                    "cookies": har.request_cookies2har(request),
-                    "queryString": har.querystring2har(request.url()),
-                    "headers": har.headers2har(request),
+                    "cookies": har_qt.request_cookies2har(request),
+                    "queryString": har_qt.querystring2har(request.url()),
+                    "headers": har_qt.headers2har(request),
 
-                    "headersSize" : har.headers_size(request),
+                    "headersSize" : har_qt.headers_size(request),
                     "bodySize": bodySize,
                 },
                 "response": {
@@ -142,7 +143,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 operation, request, outgoingData
             )
             if har_entry is not None:
-                har_entry["response"].update(har.reply2har(reply))
+                har_entry["response"].update(har_qt.reply2har(reply))
 
             reply.error.connect(self._handleError)
             reply.finished.connect(self._handleFinished)
@@ -232,7 +233,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 if har_entry["timings"]["send"] < 1e-6:
                     har_entry["timings"]["send"] = 0
 
-            har_entry["response"].update(har.reply2har(reply))
+            har_entry["response"].update(har_qt.reply2har(reply))
 
         self.log("Finished downloading {url}", reply)
 
@@ -245,7 +246,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 return
 
             har_entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
-            har_entry["response"].update(har.reply2har(reply))
+            har_entry["response"].update(har_qt.reply2har(reply))
 
             now = datetime.utcnow()
             request_sent = har_entry["_tmp"]["request_sent_time"]
