@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from splash import har
+from splash.har.schema import validate
 from splash.tests import test_redirects
 from .test_render import BaseRenderTest
 
@@ -10,7 +10,7 @@ class BaseHarRenderTest(BaseRenderTest):
     render_format = 'har'
 
     def assertValidHarData(self, data, url):
-        har.validate(data)
+        validate(data)
         first_url = data["log"]["entries"][0]["request"]["url"]
         self.assertEqual(first_url, url)
 

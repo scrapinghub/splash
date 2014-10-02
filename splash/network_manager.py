@@ -93,7 +93,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         request = self._wrapRequest(request)
         har_entry = self._harEntry(request, create=True)
         if har_entry is not None:
-            page_id = self._getWebPageAttribute(request, "page_id")
             if outgoingData is None:
                 bodySize = -1
             else:
@@ -108,7 +107,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                     # 'outgoingData': outgoingData,
                     'state': self.REQUEST_CREATED,
                 },
-                "pageref": str(page_id),
                 "startedDateTime": har.format_datetime(start_time),
                 "request": {
                     "method": OPERATION_NAMES.get(operation, '?'),
@@ -187,17 +185,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if request is None:
             request = self.sender().request()
 
-        entries = self._getWebPageAttribute(request, 'network_entries_map')
-        if entries is None:
+        har_log = self._getWebPageAttribute(request, "har_log")
+        if har_log is None:
+            self.log("har_log attribute is not found!")
             return
-
-        req_id = self._getRequestId(request)
-        if create:
-            assert req_id not in entries
-            entries[req_id] = {
-                "_idx": req_id,
-            }
-        return entries[req_id]
+        return har_log.get_mutable_entry(self._getRequestId(request), create)
 
     def _getSplashProxyFactory(self, request):
         return self._getWebPageAttribute(request, 'splash_proxy_factory')

@@ -15,3 +15,7 @@ def get_duration(start, end=None):
     elapsed = (end-start).total_seconds()
     return int(elapsed * 1000)  # ms
 
+
+def without_private(dct):
+    return {k:v for (k,v) in dct.items() if not k.startswith('_')}
+
