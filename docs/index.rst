@@ -176,7 +176,7 @@ It includes information about requests made, responses received, timings,
 headers, cookies, etc.
 
 You can use online `HAR viewer`_ to visualize information returned from
-this endpoint; It will be very similar to "Network" tabs in Firefox and Chrome
+this endpoint; it will be very similar to "Network" tabs in Firefox and Chrome
 developer tools.
 
 Currently this endpoint doesn't expose raw request and response contents;
@@ -241,7 +241,8 @@ history : integer : optional
     Use it to get HTTP status codes, cookies and headers.
     Only information about "main" requests/responses is returned
     (i.e. information about related resources like images and AJAX queries
-    is not returned).
+    is not returned). To get information about all requests and responses
+    use :ref:`'har' <arg-har>` argument.
 
 .. _arg-har:
 
