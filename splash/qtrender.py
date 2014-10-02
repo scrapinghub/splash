@@ -40,8 +40,6 @@ class SplashQWebPage(QWebPage):
     errorInfo = None
     custom_user_agent = None
 
-    _next_page_id = 1
-
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
