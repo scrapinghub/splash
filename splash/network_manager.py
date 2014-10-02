@@ -293,7 +293,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 return
 
         msg = msg.format(url=url)
-        log.msg(msg, system='network2')
+        log.msg(msg, system='network-manager')
 
 
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
