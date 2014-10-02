@@ -245,12 +245,12 @@ class WebpageRender(object):
         This method is called by a Pool after the rendering is done and
         the WebpageRender object is no longer needed.
         """
+        self._closing = True
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
-        self._closing = True
 
     def _requestFinished(self):
         """
@@ -272,6 +272,7 @@ class WebpageRender(object):
         This method is called when a QWebPage finished loading its contents.
         """
         if self._closing:
+            self.log("loadFinished is ignored because WebpageRender is closing", min_level=3)
             return
 
         if self.deferred.called:
@@ -321,6 +322,10 @@ class WebpageRender(object):
     def _loadFinishedOK(self):
         self._finished_timer = None
         self.log("_loadFinishedOK %s" % id(self.splash_request))
+
+        if self._closing:
+            self.log("loadFinishedOK is ignored because WebpageRender is closing", min_level=3)
+            return
 
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
