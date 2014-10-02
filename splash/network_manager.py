@@ -187,7 +187,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         har_log = self._getWebPageAttribute(request, "har_log")
         if har_log is None:
-            self.log("har_log attribute is not found!")
             return
         return har_log.get_mutable_entry(self._getRequestId(request), create)
 
@@ -201,7 +200,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleError(self, error_id):
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
-        self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=1)
+        self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=2)
 
     def _handleFinished(self):
         reply = self.sender()
