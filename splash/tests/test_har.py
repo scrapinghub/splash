@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import unittest
 
 from splash.har.schema import validate
 from splash.har.utils import entries2pages
 from splash.tests import test_redirects
+from splash.tests.utils import NON_EXISTING_RESOLVABLE
 from .test_render import BaseRenderTest
 
 
@@ -193,6 +195,7 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('slow.gif?n=2'), 0),
         ])
 
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_bad_related(self):
         data = self.assertValidHar(self.mockurl("bad-related"))
         self.assertRequestedUrlsStatuses(data, [
