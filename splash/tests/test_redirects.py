@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import unittest
 from splash.tests.test_render import BaseRenderTest
+from splash.tests.utils import NON_EXISTING_RESOLVABLE
 
 
 class HttpRedirectTest(BaseRenderTest):
@@ -155,5 +157,13 @@ class JsRedirectTest(BaseRenderTest):
             'wait': 0.1
         })
         self.assertRedirected(r)
+
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_redirect_to_non_existing(self):
+        r = self.request({
+            "url": self.mockurl("jsredirect-non-existing"),
+            "wait": 0.1,
+        })
+        self.assertEqual(r.status_code, 502)
 
     # TODO: support for jsredirect-infinite

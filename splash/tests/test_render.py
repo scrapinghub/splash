@@ -71,8 +71,8 @@ class BaseRenderTest(unittest.TestCase):
                 from nose import SkipTest
                 raise SkipTest("Gzip support is not available in old Twisted")
 
-    def mockurl(self, path):
-        return ts.mockserver.url(path, self.use_gzip)
+    def mockurl(self, path, host='localhost'):
+        return ts.mockserver.url(path, self.use_gzip, host=host)
 
     def tearDown(self):
         # we must consume splash output because subprocess.PIPE is used
@@ -299,7 +299,6 @@ class RenderPngTest(_RenderTest):
         self.assertEqual(color, img.getpixel((x, y)))
 
 
-
 class RenderJsonTest(_RenderTest):
 
     render_format = 'json'
@@ -475,6 +474,66 @@ class RenderJsonTest(_RenderTest):
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 200)
         return r1, r2
+
+
+class RenderJsonHistoryTest(BaseRenderTest):
+    render_format = 'json'
+
+    def test_history_simple(self):
+        self.assertHistoryUrls(
+            {'url': self.mockurl('jsrender')},
+            [('jsrender', 200)]
+        )
+
+    def test_history_jsredirect(self):
+        self.assertHistoryUrls(
+            {'url': self.mockurl('jsredirect')},
+            [('jsredirect', 200)]
+        )
+
+        self.assertHistoryUrls(
+            {'url': self.mockurl('jsredirect'), 'wait': 0.2},
+            [('jsredirect', 200), ('jsredirect-target', 200)]
+        )
+
+    def test_history_metaredirect(self):
+        self.assertHistoryUrls(
+            {'url': self.mockurl('meta-redirect0'), 'wait': 0.2},
+            [('meta-redirect0', 200), ('meta-redirect-target/', 200)]
+        )
+
+    def test_history_httpredirect(self):
+        self.assertHistoryUrls(
+            {'url': self.mockurl('http-redirect?code=302')},
+            [('getrequest?http_code=302', 200)]
+        )
+
+    def test_history_iframes(self):
+        self.assertHistoryUrls({'url': self.mockurl('iframes')}, [('iframes', 200)])
+
+    def test_history_status_codes(self):
+        for code in [404, 403, 400, 500, 503]:
+            url = self.mockurl('getrequest') + '?code=%d' % code
+            self.assertHistoryUrls({'url': url}, [(url, code)], full_urls=True)
+
+
+    def assertHistoryUrls(self, query, urls_and_codes, full_urls=False):
+        query['history'] = 1
+        resp = self.request(query)
+        history = resp.json()['history']
+        assert len(history) == len(urls_and_codes), history
+
+        server_addr = self.mockurl('')
+
+        for entry, (url, code) in zip(history, urls_and_codes):
+            response_url = entry["request"]["url"]
+            assert response_url.startswith(server_addr), (response_url, server_addr)
+            if not full_urls:
+                response_url = response_url[len(server_addr):]
+            self.assertEqual(response_url, url)
+            self.assertEqual(entry["response"]["status"], code)
+
+        return history
 
 
 class IframesRenderTest(BaseRenderTest):

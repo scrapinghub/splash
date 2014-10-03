@@ -14,16 +14,17 @@ from splash.resources import RenderHtml, RenderPng, RenderJson
 
 NOT_DONE_YET = 1
 SPLASH_HEADER_PREFIX = 'x-splash-'
-SPLASH_RESOURCES = {'html': RenderHtml,
-                    'png': RenderPng,
-                    'json': RenderJson,
-                    }
+SPLASH_RESOURCES = {
+    'html': RenderHtml,
+    'png': RenderPng,
+    'json': RenderJson,
+}
 
 # Note the http header use '-' instead of '_' for the parameter names
 HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
                'viewport', 'js', 'js-source', 'images', 'filters']
 PNG_PARAMS = ['width', 'height']
-JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console']
+JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console', 'history', 'har']
 
 HOP_BY_HOP_HEADERS = [
     'Connection',

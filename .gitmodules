@@ -1,0 +1,4 @@
+[submodule "splash/vendor/harviewer"]
+	path = splash/vendor/harviewer
+	url = https://github.com/janodvarko/harviewer.git
+

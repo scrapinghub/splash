@@ -1,15 +1,22 @@
 from __future__ import absolute_import
-import os, json, base64
+import os
+import json
+import base64
+import copy
+import pprint
 from collections import namedtuple
 import sip
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QBuffer, QSize, QTimer, QObject, pyqtSlot, QByteArray
+from PyQt4.QtCore import (Qt, QUrl, QBuffer, QSize, QTimer, QObject,
+                          pyqtSlot, QByteArray)
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
 from splash.qtutils import qurl2ascii
+from splash.har.log import HarLog
+from splash.har.utils import without_private
 
 
 class RenderError(Exception):
@@ -19,6 +26,7 @@ class RenderError(Exception):
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
 
+
 class SplashQWebPage(QWebPage):
     """
     QWebPage subclass that:
@@ -26,15 +34,33 @@ class SplashQWebPage(QWebPage):
     * changes user agent;
     * logs JS console messages;
     * handles alert and confirm windows;
-    * returns additional info about render errors.
+    * returns additional info about render errors;
+    * logs HAR events.
     """
     errorInfo = None
-
     custom_user_agent = None
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
+        self.har_log = HarLog()
+
+        self.mainFrame().urlChanged.connect(self.onUrlChanged)
+        self.mainFrame().titleChanged.connect(self.onTitleChanged)
+        self.mainFrame().loadFinished.connect(self.onLoadFinished)
+        self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
+
+    def onTitleChanged(self, title):
+        self.har_log.store_title(title)
+
+    def onUrlChanged(self, url):
+        self.har_log.store_url(url.toString())
+
+    def onLoadFinished(self, ok):
+        self.har_log.store_timing("onLoad")
+
+    def onLayoutCompleted(self):
+        self.har_log.store_timing("onContentLoad")
 
     def javaScriptAlert(self, frame, msg):
         return
@@ -114,6 +140,7 @@ class WebpageRender(object):
     This class is not used directly; its subclasses are used.
     Subclasses choose how to return the result (as html, json, png).
     """
+
     def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
         self.network_manager = network_manager
         self.web_view = QWebView()
@@ -136,12 +163,18 @@ class WebpageRender(object):
         self.verbosity = verbosity
 
         self.deferred = defer.Deferred()
+        self._finished_timer = None
+        self._closing = False
 
     # ======= General request/response handling:
 
     def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False):
+
+        self.web_page.har_log.store_timing("_onStarted")
+
         self.url = url
+        self.history = []
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
         self.js_profile = js_profile
@@ -210,6 +243,8 @@ class WebpageRender(object):
         This method is called by a Pool after the rendering is done and
         the WebpageRender object is no longer needed.
         """
+        self._closing = True
+        self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
         self.web_page.deleteLater()
@@ -234,6 +269,10 @@ class WebpageRender(object):
         """
         This method is called when a QWebPage finished loading its contents.
         """
+        if self._closing:
+            self.log("loadFinished is ignored because WebpageRender is closing", min_level=3)
+            return
+
         if self.deferred.called:
             # sometimes this callback is called multiple times
             self.log("loadFinished called multiple times", min_level=1)
@@ -255,10 +294,20 @@ class WebpageRender(object):
             # signal in this case.
             return
 
-        if page_ok:
-            time_ms = int(self.wait_time * 1000)
-            self.log("loadFinished %s; waiting %sms" % (id(self.splash_request), time_ms))
-            QTimer.singleShot(time_ms, self._loadFinishedOK)
+        if page_ok:  # or maybe_redirect:
+            if self.wait_time == 0:
+                self.log("loadFinished %s; not waiting" % (id(self.splash_request)))
+                self._loadFinishedOK()
+            else:
+                time_ms = int(self.wait_time * 1000)
+                self.log("loadFinished %s; waiting %sms" % (id(self.splash_request), time_ms))
+                if self._finished_timer is not None:
+                    raise Exception("timer is not None!")
+
+                self._finished_timer = QTimer()
+                self._finished_timer.setSingleShot(True)
+                self._finished_timer.timeout.connect(self._loadFinishedOK)
+                self._finished_timer.start(time_ms)
         elif error_loading:
             self.log("loadFinished %s: %s" % (id(self.splash_request), str(self.web_page.errorInfo)), min_level=1)
             # XXX: maybe return a meaningful error page instead of generic
@@ -269,7 +318,17 @@ class WebpageRender(object):
             self.deferred.errback(RenderError())
 
     def _loadFinishedOK(self):
+        self._finished_timer = None
         self.log("_loadFinishedOK %s" % id(self.splash_request))
+
+        if self._closing:
+            self.log("loadFinishedOK is ignored because WebpageRender is closing", min_level=3)
+            return
+
+        self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
+        self.web_view.stop()
+
+        self.web_page.har_log.store_timing("_onPrepareStart")
         try:
             self._prepareRender()
             self.deferred.callback(self.render())
@@ -283,8 +342,17 @@ class WebpageRender(object):
         self.log("loadStarted %s" % id(self.splash_request), min_level=4)
 
     def _urlChanged(self, url):
+        cause_ev = self.web_page.har_log._prev_entry(unicode(url.toString()), -1)
+        if cause_ev:
+            self.history.append(without_private(cause_ev.data))
+
         msg = "mainFrame().urlChanged %s: %s" % (id(self.splash_request), qurl2ascii(url))
-        self.log(msg, min_level=4)
+        self.log(msg, min_level=3)
+
+        if self._finished_timer is not None:
+            self.log("Cancelling wait timer %s" % (id(self.splash_request)))
+            self._finished_timer.stop()
+            self._finished_timer = None
 
     def _frameLoadStarted(self):
         self.log("mainFrame().loadStarted %s" % id(self.splash_request), min_level=4)
@@ -306,27 +374,50 @@ class WebpageRender(object):
     def _getHtml(self):
         self.log("getting HTML %s" % id(self.splash_request))
         frame = self.web_page.mainFrame()
-        return bytes(frame.toHtml().toUtf8())
+        result = bytes(frame.toHtml().toUtf8())
+        self.web_page.har_log.store_timing("_onHtmlRendered")
+        return result
 
-    def _getPng(self, width=None, height=None):
+    def _getPng(self, width=None, height=None, b64=False):
         self.log("getting PNG %s" % id(self.splash_request))
 
         image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
         painter = QPainter(image)
         self.web_page.mainFrame().render(painter)
         painter.end()
+        self.web_page.har_log.store_timing("_onScreenshotPrepared")
+
         if width:
             image = image.scaledToWidth(width, Qt.SmoothTransformation)
         if height:
             image = image.copy(0, 0, width, height)
         b = QBuffer()
         image.save(b, "png")
-        return bytes(b.data())
+        result = bytes(b.data())
+        if b64:
+            result = base64.b64encode(result)
+        self.web_page.har_log.store_timing("_onPngRendered")
+        return result
 
     def _getIframes(self, children=True, html=True):
-        self.log("getting iframes %s" % id(self.splash_request))
+        self.log("getting iframes %s" % id(self.splash_request), min_level=3)
         frame = self.web_page.mainFrame()
-        return self._frameToDict(frame, children, html)
+        result = self._frameToDict(frame, children, html)
+        self.web_page.har_log.store_timing("_onIframesRendered")
+        return result
+
+    def _getHistory(self):
+        self.log("getting history %s" % id(self.splash_request), min_level=3)
+
+        hist = copy.deepcopy(self.history)
+        for entry in hist:
+            if entry is not None:
+                del entry['request']['queryString']
+        return hist
+
+    def _getHAR(self):
+        self.log("getting HAR %s" % id(self.splash_request), min_level=3)
+        return self.web_page.har_log.todict()
 
     # ======= Other helper methods:
 
@@ -342,6 +433,7 @@ class WebpageRender(object):
             self._setViewportSize(defaults.VIEWPORT_FALLBACK)
         else:
             self.web_page.setViewportSize(size)
+        self.web_page.har_log.store_timing("_onFullViewportSet")
 
     def _loadJsLibs(self, frame, js_profile):
         if js_profile:
@@ -364,6 +456,8 @@ class WebpageRender(object):
             js_output = bytes(ret.toString().toUtf8())
             if self.console:
                 js_console_output = [bytes(s.toUtf8()) for s in js_console.messages]
+
+        self.web_page.har_log.store_timing('_onCustomJsExecuted')
         return js_output, js_console_output
 
     def _frameToDict(self, frame, children=True, html=True):
@@ -426,11 +520,12 @@ class JsonRender(WebpageRender):
     def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
                         js_source=None, js_profile=None, images=None,
                         html=True, iframes=True, png=True, script=True, console=False,
-                        width=None, height=None):
+                        width=None, height=None, history=None, har=None):
         self.width = width
         self.height = height
         self.include = {'html': html, 'png': png, 'iframes': iframes,
-                        'script': script, 'console': console}
+                        'script': script, 'console': console,
+                        'history': history, 'har': har}
         super(JsonRender, self).doRequest(
             url=url,
             baseurl=baseurl,
@@ -446,11 +541,11 @@ class JsonRender(WebpageRender):
         res = {}
 
         if self.include['png']:
-            png = self._getPng(self.width, self.height)
-            res['png'] = base64.b64encode(png)
+            res['png'] = self._getPng(self.width, self.height, b64=True)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output
+
         if self.include['console'] and self.js_console_output:
             res['console'] = self.js_console_output
 
@@ -458,7 +553,21 @@ class JsonRender(WebpageRender):
             children=self.include['iframes'],
             html=self.include['html'],
         ))
+
+        if self.include['history']:
+            res['history'] = self._getHistory()
+
+        if self.include['har']:
+            res['har'] = self._getHAR()
+
+        # import pprint
+        # pprint.pprint(res)
         return json.dumps(res)
+
+
+class HarRender(WebpageRender):
+    def render(self):
+        return json.dumps(self._getHAR())
 
 
 class JavascriptConsole(QObject):

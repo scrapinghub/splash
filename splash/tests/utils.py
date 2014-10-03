@@ -129,10 +129,10 @@ class MockServer(object):
         self.proc.wait()
         time.sleep(0.2)
 
-    def url(self, path, gzip=True):
+    def url(self, path, gzip=True, host='localhost'):
         gzip_path = '' if not gzip else '/gzip'
-        return "http://localhost:%s%s/%s" % (
-            self.http_port, gzip_path, path.lstrip('/')
+        return "http://%s:%s%s/%s" % (
+            host, self.http_port, gzip_path, path.lstrip('/')
         )
 
     def https_url(self, path):

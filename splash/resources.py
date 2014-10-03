@@ -10,11 +10,15 @@ import json
 
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
+from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
 
-from splash.qtrender import HtmlRender, PngRender, JsonRender, RenderError
-from splash.utils import getarg, BadRequest, get_num_fds, get_leaks
+import splash
+from splash.qtrender import (
+    HtmlRender, PngRender, JsonRender, HarRender, RenderError,
+)
+from splash.utils import getarg, getarg_bool, BadRequest, get_num_fds, get_leaks
 from splash import sentry
 from splash import defaults
 
@@ -34,7 +38,7 @@ class RenderBase(Resource):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
         _check_filters(self.pool, request)
         pool_d = self._getRender(request)
-        timeout = getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
+        timeout = _get_timeout_arg(request)
         wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
@@ -114,6 +118,10 @@ class RenderBase(Resource):
         raise NotImplementedError()
 
 
+def _get_timeout_arg(request):
+    return getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
+
+
 def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
     if viewport is None:
         return
@@ -180,7 +188,7 @@ def _get_common_params(request, js_profiles_path):
     baseurl = getarg(request, "baseurl", None)
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
     js_source, js_profile = _get_javascript_params(request, js_profiles_path)
-    images = getarg(request, "images", defaults.AUTOLOAD_IMAGES, type=int, range=(0, 1))
+    images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES)
 
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
@@ -194,7 +202,8 @@ class RenderHtml(RenderBase):
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request):
-        return self.pool.render(HtmlRender, request, *_get_common_params(request, self.js_profiles_path))
+        params = _get_common_params(request, self.js_profiles_path)
+        return self.pool.render(HtmlRender, request, *params)
 
 
 class RenderPng(RenderBase):
@@ -202,7 +211,8 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        return self.pool.render(PngRender, request, *_get_png_params(request, self.js_profiles_path))
+        params = _get_png_params(request, self.js_profiles_path)
+        return self.pool.render(PngRender, request, *params)
 
 
 class RenderJson(RenderBase):
@@ -212,16 +222,26 @@ class RenderJson(RenderBase):
     def _getRender(self, request):
         url, baseurl, wait_time, viewport, js_source, js_profile, images, width, height = _get_png_params(request, self.js_profiles_path)
 
-        html = getarg(request, "html", defaults.DO_HTML, type=int, range=(0, 1))
-        iframes = getarg(request, "iframes", defaults.DO_IFRAMES, type=int, range=(0, 1))
-        png = getarg(request, "png", defaults.DO_PNG, type=int, range=(0, 1))
-        script = getarg(request, "script", defaults.SHOW_SCRIPT, type=int, range=(0, 1))
-        console = getarg(request, "console", defaults.SHOW_CONSOLE, type=int, range=(0, 1))
+        html = getarg_bool(request, "html", defaults.DO_HTML)
+        iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES)
+        png = getarg_bool(request, "png", defaults.DO_PNG)
+        script = getarg_bool(request, "script", defaults.SHOW_SCRIPT)
+        console = getarg_bool(request, "console", defaults.SHOW_CONSOLE)
+        history = getarg_bool(request, "history", defaults.SHOW_HISTORY)
+        har = getarg_bool(request, "har", defaults.SHOW_HAR)
 
         return self.pool.render(JsonRender, request,
                                 url, baseurl, wait_time, viewport, js_source, js_profile, images,
                                 html, iframes, png, script, console,
-                                width, height)
+                                width, height, history, har)
+
+class RenderHar(RenderBase):
+
+    content_type = "application/json"
+
+    def _getRender(self, request):
+        params = _get_common_params(request, self.js_profiles_path)
+        return self.pool.render(HarRender, request, *params)
 
 
 class Debug(Resource):
@@ -243,19 +263,295 @@ class Debug(Resource):
         })
 
 
-class Root(Resource):
+class HarViewer(Resource):
+    isLeaf = True
+    content_type = "text/html; charset=utf-8"
+
+    PATH = 'info'
 
     def __init__(self, pool):
         Resource.__init__(self)
+        self.pool = pool
+
+    def _validate_params(self, request):
+        _check_filters(self.pool, request)
+        return _get_common_params(request, self.pool.js_profiles_path)
+
+    def render_GET(self, request):
+        url, baseurl, wait_time, viewport, js_source, js_profile, images = self._validate_params(request)
+        if not url.lower().startswith('http'):
+            url = 'http://' + url
+
+        params = {
+            'url': url,
+            'baseurl': baseurl,
+            'wait': wait_time,
+            'viewport': viewport,
+            'js_source': js_source,
+            'js': js_profile,
+            'images': images,
+            'timeout': _get_timeout_arg(request),
+
+            'har': 1,
+            'png': 1,
+            'html': 1,
+        }
+        params = {k:v for k,v in params.items() if v is not None}
+
+        request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
+
+        return """<html>
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <title>Splash %(version)s | %(url)s</title>
+            <link rel="stylesheet" href="_harviewer/css/harViewer.css" type="text/css"/>
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+            <style>
+                /* fix bootstrap + harviewer compatibility issues */
+                .label { color: #000; font-weight: normal; font-size: 100%%; }
+                table { border-collapse: inherit; }
+                #content pre {
+                    border: 0;
+                    padding: 1px;
+                    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+                    font-size: 13px;
+                }
+                .netInfoParamName { font-size: 13px; }
+                #content * { box-sizing: content-box; }
+                .netInfoHeadersText { font-size: 13px; }
+                .tab {font-weight: inherit}  /* nicer Headers tabs */
+                .netInfoHeadersGroup, .netInfoCookiesGroup { font-weight: normal; }
+                .harBody { margin-bottom: 2em; }
+                .tabBodies {overflow: hidden;}  /* fix an issue with extra horizontal scrollbar */
+
+                /* remove unsupported buttons */
+                .netCol.netOptionsCol {display: none;}
+
+                /* styles for custom events */
+                .netPageTimingBar {opacity: 0.3; width: 2px; }
+                .timeInfoTip { width: 250px !important; }
+                .customEventBar { background-color: gray; }
+                ._onStarted { background-color: marine; }
+                ._onPrepareStart { background-color: green; }
+                ._onCustomJsExecuted { background-color: green; }
+                ._onScreenshotPrepared { background-color: magenta; }
+                ._onPngRendered { background-color: magenta; }
+                ._onIframesRendered { background-color: black; }
+            </style>
+        </head>
+        <body class="harBody" style="color:#000">
+            <div class="container"> <!-- style="margin: 0 auto; width: 95%%;"-->
+
+                <div class="navbar navbar-default">
+                  <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-responsive-collapse">
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                      <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="/">Splash v%(version)s</a>
+                  </div>
+                  <div class="navbar-collapse collapse navbar-responsive-collapse">
+                    <ul class="nav navbar-nav">
+                      <li><a href="http://splash.readthedocs.org">Documentation</a></li>
+                      <li><a href="https://github.com/scrapinghub/splash">Source Code</a></li>
+                    </ul>
+
+                    <form class="navbar-form navbar-right" method="GET" action="/info">
+                      <input type="hidden" name="wait" value="0.5">
+                      <input type="hidden" name="images" value="1">
+                      <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
+                      <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
+                      <button class="btn btn-success" type="submit">Render!</button>
+                    </form>
+
+                    <ul class="nav navbar-nav navbar-right">
+                      <li><a id="status">Initializing...</a></li>
+                    </ul>
+
+                  </div>
+                </div>
+
+                <div class="pagePreview" style="display:none">
+                    <img class='center-block'>
+                    <br>
+                    <h3>Network Activity</h3>
+                </div>
+
+                <div id="content" version="Splash %(version)s"></div>
+
+                <div class="pagePreview" style="display:none">
+                    <h3>HTML</h3>
+                    <textarea style="width: 100%%;" rows=15 id="renderedHTML"></textarea>
+                    <br>
+                </div>
+            </div>
+
+            <script src="_harviewer/scripts/jquery.js"></script>
+            <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
+
+            <script>
+            var params = %(params)s;
+            $("#content").bind("onViewerPreInit", function(event){
+                // Get application object
+                var viewer = event.target.repObject;
+
+                // Remove unnecessary/unsupported tabs
+                viewer.removeTab("Home");
+                viewer.removeTab("DOM");
+                viewer.removeTab("About");
+                viewer.removeTab("Schema");
+                // Hide the tab bar
+                viewer.showTabBar(false);
+
+                // Remove toolbar buttons
+                var preview = viewer.getTab("Preview");
+                preview.toolbar.removeButton("download");
+                preview.toolbar.removeButton("clear");
+                preview.toolbar.removeButton("showTimeline");
+
+                var events = [
+                    {name: "_onStarted", description: "Page processing is started"},
+                    {name: "_onPrepareStart", description: "Rendering begins"},
+                    {name: "_onFullViewportSet", description: "Viewport is changed to full"},
+                    {name: "_onCustomJsExecuted", description: "Custom JavaScript is executed"},
+                    {name: "_onScreenshotPrepared", description: "Screenshot is taken"},
+                    {name: "_onPngRendered", description: "Screenshot is encoded"},
+                    {name: "_onHtmlRendered", description: "HTML is rendered"},
+                    {name: "_onIframesRendered", description: "Iframes info is calculated"},
+                ];
+
+                for (var i=0; i<events.length; i++){
+                    var obj = events[i];
+                    obj["classes"] = "customEventBar " + obj["name"];
+                    preview.addPageTiming(obj);
+                }
+
+                // preview.toolbar.removeButton("showStats");
+
+                // Make sure stats are visible to the user by default
+                preview.showStats(true);
+
+            });
+
+            $("#content").bind("onViewerHARLoaded", function(event){
+                $("#status").hide();
+            });
+
+            $("#content").bind("onViewerInit", function(event){
+                var viewer = event.target.repObject;
+                $("#status").text("Rendering, please wait..");
+
+                $.getJSON("/render.json", params).done(function(data){
+                    var har = data['har'];
+                    var png = data['png'];
+                    var html = data['html'];
+
+                    viewer.appendPreview(har);
+                    $("#status").text("Building UI..");
+
+                    $(".pagePreview img").attr("src", "data:image/png;base64,"+png);
+
+                    $("#renderedHTML").val(html);
+                    $(".pagePreview").show();
+                }).fail(function(data){
+                    $("#status").text("Error occured");
+                });
+            });
+            </script>
+        </body>
+        </html>
+        """ % dict(version=splash.__version__, params=json.dumps(params), url=url)
+
+
+class Root(Resource):
+    HARVIEWER_PATH = os.path.join(
+        os.path.dirname(__file__),
+        'vendor',
+        'harviewer',
+        'webapp',
+    )
+
+    def __init__(self, pool, ui_enabled):
+        Resource.__init__(self)
+        self.ui_enabled = ui_enabled
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
+        self.putChild("render.har", RenderHar(pool))
         self.putChild("debug", Debug(pool))
 
+        if self.ui_enabled:
+            self.putChild("_harviewer", File(self.HARVIEWER_PATH))
+            self.putChild(HarViewer.PATH, HarViewer(pool))
+
     def getChild(self, name, request):
-        if name == "":
+        if name == "" and self.ui_enabled:
             return self
         return Resource.getChild(self, name, request)
 
     def render_GET(self, request):
-        return ""
+        return """<html>
+        <head>
+            <title>Splash %(version)s</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body>
+            <div class="container">
+                <div class="page-header">
+                    <h1>Splash v%(version)s</h1>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-6">
+                        <p class="lead">
+                        Splash is a javascript rendering service.
+                        It's a lightweight browser with an HTTP API,
+                        implemented in Python using Twisted and QT.
+                        </p>
+
+                        <ul>
+                            <li>Process multiple webpages in parallel</li>
+                            <li>Get HTML results and/or take screenshots</li>
+                            <li>Turn OFF images or use <a href="https://adblockplus.org">Adblock Plus</a>
+                                rules to make rendering faster</li>
+                            <li>Execute custom JavaScript in page context</li>
+                            <li>Transparently plug into existing software using Proxy interface</li>
+                            <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format</li>
+                        </ul>
+
+                        <p class="lead">
+                            Splash is free & open source.
+                            Commercial support is also available by
+                            <a href="http://scrapinghub.com/">Scrapinghub</a>.
+                        </p>
+
+                    </div>
+                    <div class="col-lg-6">
+                        <form class="form-horizontal" method="GET" action="/info">
+                          <input type="hidden" name="wait" value="0.5">
+                          <input type="hidden" name="images" value="1">
+                          <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
+
+                          <fieldset>
+                            <div class="">
+                              <div class="input-group col-lg-10">
+                                <input class="form-control" type="text" placeholder="Paste an URL" value="http://google.com" type="text" name="url">
+                                <span class="input-group-btn">
+                                  <button class="btn btn-success" type="submit">Render me!</button>
+                                </span>
+                              </div>
+                            </div>
+                          </fieldset>
+                        </form>
+                        <p>
+                            <a class="btn btn-default" href="http://splash.readthedocs.org/">Documentation</a>
+                            <a class="btn btn-default" href="https://github.com/scrapinghub/splash">Source code</a>
+                        </p>
+
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>""" % dict(version=splash.__version__)
