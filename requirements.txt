@@ -9,5 +9,5 @@ adblockparser >= 0.2
 pyOpenSSL
 requests >= 1.0
 Pillow
-jsonschema
+jsonschema >= 2.0
 strict-rfc3339

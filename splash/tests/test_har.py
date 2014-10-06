@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import unittest
+import warnings
 
-from splash.har.schema import validate
+from splash.har import schema
 from splash.har.utils import entries2pages
 from splash.tests import test_redirects
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
@@ -12,8 +13,19 @@ from .test_render import BaseRenderTest
 class BaseHarRenderTest(BaseRenderTest):
     render_format = 'har'
 
+    try:
+        schema.get_validator()
+        VALIDATION_SUPPORTED = True
+    except Exception as e:
+        warnings.warn("jsonschema validation is not supported and will be skipped. "
+                      "Please install jsonschema >= 2.0 or jsonschema >= 1.0 + isodate. "
+                      "Exception: %r" % e)
+        VALIDATION_SUPPORTED = False
+
     def assertValidHarData(self, data, url):
-        validate(data)
+        if self.VALIDATION_SUPPORTED:
+            schema.validate(data)
+
         first_url = data["log"]["entries"][0]["request"]["url"]
         self.assertEqual(first_url, url)
 

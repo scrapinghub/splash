@@ -7,9 +7,16 @@ from __future__ import absolute_import
 
 def validate(instance):
     """ Validate HAR data; raise an exception if it is invalid """
+    validator = get_validator()
+    validator.check_schema(SCHEMA)
+    validator.validate(instance)
+
+
+def get_validator():
+    """ Return jsonschema validator to validate SCHEMA """
     import jsonschema
     format_checker = jsonschema.FormatChecker(['date-time'])
-    return jsonschema.validate(instance, SCHEMA, format_checker=format_checker)
+    return jsonschema.Draft4Validator(SCHEMA, format_checker=format_checker)
 
 
 SCHEMA = {
