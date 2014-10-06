@@ -41,6 +41,45 @@ OS X + Docker
 .. _Boot2Docker: http://boot2docker.io/
 
 
+.. _splash and docker:
+
+Customizing Dockerized Splash
+-----------------------------
+
+To run Splash with custom options pass them to ``docker run``.
+For example, let's increase log verbosity::
+
+   $ docker run -p 8050:8050 scrapinghub/splash -v3
+
+To see all possible options pass ``--help``. Not all options will work the
+same inside Docker: changing ports doesn't make sense (use docker run options
+instead), and paths are paths in the container.
+
+To set custom :ref:`request filters` use -v Docker option. First, create
+a folder with request filters on your local filesystem, then make it available
+to the container::
+
+   $ docker run -p 8050:8050 -v <filters-dir>:/etc/splash/filters scrapinghub/splash
+
+Docker Data Volume Containers can also be used. Check
+https://docs.docker.com/userguide/dockervolumes/ for more info.
+
+:ref:`proxy profiles` and :ref:`javascript profiles` can be added the same way::
+
+   $ docker run -p 8050:8050 \
+         -v <proxy-profiles-dir>:/etc/splash/proxy-profiles \
+         -v <js-profiles-dir>:/etc/splash/js-profiles \
+         scrapinghub/splash
+
+.. warning::
+
+    Folder sharing doesn't work on OS X
+    (see https://github.com/docker/docker/issues/4023), so ``-v`` option
+    won't work os OS X. It should be fixed in future Docker & Boot2Docker
+    releases. For now use one of the workarounds mentioned in issue comments
+    or clone Splash repo and customize its Dockerfile.
+
+
 Ubuntu 12.04 (manual way)
 -------------------------
 

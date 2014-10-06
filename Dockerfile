@@ -23,5 +23,13 @@ RUN pip install \
 
 ADD . /app
 RUN pip install /app
+
+VOLUME ["/etc/splash/proxy-profiles", "/etc/splash/js-profiles", "/etc/splash/filters"]
+
 EXPOSE 8050 8051 5023
-CMD ["/app/bin/splash"]
+ENTRYPOINT [ \
+    "/app/bin/splash", \
+    "--proxy-profiles-path",  "/etc/splash/proxy-profiles", \
+    "--js-profiles-path", "/etc/splash/js-profiles", \
+    "--filters-path", "/etc/splash/filters" \
+]
