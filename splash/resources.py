@@ -23,7 +23,16 @@ from splash import sentry
 from splash import defaults
 
 
-class RenderBase(Resource):
+class _ValidatingResource(Resource):
+    def render(self, request):
+        try:
+            return Resource.render(self, request)
+        except BadRequest as e:
+            request.setResponseCode(400)
+            return str(e) + "\n"
+
+
+class RenderBase(_ValidatingResource):
 
     isLeaf = True
     content_type = "text/html; charset=utf-8"
@@ -61,13 +70,6 @@ class RenderBase(Resource):
                 return
 
         return self.render_GET(request)
-
-    def render(self, request):
-        try:
-            return Resource.render(self, request)
-        except BadRequest as e:
-            request.setResponseCode(400)
-            return str(e) + "\n"
 
     def _cancelTimer(self, _, timer):
         #log.msg("_cancelTimer")
@@ -143,9 +145,10 @@ def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
 def _check_filters(pool, request):
     network_manager = pool.network_manager
     if not hasattr(network_manager, 'unknownFilters'):
+        # allow custom non-filtering network access managers
         return
 
-    filter_names = getarg(request, 'filters', "")
+    filter_names = getarg(request, 'filters', '')
     unknown_filters = network_manager.unknownFilters(filter_names)
     if unknown_filters:
         raise BadRequest("Invalid filter names: %s" % unknown_filters)
@@ -263,7 +266,7 @@ class Debug(Resource):
         })
 
 
-class HarViewer(Resource):
+class HarViewer(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
