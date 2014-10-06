@@ -226,7 +226,7 @@ def default_splash_server(portnum, slots=None,
         verbosity=verbosity
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
-    get_splash_proxy_factory = _default_proxy_config(proxy_profiles_path)
+    get_splash_proxy_factory = _default_proxy_profiles(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access)
     return splash_server(portnum, slots, manager, get_splash_proxy_factory,
@@ -252,19 +252,19 @@ def _default_cache(cache_enabled, cache_path, cache_size):
         return cache.construct(cache_path, cache_size)
 
 
-def _default_proxy_config(proxy_profiles_path):
+def _default_proxy_profiles(proxy_profiles_path):
     from twisted.python import log
     from splash import proxy
 
     if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
         log.msg("--proxy-profiles-path does not exist or it is not a folder; "
                 "proxy won't be used")
-        proxy_enabled = False
+        proxy_profiles_enabled = False
     else:
-        proxy_enabled = proxy_profiles_path is not None
+        proxy_profiles_enabled = proxy_profiles_path is not None
 
-    if proxy_enabled:
-        log.msg("proxy support is enabled, proxy profiles path: %s" % proxy_profiles_path)
+    if proxy_profiles_enabled:
+        log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
         def get_splash_proxy_factory(request):
             return proxy.ProfilesSplashProxyFactory(proxy_profiles_path, request)
         return get_splash_proxy_factory
