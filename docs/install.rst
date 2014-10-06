@@ -41,10 +41,33 @@ OS X + Docker
 .. _Boot2Docker: http://boot2docker.io/
 
 
+Ubuntu 12.04 (manual way)
+-------------------------
+
+1. Install system dependencies::
+
+       $ sudo add-apt-repository -y ppa:pi-rho/security
+       $ sudo apt-get update
+       $ sudo apt-get install libre2-dev
+       $ sudo apt-get install netbase ca-certificates python \
+                              python-dev build-essential libicu48 \
+                              xvfb libqt4-webkit python-twisted python-qt4
+
+2. TODO: install Python dependencies using pip, clone repo, chdir to it,
+   start splash.
+
+Requirements
+============
+
+.. literalinclude:: ../requirements.txt
+
 .. _splash and docker:
 
 Customizing Dockerized Splash
------------------------------
+=============================
+
+Passing Custom Options
+----------------------
 
 To run Splash with custom options pass them to ``docker run``.
 For example, let's increase log verbosity::
@@ -54,6 +77,9 @@ For example, let's increase log verbosity::
 To see all possible options pass ``--help``. Not all options will work the
 same inside Docker: changing ports doesn't make sense (use docker run options
 instead), and paths are paths in the container.
+
+Folders Sharing
+---------------
 
 To set custom :ref:`request filters` use -v Docker option. First, create
 a folder with request filters on your local filesystem, then make it available
@@ -75,28 +101,19 @@ https://docs.docker.com/userguide/dockervolumes/ for more info.
 
     Folder sharing doesn't work on OS X
     (see https://github.com/docker/docker/issues/4023), so ``-v`` option
-    won't work os OS X. It should be fixed in future Docker & Boot2Docker
+    doesn't work os OS X. It should be fixed in future Docker & Boot2Docker
     releases. For now use one of the workarounds mentioned in issue comments
     or clone Splash repo and customize its Dockerfile.
 
+Splash in Production
+--------------------
 
-Ubuntu 12.04 (manual way)
--------------------------
+In production you may want to daemonize Splash, start it on boot and restart
+on failures. Since Docker 1.2 an easy way to do this is to use ``--restart``
+and ``-d`` options together::
 
-1. Install system dependencies::
+    $ docker run -d -p 8050:8050 --restart=always scrapinghub/splash
 
-       $ sudo add-apt-repository -y ppa:pi-rho/security
-       $ sudo apt-get update
-       $ sudo apt-get install libre2-dev
-       $ sudo apt-get install netbase ca-certificates python \
-                              python-dev build-essential libicu48 \
-                              xvfb libqt4-webkit python-twisted python-qt4
-
-2. TODO: install Python dependencies using pip, clone repo, chdir to it,
-   start splash.
-
-Requirements
-============
-
-.. literalinclude:: ../requirements.txt
+Another way to do that is to use standard tools like upstart,
+systemd or supervisor.
 
