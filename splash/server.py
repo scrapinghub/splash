@@ -8,6 +8,7 @@ import signal
 import time
 from psutil import phymem_usage
 from splash import defaults, __version__
+from splash import xvfb
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -90,6 +91,8 @@ def parse_opts():
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
+    op.add_option("--disable-xvfb", action="store_true", default=False,
+        help="disable Xvfb auto start")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5")
     op.add_option("--version", action="store_true",
@@ -295,34 +298,38 @@ def main():
         print(__version__)
         sys.exit(0)
 
-    install_qtreactor(opts.verbosity >= 5)
-
     start_logging(opts)
     log_splash_version()
     bump_nofile_limit()
-    monitor_maxrss(opts.maxrss)
-    if opts.manhole:
-        manhole_server()
 
-    default_splash_server(portnum=opts.port,
-                  slots=opts.slots,
-                  cache_enabled=opts.cache_enabled,
-                  cache_path=opts.cache_path,
-                  cache_size=opts.cache_size,
-                  proxy_profiles_path=opts.proxy_profiles_path,
-                  js_profiles_path=opts.js_profiles_path,
-                  js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
-                  disable_proxy=opts.disable_proxy,
-                  proxy_portnum=opts.proxy_portnum,
-                  filters_path=opts.filters_path,
-                  allowed_schemes=opts.allowed_schemes,
-                  ui_enabled=not opts.disable_ui,
-                  verbosity=opts.verbosity)
-    signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
+    with xvfb.autostart(opts.disable_xvfb) as x:
+        xvfb.log_options(x)
 
-    from twisted.internet import reactor
-    reactor.callWhenRunning(splash_started, opts, sys.stderr)
-    reactor.run()
+        install_qtreactor(opts.verbosity >= 5)
+
+        monitor_maxrss(opts.maxrss)
+        if opts.manhole:
+            manhole_server()
+
+        default_splash_server(portnum=opts.port,
+                      slots=opts.slots,
+                      cache_enabled=opts.cache_enabled,
+                      cache_path=opts.cache_path,
+                      cache_size=opts.cache_size,
+                      proxy_profiles_path=opts.proxy_profiles_path,
+                      js_profiles_path=opts.js_profiles_path,
+                      js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
+                      disable_proxy=opts.disable_proxy,
+                      proxy_portnum=opts.proxy_portnum,
+                      filters_path=opts.filters_path,
+                      allowed_schemes=opts.allowed_schemes,
+                      ui_enabled=not opts.disable_ui,
+                      verbosity=opts.verbosity)
+        signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
+
+        from twisted.internet import reactor
+        reactor.callWhenRunning(splash_started, opts, sys.stderr)
+        reactor.run()
 
 
 if __name__ == "__main__":
