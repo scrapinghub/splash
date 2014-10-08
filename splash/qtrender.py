@@ -500,20 +500,10 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
-                        js_source=None, js_profile=None, images=None,
-                        width=None, height=None):
-        self.width = width
-        self.height = height
-        super(PngRender, self).doRequest(
-            url=url,
-            baseurl=baseurl,
-            wait_time=wait_time,
-            viewport=viewport,
-            js_source=js_source,
-            js_profile=js_profile,
-            images=images
-        )
+    def doRequest(self, **kwargs):
+        self.width = kwargs.pop('width')
+        self.height = kwargs.pop('height')
+        return super(PngRender, self).doRequest(**kwargs)
 
     def render(self):
         return self._getPng(self.width, self.height)
@@ -521,25 +511,15 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
-                        js_source=None, js_profile=None, images=None,
-                        html=True, iframes=True, png=True, script=True, console=False,
-                        width=None, height=None, history=None, har=None):
-        self.width = width
-        self.height = height
-        self.include = {'html': html, 'png': png, 'iframes': iframes,
-                        'script': script, 'console': console,
-                        'history': history, 'har': har}
-        super(JsonRender, self).doRequest(
-            url=url,
-            baseurl=baseurl,
-            wait_time=wait_time,
-            viewport=viewport,
-            js_source=js_source,
-            js_profile=js_profile,
-            images=images,
-            console=console
-        )
+    def doRequest(self, **kwargs):
+        self.width = kwargs.pop('width')
+        self.height = kwargs.pop('height')
+        self.include = {
+            inc: kwargs.pop(inc)
+            for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
+        }
+        self.include['console'] = kwargs.get('console')
+        super(JsonRender, self).doRequest(**kwargs)
 
     def render(self):
         res = {}
