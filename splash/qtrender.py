@@ -169,7 +169,8 @@ class WebpageRender(object):
     # ======= General request/response handling:
 
     def start(self, url, baseurl=None, wait_time=None, viewport=None,
-                  js_source=None, js_profile=None, images=None, console=False):
+                  js_source=None, js_profile=None, images=None, console=False,
+                  headers=None):
 
         self.web_page.har_log.store_timing("_onStarted")
 
@@ -199,18 +200,12 @@ class WebpageRender(object):
         # do the request
         request = QNetworkRequest()
         request.setUrl(QUrl(url.decode('utf8')))
+        self._setHeaders(request, headers)
 
         if self.viewport != 'full':
             # viewport='full' can't be set if content is not loaded yet,
             # but in other cases it is better to set it earlier.
             self._setViewportSize(self.viewport)
-
-        if getattr(self.splash_request, 'pass_headers', False):
-            headers = self.splash_request.getAllHeaders()
-            for name, value in headers.items():
-                request.setRawHeader(name, value)
-                if name.lower() == 'user-agent':
-                    self.web_page.custom_user_agent = value
 
         if baseurl:
             # If baseurl is used, we download the page manually,
@@ -250,6 +245,21 @@ class WebpageRender(object):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+
+    def _setHeaders(self, request, headers):
+        """ Set HTTP headers for the ``request``. """
+        if getattr(self.splash_request, 'pass_headers', False):
+            # use headers from splash_request
+            headers = [
+                (name, value)
+                for name, values in self.splash_request.requestHeaders.getAllRawHeaders()
+                for value in values
+            ]
+
+        for name, value in headers or []:
+            request.setRawHeader(name, value)
+            if name.lower() == 'user-agent':
+                self.web_page.custom_user_agent = value
 
     def _requestFinished(self):
         """
