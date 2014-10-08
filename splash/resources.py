@@ -199,7 +199,7 @@ def _get_common_params(request, js_profiles_path):
     res = dict(
         url = getarg(request, "url"),
         baseurl = getarg(request, "baseurl", None),
-        wait_time = wait_time,
+        wait = wait_time,
         viewport = viewport,
         images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
     )

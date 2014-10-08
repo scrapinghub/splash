@@ -168,7 +168,7 @@ class WebpageRender(object):
 
     # ======= General request/response handling:
 
-    def start(self, url, baseurl=None, wait_time=None, viewport=None,
+    def start(self, url, baseurl=None, wait=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False,
                   headers=None, http_method='GET', body=None):
 
@@ -177,8 +177,8 @@ class WebpageRender(object):
         self.url = url
         self.history = []
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, images)
+        self.wait_time = defaults.WAIT_TIME if wait is None else wait
 
-        self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
