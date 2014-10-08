@@ -99,10 +99,10 @@ https://docs.docker.com/userguide/dockervolumes/ for more info.
 
 .. warning::
 
-    Folder sharing doesn't work on OS X and Windows
-    (see https://github.com/docker/docker/issues/4023), so ``-v`` option
-    doesn't work os OS X. It should be fixed in future Docker & Boot2Docker
-    releases. For now use one of the workarounds mentioned in issue comments
+    Folder sharing (``-v`` option) doesn't work on OS X and Windows
+    (see https://github.com/docker/docker/issues/4023).
+    It should be fixed in future Docker & Boot2Docker releases.
+    For now use one of the workarounds mentioned in issue comments
     or clone Splash repo and customize its Dockerfile.
 
 Splash in Production
