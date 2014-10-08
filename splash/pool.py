@@ -49,7 +49,11 @@ class RenderPool(object):
         pool_d.addBoth(self._close_render, render, slot)
 
         self.log("SLOT %d is creating request %s" % (slot, id(splash_request)))
-        render.doRequest(**kwargs)
+        try:
+            render.doRequest(**kwargs)
+        except:
+            render.deferred.errback()
+            raise
         self.log("SLOT %d is working on %s" % (slot, id(splash_request)))
 
         return render.deferred
