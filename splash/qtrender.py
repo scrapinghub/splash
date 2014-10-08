@@ -26,7 +26,6 @@ class RenderError(Exception):
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
 
-
 class SplashQWebPage(QWebPage):
     """
     QWebPage subclass that:
@@ -148,6 +147,7 @@ class WebpageRender(object):
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
+
         settings = self.web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
@@ -201,7 +201,8 @@ class WebpageRender(object):
         request.setUrl(QUrl(url.decode('utf8')))
 
         if self.viewport != 'full':
-            # viewport='full' can't be set if content is not loaded yet
+            # viewport='full' can't be set if content is not loaded yet,
+            # but in other cases it is better to set it earlier.
             self._setViewportSize(self.viewport)
 
         if getattr(self.splash_request, 'pass_headers', False):
