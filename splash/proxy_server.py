@@ -170,7 +170,7 @@ class SplashProxy(http.HTTPChannel):
     requestFactory = SplashProxyRequest
 
 
-class SplashProxyFactory(http.HTTPFactory):
+class SplashProxyServerFactory(http.HTTPFactory):
     protocol = SplashProxy
 
     def __init__(self, pool, logPath=None, timeout=60 * 60 * 12):
