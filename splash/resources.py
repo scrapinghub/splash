@@ -155,15 +155,18 @@ def _check_filters(pool, request):
 
 
 def _get_javascript_params(request, js_profiles_path):
-    js_profile = _check_js_profile(request, js_profiles_path, getarg(request, 'js', None))
+    return dict(
+        js_profile=_check_js_profile(request, js_profiles_path, getarg(request, 'js', None)),
+        js_source=_get_js_source(request),
+    )
+
+
+def _get_js_source(request):
     js_source = getarg(request, 'js_source', None)
     if js_source is not None:
-        return js_source, js_profile
-
+        return js_source
     if request.method == 'POST':
-        return request.content.getvalue(), js_profile
-    else:
-        return None, js_profile
+        return request.content.getvalue()
 
 
 def _check_js_profile(request, js_profiles_path, js_profile):
@@ -179,13 +182,11 @@ def _check_js_profile(request, js_profiles_path, js_profile):
         return profile_dir
 
 
-def _get_png_params(request, js_profiles_path):
-    params = _get_common_params(request, js_profiles_path)
-    params.update(
+def _get_png_params(request):
+    return dict(
         width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH)),
         height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH)),
     )
-    return params
 
 
 def _get_common_params(request, js_profiles_path):
@@ -195,17 +196,15 @@ def _get_common_params(request, js_profiles_path):
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
-    js_source, js_profile = _get_javascript_params(request, js_profiles_path)
-
-    return dict(
+    res = dict(
         url = getarg(request, "url"),
         baseurl = getarg(request, "baseurl", None),
         wait_time = wait_time,
         viewport = viewport,
-        js_source = js_source,
-        js_profile = js_profile,
         images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
     )
+    res.update(_get_javascript_params(request, js_profiles_path))
+    return res
 
 
 class RenderHtml(RenderBase):
@@ -222,7 +221,8 @@ class RenderPng(RenderBase):
     content_type = "image/png"
 
     def _getRender(self, request):
-        params = _get_png_params(request, self.js_profiles_path)
+        params = _get_common_params(request, self.js_profiles_path)
+        params.update(_get_png_params(request))
         return self.pool.render(PngRender, request, **params)
 
 
@@ -231,7 +231,8 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        params = _get_png_params(request, self.js_profiles_path)
+        params = _get_common_params(request, self.js_profiles_path)
+        params.update(_get_png_params(request))
         params.update(
             html = getarg_bool(request, "html", defaults.DO_HTML),
             iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES),
