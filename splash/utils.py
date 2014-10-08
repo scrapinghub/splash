@@ -37,8 +37,10 @@ def get_num_fds():
 
 def get_leaks():
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
-        'QWebView', 'HtmlRender', 'PngRender', 'QNetworkRequest', 'QSize',
-        'QBuffer', 'QPainter', 'QImage'))
+        'QWebView', 'HtmlRender', 'PngRender', 'JsonRender', 'HarRender',
+        'QNetworkRequest', 'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl',
+        'JavascriptConsole', 'ProfilesSplashProxyFactory',
+        'SplashProxyRequest', 'Request', 'Deferred'))
     leaks = defaultdict(int)
     gc.collect()
     for o in gc.get_objects():
