@@ -180,24 +180,32 @@ def _check_js_profile(request, js_profiles_path, js_profile):
 
 
 def _get_png_params(request, js_profiles_path):
-    url, baseurl, wait_time, viewport, js_source, js_profile, images = _get_common_params(request, js_profiles_path)
-    width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH))
-    height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH))
-    return url, baseurl, wait_time, viewport, js_source, js_profile, images, width, height
+    params = _get_common_params(request, js_profiles_path)
+    params.update(
+        width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH)),
+        height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH)),
+    )
+    return params
 
 
 def _get_common_params(request, js_profiles_path):
-    url = getarg(request, "url")
-    baseurl = getarg(request, "baseurl", None)
+    """ Return arguments common for all endpoints """
     wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
-    js_source, js_profile = _get_javascript_params(request, js_profiles_path)
-    images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES)
-
     viewport = getarg(request, "viewport", defaults.VIEWPORT)
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
-    return url, baseurl, wait_time, viewport, js_source, js_profile, images
+    js_source, js_profile = _get_javascript_params(request, js_profiles_path)
+
+    return dict(
+        url = getarg(request, "url"),
+        baseurl = getarg(request, "baseurl", None),
+        wait_time = wait_time,
+        viewport = viewport,
+        js_source = js_source,
+        js_profile = js_profile,
+        images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
+    )
 
 
 class RenderHtml(RenderBase):
@@ -206,7 +214,7 @@ class RenderHtml(RenderBase):
 
     def _getRender(self, request):
         params = _get_common_params(request, self.js_profiles_path)
-        return self.pool.render(HtmlRender, request, *params)
+        return self.pool.render(HtmlRender, request, **params)
 
 
 class RenderPng(RenderBase):
@@ -215,7 +223,7 @@ class RenderPng(RenderBase):
 
     def _getRender(self, request):
         params = _get_png_params(request, self.js_profiles_path)
-        return self.pool.render(PngRender, request, *params)
+        return self.pool.render(PngRender, request, **params)
 
 
 class RenderJson(RenderBase):
@@ -223,20 +231,18 @@ class RenderJson(RenderBase):
     content_type = "application/json"
 
     def _getRender(self, request):
-        url, baseurl, wait_time, viewport, js_source, js_profile, images, width, height = _get_png_params(request, self.js_profiles_path)
+        params = _get_png_params(request, self.js_profiles_path)
+        params.update(
+            html = getarg_bool(request, "html", defaults.DO_HTML),
+            iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES),
+            png = getarg_bool(request, "png", defaults.DO_PNG),
+            script = getarg_bool(request, "script", defaults.SHOW_SCRIPT),
+            console = getarg_bool(request, "console", defaults.SHOW_CONSOLE),
+            history = getarg_bool(request, "history", defaults.SHOW_HISTORY),
+            har = getarg_bool(request, "har", defaults.SHOW_HAR),
+        )
+        return self.pool.render(JsonRender, request, **params)
 
-        html = getarg_bool(request, "html", defaults.DO_HTML)
-        iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES)
-        png = getarg_bool(request, "png", defaults.DO_PNG)
-        script = getarg_bool(request, "script", defaults.SHOW_SCRIPT)
-        console = getarg_bool(request, "console", defaults.SHOW_CONSOLE)
-        history = getarg_bool(request, "history", defaults.SHOW_HISTORY)
-        har = getarg_bool(request, "har", defaults.SHOW_HAR)
-
-        return self.pool.render(JsonRender, request,
-                                url, baseurl, wait_time, viewport, js_source, js_profile, images,
-                                html, iframes, png, script, console,
-                                width, height, history, har)
 
 class RenderHar(RenderBase):
 
@@ -244,7 +250,7 @@ class RenderHar(RenderBase):
 
     def _getRender(self, request):
         params = _get_common_params(request, self.js_profiles_path)
-        return self.pool.render(HarRender, request, *params)
+        return self.pool.render(HarRender, request, **params)
 
 
 class Debug(Resource):
@@ -281,24 +287,18 @@ class HarViewer(_ValidatingResource):
         return _get_common_params(request, self.pool.js_profiles_path)
 
     def render_GET(self, request):
-        url, baseurl, wait_time, viewport, js_source, js_profile, images = self._validate_params(request)
+        params = self._validate_params(request)
+        url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
 
-        params = {
-            'url': url,
-            'baseurl': baseurl,
-            'wait': wait_time,
-            'viewport': viewport,
-            'js_source': js_source,
-            'js': js_profile,
-            'images': images,
+        params.update({
             'timeout': _get_timeout_arg(request),
 
             'har': 1,
             'png': 1,
             'html': 1,
-        }
+        })
         params = {k:v for k,v in params.items() if v is not None}
 
         request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
