@@ -39,7 +39,7 @@ HOP_BY_HOP_HEADERS = [
 
 
 class SplashProxyRequest(http.Request):
-    pass_headers = True
+    inspect_me = True
 
     def __init__(self, channel, queued):
         http.Request.__init__(self, channel, queued)

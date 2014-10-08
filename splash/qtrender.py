@@ -14,7 +14,7 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
-from splash.qtutils import qurl2ascii
+from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS
 from splash.har.log import HarLog
 from splash.har.utils import without_private
 
@@ -170,7 +170,7 @@ class WebpageRender(object):
 
     def start(self, url, baseurl=None, wait_time=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False,
-                  headers=None):
+                  headers=None, http_method='GET', body=None):
 
         self.web_page.har_log.store_timing("_onStarted")
 
@@ -202,6 +202,11 @@ class WebpageRender(object):
         request.setUrl(QUrl(url.decode('utf8')))
         self._setHeaders(request, headers)
 
+        if getattr(self.splash_request, 'inspect_me', False):
+            # set http method and request body from the request
+            http_method = self.splash_request.method
+            body = self.splash_request.content.getvalue()
+
         if self.viewport != 'full':
             # viewport='full' can't be set if content is not loaded yet,
             # but in other cases it is better to set it earlier.
@@ -211,20 +216,20 @@ class WebpageRender(object):
             # If baseurl is used, we download the page manually,
             # then set its contents to the QWebPage and let it
             # download related resources and render the result.
+            if http_method != 'GET':
+                raise NotImplementedError()
+
             self._baseUrl = QUrl(baseurl.decode('utf8'))
             request.setOriginatingObject(self.web_page.mainFrame())
             self._reply = self.network_manager.get(request)
             self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
-
-            if self.splash_request.method == 'POST':
-                body = self.splash_request.content.getvalue()
-                self.web_page.mainFrame().load(
-                    request, QNetworkAccessManager.PostOperation, body
-                )
+            meth = OPERATION_QT_CONSTANTS[http_method]
+            if body is None:  # PyQT doesn't support body=None
+                self.web_page.mainFrame().load(request, meth)
             else:
-                self.web_page.mainFrame().load(request)
+                self.web_page.mainFrame().load(request, meth, body)
 
     def render(self):
         """
@@ -248,7 +253,7 @@ class WebpageRender(object):
 
     def _setHeaders(self, request, headers):
         """ Set HTTP headers for the ``request``. """
-        if getattr(self.splash_request, 'pass_headers', False):
+        if getattr(self.splash_request, 'inspect_me', False):
             # use headers from splash_request
             headers = [
                 (name, value)

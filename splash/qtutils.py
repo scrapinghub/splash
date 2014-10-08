@@ -18,6 +18,7 @@ OPERATION_NAMES = {
     QNetworkAccessManager.PutOperation: 'PUT',
     QNetworkAccessManager.DeleteOperation: 'DELETE',
 }
+OPERATION_QT_CONSTANTS = {v:k for k,v in OPERATION_NAMES.items()}
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
