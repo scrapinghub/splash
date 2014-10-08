@@ -27,5 +27,6 @@ script
             --js-profiles-path=$jsprofilespath \
             --filters-path=$filterspath \
             --manhole \
+            ${SPLASH_OPTS} \
             >$logdir/splash.out 2>$logdir/splash.err
 end script
