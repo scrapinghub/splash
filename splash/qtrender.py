@@ -168,20 +168,20 @@ class WebpageRender(object):
 
     # ======= General request/response handling:
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
+    def start(self, url, baseurl=None, wait_time=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False):
 
         self.web_page.har_log.store_timing("_onStarted")
 
         self.url = url
         self.history = []
+        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, images)
+
         self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
-
-        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, images)
 
         # setup logging
         if self.verbosity >= 4:
@@ -500,10 +500,10 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, **kwargs):
+    def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
-        return super(PngRender, self).doRequest(**kwargs)
+        return super(PngRender, self).start(**kwargs)
 
     def render(self):
         return self._getPng(self.width, self.height)
@@ -511,7 +511,7 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, **kwargs):
+    def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
         self.include = {
@@ -519,7 +519,7 @@ class JsonRender(WebpageRender):
             for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
         }
         self.include['console'] = kwargs.get('console')
-        super(JsonRender, self).doRequest(**kwargs)
+        super(JsonRender, self).start(**kwargs)
 
     def render(self):
         res = {}

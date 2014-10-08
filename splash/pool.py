@@ -50,7 +50,7 @@ class RenderPool(object):
 
         self.log("SLOT %d is creating request %s" % (slot, id(splash_request)))
         try:
-            render.doRequest(**kwargs)
+            render.start(**kwargs)
         except:
             render.deferred.errback()
             raise
