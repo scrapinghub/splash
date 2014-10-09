@@ -4,7 +4,7 @@ import os
 import shutil
 import unittest
 import requests
-from splash.proxy import BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
+from splash.proxy import _BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import TestServers
 
@@ -22,10 +22,10 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
             ]
         }
         params.update(kwargs)
-        return BlackWhiteSplashProxyFactory(**params)
+        return _BlackWhiteSplashProxyFactory(**params)
 
     def test_noproxy(self):
-        f = BlackWhiteSplashProxyFactory()
+        f = _BlackWhiteSplashProxyFactory()
         self.assertFalse(f.shouldUseProxyList('http', 'crawlera.com'))
 
     def test_whitelist(self):

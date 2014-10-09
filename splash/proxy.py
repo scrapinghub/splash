@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Splash can send outgoing network requests through an HTTP proxy server.
-This modules provides classes which define which requests to proxy.
+This modules provides classes ("proxy factories") which define
+which proxies to use for a given request. QNetworkManager calls
+a proxy factory for each outgoing request.
 
 Not to be confused with Splash Proxy mode when Splash itself works as
 an HTTP proxy (see :mod:`splash.proxy_server`).
@@ -12,7 +14,7 @@ from PyQt4.QtNetwork import QNetworkProxy
 from splash.utils import getarg, BadRequest
 
 
-class BlackWhiteSplashProxyFactory(object):
+class _BlackWhiteSplashProxyFactory(object):
     """
     Proxy factory that enables non-default proxy list when
     requested URL is matched by one of whitelist patterns
@@ -61,7 +63,7 @@ class BlackWhiteSplashProxyFactory(object):
         return proxies
 
 
-class ProfilesSplashProxyFactory(BlackWhiteSplashProxyFactory):
+class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
     """
     This proxy factory reads BlackWhiteQNetworkProxyFactory
     parameters from ini file; name of the profile can be set per-request
@@ -90,12 +92,10 @@ class ProfilesSplashProxyFactory(BlackWhiteSplashProxyFactory):
     If GET parameter is 'none' or empty ('') no proxy will be used even if
     ``default.ini`` is present.
     """
-    GET_ARGUMENT = 'proxy'
     NO_PROXY_PROFILE_MSG = 'Proxy profile does not exist'
 
-    def __init__(self, proxy_profiles_path, request):
+    def __init__(self, proxy_profiles_path, profile_name):
         self.proxy_profiles_path = proxy_profiles_path
-        profile_name = getarg(request, self.GET_ARGUMENT, None)
         blacklist, whitelist, proxy_list = self._getFilterParams(profile_name)
         super(ProfilesSplashProxyFactory, self).__init__(blacklist, whitelist, proxy_list)
 
@@ -116,7 +116,7 @@ class ProfilesSplashProxyFactory(BlackWhiteSplashProxyFactory):
         return self._parseIni(ini_path)
 
     def _getIniPath(self, profile_name):
-        proxy_profiles_path =  os.path.abspath(self.proxy_profiles_path)
+        proxy_profiles_path = os.path.abspath(self.proxy_profiles_path)
         filename = profile_name + '.ini'
         ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
         if not ini_path.startswith(proxy_profiles_path + os.path.sep):

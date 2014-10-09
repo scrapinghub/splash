@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from twisted.internet import defer
 from twisted.python import log
 
@@ -6,9 +7,9 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, network_manager, get_splash_proxy_factory, js_profiles_path, verbosity=1):
+    def __init__(self, slots, network_manager, splash_proxy_factory_cls, js_profiles_path, verbosity=1):
         self.network_manager = network_manager
-        self.get_splash_proxy_factory = get_splash_proxy_factory
+        self.splash_proxy_factory_cls = splash_proxy_factory_cls or (lambda profile_name: None)
         self.js_profiles_path = js_profiles_path
         self.active = set()
         self.queue = defer.DeferredQueue()
@@ -16,15 +17,11 @@ class RenderPool(object):
         for n in range(slots):
             self._wait_for_render(None, n, log=False)
 
-    def render(self, rendercls, splash_request, **kwargs):
-        if self.get_splash_proxy_factory:
-            splash_proxy_factory = self.get_splash_proxy_factory(splash_request)
-        else:
-            splash_proxy_factory = None
-
+    def render(self, rendercls, splash_request, proxy, **kwargs):
+        splash_proxy_factory = self.splash_proxy_factory_cls(proxy)
         pool_d = defer.Deferred()
-        self.log("queued %s" % id(splash_request))
         self.queue.put((rendercls, splash_request, splash_proxy_factory, kwargs, pool_d))
+        self.log("queued %s" % id(splash_request))
         return pool_d
 
     def _wait_for_render(self, _, slot, log=True):

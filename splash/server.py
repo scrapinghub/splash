@@ -5,6 +5,7 @@ import optparse
 import resource
 import traceback
 import signal
+import functools
 from psutil import phymem_usage
 from splash import defaults, __version__
 from splash import xvfb
@@ -124,7 +125,7 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None,
+def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
                   ui_enabled=True, verbosity=None):
     from twisted.internet import reactor
@@ -142,7 +143,7 @@ def splash_server(portnum, slots, network_manager, get_splash_proxy_factory=None
     pool = RenderPool(
         slots=slots,
         network_manager=network_manager,
-        get_splash_proxy_factory=get_splash_proxy_factory,
+        splash_proxy_factory_cls=splash_proxy_factory_cls,
         js_profiles_path=js_profiles_path,
         verbosity=verbosity,
     )
@@ -200,13 +201,21 @@ def default_splash_server(portnum, slots=None,
         verbosity=verbosity
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
-    get_splash_proxy_factory = _default_proxy_profiles(proxy_profiles_path)
+
+    splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access)
-    return splash_server(portnum, slots, manager, get_splash_proxy_factory,
-                         js_profiles_path, disable_proxy, proxy_portnum,
-                         ui_enabled,
-                         verbosity)
+    return splash_server(
+        portnum=portnum,
+        slots=slots,
+        network_manager=manager,
+        splash_proxy_factory_cls=splash_proxy_factory_cls,
+        js_profiles_path=js_profiles_path,
+        disable_proxy=disable_proxy,
+        proxy_portnum=proxy_portnum,
+        ui_enabled=ui_enabled,
+        verbosity=verbosity
+    )
 
 
 def _default_cache(cache_enabled, cache_path, cache_size):
@@ -226,7 +235,7 @@ def _default_cache(cache_enabled, cache_path, cache_size):
         return cache.construct(cache_path, cache_size)
 
 
-def _default_proxy_profiles(proxy_profiles_path):
+def _default_proxy_factory(proxy_profiles_path):
     from twisted.python import log
     from splash import proxy
 
@@ -239,9 +248,7 @@ def _default_proxy_profiles(proxy_profiles_path):
 
     if proxy_profiles_enabled:
         log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
-        def get_splash_proxy_factory(request):
-            return proxy.ProfilesSplashProxyFactory(proxy_profiles_path, request)
-        return get_splash_proxy_factory
+        return functools.partial(proxy.ProfilesSplashProxyFactory, proxy_profiles_path)
 
 
 def _check_js_profiles_path(js_profiles_path):

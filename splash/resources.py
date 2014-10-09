@@ -202,6 +202,8 @@ def _get_common_params(request, js_profiles_path):
         wait = wait_time,
         viewport = viewport,
         images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
+
+        proxy = getarg(request, "proxy", None),
     )
     res.update(_get_javascript_params(request, js_profiles_path))
     return res

@@ -156,7 +156,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         This context manager temporary sets a proxy based on request options.
         """
         old_proxy = self.proxy()
-        splash_proxy_factory = self._getSplashProxyFactory(request)
+        splash_proxy_factory = self._getWebPageAttribute(request, 'splash_proxy_factory')
         if splash_proxy_factory:
             proxy_query = QNetworkProxyQuery(request.url())
             proxy = splash_proxy_factory.queryProxy(proxy_query)[0]
@@ -189,9 +189,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if har_log is None:
             return
         return har_log.get_mutable_entry(self._getRequestId(request), create)
-
-    def _getSplashProxyFactory(self, request):
-        return self._getWebPageAttribute(request, 'splash_proxy_factory')
 
     def _getWebPageAttribute(self, request, attribute):
         web_frame = request.originatingObject()
