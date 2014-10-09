@@ -55,6 +55,7 @@ class RenderBase(_ValidatingResource):
         pool_d.addCallback(self._writeOutput, request)
         pool_d.addErrback(self._timeoutError, request)
         pool_d.addErrback(self._renderError, request)
+        pool_d.addErrback(self._badRequest, request)
         pool_d.addErrback(self._internalError, request)
         pool_d.addBoth(self._finishRequest, request)
         request.starttime = time.time()
@@ -110,6 +111,11 @@ class RenderBase(_ValidatingResource):
         request.write(failure.getErrorMessage())
         log.err()
         sentry.capture(failure)
+
+    def _badRequest(self, failure, request):
+        failure.trap(BadRequest)
+        request.setResponseCode(400)
+        request.write(str(failure.value) + "\n")
 
     def _finishRequest(self, _, request):
         if not request._disconnected:
