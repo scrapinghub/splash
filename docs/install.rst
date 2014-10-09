@@ -61,3 +61,59 @@ Requirements
 
 .. literalinclude:: ../requirements.txt
 
+.. _splash and docker:
+
+Customizing Dockerized Splash
+=============================
+
+Passing Custom Options
+----------------------
+
+To run Splash with custom options pass them to ``docker run``.
+For example, let's increase log verbosity::
+
+   $ docker run -p 8050:8050 scrapinghub/splash -v3
+
+To see all possible options pass ``--help``. Not all options will work the
+same inside Docker: changing ports doesn't make sense (use docker run options
+instead), and paths are paths in the container.
+
+Folders Sharing
+---------------
+
+To set custom :ref:`request filters` use -v Docker option. First, create
+a folder with request filters on your local filesystem, then make it available
+to the container::
+
+   $ docker run -p 8050:8050 -v <filters-dir>:/etc/splash/filters scrapinghub/splash
+
+Docker Data Volume Containers can also be used. Check
+https://docs.docker.com/userguide/dockervolumes/ for more info.
+
+:ref:`proxy profiles` and :ref:`javascript profiles` can be added the same way::
+
+   $ docker run -p 8050:8050 \
+         -v <proxy-profiles-dir>:/etc/splash/proxy-profiles \
+         -v <js-profiles-dir>:/etc/splash/js-profiles \
+         scrapinghub/splash
+
+.. warning::
+
+    Folder sharing (``-v`` option) doesn't work on OS X and Windows
+    (see https://github.com/docker/docker/issues/4023).
+    It should be fixed in future Docker & Boot2Docker releases.
+    For now use one of the workarounds mentioned in issue comments
+    or clone Splash repo and customize its Dockerfile.
+
+Splash in Production
+--------------------
+
+In production you may want to daemonize Splash, start it on boot and restart
+on failures. Since Docker 1.2 an easy way to do this is to use ``--restart``
+and ``-d`` options together::
+
+    $ docker run -d -p 8050:8050 --restart=always scrapinghub/splash
+
+Another way to do that is to use standard tools like upstart,
+systemd or supervisor.
+

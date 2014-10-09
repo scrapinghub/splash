@@ -1,0 +1,12 @@
+.git
+build/
+dist/
+notebooks/
+splash.egg-info/
+docs/
+*.pyc
+splash/vendor/harviewer/build-tools
+splash/vendor/harviewer/releases
+splash/vendor/harviewer/selenium
+splash/vendor/harviewer/wordpress
+splash/vendor/harviewer/requirejs

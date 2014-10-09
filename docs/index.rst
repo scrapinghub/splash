@@ -426,6 +426,10 @@ To enable javascript profiles support, run splash server with the
 
     python -m splash.server --js-profiles-path=/etc/splash/js-profiles
 
+.. note::
+
+    See also: :ref:`splash and docker`.
+
 Then create a directory with the name of the profile and place inside it the
 javascript files to load (note they must be utf-8 encoded).
 The files are loaded in the order they appear in the filesystem.
@@ -487,6 +491,11 @@ To activate request filtering support start splash with ``--filters-path``
 option::
 
     python -m splash.server --filters-path=/etc/splash/filters
+
+.. note::
+
+    See also: :ref:`splash and docker`.
+
 
 The folder ``--filters-path`` points to should contain ``.txt`` files with
 filter rules in Adblock Plus format. You may download ``easylist.txt``
@@ -565,6 +574,10 @@ To enable proxy profiles support, run splash server with
 ``--proxy-profiles-path=<path to a folder with proxy profiles>`` option::
 
     python -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
+
+.. note::
+
+    See also: :ref:`splash and docker`.
 
 Then create an INI file with "proxy profile" config inside the
 specified folder, e.g. ``/etc/splash/proxy-profiles/mywebsite.ini``.
