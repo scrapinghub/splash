@@ -75,8 +75,7 @@ class BaseRenderTest(unittest.TestCase):
             try:
                 from twisted.web.server import GzipEncoderFactory
             except ImportError:
-                from pytest import SkipTest
-                raise SkipTest("Gzip support is not available in old Twisted")
+                pytest.skip("Gzip support is not available in old Twisted")
 
     def mockurl(self, path, host='localhost'):
         return self.ts.mockserver.url(path, self.use_gzip, host=host)
