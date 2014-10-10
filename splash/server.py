@@ -5,43 +5,14 @@ import optparse
 import resource
 import traceback
 import signal
-import time
 from psutil import phymem_usage
 from splash import defaults, __version__
 from splash import xvfb
-
-# A global reference must be kept to QApplication, otherwise the process will
-# segfault
-qtapp = None
+from splash.qtutils import init_qt_app
 
 
 def install_qtreactor(verbose):
-    global qtapp
-
-    from twisted.python import log
-    from PyQt4.QtGui import QApplication
-    from PyQt4.QtCore import QAbstractEventDispatcher
-
-    class QApp(QApplication):
-
-        blockedAt = 0
-
-        def __init__(self, *args):
-            super(QApp, self).__init__(*args)
-            if verbose:
-                disp = QAbstractEventDispatcher.instance()
-                disp.aboutToBlock.connect(self.aboutToBlock)
-                disp.awake.connect(self.awake)
-
-        def aboutToBlock(self):
-            self.blockedAt = time.time()
-            log.msg("aboutToBlock", system="QAbstractEventDispatcher")
-
-        def awake(self):
-            diff = time.time() - self.blockedAt
-            log.msg("awake; block time: %0.4f" % diff, system="QAbstractEventDispatcher")
-
-    qtapp = QApp(sys.argv)
+    init_qt_app(verbose)
     import qt4reactor
     qt4reactor.install()
 

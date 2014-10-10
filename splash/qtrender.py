@@ -14,7 +14,7 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
-from splash.qtutils import qurl2ascii
+from splash.qtutils import qurl2ascii, get_qt_app
 from splash.har.log import HarLog
 from splash.har.utils import without_private
 
@@ -144,6 +144,8 @@ class WebpageRender(object):
     def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
         self.network_manager = network_manager
         self.web_view = QWebView()
+        geo = get_qt_app().desktop().geometry()
+        self.web_view.setGeometry(geo)
         self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
