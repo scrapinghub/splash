@@ -2,8 +2,10 @@
 import unittest, requests, json, base64, urllib
 from functools import wraps
 from cStringIO import StringIO
+
+import pytest
 from PIL import Image
-from splash.tests import ts
+# from splash.tests import ts
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 from splash.tests.utils import SplashServer
 
@@ -34,9 +36,12 @@ class DirectRequestHandler(object):
 
     render_format = "html"
 
+    def __init__(self, ts):
+        self.ts = ts
+
     @property
     def host(self):
-        return "localhost:%s" % ts.splashserver.portnum
+        return "localhost:%s" % self.ts.splashserver.portnum
 
     def request(self, query, render_format=None, headers=None):
         render_format = render_format or self.render_format
@@ -57,6 +62,8 @@ class DirectRequestHandler(object):
             return requests.post(url, data=payload, headers=headers)
 
 
+@pytest.mark.usefixtures("class_ts")
+@pytest.mark.usefixtures("print_ts_output")
 class BaseRenderTest(unittest.TestCase):
 
     render_format = "html"
@@ -68,19 +75,14 @@ class BaseRenderTest(unittest.TestCase):
             try:
                 from twisted.web.server import GzipEncoderFactory
             except ImportError:
-                from nose import SkipTest
+                from pytest import SkipTest
                 raise SkipTest("Gzip support is not available in old Twisted")
 
     def mockurl(self, path, host='localhost'):
-        return ts.mockserver.url(path, self.use_gzip, host=host)
-
-    def tearDown(self):
-        # we must consume splash output because subprocess.PIPE is used
-        ts.print_output()
-        super(BaseRenderTest, self).tearDown()
+        return self.ts.mockserver.url(path, self.use_gzip, host=host)
 
     def _get_handler(self):
-        handler = self.request_handler()
+        handler = self.request_handler(self.ts)
         handler.render_format = self.render_format
         return handler
 
@@ -144,7 +146,7 @@ class RenderHtmlTest(_RenderTest):
 
     @https_only
     def test_jsrender_https(self):
-        self._test_jsrender(ts.mockserver.https_url("jsrender"))
+        self._test_jsrender(self.ts.mockserver.https_url("jsrender"))
 
     def _test_jsrender(self, url):
         r = self.request({"url": url})
@@ -238,7 +240,7 @@ class RenderPngTest(_RenderTest):
 
     @https_only
     def test_ok_https(self):
-        self._test_ok(ts.mockserver.https_url("jsrender"))
+        self._test_ok(self.ts.mockserver.https_url("jsrender"))
 
     def _test_ok(self, url):
         r = self.request("url=%s" % url)
@@ -308,7 +310,7 @@ class RenderJsonTest(_RenderTest):
 
     @https_only
     def test_jsrender_https_html(self):
-        self.assertSameHtml(ts.mockserver.https_url("jsrender"))
+        self.assertSameHtml(self.ts.mockserver.https_url("jsrender"))
 
     def test_jsalert_html(self):
         self.assertSameHtml(self.mockurl("jsalert"), {'timeout': 3})
@@ -328,7 +330,7 @@ class RenderJsonTest(_RenderTest):
 
     @https_only
     def test_jsrender_https_png(self):
-        self.assertSamePng(ts.mockserver.https_url("jsrender"))
+        self.assertSamePng(self.ts.mockserver.https_url("jsrender"))
 
     def test_jsalert_png(self):
         self.assertSamePng(self.mockurl("jsalert"), {'timeout': 3})
@@ -357,7 +359,7 @@ class RenderJsonTest(_RenderTest):
 
     @https_only
     def test_fields_all(self):
-        query = {'url': ts.mockserver.https_url("iframes"),
+        query = {'url': self.ts.mockserver.https_url("iframes"),
                  "html": 1, "png": 1, "iframes": 1}
 
         res = self.request(query).json()
@@ -374,7 +376,7 @@ class RenderJsonTest(_RenderTest):
     @https_only
     def test_fields_no_html(self):
         # turn off returning HTML
-        query = {'url': ts.mockserver.https_url("iframes"),
+        query = {'url': self.ts.mockserver.https_url("iframes"),
                  'html': 0, 'png': 1, 'iframes': 1}
 
         res = self.request(query).json()
@@ -393,7 +395,7 @@ class RenderJsonTest(_RenderTest):
     @https_only
     def test_fields_no_screenshots(self):
         # turn off screenshots
-        query = {'url': ts.mockserver.https_url("iframes"),
+        query = {'url': self.ts.mockserver.https_url("iframes"),
                  'html': 1, 'png': 0, 'iframes': 1}
         res = self.request(query).json()
         self.assertFieldsInResponse(res, ["url", "requestedUrl", "childFrames",
@@ -402,7 +404,7 @@ class RenderJsonTest(_RenderTest):
 
     @https_only
     def test_fields_no_iframes(self):
-        query = {'url': ts.mockserver.https_url("iframes"),
+        query = {'url': self.ts.mockserver.https_url("iframes"),
                  'html': 1, 'png': 1, 'iframes': 0}
         res = self.request(query).json()
         self.assertFieldsInResponse(res, ["url", "requestedUrl", "geometry",
@@ -411,7 +413,7 @@ class RenderJsonTest(_RenderTest):
 
     @https_only
     def test_fields_default(self):
-        query = {'url': ts.mockserver.https_url("iframes")}
+        query = {'url': self.ts.mockserver.https_url("iframes")}
         res = self.request(query).json()
         self.assertFieldsInResponse(res, ["url", "requestedUrl", "geometry",
                                           "title"])
@@ -574,7 +576,7 @@ class IframesRenderTest(BaseRenderTest):
                    for child in result['childFrames'])
 
     def _iframes_request(self, params):
-        query = {'url': ts.mockserver.https_url("iframes"),
+        query = {'url': self.ts.mockserver.https_url("iframes"),
                  'iframes': 1, 'html': 1}
         query.update(params or {})
         return self.request(query).json()
@@ -686,19 +688,21 @@ test('Changed');"""
                          payload=js_source, headers=req_headers)
 
 
+@pytest.mark.usefixtures("class_ts")
+@pytest.mark.usefixtures("print_ts_output")
 class TestTestSetup(unittest.TestCase):
-    def tearDown(self):
-        # we must consume splash output because subprocess.PIPE is used
-        ts.print_output()
+    # def tearDown(self):
+    #     # we must consume splash output because subprocess.PIPE is used
+    #     self.ts.print_output()
 
     def test_mockserver_works(self):
-        r = requests.get(ts.mockserver.url("jsrender", gzip=False))
+        r = requests.get(self.ts.mockserver.url("jsrender", gzip=False))
         self.assertEqual(r.status_code, 200)
 
     def test_mockserver_https_works(self):
-        r = requests.get(ts.mockserver.https_url("jsrender"), verify=False)
+        r = requests.get(self.ts.mockserver.https_url("jsrender"), verify=False)
         self.assertEqual(r.status_code, 200)
 
     def test_splashserver_works(self):
-        r = requests.get('http://localhost:%s/debug' % ts.splashserver.portnum)
+        r = requests.get('http://localhost:%s/debug' % self.ts.splashserver.portnum)
         self.assertEqual(r.status_code, 200)

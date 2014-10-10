@@ -2,7 +2,8 @@ import unittest
 import urlparse
 import json
 import requests
-from splash.tests import ts, test_render, test_redirects, test_request_filters
+import pytest
+from splash.tests import test_render, test_redirects, test_request_filters
 
 
 SPLASH_HEADER_PREFIX = 'x-splash-'
@@ -12,9 +13,12 @@ class ProxyRequestHandler(object):
 
     render_format = "html"
 
+    def __init__(self, ts):
+        self.ts = ts
+
     @property
     def proxies(self):
-        return {'http': ts.splashserver.proxy_url()}
+        return {'http': self.ts.splashserver.proxy_url()}
 
     def request(self, query, render_format=None, headers=None, proxies=None):
         url, headers = self._request_params(query, render_format, headers)
@@ -171,8 +175,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
         self.assertNotIn("foo", r.text.lower())
         self.assertNotIn("bar", r.text.lower())
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
+    @pytest.mark.xfail
     def test_post_request_baseurl(self):
         r = self.post({
             "url": self.mockurl("postrequest"),
@@ -181,8 +184,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
         self.assertEqual(r.status_code, 200)
         self.assertTrue("From POST" in r.text)
 
-    # unittest.expectedFailure doesn't work with nose
-    @unittest.skipIf(True, "expected failure")
+    @pytest.mark.xfail
     def test_post_headers_baseurl(self):
         headers = {
             'X-Custom-Header1': 'some-val1',

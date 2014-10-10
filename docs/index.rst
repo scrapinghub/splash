@@ -736,7 +736,7 @@ Functional Tests
 
 Run with::
 
-    nosetests
+    py.test
 
 Stress tests
 ============
