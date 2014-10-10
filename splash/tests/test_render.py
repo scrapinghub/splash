@@ -5,7 +5,6 @@ from cStringIO import StringIO
 
 import pytest
 from PIL import Image
-# from splash.tests import ts
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 from splash.tests.utils import SplashServer
 
@@ -690,9 +689,6 @@ test('Changed');"""
 @pytest.mark.usefixtures("class_ts")
 @pytest.mark.usefixtures("print_ts_output")
 class TestTestSetup(unittest.TestCase):
-    # def tearDown(self):
-    #     # we must consume splash output because subprocess.PIPE is used
-    #     self.ts.print_output()
 
     def test_mockserver_works(self):
         r = requests.get(self.ts.mockserver.url("jsrender", gzip=False))
