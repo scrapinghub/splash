@@ -1,4 +1,4 @@
 export DISPLAY=:0
 
 test:
-	nosetests
+	py.test

@@ -13,11 +13,11 @@ virtualenv:
 
 before_install:
     - sudo apt-get install python-twisted python-qt4
-    - pip install qt4reactor psutil requests Pillow jsonschema strict-rfc3339 xvfbwrapper
+    - pip install qt4reactor psutil requests Pillow jsonschema strict-rfc3339 xvfbwrapper pytest
     - "if [[ $SYSTEM_TWISTED == 'false' ]]; then pip install -UI twisted service_identity; fi"
 
 install:
     - python setup.py install
 
 script:
-    - nosetests
+    - py.test
