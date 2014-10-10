@@ -423,10 +423,13 @@ class WebpageRender(object):
 
     # ======= Other helper methods:
 
-    def _setViewportSize(self, viewport):
-        w, h = map(int, viewport.split('x'))
-        size = QSize(w, h)
+    def _setViewportSize(self, size):
+        if not isinstance(size, QSize):
+            w, h = map(int, size.split('x'))
+            size = QSize(w, h)
         self.web_page.setViewportSize(size)
+        w, h = int(size.width()), int(size.height())
+        self.log("viewport size for %s is set to %sx%s" % (id(self.splash_request), w, h))
 
     def _setFullViewport(self):
         size = self.web_page.mainFrame().contentsSize()
@@ -434,7 +437,7 @@ class WebpageRender(object):
             self.log("contentsSize method doesn't work %s" % id(self.splash_request), min_level=1)
             self._setViewportSize(defaults.VIEWPORT_FALLBACK)
         else:
-            self.web_page.setViewportSize(size)
+            self._setViewportSize(size)
         self.web_page.har_log.store_timing("_onFullViewportSet")
 
     def _loadJsLibs(self, frame, js_profile):
