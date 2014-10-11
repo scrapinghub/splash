@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-import unittest, requests, json, base64, urllib
+import unittest
+import json
+import base64
+import urllib
 from functools import wraps
 from cStringIO import StringIO
 
 import pytest
+import requests
 from PIL import Image
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 from splash.tests.utils import SplashServer
@@ -108,7 +112,7 @@ class _RenderTest(BaseRenderTest):
 
     @skip_proxy
     def test_missing_url(self):
-        r = self.request("")
+        r = self.request({})
         self.assertEqual(r.status_code, 400)
         self.assertTrue("url" in r.text)
 

@@ -62,13 +62,17 @@ class RenderBase(_ValidatingResource):
         return NOT_DONE_YET
 
     def render_POST(self, request):
-        # this check is required only in request not coming from the splash proxy service.
-        if not self.is_proxy_request:
-            content_type = request.getHeader('content-type')
-            if content_type != 'application/javascript':
-                request.setResponseCode(415)
-                request.write("Request content-type not supported\n")
-                return
+        if self.is_proxy_request:
+            # If request comes from splash proxy service don't handle
+            # special content-types.
+            # TODO: pass http method to WebpageRender explicitly.
+            return self.render_GET(request)
+
+        content_type = request.getHeader('content-type')
+        if content_type not in {'application/javascript', 'application/json'}:
+            request.setResponseCode(415)
+            request.write("Request content-type not supported\n")
+            return
 
         return self.render_GET(request)
 
@@ -202,9 +206,16 @@ def _get_common_params(request, js_profiles_path):
     _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
                     defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
 
+    url = getarg(request, "url", type=None)
+    baseurl = getarg(request, "baseurl", default=None, type=None)
+    if isinstance(url, unicode):
+        url = url.encode('utf8')
+    if isinstance(baseurl, unicode):
+        baseurl = baseurl.encode('utf8')
+
     res = dict(
-        url = getarg(request, "url"),
-        baseurl = getarg(request, "baseurl", None),
+        url = url,
+        baseurl = baseurl,
         wait = wait_time,
         viewport = viewport,
         images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),

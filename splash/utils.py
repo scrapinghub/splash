@@ -1,10 +1,14 @@
+from __future__ import absolute_import
+
 import os
 import gc
 import sys
+import json
 import inspect
 import resource
 from collections import defaultdict
 import psutil
+
 
 _REQUIRED = object()
 
@@ -14,8 +18,16 @@ class BadRequest(Exception):
 
 
 def getarg(request, name, default=_REQUIRED, type=str, range=None):
-    if name in request.args:
-        value = type(request.args[name][0])
+    """
+    Return the value of argument named `name` from twisted.web.http.Request
+    `request`. Argument can be GET argument, POST argument sent as form data
+    or a value from a JSON dict if the request is a POST request with
+    ``content-type: application/json``.
+    """
+    value = _getvalue(request, name)
+    if value is not None:
+        if type is not None:
+            value = type(value)
         if range is not None and not (range[0] <= value <= range[1]):
             raise BadRequest("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
         return value
@@ -27,6 +39,17 @@ def getarg(request, name, default=_REQUIRED, type=str, range=None):
 
 def getarg_bool(request, name, default=_REQUIRED):
     return getarg(request, name, default, type=int, range=(0, 1))
+
+
+def _getvalue(request, name):
+    value = request.args.get(name, [None])[0]
+    if request.method == 'POST':
+        content_type = request.getHeader('content-type')
+        if content_type == 'application/json':
+            if not hasattr(request, '_json_data'):
+                request._json_data = json.load(request.content, encoding='utf8') or {}
+            return request._json_data.get(name, value)
+    return value
 
 
 PID = os.getpid()
