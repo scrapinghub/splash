@@ -14,7 +14,7 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
-from splash.qtutils import qurl2ascii
+from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS
 from splash.har.log import HarLog
 from splash.har.utils import without_private
 
@@ -24,7 +24,6 @@ class RenderError(Exception):
 
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
-
 
 
 class SplashQWebPage(QWebPage):
@@ -148,6 +147,7 @@ class WebpageRender(object):
         self.web_page.setNetworkAccessManager(self.network_manager)
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
+
         settings = self.web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
@@ -168,20 +168,21 @@ class WebpageRender(object):
 
     # ======= General request/response handling:
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
-                  js_source=None, js_profile=None, images=None, console=False):
+    def start(self, url, baseurl=None, wait=None, viewport=None,
+                  js_source=None, js_profile=None, images=None, console=False,
+                  headers=None, http_method='GET', body=None):
 
         self.web_page.har_log.store_timing("_onStarted")
 
         self.url = url
         self.history = []
-        self.wait_time = defaults.WAIT_TIME if wait_time is None else wait_time
+        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, images)
+        self.wait_time = defaults.WAIT_TIME if wait is None else wait
+
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
         self.viewport = defaults.VIEWPORT if viewport is None else viewport
-
-        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, images)
 
         # setup logging
         if self.verbosity >= 4:
@@ -199,36 +200,36 @@ class WebpageRender(object):
         # do the request
         request = QNetworkRequest()
         request.setUrl(QUrl(url.decode('utf8')))
+        self._setHeaders(request, headers)
+
+        if getattr(self.splash_request, 'inspect_me', False):
+            # Set http method and request body from the request
+            http_method = self.splash_request.method
+            body = self.splash_request.content.getvalue()
 
         if self.viewport != 'full':
-            # viewport='full' can't be set if content is not loaded yet
+            # viewport='full' can't be set if content is not loaded yet,
+            # but in other cases it is better to set it earlier.
             self._setViewportSize(self.viewport)
-
-        if getattr(self.splash_request, 'pass_headers', False):
-            headers = self.splash_request.getAllHeaders()
-            for name, value in headers.items():
-                request.setRawHeader(name, value)
-                if name.lower() == 'user-agent':
-                    self.web_page.custom_user_agent = value
 
         if baseurl:
             # If baseurl is used, we download the page manually,
             # then set its contents to the QWebPage and let it
             # download related resources and render the result.
+            if http_method != 'GET':
+                raise NotImplementedError()
+
             self._baseUrl = QUrl(baseurl.decode('utf8'))
             request.setOriginatingObject(self.web_page.mainFrame())
             self._reply = self.network_manager.get(request)
             self._reply.finished.connect(self._requestFinished)
         else:
             self.web_page.loadFinished.connect(self._loadFinished)
-
-            if self.splash_request.method == 'POST':
-                body = self.splash_request.content.getvalue()
-                self.web_page.mainFrame().load(
-                    request, QNetworkAccessManager.PostOperation, body
-                )
+            meth = OPERATION_QT_CONSTANTS[http_method]
+            if body is None:  # PyQT doesn't support body=None
+                self.web_page.mainFrame().load(request, meth)
             else:
-                self.web_page.mainFrame().load(request)
+                self.web_page.mainFrame().load(request, meth, body)
 
     def render(self):
         """
@@ -249,6 +250,16 @@ class WebpageRender(object):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+
+    def _setHeaders(self, request, headers):
+        """ Set HTTP headers for the ``request``. """
+        if isinstance(headers, dict):
+            headers = headers.items()
+
+        for name, value in headers or []:
+            request.setRawHeader(name, value)
+            if name.lower() == 'user-agent':
+                self.web_page.custom_user_agent = value
 
     def _requestFinished(self):
         """
@@ -499,20 +510,10 @@ class HtmlRender(WebpageRender):
 
 class PngRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
-                        js_source=None, js_profile=None, images=None,
-                        width=None, height=None):
-        self.width = width
-        self.height = height
-        super(PngRender, self).doRequest(
-            url=url,
-            baseurl=baseurl,
-            wait_time=wait_time,
-            viewport=viewport,
-            js_source=js_source,
-            js_profile=js_profile,
-            images=images
-        )
+    def start(self, **kwargs):
+        self.width = kwargs.pop('width')
+        self.height = kwargs.pop('height')
+        return super(PngRender, self).start(**kwargs)
 
     def render(self):
         return self._getPng(self.width, self.height)
@@ -520,25 +521,15 @@ class PngRender(WebpageRender):
 
 class JsonRender(WebpageRender):
 
-    def doRequest(self, url, baseurl=None, wait_time=None, viewport=None,
-                        js_source=None, js_profile=None, images=None,
-                        html=True, iframes=True, png=True, script=True, console=False,
-                        width=None, height=None, history=None, har=None):
-        self.width = width
-        self.height = height
-        self.include = {'html': html, 'png': png, 'iframes': iframes,
-                        'script': script, 'console': console,
-                        'history': history, 'har': har}
-        super(JsonRender, self).doRequest(
-            url=url,
-            baseurl=baseurl,
-            wait_time=wait_time,
-            viewport=viewport,
-            js_source=js_source,
-            js_profile=js_profile,
-            images=images,
-            console=console
-        )
+    def start(self, **kwargs):
+        self.width = kwargs.pop('width')
+        self.height = kwargs.pop('height')
+        self.include = {
+            inc: kwargs.pop(inc)
+            for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
+        }
+        self.include['console'] = kwargs.get('console')
+        super(JsonRender, self).start(**kwargs)
 
     def render(self):
         res = {}

@@ -37,8 +37,9 @@ HOP_BY_HOP_HEADERS = [
     'Upgrade',
 ]
 
+
 class SplashProxyRequest(http.Request):
-    pass_headers = True
+    inspect_me = True
 
     def __init__(self, channel, queued):
         http.Request.__init__(self, channel, queued)
@@ -47,8 +48,8 @@ class SplashProxyRequest(http.Request):
     def _get_header(self, name):
         return self.getHeader(SPLASH_HEADER_PREFIX + name)
 
-    def _set_header_as_params(self, param_list):
-        for parameter in param_list:
+    def _fill_args_from_headers(self, arg_names):
+        for parameter in arg_names:
             value = self._get_header(parameter)
             if value is not None:
                 # normal splash parameter use underscore instead of dash
@@ -110,13 +111,13 @@ class SplashProxyRequest(http.Request):
 
             # setup request parameters
             self.args['url'] = [self.uri]
-            self._set_header_as_params(HTML_PARAMS)
+            self._fill_args_from_headers(HTML_PARAMS)
 
             if resource_name == 'png':
-                self._set_header_as_params(PNG_PARAMS)
+                self._fill_args_from_headers(PNG_PARAMS)
             elif resource_name == 'json':
-                self._set_header_as_params(PNG_PARAMS)
-                self._set_header_as_params(JSON_PARAMS)
+                self._fill_args_from_headers(PNG_PARAMS)
+                self._fill_args_from_headers(JSON_PARAMS)
 
             # make sure no splash headers are sent to the target
             self._remove_splash_headers()
@@ -126,7 +127,7 @@ class SplashProxyRequest(http.Request):
             self._remove_hop_by_hop_headers()
             self._remove_accept_encoding_header()
 
-            resource = resource_cls(self.pool, True)
+            resource = resource_cls(self.pool, is_proxy_request=True)
             self.render(resource)
 
         except Exception as e:
@@ -169,7 +170,7 @@ class SplashProxy(http.HTTPChannel):
     requestFactory = SplashProxyRequest
 
 
-class SplashProxyFactory(http.HTTPFactory):
+class SplashProxyServerFactory(http.HTTPFactory):
     protocol = SplashProxy
 
     def __init__(self, pool, logPath=None, timeout=60 * 60 * 12):
