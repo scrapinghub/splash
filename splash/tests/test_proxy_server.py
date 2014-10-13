@@ -3,7 +3,7 @@ import urlparse
 import json
 import requests
 import pytest
-from splash.tests import test_render, test_redirects, test_request_filters
+from splash.tests import test_render, test_redirects, test_request_filters, test_runjs
 
 
 SPLASH_HEADER_PREFIX = 'x-splash-'
@@ -127,7 +127,7 @@ class GzipProxyJsRedirectTest(ProxyJsRedirectTest):
     use_gzip = True
 
 
-class ProxyRunJsTest(test_render.RunJsTest):
+class ProxyRunJsTest(test_runjs.RunJsTest):
 
     request_handler = ProxyRequestHandler
     proxy_test = True
