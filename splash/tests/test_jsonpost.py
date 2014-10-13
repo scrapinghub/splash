@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import json
 import requests
-from . import test_render, test_har, test_request_filters
+from . import test_render, test_har, test_request_filters, test_runjs
 
 
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
@@ -45,3 +45,17 @@ class HarRenderJsonPostTest(test_har.HarRenderTest):
 
 class FiltersJsonPostTest(test_request_filters.FiltersTestHTML):
     request_handler = JsonPostRequestHandler
+
+
+class RunJsJsonPostTest(test_runjs.RunJsTest):
+    request_handler = JsonPostRequestHandler
+
+    def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
+        query = {
+            'url': self.mockurl("jsrender"),
+            'script': 1,
+            'js_source': js_source,
+        }
+        query.update(params or {})
+        return self.request(query, render_format=render_format, headers=headers)
+
