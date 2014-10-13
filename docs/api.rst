@@ -3,6 +3,15 @@ Splash HTTP API
 
 Consult with :ref:`install-docs` to get Splash up and running.
 
+Splash is controlled via HTTP API. For all endpoints below parameters
+may be sent either as GET arguments or encoded to JSON and
+POSTed with ``Content-Type: application/json`` header.
+
+The most versatile endpoint that provides all Splash features
+is :ref:`render.json`. Other endpoints may be easier to use in specific
+cases - for example, :ref:`render.png` returns a screenshot in PNG format
+that can be used as `img src` without any further processing.
+
 The following endpoints are supported:
 
 .. _render.html:
@@ -52,6 +61,13 @@ proxy : string : optional
 js : string : optional
   Javascript profile name. See :ref:`Javascript Profiles`.
 
+.. _arg-js-source:
+
+js_source : string : optional
+
+    JavaScript code to be executed in page context.
+    See :ref:`execute javascript`.
+
 .. _arg-filters:
 
 filters : string : optional
@@ -90,6 +106,7 @@ images : integer : optional
 
     Note that cached images may be displayed even if this parameter is 0.
     You can also use `Request Filters`_ to strip unwanted contents based on URL.
+
 
 Examples
 ~~~~~~~~
@@ -371,7 +388,20 @@ The JavaScript code is executed after the page finished loading (including
 any delay defined by 'wait') but before the page is rendered. This allow to
 use the javascript code to modify the page being rendered.
 
-To execute JavaScript code we use a POST request with the content-type set to
+To execute JavaScript code use :ref:`js_source <arg-js-source>` parameter.
+It should contain JavaScript code to be executed.
+
+Note that many proxies limit the amount of data can be sent using GET,
+so it is a good idea to use ``content-type: application/json`` POST request.
+
+Curl example::
+
+    # Render page and modify its title dynamically
+    curl -X POST -H 'content-type: application/json' \
+        -d '{"js_source": "document.title=\"My Title\";", "url": "http://example.com"}' \
+        'http://localhost:8050/render.html'
+
+Another way to do it is to use a POST request with the content-type set to
 'application/javascript'. The body of the request should contain the code to
 be executed.
 
@@ -383,7 +413,7 @@ Curl example::
         'http://localhost:8050/render.html?url=http://domain.com'
 
 To get the result of a javascript function executed within page
-context use `render.json`_ endpoint with script=1 parameter.
+context use `render.json`_ endpoint with :ref:`script <arg-script>` = 1 parameter.
 
 In :ref:`Splash-as-a-proxy <splash as a proxy>` mode use ``X-Splash-js-source``
 header instead of a POST request.
@@ -489,7 +519,7 @@ splash to segfault on Mac OS X)::
     .ttf|
     .woff|
 
-To use this filter in a request add ``filters=nofonts`` GET parameter
+To use this filter in a request add ``filters=nofonts`` parameter
 to the query::
 
     curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-fonts.html&filters=nofonts'
@@ -499,7 +529,7 @@ You can apply several filters; separate them by comma::
     curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-fonts.html&filters=nofonts,easylist'
 
 If ``default.txt`` file is present in ``--filters-path`` folder it is
-used by default when ``filters`` GET argument is not specified. Pass
+used by default when ``filters`` argument is not specified. Pass
 ``filters=none`` if you don't want default filters to be applied.
 
 To learn about Adblock Plus filter syntax check these links:
@@ -519,7 +549,7 @@ Unsupported rules are silently discarded.
 .. note::
 
     If you want to stop downloading images check :ref:`'images' <arg-images>`
-    GET parameter. It doesn't require URL-based filters to work, and it can
+    parameter. It doesn't require URL-based filters to work, and it can
     filter images that are hard to detect using URL-based patterns.
 
 .. warning::
@@ -546,7 +576,7 @@ Proxy Profiles
 --------------
 
 Splash supports "proxy profiles" that allows to set proxy handling rules
-per-request using ``proxy`` GET parameter.
+per-request using ``proxy`` parameter.
 
 To enable proxy profiles support, run splash server with
 ``--proxy-profiles-path=<path to a folder with proxy profiles>`` option::
@@ -593,7 +623,7 @@ add ``proxy=mywebsite`` parameter to request::
     curl 'http://localhost:8050/render.html?url=http://mywebsite.com/page-with-javascript.html&proxy=mywebsite'
 
 If ``default.ini`` profile is present, it will be used when ``proxy``
-GET argument is not specified. If you have ``default.ini`` profile
+argument is not specified. If you have ``default.ini`` profile
 but don't want to apply it pass ``none`` as ``proxy`` value.
 
 
