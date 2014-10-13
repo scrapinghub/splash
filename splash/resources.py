@@ -175,8 +175,12 @@ def _get_js_source(request):
     js_source = getarg(request, 'js_source', None)
     if js_source is not None:
         return js_source
+
+    # handle application/javascript POST requests
     if request.method == 'POST':
-        return request.content.getvalue()
+        content_type = request.getHeader('Content-Type')
+        if content_type and 'application/javascript' in content_type:
+            return request.content.read()
 
 
 def _check_js_profile(request, js_profiles_path, js_profile):
