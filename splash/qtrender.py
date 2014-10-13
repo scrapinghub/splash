@@ -261,6 +261,9 @@ class WebpageRender(object):
                 for value in values
             ]
 
+        if isinstance(headers, dict):
+            headers = headers.items()
+
         for name, value in headers or []:
             request.setRawHeader(name, value)
             if name.lower() == 'user-agent':

@@ -170,6 +170,10 @@ def _get_javascript_params(request, js_profiles_path):
         js_source=_get_js_source(request),
     )
 
+def _get_headers_params(request):
+    headers = getarg(request, "headers", default=None, type=None)
+    return headers
+
 
 def _get_js_source(request):
     js_source = getarg(request, 'js_source', None)
@@ -223,6 +227,7 @@ def _get_common_params(request, js_profiles_path):
         wait = wait_time,
         viewport = viewport,
         images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
+        headers = _get_headers_params(request),
 
         proxy = getarg(request, "proxy", None),
     )

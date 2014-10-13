@@ -59,3 +59,61 @@ class RunJsJsonPostTest(test_runjs.RunJsTest):
         query.update(params or {})
         return self.request(query, render_format=render_format, headers=headers)
 
+
+class HttpHeadersTest(test_render.BaseRenderTest):
+    request_handler = JsonPostRequestHandler
+    use_gzip = False
+
+    def test_get_headers(self):
+        headers = {
+            'X-Custom-Header1': 'some-val1',
+            'Custom-Header2': 'some-val2',
+            'Custom-Header3': 'some-val3',
+            'User-Agent': 'Mozilla',
+            'Connection': 'custom-Header3, Foo, Bar',
+        }
+        r1 = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": headers,
+        })
+        r2 = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": list(headers.items()),
+        })
+
+        for r in [r1, r2]:
+            self.assertEqual(r.status_code, 200)
+            self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+            self.assertIn("'custom-header2': 'some-val2'", r.text)
+            self.assertIn("'user-agent': 'Mozilla'", r.text)
+
+            # Connection header is handled correctly - this is not a proxy request,
+            # so don't remove it
+            self.assertIn("connection", r.text.lower())
+            self.assertIn("custom-header3", r.text.lower())
+            self.assertIn("foo", r.text.lower())
+            self.assertIn("bar", r.text.lower())
+
+    def test_get_user_agent(self):
+        headers = {'User-Agent': 'Mozilla123'}
+        r = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": headers,
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+
+    def test_connection_user_agent(self):
+        headers = {
+            'User-Agent': 'Mozilla123',
+            'Connection': 'User-agent',
+        }
+        r = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": headers
+        })
+        self.assertEqual(r.status_code, 200)
+
+        # this is not a proxy request - don't remove headers
+        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("mozilla123", r.text.lower())

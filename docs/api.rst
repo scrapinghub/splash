@@ -107,6 +107,13 @@ images : integer : optional
     Note that cached images may be displayed even if this parameter is 0.
     You can also use `Request Filters`_ to strip unwanted contents based on URL.
 
+headers : JSON array or object : optional
+
+    HTTP headers to set for the first outgoing request. This option is only
+    supported for ``application/json`` POST requests. Value could be either a
+    JSON array with ``(header_name, header_value)`` pairs or a JSON object
+    with header names as keys and header values as values.
+
 
 Examples
 ~~~~~~~~
