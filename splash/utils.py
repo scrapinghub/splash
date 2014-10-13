@@ -45,7 +45,7 @@ def _getvalue(request, name):
     value = request.args.get(name, [None])[0]
     if request.method == 'POST':
         content_type = request.getHeader('content-type')
-        if content_type == 'application/json':
+        if content_type and 'application/json' in content_type:
             if not hasattr(request, '_json_data'):
                 request._json_data = json.load(request.content, encoding='utf8') or {}
             return request._json_data.get(name, value)

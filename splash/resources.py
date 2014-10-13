@@ -69,7 +69,7 @@ class RenderBase(_ValidatingResource):
             return self.render_GET(request)
 
         content_type = request.getHeader('content-type')
-        if content_type not in {'application/javascript', 'application/json'}:
+        if not any(ct in content_type for ct in ['application/javascript', 'application/json']):
             request.setResponseCode(415)
             request.write("Request content-type not supported\n")
             return

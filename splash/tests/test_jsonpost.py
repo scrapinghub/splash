@@ -14,9 +14,9 @@ class JsonPostRequestHandler(DirectRequestHandler):
         render_format = render_format or self.render_format
         url = "http://%s/render.%s" % (self.host, render_format)
         data = json.dumps(query, encoding='utf8')
-        headers = headers.copy() if headers is not None else {}
-        headers['content-type'] = 'application/json'
-        return requests.post(url, data=data, headers=headers)
+        _headers = {'content-type': 'application/json'}
+        _headers.update(headers or {})
+        return requests.post(url, data=data, headers=_headers)
 
     def post(self, query, render_format=None, payload=None, headers=None):
         raise NotImplementedError()
@@ -24,6 +24,17 @@ class JsonPostRequestHandler(DirectRequestHandler):
 
 class RenderHtmlJsonPostTest(RenderHtmlTest):
     request_handler = JsonPostRequestHandler
+
+    def test_content_type_with_encoding(self):
+        resp = self.request(
+            query={"url": self.mockurl("jsrender")},
+            headers={"content-type": "application/json; charset=UTF-8"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers["content-type"].lower(), "text/html; charset=utf-8")
+        self.assertTrue("Before" not in resp.text)
+        self.assertTrue("After" in resp.text)
+
 
 
 class RenderJsonJsonPostTest(RenderJsonTest):
