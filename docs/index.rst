@@ -2,9 +2,6 @@
 Splash - A javascript rendering service
 =======================================
 
-Splash is a javascript rendering service with a HTTP API. It runs on top of
-twisted and QT webkit for rendering pages.
-
 Splash is a javascript rendering service. It's a lightweight web browser
 with an HTTP API, implemented in Python using Twisted and QT. The (twisted)
 QT reactor is used to make the sever fully asynchronous allowing
