@@ -465,7 +465,12 @@ class HarViewer(_ValidatingResource):
                 var viewer = event.target.repObject;
                 $("#status").text("Rendering, please wait..");
 
-                $.getJSON("/render.json", params).done(function(data){
+                $.ajax("/render.json", {
+                    "contentType": "application/json",
+                    "dataType": "json",
+                    "type": "POST",
+                    "data": JSON.stringify(params)
+                }).done(function(data){
                     var har = data['har'];
                     var png = data['png'];
                     var html = data['html'];
