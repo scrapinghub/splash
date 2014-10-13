@@ -2,12 +2,10 @@
 from __future__ import absolute_import
 import json
 import requests
-from .test_render import DirectRequestHandler, RenderHtmlTest, RenderJsonTest
-from .test_har import HarRenderTest
-from .test_request_filters import FiltersTestHTML
+from . import test_render, test_har, test_request_filters
 
 
-class JsonPostRequestHandler(DirectRequestHandler):
+class JsonPostRequestHandler(test_render.DirectRequestHandler):
 
     def request(self, query, render_format=None, headers=None):
         assert not isinstance(query, basestring)
@@ -22,7 +20,7 @@ class JsonPostRequestHandler(DirectRequestHandler):
         raise NotImplementedError()
 
 
-class RenderHtmlJsonPostTest(RenderHtmlTest):
+class RenderHtmlJsonPostTest(test_render.RenderHtmlTest):
     request_handler = JsonPostRequestHandler
 
     def test_content_type_with_encoding(self):
@@ -37,13 +35,13 @@ class RenderHtmlJsonPostTest(RenderHtmlTest):
 
 
 
-class RenderJsonJsonPostTest(RenderJsonTest):
+class RenderJsonJsonPostTest(test_render.RenderJsonTest):
     request_handler = JsonPostRequestHandler
 
 
-class HarRenderJsonPostTest(HarRenderTest):
+class HarRenderJsonPostTest(test_har.HarRenderTest):
     request_handler = JsonPostRequestHandler
 
 
-class FiltersJsonPostTest(FiltersTestHTML):
+class FiltersJsonPostTest(test_request_filters.FiltersTestHTML):
     request_handler = JsonPostRequestHandler
