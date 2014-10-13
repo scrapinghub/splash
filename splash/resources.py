@@ -171,7 +171,28 @@ def _get_javascript_params(request, js_profiles_path):
     )
 
 def _get_headers_params(request):
-    headers = getarg(request, "headers", default=None, type=None)
+    headers = None
+
+    if getattr(request, 'inspect_me', False):
+        # use headers from splash_request
+        headers = [
+            (name, value)
+            for name, values in request.requestHeaders.getAllRawHeaders()
+            for value in values
+        ]
+
+    headers = getarg(request, "headers", default=headers, type=None)
+    if headers is None:
+        return headers
+
+    if not isinstance(headers, (list, tuple, dict)):
+        raise BadRequest("'headers' must be either JSON array of (name, value) pairs or JSON object")
+
+    if isinstance(headers, (list, tuple)):
+        for el in headers:
+            if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
+                raise BadRequest("'headers' must be either JSON array of (name, value) pairs or JSON object")
+
     return headers
 
 

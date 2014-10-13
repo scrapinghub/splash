@@ -94,6 +94,26 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             self.assertIn("foo", r.text.lower())
             self.assertIn("bar", r.text.lower())
 
+    def test_bad_headers_string(self):
+        r = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": "foo",
+        })
+        self.assertEqual(r.status_code, 400)
+
+    def test_bad_headers_list(self):
+        r = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": [("foo", ), ("bar", {"hello": "world"})],
+        })
+        self.assertEqual(r.status_code, 400)
+
+        r = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": [("bar", {"hello": "world"})],
+        })
+        self.assertEqual(r.status_code, 400)
+
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
         r = self.request({

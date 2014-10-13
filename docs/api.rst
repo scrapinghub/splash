@@ -107,6 +107,8 @@ images : integer : optional
     Note that cached images may be displayed even if this parameter is 0.
     You can also use `Request Filters`_ to strip unwanted contents based on URL.
 
+.. _arg-headers:
+
 headers : JSON array or object : optional
 
     HTTP headers to set for the first outgoing request. This option is only

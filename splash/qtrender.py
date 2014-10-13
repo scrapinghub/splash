@@ -203,7 +203,7 @@ class WebpageRender(object):
         self._setHeaders(request, headers)
 
         if getattr(self.splash_request, 'inspect_me', False):
-            # set http method and request body from the request
+            # Set http method and request body from the request
             http_method = self.splash_request.method
             body = self.splash_request.content.getvalue()
 
@@ -253,14 +253,6 @@ class WebpageRender(object):
 
     def _setHeaders(self, request, headers):
         """ Set HTTP headers for the ``request``. """
-        if getattr(self.splash_request, 'inspect_me', False):
-            # use headers from splash_request
-            headers = [
-                (name, value)
-                for name, values in self.splash_request.requestHeaders.getAllRawHeaders()
-                for value in values
-            ]
-
         if isinstance(headers, dict):
             headers = headers.items()
 
