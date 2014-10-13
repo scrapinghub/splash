@@ -1,0 +1,46 @@
+Splash Development
+==================
+
+Contributing
+------------
+
+Splash is free & open source.
+Development happens at github: https://github.com/scrapinghub/splash
+
+Functional Tests
+----------------
+
+.. image:: https://secure.travis-ci.org/scrapinghub/splash.png?branch=master
+   :target: http://travis-ci.org/scrapinghub/splash
+
+Run with::
+
+    py.test
+
+To speedup test running install ``pytest-xdist`` Python package and run
+Splash tests in parallel::
+
+    py.test -n4
+
+Stress tests
+------------
+
+There are some stress tests that spawn its own splash server and a mock server
+to run tests against.
+
+To run the stress tests::
+
+    python -m splash.tests.stress
+
+Typical output::
+
+    $ python -m splash.tests.stress
+    Total requests: 1000
+    Concurrency   : 50
+    Log file      : /tmp/splash-stress-48H91h.log
+    ........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+    Received/Expected (per status code or error):
+      200: 500/500
+      504: 200/200
+      502: 300/300
+

@@ -1,3 +1,5 @@
+.. _install-docs:
+
 Installation
 ============
 
@@ -56,18 +58,31 @@ Ubuntu 12.04 (manual way)
 2. TODO: install Python dependencies using pip, clone repo, chdir to it,
    start splash.
 
+
+To run the server execute the following command::
+
+    python -m splash.server
+
+Run ``python -m splash.server --help`` to see options available.
+
+By default, Splash API endpoints listen to port 8050 on all available
+IPv4 addresses. To change the port use ``--port`` option::
+
+    python -m splash.server --port=5000
+
+
 Requirements
-============
+~~~~~~~~~~~~
 
 .. literalinclude:: ../requirements.txt
 
 .. _splash and docker:
 
 Customizing Dockerized Splash
-=============================
+-----------------------------
 
 Passing Custom Options
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 To run Splash with custom options pass them to ``docker run``.
 For example, let's increase log verbosity::
@@ -79,7 +94,7 @@ same inside Docker: changing ports doesn't make sense (use docker run options
 instead), and paths are paths in the container.
 
 Folders Sharing
----------------
+~~~~~~~~~~~~~~~
 
 To set custom :ref:`request filters` use -v Docker option. First, create
 a folder with request filters on your local filesystem, then make it available
@@ -106,7 +121,7 @@ https://docs.docker.com/userguide/dockervolumes/ for more info.
     or clone Splash repo and customize its Dockerfile.
 
 Splash in Production
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 In production you may want to daemonize Splash, start it on boot and restart
 on failures. Since Docker 1.2 an easy way to do this is to use ``--restart``
