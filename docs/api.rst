@@ -400,7 +400,7 @@ use the javascript code to modify the page being rendered.
 To execute JavaScript code use :ref:`js_source <arg-js-source>` parameter.
 It should contain JavaScript code to be executed.
 
-Note that many proxies limit the amount of data can be sent using GET,
+Note that browsers and proxies limit the amount of data can be sent using GET,
 so it is a good idea to use ``content-type: application/json`` POST request.
 
 Curl example::
