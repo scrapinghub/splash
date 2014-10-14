@@ -26,7 +26,7 @@ _qtapp = None
 
 
 def init_qt_app(verbose):
-    """ Initializes Main Qt Application.
+    """ Initialize Main Qt Application.
     :param verbose:
     :return: QApplication
     """
@@ -58,7 +58,7 @@ def init_qt_app(verbose):
 
 
 def get_qt_app():
-    """ Returns Main QtApplication. """
+    """ Return Main QtApplication. """
     assert _qtapp is not None, "init_qt_app should be called first."
     return _qtapp
 
