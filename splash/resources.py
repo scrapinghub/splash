@@ -16,7 +16,7 @@ from twisted.python import log
 
 import splash
 from splash.qtrender import (
-    HtmlRender, PngRender, JsonRender, HarRender, RenderError,
+    HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
 from splash.utils import getarg, getarg_bool, BadRequest, get_num_fds, get_leaks
 from splash import sentry
