@@ -1,6 +1,23 @@
 Changes
 =======
 
+1.2 (2014-10-14)
+----------------
+
+* All Splash endpoints now accept ``Content-Type: application/json`` POST
+  requests with JSON-encoded rendering options as an alternative to using
+  GET parameters;
+* ``headers`` parameter allows to set HTTP headers (including user-agent)
+  for all endpoints - previously it was possible only in proxy mode;
+* ``js_source`` parameter allows to execute JS in page context without
+  ``application/javascript`` POST requests;
+* testing suite is switched to pytest, test running can now be parallelized;
+* viewport size changes are logged;
+* ``/debug`` endpoints provides leak info for more classes;
+* Content-Type header parsing is less strict;
+* documentation improvements;
+* various internal code cleanups.
+
 1.1 (2014-10-10)
 ----------------
 
