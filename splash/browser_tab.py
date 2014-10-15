@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
-import json
 import base64
 import copy
 import pprint
@@ -12,12 +11,11 @@ from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import (Qt, QUrl, QBuffer, QSize, QTimer, QObject,
                           pyqtSlot, QByteArray)
 from PyQt4.QtGui import QPainter, QImage
-from PyQt4.QtNetwork import QNetworkRequest, QNetworkAccessManager
+from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
 from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS
-from splash.har.log import HarLog
 from splash.har.utils import without_private
 
 from .qwebpage import SplashQWebPage
