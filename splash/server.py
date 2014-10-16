@@ -110,8 +110,16 @@ def bump_nofile_limit():
 
 
 def log_splash_version():
+    import twisted
     from twisted.python import log
+    import sip
+    from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+    from PyQt4.QtWebKit import qWebKitVersion
+
     log.msg("Splash version: %s" % __version__)
+    log.msg("Qt %s, PyQt %s, WebKit %s, sip %s, Twisted %s" % (
+        QT_VERSION_STR, PYQT_VERSION_STR, qWebKitVersion(), sip.SIP_VERSION_STR, twisted.version.short()
+    ))
 
 
 def manhole_server(portnum=None, username=None, password=None):
