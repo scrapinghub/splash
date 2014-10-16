@@ -70,7 +70,7 @@ class RenderBase(_ValidatingResource):
         if self.is_proxy_request:
             # If request comes from splash proxy service don't handle
             # special content-types.
-            # TODO: pass http method to WebpageRender explicitly.
+            # TODO: pass http method to RenderScript explicitly.
             return self.render_GET(request)
 
         content_type = request.getHeader('content-type')

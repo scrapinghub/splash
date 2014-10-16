@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import abc
 import json
 import pprint
 from splash import defaults
@@ -9,18 +10,11 @@ class RenderError(Exception):
     pass
 
 
-class WebpageRender(object):
+class RenderScript(object):
     """
-    WebpageRender object renders a webpage using "standard" render scenario:
-
-    * create a BrowserTab;
-    * load an URL;
-    * wait for all redirects, wait for a specified time;
-    * return the result.
-
-    This class is not used directly; its subclasses are used.
-    Subclasses choose how to return the result (as html, json, png).
+    Interface that all render scripts must implement.
     """
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, network_manager, splash_proxy_factory, render_options, verbosity):
         self.tab = BrowserTab(
@@ -33,7 +27,44 @@ class WebpageRender(object):
         self.verbosity = verbosity
         self.deferred = self.tab.deferred
 
-    # ======= General request/response handling:
+    @abc.abstractmethod
+    def start(self, **kwarge):
+        """ This method is called by Pool when script should begin """
+        pass
+
+    def close(self):
+        """
+        This method is called by a Pool after the rendering is done and
+        the RenderScript object is no longer needed.
+        """
+        self.tab._close()
+
+    @abc.abstractmethod
+    def get_result(self):
+        """
+        This method is called to get the result after the requested page is
+        downloaded and rendered. Subclasses should implement it to customize
+        which data to return.
+        """
+        pass
+
+    def log(self, text, min_level=2):
+        self.tab.logger.log(text, min_level=min_level)
+
+
+class DefaultRenderScript(RenderScript):
+    """
+    DefaultRenderScript object renders a webpage using "standard" render
+    scenario:
+
+    * load an URL;
+    * wait for all redirects, wait for a specified time;
+    * optionally execute custom javascript in page context;
+    * return the result.
+
+    This class is not used directly; its subclasses are used.
+    Subclasses choose how to return the result (as html, json, png).
+    """
 
     def start(self, url, baseurl=None, wait=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False,
@@ -74,26 +105,11 @@ class WebpageRender(object):
     def on_goto_load_error(self):
         self.tab.return_error(RenderError())
 
-    def render(self):
-        """
-        This method is called to get the result after the requested page is
-        downloaded and rendered. Subclasses should implement it to customize
-        which data to return.
-        """
-        raise NotImplementedError()
-
-    def close(self):
-        """
-        This method is called by a Pool after the rendering is done and
-        the WebpageRender object is no longer needed.
-        """
-        self.tab._close()
-
     def _loadFinishedOK(self):
         self.log("_loadFinishedOK")
 
         if self.tab._closing:
-            self.log("loadFinishedOK is ignored because WebpageRender is closing", min_level=3)
+            self.log("loadFinishedOK is ignored because RenderScript is closing", min_level=3)
             return
 
         self.tab.stop_loading()
@@ -101,8 +117,7 @@ class WebpageRender(object):
         self.tab.store_har_timing("_onPrepareStart")
         try:
             self._prepare_render()
-            result = self.render()
-            self.tab.return_result(result)
+            self.tab.return_result(self.get_result())
         except:
             self.tab.return_error()
 
@@ -127,27 +142,24 @@ class WebpageRender(object):
             self.tab.set_viewport(self.viewport)
         self.js_output, self.js_console_output = self._runjs(self.js_source, self.js_profile)
 
-    def log(self, text, min_level=2):
-        self.tab.logger.log(text, min_level=min_level)
 
-
-class HtmlRender(WebpageRender):
-    def render(self):
+class HtmlRender(DefaultRenderScript):
+    def get_result(self):
         return self.tab.html()
 
 
-class PngRender(WebpageRender):
+class PngRender(DefaultRenderScript):
 
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
         return super(PngRender, self).start(**kwargs)
 
-    def render(self):
+    def get_result(self):
         return self.tab.png(self.width, self.height)
 
 
-class JsonRender(WebpageRender):
+class JsonRender(DefaultRenderScript):
 
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
@@ -159,7 +171,7 @@ class JsonRender(WebpageRender):
         self.include['console'] = kwargs.get('console')
         super(JsonRender, self).start(**kwargs)
 
-    def render(self):
+    def get_result(self):
         res = {}
 
         if self.include['png']:
@@ -187,7 +199,7 @@ class JsonRender(WebpageRender):
         return json.dumps(res)
 
 
-class HarRender(WebpageRender):
-    def render(self):
+class HarRender(DefaultRenderScript):
+    def get_result(self):
         return json.dumps(self.tab.har())
 
