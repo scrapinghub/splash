@@ -66,7 +66,7 @@ class RequestLoggingMiddleware(object):
     """ Request middleware for logging requests """
     def process(self, request, render_options, operation, data):
         log.msg(
-            "Request %s %s" % (render_options.get_uid(), request_repr(request, operation)),
+            "[%s] %s" % (render_options.get_uid(), request_repr(request, operation)),
             system='network'
         )
         return request

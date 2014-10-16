@@ -234,7 +234,7 @@ class BrowserTab(object):
         This method is called when a QWebPage finishes loading its contents.
         """
         if self._closing:
-            self.logger.log("loadFinished is ignored because BrowserTab is closing", min_level=3)
+            self.logger.log("loadFinished is ignored because BrowserTab is closing", min_level=2)
             return
 
         page_ok = ok and self.web_page.errorInfo is None
@@ -278,7 +278,6 @@ class BrowserTab(object):
                 self.web_page.custom_user_agent = value
 
     def wait(self, time_ms, callback, onredirect=None):
-        self.logger.log("waiting %sms" % time_ms, min_level=2)
 
         timer = QTimer()
         timer.setSingleShot(True)
@@ -287,17 +286,22 @@ class BrowserTab(object):
             callback=callback,
         )
         timer.timeout.connect(timer_callback)
+
+        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)), min_level=2)
+
         timer.start(time_ms)
         self._active_timers.add(timer)
         if onredirect is not None:
             self._cancel_on_redirect_timers[timer] = onredirect
 
     def _on_wait_timeout(self, timer, callback):
+        self.logger.log("wait timeout for %s" % id(timer), min_level=2)
         self._active_timers.remove(timer)
         self._cancel_on_redirect_timers.pop(timer, None)
         callback()
 
     def _cancel_timer(self, timer, errback=None):
+        self.logger.log("cancelling timer %s" % id(timer), min_level=2)
         self._cancel_on_redirect_timers.pop(timer, None)
         self._active_timers.remove(timer)
         timer.stop()
@@ -313,7 +317,6 @@ class BrowserTab(object):
 
         # cancel all timers that should be cancelled on redirect
         for timer, onredirect in list(self._cancel_on_redirect_timers.items()):
-            self.logger.log("Cancelling wait timer", min_level=2)
             self._cancel_timer(timer, onredirect)
 
     def inject_js(self, filename):
@@ -349,7 +352,7 @@ class BrowserTab(object):
         self.web_page.har_log.store_timing(name)
 
     def _jsconsole_enable(self):
-        # TODO: public interface or make it available by default
+        # TODO: add public interface or make console available by default
         if self._js_console is not None:
             return
         self._js_console = _JavascriptConsole()
@@ -357,6 +360,7 @@ class BrowserTab(object):
         frame.addToJavaScriptWindowObject('console', self._js_console)
 
     def _jsconsole_messages(self):
+        # TODO: add public interface or make console available by default
         if self._js_console is None:
             return []
         return self._js_console.messages[:]

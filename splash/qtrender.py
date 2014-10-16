@@ -101,11 +101,10 @@ class WebpageRender(object):
         self.tab.store_har_timing("_onPrepareStart")
         try:
             self._prepare_render()
-            self.tab.return_result(self.render())
+            result = self.render()
+            self.tab.return_result(result)
         except:
             self.tab.return_error()
-
-    # ======= Other helper methods:
 
     def _runjs(self, js_source, js_profile):
         js_output, js_console_output = None, None
@@ -122,7 +121,6 @@ class WebpageRender(object):
 
         self.tab.store_har_timing('_onCustomJsExecuted')
         return js_output, js_console_output
-
 
     def _prepare_render(self):
         if self.viewport == 'full':
