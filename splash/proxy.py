@@ -11,7 +11,7 @@ an HTTP proxy (see :mod:`splash.proxy_server`).
 from __future__ import absolute_import
 import re, os, ConfigParser
 from PyQt4.QtNetwork import QNetworkProxy
-from splash.utils import getarg, BadRequest
+from splash.render_options import BadOption
 
 
 class _BlackWhiteSplashProxyFactory(object):
@@ -121,33 +121,33 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
         if not ini_path.startswith(proxy_profiles_path + os.path.sep):
             # security check fails
-            raise BadRequest(self.NO_PROXY_PROFILE_MSG)
+            raise BadOption(self.NO_PROXY_PROFILE_MSG)
         else:
             return ini_path
 
     def _parseIni(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
-            raise BadRequest(self.NO_PROXY_PROFILE_MSG)
+            raise BadOption(self.NO_PROXY_PROFILE_MSG)
 
         blacklist = _get_lines(parser, 'rules', 'blacklist', [])
         whitelist = _get_lines(parser, 'rules', 'whitelist', [])
         try:
             proxy = dict(parser.items('proxy'))
         except ConfigParser.NoSectionError:
-            raise BadRequest("Invalid proxy profile: no [proxy] section found")
+            raise BadOption("Invalid proxy profile: no [proxy] section found")
 
         try:
             host = proxy['host']
         except KeyError:
-            raise BadRequest("Invalid proxy profile: [proxy] host is not found")
+            raise BadOption("Invalid proxy profile: [proxy] host is not found")
 
         try:
             port = int(proxy['port'])
         except KeyError:
-            raise BadRequest("Invalid proxy profile: [proxy] port is not found")
+            raise BadOption("Invalid proxy profile: [proxy] port is not found")
         except ValueError:
-            raise BadRequest("Invalid proxy profile: [proxy] port is incorrect")
+            raise BadOption("Invalid proxy profile: [proxy] port is incorrect")
 
         proxy_list = [(host, port, proxy.get('username'), proxy.get('password'))]
         return blacklist, whitelist, proxy_list

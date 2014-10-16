@@ -30,12 +30,12 @@ class BrowserTab(object):
     a BrowserTab.
     """
 
-    def __init__(self, uid, network_manager, splash_proxy_factory, verbosity, splash_request=None):
+    def __init__(self, network_manager, splash_proxy_factory, verbosity, render_options):
         """ Create a new browser tab. """
         self.deferred = defer.Deferred()
         self.network_manager = network_manager
         self.verbosity = verbosity
-        self._uid = uid
+        self._uid = render_options.get_uid()
         self._closing = False
         self.default_headers = None
         self._active_timers = set()
@@ -43,17 +43,15 @@ class BrowserTab(object):
         self._js_console = None
         self._history = []
 
-        self._init_webpage(verbosity, network_manager, splash_proxy_factory, splash_request)
+        self._init_webpage(verbosity, network_manager, splash_proxy_factory, render_options)
         self._setup_logging(verbosity)
 
-    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, splash_request):
+    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
         """ Create and initialize QWebPage and QWebView """
         self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(network_manager)
         self.web_page.splash_proxy_factory = splash_proxy_factory
-
-        # FIXME: remove it, it shouldn't be necessary
-        self.web_page.splash_request = splash_request
+        self.web_page.render_options = render_options
 
         self._set_default_webpage_options(self.web_page)
         self._listen_to_urlchanges()
@@ -199,7 +197,7 @@ class BrowserTab(object):
         This method is called when ``baseurl`` is used and a
         reply for the first request is received.
         """
-        self.logger.log("_requestFinished", min_level=2)
+        self.logger.log("baseurl_request_finished", min_level=2)
 
         cb = functools.partial(
             self._on_goto_load_finished,
@@ -236,7 +234,7 @@ class BrowserTab(object):
         This method is called when a QWebPage finishes loading its contents.
         """
         if self._closing:
-            self.logger.log("loadFinished is ignored because WebpageRender is closing", min_level=3)
+            self.logger.log("loadFinished is ignored because BrowserTab is closing", min_level=3)
             return
 
         page_ok = ok and self.web_page.errorInfo is None
@@ -322,6 +320,8 @@ class BrowserTab(object):
         """
         Load JS library from file ``filename`` to the current frame.
         """
+
+        # TODO: shouldn't it keep injected scripts after redirects/reloads?
         with open(filename, 'rb') as f:
             script = f.read().decode('utf-8')
             return self.evaluate(script)
@@ -330,6 +330,7 @@ class BrowserTab(object):
         """
         Load all JS libraries from ``folder`` folder to the current frame.
         """
+        # TODO: shouldn't it keep injected scripts after redirects/reloads?
         for jsfile in os.listdir(folder):
             if jsfile.endswith('.js'):
                 filename = os.path.join(folder, jsfile)
@@ -348,6 +349,7 @@ class BrowserTab(object):
         self.web_page.har_log.store_timing(name)
 
     def _jsconsole_enable(self):
+        # TODO: public interface or make it available by default
         if self._js_console is not None:
             return
         self._js_console = _JavascriptConsole()

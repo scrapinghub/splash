@@ -8,33 +8,27 @@ from __future__ import absolute_import
 import re
 import os
 import urlparse
-from splash.utils import getarg
-from splash.qtutils import request_repr, drop_request
 from twisted.python import log
+from splash.qtutils import request_repr, drop_request
 
 
 class AllowedDomainsMiddleware(object):
     """
-    This request middleware checks ``allowed_domains`` GET argument
+    This request middleware checks ``allowed_domains`` argument
     and drops all requests to domains not in ``allowed_domains``.
     """
     def __init__(self, allow_subdomains=True, verbosity=0):
         self.allow_subdomains = allow_subdomains
         self.verbosity = verbosity
 
-    def process(self, request, splash_request, operation, data):
-        allowed_domains = self._get_allowed_domains(splash_request)
+    def process(self, request, render_options, operation, data):
+        allowed_domains = render_options.get_allowed_domains()
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
         if not host_re.match(unicode(request.url().host())):
             if self.verbosity >= 2:
                 log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
             drop_request(request)
         return request
-
-    def _get_allowed_domains(self, splash_request):
-        allowed_domains = getarg(splash_request, "allowed_domains", None)
-        if allowed_domains is not None:
-            return allowed_domains.split(',')
 
     def _get_host_regex(self, allowed_domains, allow_subdomains):
         """ Override this method to implement a different offsite policy """
@@ -56,7 +50,7 @@ class AllowedSchemesMiddleware(object):
         self.allowed_schemes = set(allowed_schemes)
         self.verbosity = verbosity
 
-    def process(self, request, splash_request, operation, data):
+    def process(self, request, render_options, operation, data):
         scheme = str(request.url().scheme()).lower()
         if scheme not in self.allowed_schemes:
             if self.verbosity >= 2:
@@ -70,9 +64,9 @@ class AllowedSchemesMiddleware(object):
 
 class RequestLoggingMiddleware(object):
     """ Request middleware for logging requests """
-    def process(self, request, splash_request, operation, data):
+    def process(self, request, render_options, operation, data):
         log.msg(
-            "Request %s %s" % (id(splash_request), request_repr(request, operation)),
+            "Request %s %s" % (render_options.get_uid(), request_repr(request, operation)),
             system='network'
         )
         return request
@@ -85,8 +79,8 @@ class AdblockMiddleware(object):
         self.rules = rules_registry
         self.verbosity = verbosity
 
-    def process(self, request, splash_request, operation, data):
-        filter_names = [f for f in getarg(splash_request, "filters", default="").split(',') if f]
+    def process(self, request, render_options, operation, data):
+        filter_names = render_options.get_filters(adblock_rules=self.rules)
 
         if filter_names == ['none']:
             return request
@@ -97,22 +91,22 @@ class AdblockMiddleware(object):
             else:
                 return request
 
-        url, options = self._url_and_options(request, splash_request)
+        url, options = self._url_and_adblock_options(request, render_options)
         blocking_filter = self.rules.get_blocking_filter(filter_names, url, options)
         if blocking_filter:
             if self.verbosity >= 2:
                 msg = "Filter %s: dropped %s %s" % (
                     blocking_filter,
-                    id(splash_request),
+                    render_options.get_uid(),
                     request_repr(request, operation)
                 )
                 log.msg(msg, system='request_middleware')
             drop_request(request)
         return request
 
-    def _url_and_options(self, request, splash_request):
+    def _url_and_adblock_options(self, request, render_options):
         url = unicode(request.url().toString())
-        domain = urlparse.urlsplit(getarg(splash_request, 'url')).netloc
+        domain = urlparse.urlsplit(render_options.get_url()).netloc
         options = {'domain': domain}
         return url, options
 
@@ -183,6 +177,11 @@ class AdblockRulesRegistry(object):
 
             self.filters[name] = rules
 
-
     def filter_is_known(self, name):
         return name in self.filters
+
+    def get_unknown_filters(self, filter_names):
+        return [
+            name for name in filter_names
+            if not (self.filter_is_known(name) or name=='none')
+        ]

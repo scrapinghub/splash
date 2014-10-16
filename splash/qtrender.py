@@ -22,18 +22,14 @@ class WebpageRender(object):
     Subclasses choose how to return the result (as html, json, png).
     """
 
-    def __init__(self, network_manager, splash_proxy_factory, splash_request, verbosity):
+    def __init__(self, network_manager, splash_proxy_factory, render_options, verbosity):
         self.tab = BrowserTab(
-            uid = id(splash_request),
             network_manager=network_manager,
             splash_proxy_factory=splash_proxy_factory,
             verbosity=verbosity,
-
-            # FIXME: remove it, it shouldn't be necessary
-            splash_request=splash_request,
+            render_options=render_options,
         )
-        self.splash_request = splash_request
-        # self.web_page.splash_request = splash_request
+        self.render_options = render_options
         self.verbosity = verbosity
         self.deferred = self.tab.deferred
 
@@ -56,11 +52,6 @@ class WebpageRender(object):
         self.tab.set_default_headers(headers)
         if self.viewport != 'full':
             self.tab.set_viewport(self.viewport)
-
-        if getattr(self.splash_request, 'inspect_me', False):
-            # Set http method and request body from the request
-            http_method = self.splash_request.method
-            body = self.splash_request.content.getvalue()
 
         self.tab.goto(
             url=url,

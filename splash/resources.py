@@ -18,16 +18,16 @@ import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
-from splash.utils import getarg, getarg_bool, BadRequest, get_num_fds, get_leaks
+from splash.utils import get_num_fds, get_leaks
 from splash import sentry
-from splash import defaults
+from splash.render_options import RenderOptions, BadOption
 
 
 class _ValidatingResource(Resource):
     def render(self, request):
         try:
             return Resource.render(self, request)
-        except BadRequest as e:
+        except BadOption as e:
             request.setResponseCode(400)
             return str(e) + "\n"
 
@@ -45,10 +45,15 @@ class RenderBase(_ValidatingResource):
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
-        _check_filters(self.pool, request)
-        pool_d = self._getRender(request)
-        timeout = _get_timeout_arg(request)
-        wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
+
+        # _check_filters(self.pool, request)
+        render_options = RenderOptions.fromrequest(request)
+        render_options.get_filters(self.pool)  # check filters earlier
+
+        pool_d = self._getRender(request, render_options)
+
+        timeout = render_options.get_timeout()
+        wait_time = render_options.get_wait()
 
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
@@ -117,7 +122,7 @@ class RenderBase(_ValidatingResource):
         sentry.capture(failure)
 
     def _badRequest(self, failure, request):
-        failure.trap(BadRequest)
+        failure.trap(BadOption)
         request.setResponseCode(400)
         request.write(str(failure.value) + "\n")
 
@@ -126,181 +131,47 @@ class RenderBase(_ValidatingResource):
             request.finish()
         #log.msg("_finishRequest: %s" % id(request))
 
-    def _getRender(self, request):
+    def _getRender(self, request, options):
         raise NotImplementedError()
-
-
-def _get_timeout_arg(request):
-    return getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
-
-
-def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
-    if viewport is None:
-        return
-
-    if viewport == 'full':
-        if wait == 0:
-            raise BadRequest("Pass non-zero 'wait' to render full webpage")
-        return
-
-    try:
-        w, h = map(int, viewport.split('x'))
-        if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
-            return
-        raise BadRequest("Viewport is out of range (%dx%d, area=%d)" % (max_width, max_heigth, max_area))
-    except (ValueError):
-        raise BadRequest("Invalid viewport format: %s" % viewport)
-
-
-def _check_filters(pool, request):
-    network_manager = pool.network_manager
-    if not hasattr(network_manager, 'unknownFilters'):
-        # allow custom non-filtering network access managers
-        return
-
-    filter_names = getarg(request, 'filters', '')
-    unknown_filters = network_manager.unknownFilters(filter_names)
-    if unknown_filters:
-        raise BadRequest("Invalid filter names: %s" % unknown_filters)
-
-
-def _get_javascript_params(request, js_profiles_path):
-    return dict(
-        js_profile=_check_js_profile(request, js_profiles_path, getarg(request, 'js', None)),
-        js_source=_get_js_source(request),
-    )
-
-def _get_headers_params(request):
-    headers = None
-
-    if getattr(request, 'inspect_me', False):
-        # use headers from splash_request
-        headers = [
-            (name, value)
-            for name, values in request.requestHeaders.getAllRawHeaders()
-            for value in values
-        ]
-
-    headers = getarg(request, "headers", default=headers, type=None)
-    if headers is None:
-        return headers
-
-    if not isinstance(headers, (list, tuple, dict)):
-        raise BadRequest("'headers' must be either JSON array of (name, value) pairs or JSON object")
-
-    if isinstance(headers, (list, tuple)):
-        for el in headers:
-            if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
-                raise BadRequest("'headers' must be either JSON array of (name, value) pairs or JSON object")
-
-    return headers
-
-
-def _get_js_source(request):
-    js_source = getarg(request, 'js_source', None)
-    if js_source is not None:
-        return js_source
-
-    # handle application/javascript POST requests
-    if request.method == 'POST':
-        content_type = request.getHeader('Content-Type')
-        if content_type and 'application/javascript' in content_type:
-            return request.content.read()
-
-
-def _check_js_profile(request, js_profiles_path, js_profile):
-    if js_profile:
-        if js_profiles_path is None:
-            raise BadRequest('Javascript profiles are not enabled')
-        profile_dir = os.path.join(js_profiles_path, js_profile)
-        if not profile_dir.startswith(js_profiles_path + os.path.sep):
-            # security check fails
-            raise BadRequest('Javascript profile does not exist')
-        if not os.path.isdir(profile_dir):
-            raise BadRequest('Javascript profile does not exist')
-        return profile_dir
-
-
-def _get_png_params(request):
-    return dict(
-        width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH)),
-        height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH)),
-    )
-
-
-def _get_common_params(request, js_profiles_path):
-    """ Return arguments common for all endpoints """
-    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
-    viewport = getarg(request, "viewport", defaults.VIEWPORT)
-    _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
-                    defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
-
-    url = getarg(request, "url", type=None)
-    baseurl = getarg(request, "baseurl", default=None, type=None)
-    if isinstance(url, unicode):
-        url = url.encode('utf8')
-    if isinstance(baseurl, unicode):
-        baseurl = baseurl.encode('utf8')
-
-    res = dict(
-        url = url,
-        baseurl = baseurl,
-        wait = wait_time,
-        viewport = viewport,
-        images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
-        headers = _get_headers_params(request),
-
-        proxy = getarg(request, "proxy", None),
-    )
-    res.update(_get_javascript_params(request, js_profiles_path))
-    return res
 
 
 class RenderHtml(RenderBase):
 
     content_type = "text/html; charset=utf-8"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        return self.pool.render(HtmlRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        return self.pool.render(HtmlRender, options, **params)
 
 
 class RenderPng(RenderBase):
 
     content_type = "image/png"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        params.update(_get_png_params(request))
-        return self.pool.render(PngRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        params.update(options.get_png_params())
+        return self.pool.render(PngRender, options, **params)
 
 
 class RenderJson(RenderBase):
 
     content_type = "application/json"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        params.update(_get_png_params(request))
-        params.update(
-            html = getarg_bool(request, "html", defaults.DO_HTML),
-            iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES),
-            png = getarg_bool(request, "png", defaults.DO_PNG),
-            script = getarg_bool(request, "script", defaults.SHOW_SCRIPT),
-            console = getarg_bool(request, "console", defaults.SHOW_CONSOLE),
-            history = getarg_bool(request, "history", defaults.SHOW_HISTORY),
-            har = getarg_bool(request, "har", defaults.SHOW_HAR),
-        )
-        return self.pool.render(JsonRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        params.update(options.get_png_params())
+        params.update(options.get_include_params())
+        return self.pool.render(JsonRender, options, **params)
 
 
 class RenderHar(RenderBase):
 
     content_type = "application/json"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        return self.pool.render(HarRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        return self.pool.render(HarRender, options, **params)
 
 
 class Debug(Resource):
@@ -333,8 +204,17 @@ class HarViewer(_ValidatingResource):
         self.pool = pool
 
     def _validate_params(self, request):
-        _check_filters(self.pool, request)
-        return _get_common_params(request, self.pool.js_profiles_path)
+        options = RenderOptions.fromrequest(request)
+        options.get_filters(self.pool)  # check
+        params = options.get_common_params(self.pool.js_profiles_path)
+        params.update({
+            'timeout': options.get_timeout(),
+            'har': 1,
+            'png': 1,
+            'html': 1,
+        })
+        return params
+
 
     def render_GET(self, request):
         params = self._validate_params(request)
@@ -342,13 +222,6 @@ class HarViewer(_ValidatingResource):
         if not url.lower().startswith('http'):
             url = 'http://' + url
 
-        params.update({
-            'timeout': _get_timeout_arg(request),
-
-            'har': 1,
-            'png': 1,
-            'html': 1,
-        })
         params = {k:v for k,v in params.items() if v is not None}
 
         request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
