@@ -1,4 +1,7 @@
 export DISPLAY=:0
 
+clean:
+	git submodule update --init
+
 test:
 	py.test
