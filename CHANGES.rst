@@ -1,6 +1,14 @@
 Changes
 =======
 
+1.2.1 (2014-10-16)
+------------------
+
+* Dockerfile base image is downgraded to Ubuntu 12.04 to fix random crashes;
+* Debian/buildbot config is fixed to make Splash UI available when deployed
+  from deb;
+* Qt / PyQt / sip / WebKit / Twisted version numbers are logged at startup.
+
 1.2 (2014-10-14)
 ----------------
 
