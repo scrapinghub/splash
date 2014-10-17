@@ -65,6 +65,8 @@ def parse_opts():
         help="path to a folder with network request filters")
     op.add_option("--disable-xvfb", action="store_true", default=False,
         help="disable Xvfb auto start")
+    # op.add_option("--disable-lua", action="store_true", default=False,
+    #     help="disable Lua scripting")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5")
     op.add_option("--version", action="store_true",
@@ -115,11 +117,22 @@ def log_splash_version():
     import sip
     from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
     from PyQt4.QtWebKit import qWebKitVersion
+    from splash.scripting import lua
 
     log.msg("Splash version: %s" % __version__)
-    log.msg("Qt %s, PyQt %s, WebKit %s, sip %s, Twisted %s" % (
-        QT_VERSION_STR, PYQT_VERSION_STR, qWebKitVersion(), sip.SIP_VERSION_STR, twisted.version.short()
-    ))
+
+    versions = [
+        "Qt %s" % QT_VERSION_STR,
+        "PyQt %s" % PYQT_VERSION_STR,
+        "WebKit %s" % qWebKitVersion(),
+        "sip %s" % sip.SIP_VERSION_STR,
+        "Twisted %s" % twisted.version.short(),
+    ]
+
+    if lua.is_supported():
+        versions.append(lua.get_version())
+
+    log.msg(", ".join(versions))
 
 
 def manhole_server(portnum=None, username=None, password=None):
