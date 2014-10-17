@@ -12,7 +12,7 @@ RUN sed 's/main$/main universe/' -i /etc/apt/sources.list && \
     apt-get install -y netbase ca-certificates python \
         python-dev build-essential \
         xvfb libqt4-webkit python-qt4 libre2-dev \
-        git-core python-pip libicu48 lua5.2
+        git-core python-pip libicu48 lua5.2-dev
 
 RUN pip install -U pip
 RUN pip install \

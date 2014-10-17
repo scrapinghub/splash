@@ -12,7 +12,7 @@ virtualenv:
     system_site_packages: true
 
 before_install:
-    - sudo apt-get install python-twisted python-qt4 lua5.2
+    - sudo apt-get install python-twisted python-qt4 lua5.2-dev
     - pip install qt4reactor psutil requests Pillow jsonschema strict-rfc3339 xvfbwrapper pytest lupa
     - "if [[ $SYSTEM_TWISTED == 'false' ]]; then pip install -UI twisted service_identity; fi"
 
