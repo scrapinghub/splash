@@ -5,6 +5,7 @@ from twisted.python import log
 
 _supported = None
 _lua = None
+_LuaTable = None
 
 
 def is_supported():
@@ -52,11 +53,12 @@ def is_lua_table(obj):
     False
     >>> is_lua_table(lua.eval("function () end"))
     False
-
     """
-    lua = get_shared_runtime()
-    LuaTable = lua.eval("{}").__class__
-    return isinstance(obj, LuaTable)
+    global _LuaTable
+    if _LuaTable is None:
+        lua = get_shared_runtime()
+        _LuaTable = lua.eval("{}").__class__
+    return isinstance(obj, _LuaTable)
 
 
 def get_version():
@@ -100,3 +102,36 @@ def table_as_kwargs_method(func):
         args, kwargs = _fix_args_kwargs(args)
         return func(self, *args, **kwargs)
     return functools.wraps(func)(wrapper)
+
+
+def get_new_runtime():
+    """ Return a pre-configured LuaRuntime. """
+    # TODO: sandboxing.
+    import lupa
+    return lupa.LuaRuntime(
+        encoding=None,
+        register_eval=False,
+        unpack_returned_tuples=True,
+    )
+
+
+def _get_entrypoint(lua, script):
+    """
+    Execute a script and return its "main" function.
+
+    >>> import lupa; lua = lupa.LuaRuntime()
+    >>> main = _get_entrypoint(lua, "x=1; function main() return 55 end")
+    >>> main()
+    55
+    """
+    lua.execute(script)
+    return lua.globals()["main"]
+
+
+def start_main(lua, script, *args):
+    """
+    Start "main" coroutine and pass args to it.
+    Return the started coroutine.
+    """
+    main = _get_entrypoint(lua, script)
+    return main.coroutine(*args)

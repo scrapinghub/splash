@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import base64
 import copy
+import json
 import pprint
 import weakref
 import functools
@@ -37,7 +38,7 @@ class BrowserTab(object):
         self.verbosity = verbosity
         self._uid = render_options.get_uid()
         self._closing = False
-        self.default_headers = None
+        self._default_headers = None
         self._active_timers = set()
         self._cancel_on_redirect_timers = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
@@ -90,6 +91,9 @@ class BrowserTab(object):
         """ Return a result to the Pool. """
         if self.result_already_returned():
             self.logger.log("error: result is already returned", min_level=1)
+
+        if isinstance(result, dict):
+            result = json.dumps(result)
         self.deferred.callback(result)
         # self.deferred = None
 
@@ -131,7 +135,7 @@ class BrowserTab(object):
         w, h = int(size.width()), int(size.height())
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
 
-    def goto(self, url, callback, errback, baseurl=None, http_method='GET', body=None):
+    def go(self, url, callback, errback, baseurl=None, http_method='GET', body=None):
         """
         Go to an URL. This is similar to entering an URL in
         address tab and pressing Enter.
@@ -278,6 +282,13 @@ class BrowserTab(object):
                 self.web_page.custom_user_agent = value
 
     def wait(self, time_ms, callback, onredirect=None):
+        """
+        Wait for time_ms, then run callback.
+
+        If onredirect is True then timer is cancelled if redirect happens.
+        If onredirect is callable then timer is cancelled and this callable
+        is called in case of redirect.
+        """
 
         timer = QTimer()
         timer.setSingleShot(True)
@@ -291,7 +302,7 @@ class BrowserTab(object):
 
         timer.start(time_ms)
         self._active_timers.add(timer)
-        if onredirect is not None:
+        if onredirect:
             self._cancel_on_redirect_timers[timer] = onredirect
 
     def _on_wait_timeout(self, timer, callback):

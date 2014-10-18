@@ -18,6 +18,7 @@ import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
+from splash.scripting.render import LuaRender
 from splash.utils import get_num_fds, get_leaks
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
@@ -46,7 +47,7 @@ class RenderBase(_ValidatingResource):
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
 
-        # _check_filters(self.pool, request)
+        request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request)
         render_options.get_filters(self.pool)  # check filters earlier
 
@@ -63,7 +64,6 @@ class RenderBase(_ValidatingResource):
         pool_d.addErrback(self._badRequest, request)
         pool_d.addErrback(self._internalError, request)
         pool_d.addBoth(self._finishRequest, request)
-        request.starttime = time.time()
         return NOT_DONE_YET
 
     def render_POST(self, request):
@@ -136,12 +136,20 @@ class RenderBase(_ValidatingResource):
 
 
 class RenderHtml(RenderBase):
-
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
         return self.pool.render(HtmlRender, options, **params)
+
+
+class RenderLua(RenderBase):
+
+    content_type = None # "application/json"
+
+    def _getRender(self, request, options):
+        proxy = options.get_proxy()
+        return self.pool.render(LuaRender, options, proxy)
 
 
 class RenderPng(RenderBase):
@@ -410,6 +418,7 @@ class Root(Resource):
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("render.har", RenderHar(pool))
+        self.putChild("render.lua", RenderLua(pool))
         self.putChild("debug", Debug(pool))
 
         if self.ui_enabled:
