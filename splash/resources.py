@@ -477,7 +477,7 @@ class Root(Resource):
                           <fieldset>
                             <div class="">
                               <div class="input-group col-lg-10">
-                                <input class="form-control" type="text" placeholder="Paste an URL" value="http://google.com" type="text" name="url">
+                                <input class="form-control" type="text" placeholder="Paste an URL" value="http://google.com" name="url">
                                 <span class="input-group-btn">
                                   <button class="btn btn-success" type="submit">Render me!</button>
                                 </span>
