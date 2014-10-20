@@ -145,7 +145,10 @@ class RenderHtml(RenderBase):
 
 class RenderLua(RenderBase):
 
-    content_type = None # "application/json"
+
+    content_type = "application/json"
+
+    # content_type = None # "application/json"
 
     def _getRender(self, request, options):
         proxy = options.get_proxy()
@@ -201,6 +204,16 @@ class Debug(Resource):
         })
 
 
+BOOTSTRAP_THEME = 'simplex'
+CODEMIRROR_OPTIONS = """{
+    mode: 'lua',
+    lineNumbers: true,
+    autofocus: true,
+    tabSize: 2,
+    theme: 'mbo'
+}
+"""
+
 class HarViewer(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
@@ -217,6 +230,7 @@ class HarViewer(_ValidatingResource):
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
             'timeout': options.get_timeout(),
+            'lua': options.get_lua(),
             'har': 1,
             'png': 1,
             'html': 1,
@@ -239,7 +253,22 @@ class HarViewer(_ValidatingResource):
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
             <link rel="stylesheet" href="_harviewer/css/harViewer.css" type="text/css"/>
-            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
+            <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="http://code.jquery.com/jquery-migrate-1.2.1.js"></script>
+
+            <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
+            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
+            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
+
+            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
+
+
             <style>
                 /* fix bootstrap + harviewer compatibility issues */
                 .label { color: #000; font-weight: normal; font-size: 100%%; }
@@ -271,6 +300,9 @@ class HarViewer(_ValidatingResource):
                 ._onScreenshotPrepared { background-color: magenta; }
                 ._onPngRendered { background-color: magenta; }
                 ._onIframesRendered { background-color: black; }
+
+                /* editor styling */
+                #lua-code-editor-panel {padding: 0}
             </style>
         </head>
         <body class="harBody" style="color:#000">
@@ -295,7 +327,16 @@ class HarViewer(_ValidatingResource):
                       <input type="hidden" name="wait" value="0.5">
                       <input type="hidden" name="images" value="1">
                       <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
-                      <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
+
+                      <div class="btn-group" id="render-form">
+                          <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
+                          <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
+                          <div class="dropdown-menu panel panel-default" id="lua-code-editor-panel">
+                            <div class="panel-body2">
+                              <textarea id="lua-code-editor" name='lua'></textarea>
+                            </div>
+                          </div>
+                      </div>
                       <button class="btn btn-success" type="submit">Render!</button>
                     </form>
 
@@ -321,11 +362,26 @@ class HarViewer(_ValidatingResource):
                 </div>
             </div>
 
-            <script src="_harviewer/scripts/jquery.js"></script>
             <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
 
             <script>
             var params = %(params)s;
+
+            /* Create editor */
+            var editor = null;
+            var textarea = document.getElementById('lua-code-editor');
+            textarea.value = params["lua"] || "";
+
+            $('#render-form').on("shown.bs.dropdown", function(e){
+                if (editor === null) {
+                    editor = CodeMirror.fromTextArea(textarea, %(codemirror_options)s);
+                    editor.setSize(600, 464);
+                }
+            });
+            $('#lua-code-editor-panel').click(function(e){e.stopPropagation();});
+
+
+            /* Initialize HAR viewer & send AJAX requests */
             $("#content").bind("onViewerPreInit", function(event){
                 // Get application object
                 var viewer = event.target.repObject;
@@ -376,7 +432,7 @@ class HarViewer(_ValidatingResource):
                 var viewer = event.target.repObject;
                 $("#status").text("Rendering, please wait..");
 
-                $.ajax("/render.json", {
+                $.ajax("/render.lua", {
                     "contentType": "application/json",
                     "dataType": "json",
                     "type": "POST",
@@ -400,7 +456,13 @@ class HarViewer(_ValidatingResource):
             </script>
         </body>
         </html>
-        """ % dict(version=splash.__version__, params=json.dumps(params), url=url)
+        """ % dict(
+            version=splash.__version__,
+            params=json.dumps(params),
+            url=url,
+            theme=BOOTSTRAP_THEME,
+            codemirror_options=CODEMIRROR_OPTIONS,
+        )
 
 
 class Root(Resource):
@@ -409,6 +471,13 @@ class Root(Resource):
         'vendor',
         'harviewer',
         'webapp',
+    )
+
+    EXAMPLE_SCRIPT_PATH = os.path.join(
+        os.path.dirname(__file__),
+        'scripting',
+        'scripts',
+        'example.lua'
     )
 
     def __init__(self, pool, ui_enabled):
@@ -430,12 +499,36 @@ class Root(Resource):
             return self
         return Resource.getChild(self, name, request)
 
+    def get_example_script(self):
+        with open(self.EXAMPLE_SCRIPT_PATH, 'rb') as f:
+            return f.read().decode('utf8').strip()
+
     def render_GET(self, request):
-        return """<html>
+        result = """<html>
         <head>
             <title>Splash %(version)s</title>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
+
+            <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+
+            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
+            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
+            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
+
+            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
+
+            <script>
+               $(document).ready(function(){
+                    /* Create editor */
+                    var textarea = document.getElementById('lua-code-editor');
+                    var editor = CodeMirror.fromTextArea(textarea, %(codemirror_options)s);
+                    editor.setSize(464, 464);
+               });
+            </script>
+
         </head>
         <body>
             <div class="container">
@@ -466,6 +559,10 @@ class Root(Resource):
                             Commercial support is also available by
                             <a href="http://scrapinghub.com/">Scrapinghub</a>.
                         </p>
+                        <p>
+                            <a class="btn btn-info" href="http://splash.readthedocs.org/">Documentation</a>
+                            <a class="btn btn-info" href="https://github.com/scrapinghub/splash">Source code</a>
+                        </p>
 
                     </div>
                     <div class="col-lg-6">
@@ -482,16 +579,20 @@ class Root(Resource):
                                   <button class="btn btn-success" type="submit">Render me!</button>
                                 </span>
                               </div>
+                              <div class="input-group col-lg-10">
+                                <textarea id='lua-code-editor' name='lua'>%(lua_script)s</textarea>
+                              </div>
                             </div>
                           </fieldset>
                         </form>
-                        <p>
-                            <a class="btn btn-default" href="http://splash.readthedocs.org/">Documentation</a>
-                            <a class="btn btn-default" href="https://github.com/scrapinghub/splash">Source code</a>
-                        </p>
-
                     </div>
                 </div>
             </div>
         </body>
-        </html>""" % dict(version=splash.__version__)
+        </html>""" % dict(
+            version = splash.__version__,
+            theme = BOOTSTRAP_THEME,
+            codemirror_options = CODEMIRROR_OPTIONS,
+            lua_script = self.get_example_script(),
+        )
+        return result.encode('utf8')
