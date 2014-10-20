@@ -81,6 +81,14 @@ class Splash(object):
         return self._tab.png(width, height, b64=base64)
 
     @command
+    def har(self):
+        return self._tab.har()
+
+    @command
+    def history(self):
+        return self._tab.history()
+
+    @command
     def stop(self):
         self._tab.stop_loading()
 
