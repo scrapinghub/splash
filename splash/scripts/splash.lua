@@ -7,11 +7,8 @@
 Splash = function (splash)
   local self = {}
 
-  for key, value in pairs(splash.commands) do
-
-    -- XXX: value is a Python tuple wrapped by lupa,
-    -- it is indexed from 0
-    local command, is_async = value[0], value[1]
+  for key, is_async in pairs(splash.commands) do
+    local command = splash[key]
 
     if is_async then
       self[key] = function(self, ...)

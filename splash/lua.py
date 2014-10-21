@@ -126,15 +126,13 @@ def table_as_kwargs_method(func):
     return functools.wraps(func)(wrapper)
 
 
-def get_new_runtime():
+def get_new_runtime(**kwargs):
     """ Return a pre-configured LuaRuntime. """
-    # TODO: sandboxing.
     import lupa
-    return lupa.LuaRuntime(
-        encoding=None,
-        register_eval=False,
-        unpack_returned_tuples=True,
-    )
+    kwargs.setdefault('encoding', None)
+    kwargs.setdefault('register_eval', False)
+    kwargs.setdefault('unpack_returned_tuples', True)
+    return lupa.LuaRuntime(**kwargs)
 
 
 def _get_entrypoint(lua, script):

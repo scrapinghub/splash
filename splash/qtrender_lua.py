@@ -40,6 +40,11 @@ def command(async=False):
     return decorator
 
 
+def is_command(meth):
+    """ Return True if method is an exposed Lua command """
+    return getattr(meth, '_is_command', False)
+
+
 def can_raise(func):
     """
     Decorator for preserving Python exceptions raised in Python
@@ -63,14 +68,14 @@ class Splash(object):
     This object is passed to Lua script as an argument to 'main' function.
     """
     _result_content_type = None
+    _attribute_whitelist = ['commands']
 
-    def __init__(self, runtime, tab, return_func, render_options):
+    def __init__(self, tab, return_func, render_options):
         """
-        :param lupa.LuaRuntime runtime: Lua Runtime
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable dispatch_func: function that continues the script
         """
-        self._lua = runtime
+        self._lua = self._create_runtime()
         self._tab = tab
         self._return = return_func
         self._render_options = render_options
@@ -78,11 +83,9 @@ class Splash(object):
 
         commands = {}
         for name in dir(self):
-            if name.startswith("_"):
-                continue
             value = getattr(self, name)
-            if getattr(value, '_is_command', False):
-                commands[name] = (value, getattr(value, '_is_async'))
+            if is_command(value):
+                commands[name] = getattr(value, '_is_async')
         self.commands = self._lua.table(**commands)
 
     @command(async=True)
@@ -173,6 +176,36 @@ class Splash(object):
         """
         return start_main(self._lua, lua_source, args=[self.get_wrapper()])
 
+    def _create_runtime(self):
+        """
+        Return a restricted Lua runtime.
+        Currently it only allows accessing attributes of this object.
+        """
+        return get_new_runtime(
+            attribute_handlers=(self._attr_getter, self._attr_setter)
+        )
+
+    def _attr_getter(self, obj, attr_name):
+
+        if not isinstance(attr_name, basestring):
+            raise AttributeError("Non-string lookups are not allowed (requested: %r)" % attr_name)
+
+        if isinstance(attr_name, basestring) and attr_name.startswith("_"):
+            raise AttributeError("Access to private attribute %r is not allowed" % attr_name)
+
+        if obj is not self:
+            raise AttributeError("Access to object %r is not allowed" % obj)
+
+        value = getattr(obj, attr_name)
+        if not is_command(value) and not attr_name in self._attribute_whitelist:
+            raise AttributeError("Access to private attribute %r is not allowed" % attr_name)
+
+        return value
+
+    def _attr_setter(self, obj, attr_name, value):
+        raise AttributeError("Direct writing to Python objects is not allowed")
+
+
 
 class LuaRender(RenderScript):
 
@@ -182,8 +215,7 @@ class LuaRender(RenderScript):
     @stop_on_error
     def start(self, lua_source):
         self.log(lua_source)
-        lua = get_new_runtime()
-        self.splash = Splash(lua, self.tab, self.dispatch, self.render_options)
+        self.splash = Splash(self.tab, self.dispatch, self.render_options)
         try:
             self.coro = self.splash.start_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
