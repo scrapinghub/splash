@@ -232,8 +232,30 @@ CODEMIRROR_OPTIONS = """{
     lineNumbers: true,
     autofocus: true,
     tabSize: 2,
-    theme: 'mbo'
+    matchBrackets: false,  // doesn't look good in mbo theme
+    autoCloseBrackets: true,
+    extraKeys: {
+        "Ctrl-Space": "autocomplete"
+    },
+    hint: CodeMirror.hint.anyword,
+    theme: 'mbo',
 }
+"""
+
+CODEMIRROR_RESOURCES = """
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/monokai.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/midnight.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/anyword-hint.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/matchbrackets.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/closebrackets.min.js"></script>
+
 """
 
 class HarViewer(_ValidatingResource):
@@ -282,14 +304,7 @@ class HarViewer(_ValidatingResource):
 
             <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 
-            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
-            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
-            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
-
-            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
-
+            %(cm_resources)s
 
             <style>
                 /* fix bootstrap + harviewer compatibility issues */
@@ -396,7 +411,7 @@ class HarViewer(_ValidatingResource):
 
             $('#render-form').on("shown.bs.dropdown", function(e){
                 if (editor === null) {
-                    editor = CodeMirror.fromTextArea(textarea, %(codemirror_options)s);
+                    editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
                     editor.setSize(600, 464);
                 }
             });
@@ -483,7 +498,8 @@ class HarViewer(_ValidatingResource):
             params=json.dumps(params),
             url=url,
             theme=BOOTSTRAP_THEME,
-            codemirror_options=CODEMIRROR_OPTIONS,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES,
         )
 
 
@@ -526,19 +542,13 @@ class Root(Resource):
 
             <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
 
-            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
-            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
-            <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
-
-            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
+            %(cm_resources)s
 
             <script>
                $(document).ready(function(){
                     /* Create editor */
                     var textarea = document.getElementById('lua-code-editor');
-                    var editor = CodeMirror.fromTextArea(textarea, %(codemirror_options)s);
+                    var editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
                     editor.setSize(464, 464);
                });
             </script>
@@ -606,7 +616,8 @@ class Root(Resource):
         </html>""" % dict(
             version = splash.__version__,
             theme = BOOTSTRAP_THEME,
-            codemirror_options = CODEMIRROR_OPTIONS,
+            cm_options = CODEMIRROR_OPTIONS,
+            cm_resources = CODEMIRROR_RESOURCES,
             lua_script = self.get_example_script(),
         )
         return result.encode('utf8')
