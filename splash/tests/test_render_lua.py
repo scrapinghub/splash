@@ -122,3 +122,20 @@ class ErrorsTest(BaseLuaRenderTest):
     def test_syntax_error_toplevel(self):
         resp = self.request_lua("sdg; function main(splash) sdhgfsajhdgfjsahgd end")
         self.assertStatusCode(resp, 400)
+
+    def test_user_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+          error("Error happened")
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+    def test_bad_splash_attribute(self):
+        resp = self.request_lua("""
+        function main(splash)
+          local x = splash.foo
+        end
+        """)
+        # FIXME: make a better error message
+        self.assertStatusCode(resp, 400)

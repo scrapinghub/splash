@@ -6,7 +6,7 @@ import functools
 import inspect
 from collections import namedtuple
 import lupa
-from splash.qtrender import RenderScript, RenderError, stop_on_error
+from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (
     table_as_kwargs,
     table_as_kwargs_method,
@@ -131,6 +131,10 @@ class Splash(object):
             raise ScriptError("splash:set_result_content_type() argument must be a string")
         self._result_content_type = content_type
 
+    # FIXME: hide from Lua
+    def raise_stored(self):
+        if self._exceptions:
+            raise self._exceptions[-1]
 
 
 def lua2python(result):
@@ -182,9 +186,9 @@ class LuaRender(RenderScript):
                 return
             except lupa.LuaError as e:
                 self.log("[lua] LuaError %r" % e)
-                if self.splash._exceptions:
-                    raise self.splash._exceptions[-1]
-                raise
+                self.splash.raise_stored()
+                # XXX: are Lua errors bad requests?
+                raise ScriptError("unhandled Lua error: %s" % e)
 
             if isinstance(command, _AsyncCommand):
                 self.log("[lua] executing %r" % command)
