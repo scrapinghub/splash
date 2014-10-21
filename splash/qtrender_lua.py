@@ -157,8 +157,9 @@ class LuaRender(RenderScript):
         self.splash = Splash(self.tab, self.dispatch, self.render_options)
         try:
             self.coro = start_main(self.lua, lua_source, self.splash)
-        except ValueError as e:
-            raise BadOption("lua_source: " + str(e))
+        except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
+            raise ScriptError("lua_source: " + str(e))
+
         self.dispatch()
 
     @stop_on_error

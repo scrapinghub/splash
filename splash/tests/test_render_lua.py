@@ -16,7 +16,15 @@ class LuaRenderTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
           local obj = {key="value"}
-          return {mystatus="ok", number=5, float=-0.5, obj=obj, bool=true, bool2=false, missing=nil}
+          return {
+            mystatus="ok",
+            number=5,
+            float=-0.5,
+            obj=obj,
+            bool=true,
+            bool2=false,
+            missing=nil
+          }
         end
         """)
         self.assertStatusCode(resp, 200)
@@ -30,6 +38,8 @@ class LuaRenderTest(BaseLuaRenderTest):
             "bool2": False,
         })
 
+
+class ContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
         resp = self.request_lua("""
         function main(splash)
@@ -67,6 +77,9 @@ class LuaRenderTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
 
+
+class EntrypointTest(BaseLuaRenderTest):
+
     def test_empty(self):
         resp = self.request_lua("function main(splash) end")
         self.assertStatusCode(resp, 200)
@@ -97,4 +110,15 @@ class LuaRenderTest(BaseLuaRenderTest):
           }
         end}
         """)
+        self.assertStatusCode(resp, 400)
+
+
+class ErrorsTest(BaseLuaRenderTest):
+
+    def test_syntax_error(self):
+        resp = self.request_lua("function main(splash) sdhgfsajhdgfjsahgd end")
+        self.assertStatusCode(resp, 400)
+
+    def test_syntax_error_toplevel(self):
+        resp = self.request_lua("sdg; function main(splash) sdhgfsajhdgfjsahgd end")
         self.assertStatusCode(resp, 400)
