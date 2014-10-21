@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import unittest
 import pytest
 
-from splash.scripting.lua import table_as_kwargs, table_as_kwargs_method
+from splash.lua import table_as_kwargs, table_as_kwargs_method
 
 
 @table_as_kwargs

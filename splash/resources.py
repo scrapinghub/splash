@@ -18,7 +18,7 @@ import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
-from splash.scripting.render import LuaRender
+from splash.qtrender_lua import LuaRender
 from splash.utils import get_num_fds, get_leaks
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
@@ -475,7 +475,6 @@ class Root(Resource):
 
     EXAMPLE_SCRIPT_PATH = os.path.join(
         os.path.dirname(__file__),
-        'scripting',
         'scripts',
         'example.lua'
     )

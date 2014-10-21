@@ -7,7 +7,7 @@ import inspect
 from collections import namedtuple
 import lupa
 from splash.qtrender import RenderScript, RenderError, stop_on_error
-from splash.scripting.lua import (
+from splash.lua import (
     table_as_kwargs,
     table_as_kwargs_method,
     is_lua_table,
@@ -47,6 +47,7 @@ class Splash(object):
 
     @command
     def wait(self, time, cancel_on_redirect=False):
+        # TODO: it should return 'not_cancelled' flag
         return _AsyncCommand("wait", dict(
             time_ms=time*1000,
             callback=self._wait_success,

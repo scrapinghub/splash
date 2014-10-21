@@ -117,7 +117,7 @@ def log_splash_version():
     import sip
     from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
     from PyQt4.QtWebKit import qWebKitVersion
-    from splash.scripting import lua
+    from splash import lua
 
     log.msg("Splash version: %s" % __version__)
 
