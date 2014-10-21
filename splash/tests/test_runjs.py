@@ -69,7 +69,7 @@ test('Changed');"""
         js_source = "function test(x){ return x; } test('abc');"
         headers = {'content-type': 'text/plain'}
         r = self._runjs_request(js_source, headers=headers)
-        self.assertEqual(r.status_code, 415)
+        self.assertStatusCode(r, 415)
 
     def test_proper_viewport(self):
         js_source = """
@@ -86,7 +86,8 @@ test('Changed');"""
         js_source = """test('abc');"""
         params = {'url': self.mockurl("jsrender"), 'js' : 'not_a_profile'}
         r = self._runjs_request(js_source, params=params)
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
+
 
     def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
         query = {'url': self.mockurl("jsrender"), 'script': 1}

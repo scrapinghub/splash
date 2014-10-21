@@ -94,47 +94,50 @@ class BaseRenderTest(unittest.TestCase):
     def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
         return self._get_handler().post(query, render_format, payload, headers, **kwargs)
 
+    def assertStatusCode(self, response, code):
+        self.assertEqual(response.status_code, code, (response.status_code, response.content))
+
 
 class _RenderTest(BaseRenderTest):
 
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_render_error(self):
         r = self.request({"url": "http://non-existent-host/"})
-        self.assertEqual(r.status_code, 502)
+        self.assertStatusCode(r, 502)
 
     def test_timeout(self):
         r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "0.5"})
-        self.assertEqual(r.status_code, 504)
+        self.assertStatusCode(r, 504)
 
     def test_timeout_out_of_range(self):
         r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "999"})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
     @skip_proxy
     def test_missing_url(self):
         r = self.request({})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
         self.assertTrue("url" in r.text)
 
     def test_jsalert(self):
         r = self.request({"url": self.mockurl("jsalert"), "timeout": "3"})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
 
     def test_jsconfirm(self):
         r = self.request({"url": self.mockurl("jsconfirm"), "timeout": "3"})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
 
     def test_iframes(self):
         r = self.request({"url": self.mockurl("iframes"), "timeout": "3"})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
 
     def test_wait(self):
         r1 = self.request({"url": self.mockurl("jsinterval")})
         r2 = self.request({"url": self.mockurl("jsinterval")})
         r3 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.2"})
-        self.assertEqual(r1.status_code, 200)
-        self.assertEqual(r2.status_code, 200)
-        self.assertEqual(r3.status_code, 200)
+        self.assertStatusCode(r1, 200)
+        self.assertStatusCode(r2, 200)
+        self.assertStatusCode(r3, 200)
         self.assertEqual(r1.content, r2.content)
         self.assertNotEqual(r1.content, r3.content)
 
@@ -152,7 +155,7 @@ class RenderHtmlTest(_RenderTest):
 
     def _test_jsrender(self, url):
         r = self.request({"url": url})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertEqual(r.headers["content-type"].lower(), "text/html; charset=utf-8")
         self.assertTrue("Before" not in r.text)
         self.assertTrue("After" in r.text)
@@ -167,32 +170,32 @@ class RenderHtmlTest(_RenderTest):
             "url": self.mockurl("baseurl"),
             "baseurl": self.mockurl("baseurl/"),
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertTrue("Before" not in r.text)
         self.assertTrue("After" in r.text)
 
     def test_otherdomain(self):
         r = self.request({"url": self.mockurl("iframes")})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertTrue('SAME_DOMAIN' in r.text)
         self.assertTrue('OTHER_DOMAIN' in r.text)
 
     def test_allowed_domains(self):
         r = self.request({'url': self.mockurl('iframes'), 'allowed_domains': 'localhost'})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertTrue('SAME_DOMAIN' in r.text)
         self.assertFalse('OTHER_DOMAIN' in r.text)
 
     def test_viewport(self):
         r = self.request({'url': self.mockurl('jsviewport'), 'viewport': '300x400'})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn('300x400', r.text)
 
     def test_nonascii_url(self):
         nonascii_value =  u'тест'.encode('utf8')
         url = self.mockurl('getrequest') + '?param=' + nonascii_value
         r = self.request({'url': url})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertTrue(
             repr(nonascii_value) in r.text or  # direct request
             urllib.quote(nonascii_value) in r.text,  # request in proxy mode
@@ -201,12 +204,12 @@ class RenderHtmlTest(_RenderTest):
 
     def test_result_encoding(self):
         r1 = requests.get(self.mockurl('cp1251'))
-        self.assertEqual(r1.status_code, 200)
+        self.assertStatusCode(r1, 200)
         self.assertEqual(r1.encoding, 'windows-1251')
         self.assertTrue(u'проверка' in r1.text)
 
         r2 = self.request({'url': self.mockurl('cp1251')})
-        self.assertEqual(r2.status_code, 200)
+        self.assertStatusCode(r2, 200)
         self.assertEqual(r2.encoding, 'utf-8')
         self.assertTrue(u'проверка' in r2.text)
 
@@ -229,7 +232,7 @@ class RenderHtmlTest(_RenderTest):
     def assertResponse200Get(self, code):
         url = self.mockurl('getrequest') + '?code=%d' % code
         r = self.request({'url': url})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("GET request", r.text)
 
 
@@ -261,19 +264,19 @@ class RenderPngTest(_RenderTest):
             for val in (-1, 99999):
                 url = self.mockurl("jsrender")
                 r = self.request("url=%s&%s=%d" % (url, arg, val))
-                self.assertEqual(r.status_code, 400)
+                self.assertStatusCode(r, 400)
 
     def test_viewport_full_wait(self):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
 
     def test_viewport_checks(self):
         for viewport in ['99999x1', '1x99999', 'foo', '1xfoo', 'axe', '9000x9000', '-1x300']:
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
-            self.assertEqual(r.status_code, 400)
+            self.assertStatusCode(r, 400)
 
     def test_viewport_full(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
@@ -288,7 +291,7 @@ class RenderPngTest(_RenderTest):
         self.assertPixelColor(r, 30, 30, (255,255,255,255))
 
     def assertPng(self, response, width=None, height=None):
-        self.assertEqual(response.status_code, 200)
+        self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
         img = Image.open(StringIO(response.content))
         self.assertEqual(img.format, "PNG")
@@ -426,9 +429,9 @@ class RenderJsonTest(_RenderTest):
         r1 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
         r2 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
         r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': 0.2, 'html': 1})
-        self.assertEqual(r1.status_code, 200)
-        self.assertEqual(r2.status_code, 200)
-        self.assertEqual(r3.status_code, 200)
+        self.assertStatusCode(r1, 200)
+        self.assertStatusCode(r2, 200)
+        self.assertStatusCode(r3, 200)
 
         html1 = r1.json()['html']
         html2 = r2.json()['html']
@@ -438,7 +441,7 @@ class RenderJsonTest(_RenderTest):
 
     def test_result_encoding(self):
         r = self.request({'url': self.mockurl('cp1251'), 'html': 1})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         html = r.json()['html']
         self.assertTrue(u'проверка' in html)
         self.assertTrue(u'1251' in html)
@@ -475,8 +478,8 @@ class RenderJsonTest(_RenderTest):
         query.update(params or {})
         r1 = self.request(query, render_format='json')
         r2 = self.request(query, render_format=other_format)
-        self.assertEqual(r1.status_code, 200)
-        self.assertEqual(r2.status_code, 200)
+        self.assertStatusCode(r1, 200)
+        self.assertStatusCode(r2, 200)
         return r1, r2
 
 

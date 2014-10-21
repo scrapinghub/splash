@@ -33,7 +33,7 @@ class BaseHarRenderTest(BaseRenderTest):
         query = {"url": url}
         query.update(params)
         resp = self.request(query)
-        self.assertEqual(resp.status_code, 200)
+        self.assertStatusCode(resp, 200)
         data = resp.json()
         # from pprint import pprint
         # pprint(data)
@@ -103,7 +103,7 @@ class HarRenderTest(BaseHarRenderTest):
 
     def test_timeout(self):
         r = self.request({"url": self.mockurl("delay?n=10"), "timeout": 0.5})
-        self.assertEqual(r.status_code, 504)
+        self.assertStatusCode(r, 504)
 
     def test_wait(self):
         self.assertValidHar(self.mockurl("jsinterval"))
@@ -225,7 +225,7 @@ class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):
     def assertHttpRedirectWorks(self, code):
         url = self.mockurl("http-redirect?code=%s" % code)
         r = self.request({"url": url})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         data = r.json()
 
         self.assertValidHarData(data, url)
@@ -247,7 +247,7 @@ class RenderJsonHarTest(HarRenderTest):
         query = {"url": url, "har": 1}
         query.update(params)
         resp = self.request(query)
-        self.assertEqual(resp.status_code, 200)
+        self.assertStatusCode(resp, 200)
         data = resp.json()["har"]
         # from pprint import pprint
         # pprint(data)

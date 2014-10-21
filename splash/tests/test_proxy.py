@@ -88,20 +88,20 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
     def test_insecure(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
 
     def test_nonexisting(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_no_proxy_settings(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'no-proxy-settings'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
@@ -150,7 +150,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
                     'url': ts2.mockserver.url('jsrender', gzip=False),
                     'proxy': 'nonexisting',
                 })
-                self.assertEqual(r3.status_code, 400)
+                self.assertStatusCode(r3, 400)
 
                 # 'none' disables default.ini
                 r4 = self.ts2_request(ts2, {
