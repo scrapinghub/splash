@@ -187,7 +187,7 @@ class LuaRender(RenderScript):
         try:
             self.coro = self.splash.start_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
-            raise ScriptError("lua_source: " + str(e))
+            raise ScriptError("lua_source: " + repr(e))
 
         self.dispatch()
 

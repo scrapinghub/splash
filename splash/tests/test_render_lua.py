@@ -38,6 +38,25 @@ class LuaRenderTest(BaseLuaRenderTest):
             "bool2": False,
         })
 
+    def test_unicode(self):
+        resp = self.request_lua(u"""
+        function main(splash) return {key="значение"} end
+        """.encode('utf8'))
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.headers['content-type'], 'application/json')
+        self.assertEqual(resp.json(), {"key": u"значение"})
+
+    def test_unicode_direct(self):
+        resp = self.request_lua(u"""
+        function main(splash)
+          return 'привет'
+        end
+        """.encode('utf8'))
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, u"привет")
+        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+
 
 class ContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
@@ -111,6 +130,11 @@ class EntrypointTest(BaseLuaRenderTest):
         end}
         """)
         self.assertStatusCode(resp, 400)
+
+    def test_unicode_error(self):
+        resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))
+        self.assertStatusCode(resp, 400)
+        self.assertIn("unexpected symbol", resp.text)
 
 
 class ErrorsTest(BaseLuaRenderTest):
