@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import os
 import functools
 from twisted.python import log
 
@@ -149,7 +150,7 @@ def _get_entrypoint(lua, script):
     return lua.globals()["main"]
 
 
-def start_main(lua, script, *args):
+def start_main(lua, script, args):
     """
     Start "main" coroutine and pass args to it.
     Return the started coroutine.
@@ -160,3 +161,24 @@ def start_main(lua, script, *args):
     if not is_lua_function(main):
         raise ValueError("'main' is not a function")
     return main.coroutine(*args)
+
+
+def get_script_source(name):
+    """ Return contents of a file from /scripts folder """
+    filename = os.path.join(os.path.dirname(__file__), "scripts", name)
+    with open(filename, 'rb') as f:
+        return f.read().decode('utf8')
+
+
+def lua2python(result):
+    """ Recursively convert Lua data to Python objects """
+    if is_lua_table(result):
+        result = {
+            lua2python(key): lua2python(value)
+            for key, value in result.items()
+        }
+    elif isinstance(result, unicode):
+        result = result.encode('utf8')
+    return result
+
+

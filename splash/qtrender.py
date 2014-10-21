@@ -148,7 +148,7 @@ class DefaultRenderScript(RenderScript):
             if js_profile:
                 self.tab.inject_js_libs(js_profile)
 
-            js_output = self.tab.evaluate(js_source)  #.encode('utf8')
+            js_output = self.tab.runjs(js_source)  #.encode('utf8')
             if self.console:
                 js_console_output = self.tab._jsconsole_messages()
 

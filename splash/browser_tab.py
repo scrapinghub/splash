@@ -336,7 +336,7 @@ class BrowserTab(object):
         # TODO: shouldn't it keep injected scripts after redirects/reloads?
         with open(filename, 'rb') as f:
             script = f.read().decode('utf-8')
-            return self.evaluate(script)
+            return self.runjs(script)
 
     def inject_js_libs(self, folder):
         """
@@ -348,7 +348,7 @@ class BrowserTab(object):
                 filename = os.path.join(folder, jsfile)
                 self.inject_js(filename)
 
-    def evaluate(self, js_source):
+    def runjs(self, js_source):
         """
         Run JS code in page context and return the result.
         Only string results are supported.

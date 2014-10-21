@@ -8,13 +8,14 @@ from collections import namedtuple
 import lupa
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (
-    table_as_kwargs,
     table_as_kwargs_method,
-    is_lua_table,
     get_new_runtime,
-    start_main
+    start_main,
+    get_script_source,
+    lua2python,
 )
 from splash.render_options import BadOption
+
 
 class ScriptError(BadOption):
     pass
@@ -29,11 +30,14 @@ class _AsyncCommand(object):
         return "_AsyncCommand(name=%r, kwargs=%r)" % (self.name, self.kwargs)
 
 
-def command(func):
+def command(async=False):
     """ Decorator for marking methods as commands available to Lua """
-    func = table_as_kwargs_method(func)
-    func._is_command = True
-    return func
+    def decorator(func):
+        func = table_as_kwargs_method(func)
+        func._is_command = True
+        func._is_async = async
+        return can_raise(func)
+    return decorator
 
 
 def can_raise(func):
@@ -60,20 +64,30 @@ class Splash(object):
     """
     _result_content_type = 'application/json'
 
-    def __init__(self, tab, return_func, render_options):
+    def __init__(self, runtime, tab, return_func, render_options):
         """
+        :param lupa.LuaRuntime runtime: Lua Runtime
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable dispatch_func: function that continues the script
         """
+        self._lua = runtime
         self._tab = tab
         self._return = return_func
         self._render_options = render_options
         self._exceptions = []
 
-    @command
-    @can_raise
+        commands = {}
+        for name in dir(self):
+            if name.startswith("_"):
+                continue
+            value = getattr(self, name)
+            if getattr(value, '_is_command', False):
+                commands[name] = (value, getattr(value, '_is_async'))
+        self.commands = self._lua.table(**commands)
+
+    @command(async=True)
     def wait(self, time, cancel_on_redirect=False):
-        # TODO: it should return 'not_cancelled' flag
+        # TODO: make sure it returns 'not_cancelled' flag
         return _AsyncCommand("wait", dict(
             time_ms=time*1000,
             callback=self._wait_success,
@@ -83,8 +97,7 @@ class Splash(object):
     def _wait_success(self):
         self._return(True)
 
-    @command
-    @can_raise
+    @command(async=True)
     def go(self, url, baseurl=None):
         return _AsyncCommand("go", dict(
             url=url,
@@ -100,53 +113,59 @@ class Splash(object):
         # TODO: better error description
         self._return(None, "error loading page")
 
-    @command
-    @can_raise
+    @command()
     def html(self):
         return self._tab.html()
 
-    @command
-    @can_raise
+    @command()
     def png(self, width=None, height=None, base64=False):
         return self._tab.png(width, height, b64=base64)
 
-    @command
-    @can_raise
+    @command()
     def har(self):
         return self._tab.har()
 
-    @command
-    @can_raise
+    @command()
     def history(self):
         return self._tab.history()
 
-    @command
-    @can_raise
+    @command()
     def stop(self):
         self._tab.stop_loading()
 
-    @can_raise
+    @command()
+    def runjs(self, js):
+        return self._tab.runjs(js)
+
+    @command()
     def set_result_content_type(self, content_type):
         if not isinstance(content_type, basestring):
             raise ScriptError("splash:set_result_content_type() argument must be a string")
         self._result_content_type = content_type
 
-    # FIXME: hide from Lua
+    # TODO: hide from Lua using attribute filter
     def raise_stored(self):
         if self._exceptions:
             raise self._exceptions[-1]
 
+    def result_content_type(self):
+        return self._result_content_type
 
-def lua2python(result):
-    if is_lua_table(result):
-        result = {
-            lua2python(key): lua2python(value)
-            for key, value in result.items()
-        }
-    elif isinstance(result, unicode):
-        result = result.encode('utf8')
-    return result
+    def get_wrapper(self):
+        """
+        Return a Lua wrapper for this object.
+        """
+        # FIXME: cache file
+        code = get_script_source("splash.lua")
+        self._lua.execute(code)
+        wrapper = self._lua.globals()["Splash"]
+        return wrapper(self)
 
+    def start_main(self, lua_source):
+        """
+        Start "main" function and return it as a coroutine.
+        """
+        return start_main(self._lua, lua_source, args=[self.get_wrapper()])
 
 
 class LuaRender(RenderScript):
@@ -156,11 +175,11 @@ class LuaRender(RenderScript):
 
     @stop_on_error
     def start(self, lua_source):
-        print(lua_source)
-        self.lua = get_new_runtime()
-        self.splash = Splash(self.tab, self.dispatch, self.render_options)
+        self.log(lua_source)
+        lua = get_new_runtime()
+        self.splash = Splash(lua, self.tab, self.dispatch, self.render_options)
         try:
-            self.coro = start_main(self.lua, lua_source, self.splash)
+            self.coro = self.splash.start_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + str(e))
 
@@ -175,13 +194,12 @@ class LuaRender(RenderScript):
             try:
                 self.log("[lua] send %s" % (args,))
                 command = self.coro.send(args or None)
-                # command = next(self.coro)
                 self.log("[lua] got %r" % command)
             except StopIteration:
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
                 self.return_result(
-                    (lua2python(self.result), str(self.splash._result_content_type))
+                    (lua2python(self.result), str(self.splash.result_content_type()))
                 )
                 return
             except lupa.LuaError as e:

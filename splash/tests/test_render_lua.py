@@ -135,7 +135,9 @@ class ErrorsTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
           local x = splash.foo
+          return x == nil
         end
         """)
-        # FIXME: make a better error message
-        self.assertStatusCode(resp, 400)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
+

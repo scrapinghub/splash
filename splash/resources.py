@@ -19,6 +19,7 @@ from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
 from splash.qtrender_lua import LuaRender
+from splash.lua import get_script_source
 from splash.utils import get_num_fds, get_leaks
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
@@ -99,6 +100,9 @@ class RenderBase(_ValidatingResource):
         if isinstance(data, tuple) and len(data) == 2:
             data, content_type = data
             return self._writeOutput(data, request, content_type)
+
+        if isinstance(data, (bool, int, long)):
+            return self._writeOutput(str(data), request, content_type)
 
         request.setHeader("content-type", content_type)
 
@@ -491,12 +495,6 @@ class Root(Resource):
         'webapp',
     )
 
-    EXAMPLE_SCRIPT_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'scripts',
-        'example.lua'
-    )
-
     def __init__(self, pool, ui_enabled):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
@@ -517,8 +515,7 @@ class Root(Resource):
         return Resource.getChild(self, name, request)
 
     def get_example_script(self):
-        with open(self.EXAMPLE_SCRIPT_PATH, 'rb') as f:
-            return f.read().decode('utf8').strip()
+        return get_script_source("example.lua")
 
     def render_GET(self, request):
         result = """<html>
