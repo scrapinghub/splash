@@ -16,7 +16,7 @@ from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
-from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS
+from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py
 from splash.har.utils import without_private
 
 from .qwebpage import SplashQWebPage
@@ -356,7 +356,7 @@ class BrowserTab(object):
         """
         frame = self.web_page.mainFrame()
         res = frame.evaluateJavaScript(js_source)
-        return unicode(res.toString())
+        return qt2py(res)
 
     def store_har_timing(self, name):
         self.web_page.har_log.store_timing(name)

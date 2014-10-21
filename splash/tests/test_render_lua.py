@@ -165,3 +165,82 @@ class ErrorsTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "True")
 
+
+class RunjsTest(BaseLuaRenderTest):
+
+    def assertRunjsResult(self, js, result, type):
+        resp = self.request_lua("""
+        function main(splash)
+            local res = splash:runjs([[%s]])
+            return {res=res, tp=type(res)}
+        end
+        """ % js)
+        self.assertStatusCode(resp, 200)
+        if result is None:
+            self.assertEqual(resp.json(), {'tp': type})
+        else:
+            self.assertEqual(resp.json(), {'res': result, 'tp': type})
+
+    def test_numbers(self):
+        self.assertRunjsResult("1.0", 1.0, "number")
+        self.assertRunjsResult("1", 1, "number")
+        self.assertRunjsResult("1+2", 3, "number")
+
+    def test_string(self):
+        self.assertRunjsResult("'foo'", u'foo', 'string')
+
+    def test_bool(self):
+        self.assertRunjsResult("true", True, 'boolean')
+
+    def test_undefined(self):
+        self.assertRunjsResult("undefined", None, 'nil')
+
+    def test_null(self):
+        # XXX: null is converted to an empty string by QT,
+        # we can't distinguish it from a "real" empty string.
+        self.assertRunjsResult("null", "", 'string')
+
+    def test_unicode_string(self):
+        self.assertRunjsResult("'привет'", u'привет', 'string')
+
+    def test_unicode_string_in_object(self):
+        self.assertRunjsResult(
+            'var o={}; o["ключ"] = "значение"; o',
+            {u'ключ': u'значение'},
+            'table'
+        )
+
+    def test_nested_object(self):
+        self.assertRunjsResult(
+            'var o={}; o["x"] = {}; o["x"]["y"] = 5; o["z"] = "foo"; o',
+            {"x": {"y": 5}, "z": "foo"},
+            'table'
+        )
+
+    def test_array(self):
+        self.assertRunjsResult(
+            'x = [1, 2, 3, "foo", {}]; x',
+            [1, 2, 3, "foo", {}],
+            'userdata',  # XXX: it'be great for it to be 'table'
+        )
+
+    def test_self_referencing(self):
+        self.assertRunjsResult(
+            'var o={}; o["x"] = "5"; o["y"] = o; o',
+            {"x": "5"},  # self reference is discarded
+            'table'
+        )
+
+    def test_function(self):
+        # XXX: complex objects are not returned by QT
+        self.assertRunjsResult(
+            "x = function(){return 5}; x",
+            {},
+            "table"
+        )
+
+        self.assertRunjsResult(
+            "function(){return 5}",
+            None,
+            "nil"
+        )

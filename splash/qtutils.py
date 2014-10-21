@@ -6,7 +6,7 @@ import sys
 import time
 from twisted.python import log
 from PyQt4.QtGui import QApplication
-from PyQt4.QtCore import QAbstractEventDispatcher
+from PyQt4.QtCore import QAbstractEventDispatcher, QVariant, QString, QObject
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager
 
@@ -83,3 +83,35 @@ def request_repr(request, operation=None):
     url = qurl2ascii(request.url())
     return "%s %s" % (method, url)
 
+
+def qt2py(obj, max_depth=100):
+    """ Convert a QVariant object to a barebone non-PyQT object """
+
+    if max_depth <= 0:
+        raise ValueError("Can't convert object: depth limit is reached")
+
+    if isinstance(obj, QVariant):
+        obj = obj.toPyObject()
+
+    # print(obj, obj.__class__)
+
+    if isinstance(obj, QString):
+        return unicode(obj)
+
+    if isinstance(obj, dict):
+        return {
+            qt2py(key, max_depth-1): qt2py(value, max_depth-1)
+            for key, value in obj.items()
+        }
+
+    if isinstance(obj, list):
+        return [qt2py(v, max_depth-1) for v in obj]
+
+    if isinstance(obj, tuple):
+        return tuple([qt2py(v, max_depth-1) for v in obj])
+
+    if isinstance(obj, set):
+        return {qt2py(v, max_depth-1) for v in obj}
+
+    assert not isinstance(obj, QObject), (obj, obj.__class__)
+    return obj

@@ -129,7 +129,6 @@ def table_as_kwargs_method(func):
 def get_new_runtime(**kwargs):
     """ Return a pre-configured LuaRuntime. """
     import lupa
-    kwargs.setdefault('encoding', None)
     kwargs.setdefault('register_eval', False)
     kwargs.setdefault('unpack_returned_tuples', True)
     return lupa.LuaRuntime(**kwargs)
@@ -168,13 +167,46 @@ def get_script_source(name):
         return f.read().decode('utf8')
 
 
-def lua2python(result):
+def lua2python(obj, binary=True, max_depth=100):
     """ Recursively convert Lua data to Python objects """
-    if is_lua_table(result):
-        result = {
-            lua2python(key): lua2python(value)
-            for key, value in result.items()
+    if max_depth <= 0:
+        raise ValueError("Can't convert Lua object to Python: depth limit is reached")
+
+    if is_lua_table(obj):
+        return {
+            lua2python(key, binary, max_depth-1): lua2python(value, binary, max_depth-1)
+            for key, value in obj.items()
         }
-    elif isinstance(result, unicode):
-        result = result.encode('utf8')
-    return result
+
+    if binary and isinstance(obj, unicode):
+        obj = obj.encode('utf8')
+    return obj
+
+
+def python2lua(lua, obj, max_depth=100):
+    """ Recursively convert Python object to a Lua data structure when possible """
+    if max_depth <= 0:
+        raise ValueError("Can't convert Python object to Lua: depth limit is reached")
+
+    if isinstance(obj, dict):
+        obj = {
+            python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
+            for key, value in obj.items()
+        }
+        return lua.table(**obj)
+
+    # XXX: encoding lists is tricky because Lua only has tables.
+    # The problem is to preserve list type during Python -> Lua -> Python
+    # conversion. For now lists encding is disabled; lists are not visible
+    # to Lua.
+
+    # if isinstance(obj, list):
+    #     obj = [python2lua(lua, el, max_depth-1) for el in obj]
+    #     return lua.table(*obj)
+
+    if isinstance(obj, unicode):
+        # lupa encodes/decodes strings automatically,
+        # but this doesn't apply to nested table keys.
+        return obj.encode('utf8')
+
+    return obj

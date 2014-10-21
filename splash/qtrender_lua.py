@@ -13,6 +13,7 @@ from splash.lua import (
     start_main,
     get_script_source,
     lua2python,
+    python2lua,
 )
 from splash.render_options import BadOption
 
@@ -32,12 +33,20 @@ class _AsyncCommand(object):
 
 def command(async=False):
     """ Decorator for marking methods as commands available to Lua """
-    def decorator(func):
-        func = table_as_kwargs_method(func)
-        func._is_command = True
-        func._is_async = async
-        return can_raise(func)
+    def decorator(meth):
+        meth = can_raise(emit_lua_objects(table_as_kwargs_method(meth)))
+        meth._is_command = True
+        meth._is_async = async
+        return meth
     return decorator
+
+
+def emit_lua_objects(meth):
+    """ Convert results to native Lua format if possible """
+    def wrapper(self, *args, **kwargs):
+        res = meth(self, *args, **kwargs)
+        return python2lua(self.lua, res)
+    return functools.wraps(meth)(wrapper)
 
 
 def is_command(meth):
@@ -75,10 +84,10 @@ class Splash(object):
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable dispatch_func: function that continues the script
         """
-        self._lua = self._create_runtime()
-        self._tab = tab
+        self.lua = self._create_runtime()
+        self.tab = tab
+        self.render_options = render_options
         self._return = return_func
-        self._render_options = render_options
         self._exceptions = []
 
         commands = {}
@@ -86,7 +95,7 @@ class Splash(object):
             value = getattr(self, name)
             if is_command(value):
                 commands[name] = getattr(value, '_is_async')
-        self.commands = self._lua.table(**commands)
+        self.commands = python2lua(self.lua, commands)
 
     @command(async=True)
     def wait(self, time, cancel_on_redirect=False):
@@ -118,27 +127,30 @@ class Splash(object):
 
     @command()
     def html(self):
-        return self._tab.html()
+        return self.tab.html()
 
     @command()
     def png(self, width=None, height=None, base64=True):
-        return self._tab.png(width, height, b64=base64)
+        # TODO: with base64=False return "BinaryCapsule"
+        # to prevent lupa from trying to encode/decode it.
+        return self.tab.png(width, height, b64=base64)
 
     @command()
     def har(self):
-        return self._tab.har()
+        return self.tab.har()
 
     @command()
     def history(self):
-        return self._tab.history()
+        return self.tab.history()
 
     @command()
     def stop(self):
-        self._tab.stop_loading()
+        self.tab.stop_loading()
 
     @command()
     def runjs(self, js):
-        return self._tab.runjs(js)
+        res = self.tab.runjs(js)
+        return res
 
     @command()
     def set_result_content_type(self, content_type):
@@ -148,7 +160,7 @@ class Splash(object):
 
     @command()
     def set_viewport(self, size):
-        return self._tab.set_viewport(size)
+        return self.tab.set_viewport(size)
 
     # TODO: hide from Lua using attribute filter
     def raise_stored(self):
@@ -164,17 +176,17 @@ class Splash(object):
         """
         Return a Lua wrapper for this object.
         """
-        # FIXME: cache file
+        # FIXME: cache file contents
         code = get_script_source("splash.lua")
-        self._lua.execute(code)
-        wrapper = self._lua.globals()["Splash"]
+        self.lua.execute(code)
+        wrapper = self.lua.globals()["Splash"]
         return wrapper(self)
 
     def start_main(self, lua_source):
         """
         Start "main" function and return it as a coroutine.
         """
-        return start_main(self._lua, lua_source, args=[self.get_wrapper()])
+        return start_main(self.lua, lua_source, args=[self.get_wrapper()])
 
     def _create_runtime(self):
         """
