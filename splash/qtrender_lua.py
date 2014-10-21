@@ -143,6 +143,10 @@ class Splash(object):
             raise ScriptError("splash:set_result_content_type() argument must be a string")
         self._result_content_type = content_type
 
+    @command()
+    def set_viewport(self, size):
+        return self._tab.set_viewport(size)
+
     # TODO: hide from Lua using attribute filter
     def raise_stored(self):
         if self._exceptions:

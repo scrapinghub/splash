@@ -132,6 +132,7 @@ class BrowserTab(object):
         self.web_page.setViewportSize(size)
         w, h = int(size.width()), int(size.height())
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
+        return w, h
 
     def go(self, url, callback, errback, baseurl=None, http_method='GET', body=None):
         """
