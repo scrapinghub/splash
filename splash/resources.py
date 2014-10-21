@@ -86,13 +86,22 @@ class RenderBase(_ValidatingResource):
         timer.cancel()
         return _
 
-    def _writeOutput(self, data, request):
+    def _writeOutput(self, data, request, content_type=None):
         # log.msg("_writeOutput: %s" % id(request))
+
+        if content_type is None:
+            content_type = self.content_type
+
         if isinstance(data, dict):
             data = json.dumps(data)
-            request.setHeader("content-type", "application/json")
-        else:
-            request.setHeader("content-type", self.content_type)
+            return self._writeOutput(data, request, "application/json")
+
+        if isinstance(data, tuple) and len(data) == 2:
+            data, content_type = data
+            return self._writeOutput(data, request, content_type)
+
+        request.setHeader("content-type", content_type)
+
         self._logStats(request)
         request.write(data)
 
