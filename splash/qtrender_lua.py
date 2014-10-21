@@ -14,6 +14,7 @@ from splash.lua import (
     get_new_runtime,
     start_main
 )
+from splash.render_options import BadOption
 
 
 class _AsyncCommand(object):
@@ -36,14 +37,16 @@ class Splash(object):
     """
     This object is passed to Lua script as an argument to 'main' function.
     """
+    result_content_type = 'application/json'
 
-    def __init__(self, tab, return_func):
+    def __init__(self, tab, return_func, render_options):
         """
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable dispatch_func: function that continues the script
         """
         self._tab = tab
         self._return = return_func
+        self._render_options = render_options
 
     @command
     def wait(self, time, cancel_on_redirect=False):
@@ -94,22 +97,32 @@ class Splash(object):
         self._tab.stop_loading()
 
 
+def lua2python(result):
+    if is_lua_table(result):
+        result = {
+            lua2python(key): lua2python(value)
+            for key, value in result.items()
+        }
+    elif isinstance(result, unicode):
+        result = result.encode('utf8')
+    return result
+
+
+
 class LuaRender(RenderScript):
 
-    default_min_log_level = 3
+    default_min_log_level = 2
     result = ''
 
-    def _getscript(self):
-        fn = os.path.join(os.path.dirname(__file__), 'scripts', 'tmp.lua')
-        with open(fn, 'rb') as f:
-            return f.read().decode('utf8')
-
     @stop_on_error
-    def start(self, **kwarge):
-        script = self._getscript()
+    def start(self, lua_source):
+        print(lua_source)
         self.lua = get_new_runtime()
-        self.splash = Splash(self.tab, self.dispatch)
-        self.coro = start_main(self.lua, script, self.splash)
+        self.splash = Splash(self.tab, self.dispatch, self.render_options)
+        try:
+            self.coro = start_main(self.lua, lua_source, self.splash)
+        except ValueError as e:
+            raise BadOption("lua_source: " + str(e))
         self.dispatch()
 
     @stop_on_error
@@ -126,12 +139,13 @@ class LuaRender(RenderScript):
             except StopIteration:
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
-                self.return_result(self.get_result())
+                self.return_result(
+                    (lua2python(self.result), str(self.splash.result_content_type))
+                )
                 return
-            except lupa.LuaError as e:
+            except lupa.LuaError:
                 self.log("[lua] LuaError")
-                self.return_error(e)
-                return
+                raise
 
             if isinstance(command, _AsyncCommand):
                 self.log("[lua] executing %r" % command)
@@ -141,13 +155,3 @@ class LuaRender(RenderScript):
             else:
                 self.log("[lua] got non-command")
                 self.result = command
-
-    def get_result(self):
-        result = self.result
-        if is_lua_table(result):
-            result = dict(result)
-        elif isinstance(result, unicode):
-            result = result.encode('utf8')
-        elif isinstance(result, (int, long, float, bool)):
-            result = str(result)
-        return result

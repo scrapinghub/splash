@@ -6,6 +6,7 @@ from twisted.python import log
 _supported = None
 _lua = None
 _LuaTable = None
+_LuaFunction = None
 
 
 def is_supported():
@@ -43,7 +44,7 @@ def get_shared_runtime():
 
 def is_lua_table(obj):
     """
-    Return True if obj is a wrapped LuaTable.
+    Return True if obj is a wrapped Lua table.
 
     >>> import lupa
     >>> lua = lupa.LuaRuntime()
@@ -59,6 +60,26 @@ def is_lua_table(obj):
         lua = get_shared_runtime()
         _LuaTable = lua.eval("{}").__class__
     return isinstance(obj, _LuaTable)
+
+
+def is_lua_function(obj):
+    """
+    Return True if obj is a wrapped Lua function.
+
+    >>> import lupa
+    >>> lua = lupa.LuaRuntime()
+    >>> is_lua_table(lua.eval("{foo='bar'}"))
+    False
+    >>> is_lua_table(lua.eval("123"))
+    False
+    >>> is_lua_table(lua.eval("function () end"))
+    True
+    """
+    global _LuaFunction
+    if _LuaFunction is None:
+        lua = get_shared_runtime()
+        _LuaFunction = lua.eval("function() end").__class__
+    return isinstance(obj, _LuaFunction)
 
 
 def get_version():
@@ -134,4 +155,8 @@ def start_main(lua, script, *args):
     Return the started coroutine.
     """
     main = _get_entrypoint(lua, script)
+    if main is None:
+        raise ValueError("'main' function is not found")
+    if not is_lua_function(main):
+        raise ValueError("'main' is not a function")
     return main.coroutine(*args)

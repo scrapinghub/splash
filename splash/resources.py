@@ -161,14 +161,16 @@ class RenderHtml(RenderBase):
 
 class RenderLua(RenderBase):
 
-
     content_type = "application/json"
 
     # content_type = None # "application/json"
 
     def _getRender(self, request, options):
-        proxy = options.get_proxy()
-        return self.pool.render(LuaRender, options, proxy)
+        params = dict(
+            proxy = options.get_proxy(),
+            lua_source = options.get_lua_source()
+        )
+        return self.pool.render(LuaRender, options, **params)
 
 
 class RenderPng(RenderBase):
@@ -246,7 +248,7 @@ class HarViewer(_ValidatingResource):
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
             'timeout': options.get_timeout(),
-            'lua': options.get_lua(),
+            'lua_source': options.get_lua_source(),
             'har': 1,
             'png': 1,
             'html': 1,
@@ -349,7 +351,7 @@ class HarViewer(_ValidatingResource):
                           <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
                           <div class="dropdown-menu panel panel-default" id="lua-code-editor-panel">
                             <div class="panel-body2">
-                              <textarea id="lua-code-editor" name='lua'></textarea>
+                              <textarea id="lua-code-editor" name='lua_source'></textarea>
                             </div>
                           </div>
                       </div>
@@ -386,7 +388,7 @@ class HarViewer(_ValidatingResource):
             /* Create editor */
             var editor = null;
             var textarea = document.getElementById('lua-code-editor');
-            textarea.value = params["lua"] || "";
+            textarea.value = params["lua_source"] || "";
 
             $('#render-form').on("shown.bs.dropdown", function(e){
                 if (editor === null) {
@@ -595,7 +597,7 @@ class Root(Resource):
                                 </span>
                               </div>
                               <div class="input-group col-lg-10">
-                                <textarea id='lua-code-editor' name='lua'>%(lua_script)s</textarea>
+                                <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
                               </div>
                             </div>
                           </fieldset>

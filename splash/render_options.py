@@ -117,8 +117,8 @@ class RenderOptions(object):
     def get_body(self):
         return self.get("body", None)
 
-    def get_lua(self):
-        return self.get("lua", None)
+    def get_lua_source(self):
+        return self.get("lua_source")
 
     def get_js_profile(self, js_profiles_path):
         js_profile = self.get("js", default=None)
