@@ -10,7 +10,7 @@ function main(splash)
     return {status="error", msg=msg}
   end
 
-  splash:wait(0.5)  -- wait 0.5s
+  splash:wait(0.5)
   splash:stop()
 
   local div_count = splash:runjs([[
@@ -24,7 +24,7 @@ function main(splash)
   return {
     div_count = div_count,
     html = splash:html(),
-    png = splash:png{base64=true},
+    png = splash:png{width=640},
     har = splash:har(),
   }
 end

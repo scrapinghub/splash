@@ -118,7 +118,7 @@ class Splash(object):
         return self._tab.html()
 
     @command()
-    def png(self, width=None, height=None, base64=False):
+    def png(self, width=None, height=None, base64=True):
         return self._tab.png(width, height, b64=base64)
 
     @command()
