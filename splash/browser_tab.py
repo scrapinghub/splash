@@ -92,8 +92,6 @@ class BrowserTab(object):
         if self.result_already_returned():
             self.logger.log("error: result is already returned", min_level=1)
 
-        if isinstance(result, dict):
-            result = json.dumps(result)
         self.deferred.callback(result)
         # self.deferred = None
 

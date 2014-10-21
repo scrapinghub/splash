@@ -41,7 +41,7 @@ class RenderScript(object):
         self.deferred = self.tab.deferred
 
     @abc.abstractmethod
-    def start(self, **kwarge):
+    def start(self, **kwargs):
         """ This method is called by Pool when script should begin """
         pass
 
@@ -212,9 +212,7 @@ class JsonRender(DefaultRenderScript):
         if self.include['har']:
             res['har'] = self.tab.har()
 
-        # import pprint
-        # pprint.pprint(res)
-        return json.dumps(res)
+        return res
 
 
 class HarRender(DefaultRenderScript):

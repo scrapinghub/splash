@@ -86,8 +86,17 @@ class RenderBase(_ValidatingResource):
         timer.cancel()
         return _
 
-    def _writeOutput(self, html, request):
+    def _writeOutput(self, data, request):
         # log.msg("_writeOutput: %s" % id(request))
+        if isinstance(data, dict):
+            data = json.dumps(data)
+            request.setHeader("content-type", "application/json")
+        else:
+            request.setHeader("content-type", self.content_type)
+        self._logStats(request)
+        request.write(data)
+
+    def _logStats(self, request):
         stats = {
             "path": request.path,
             "args": request.args,
@@ -100,8 +109,6 @@ class RenderBase(_ValidatingResource):
             "_id": id(request),
         }
         log.msg(json.dumps(stats), system="stats")
-        request.setHeader("content-type", self.content_type)
-        request.write(html)
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
