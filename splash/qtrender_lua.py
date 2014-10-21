@@ -16,6 +16,9 @@ from splash.lua import (
 )
 from splash.render_options import BadOption
 
+class ScriptError(BadOption):
+    pass
+
 
 class _AsyncCommand(object):
     def __init__(self, name, kwargs):
@@ -33,11 +36,29 @@ def command(func):
     return func
 
 
+def can_raise(func):
+    """
+    Decorator for preserving Python exceptions raised in Python
+    functions called from Lua.
+    """
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except ScriptError as e:
+            self._exceptions.append(e)
+            raise
+        except Exception as e:
+            self._exceptions.append(ScriptError(e))
+            raise
+    return wrapper
+
+
 class Splash(object):
     """
     This object is passed to Lua script as an argument to 'main' function.
     """
-    result_content_type = 'application/json'
+    _result_content_type = 'application/json'
 
     def __init__(self, tab, return_func, render_options):
         """
@@ -47,8 +68,10 @@ class Splash(object):
         self._tab = tab
         self._return = return_func
         self._render_options = render_options
+        self._exceptions = []
 
     @command
+    @can_raise
     def wait(self, time, cancel_on_redirect=False):
         # TODO: it should return 'not_cancelled' flag
         return _AsyncCommand("wait", dict(
@@ -61,6 +84,7 @@ class Splash(object):
         self._return(True)
 
     @command
+    @can_raise
     def go(self, url, baseurl=None):
         return _AsyncCommand("go", dict(
             url=url,
@@ -77,24 +101,36 @@ class Splash(object):
         self._return(None, "error loading page")
 
     @command
+    @can_raise
     def html(self):
         return self._tab.html()
 
     @command
+    @can_raise
     def png(self, width=None, height=None, base64=False):
         return self._tab.png(width, height, b64=base64)
 
     @command
+    @can_raise
     def har(self):
         return self._tab.har()
 
     @command
+    @can_raise
     def history(self):
         return self._tab.history()
 
     @command
+    @can_raise
     def stop(self):
         self._tab.stop_loading()
+
+    @can_raise
+    def set_result_content_type(self, content_type):
+        if not isinstance(content_type, basestring):
+            raise ScriptError("splash:set_result_content_type() argument must be a string")
+        self._result_content_type = content_type
+
 
 
 def lua2python(result):
@@ -140,11 +176,13 @@ class LuaRender(RenderScript):
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
                 self.return_result(
-                    (lua2python(self.result), str(self.splash.result_content_type))
+                    (lua2python(self.result), str(self.splash._result_content_type))
                 )
                 return
-            except lupa.LuaError:
-                self.log("[lua] LuaError")
+            except lupa.LuaError as e:
+                self.log("[lua] LuaError %r" % e)
+                if self.splash._exceptions:
+                    raise self.splash._exceptions[-1]
                 raise
 
             if isinstance(command, _AsyncCommand):
