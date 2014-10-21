@@ -62,7 +62,7 @@ class Splash(object):
     """
     This object is passed to Lua script as an argument to 'main' function.
     """
-    _result_content_type = 'application/json'
+    _result_content_type = None
 
     def __init__(self, runtime, tab, return_func, render_options):
         """
@@ -153,7 +153,9 @@ class Splash(object):
             raise self._exceptions[-1]
 
     def result_content_type(self):
-        return self._result_content_type
+        if self._result_content_type is None:
+            return None
+        return str(self._result_content_type)
 
     def get_wrapper(self):
         """
@@ -203,7 +205,7 @@ class LuaRender(RenderScript):
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
                 self.return_result(
-                    (lua2python(self.result), str(self.splash.result_content_type()))
+                    (lua2python(self.result), self.splash.result_content_type())
                 )
                 return
             except lupa.LuaError as e:

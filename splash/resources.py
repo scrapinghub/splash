@@ -164,10 +164,7 @@ class RenderHtml(RenderBase):
 
 
 class RenderLua(RenderBase):
-
-    content_type = "application/json"
-
-    # content_type = None # "application/json"
+    content_type = "text/plain; charset=utf-8"
 
     def _getRender(self, request, options):
         params = dict(

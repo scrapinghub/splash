@@ -180,5 +180,3 @@ def lua2python(result):
     elif isinstance(result, unicode):
         result = result.encode('utf8')
     return result
-
-
