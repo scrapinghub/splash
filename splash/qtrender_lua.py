@@ -34,15 +34,18 @@ class _AsyncCommand(object):
 def command(async=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
-        meth = can_raise(emit_lua_objects(table_as_kwargs_method(meth)))
+        meth = can_raise(emits_lua_objects(table_as_kwargs_method(meth)))
         meth._is_command = True
         meth._is_async = async
         return meth
     return decorator
 
 
-def emit_lua_objects(meth):
-    """ Convert results to native Lua format if possible """
+def emits_lua_objects(meth):
+    """
+    This decorator makes method convert results to
+    native Lua formats when possible
+    """
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
         return python2lua(self.lua, res)
@@ -74,7 +77,8 @@ def can_raise(func):
 
 class Splash(object):
     """
-    This object is passed to Lua script as an argument to 'main' function.
+    This object is passed to Lua script as an argument to 'main' function
+    (wrapped in 'Splash' Lua object; see :file:`scripts/splash.lua`).
     """
     _result_content_type = None
     _attribute_whitelist = ['commands']
@@ -82,7 +86,7 @@ class Splash(object):
     def __init__(self, tab, return_func, render_options):
         """
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
-        :param callable dispatch_func: function that continues the script
+        :param callable return_func: function that continues the script
         """
         self.lua = self._create_runtime()
         self.tab = tab
