@@ -221,7 +221,6 @@ class Splash(object):
         raise AttributeError("Direct writing to Python objects is not allowed")
 
 
-
 class LuaRender(RenderScript):
 
     default_min_log_level = 2
