@@ -97,51 +97,54 @@ class BaseRenderTest(unittest.TestCase):
         self.assertEqual(response.status_code, code, (response.status_code, response.content))
 
 
-class _RenderTest(BaseRenderTest):
+class Base(object):
+    # a hack to skip running of a base RenderTest
 
-    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
-    def test_render_error(self):
-        r = self.request({"url": "http://non-existent-host/"})
-        self.assertStatusCode(r, 502)
+    class RenderTest(BaseRenderTest):
 
-    def test_timeout(self):
-        r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "0.5"})
-        self.assertStatusCode(r, 504)
+        @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+        def test_render_error(self):
+            r = self.request({"url": "http://non-existent-host/"})
+            self.assertStatusCode(r, 502)
 
-    def test_timeout_out_of_range(self):
-        r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "999"})
-        self.assertStatusCode(r, 400)
+        def test_timeout(self):
+            r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "0.5"})
+            self.assertStatusCode(r, 504)
 
-    @skip_proxy
-    def test_missing_url(self):
-        r = self.request({})
-        self.assertStatusCode(r, 400)
-        self.assertTrue("url" in r.text)
+        def test_timeout_out_of_range(self):
+            r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "999"})
+            self.assertStatusCode(r, 400)
 
-    def test_jsalert(self):
-        r = self.request({"url": self.mockurl("jsalert"), "timeout": "3"})
-        self.assertStatusCode(r, 200)
+        @skip_proxy
+        def test_missing_url(self):
+            r = self.request({})
+            self.assertStatusCode(r, 400)
+            self.assertTrue("url" in r.text)
 
-    def test_jsconfirm(self):
-        r = self.request({"url": self.mockurl("jsconfirm"), "timeout": "3"})
-        self.assertStatusCode(r, 200)
+        def test_jsalert(self):
+            r = self.request({"url": self.mockurl("jsalert"), "timeout": "3"})
+            self.assertStatusCode(r, 200)
 
-    def test_iframes(self):
-        r = self.request({"url": self.mockurl("iframes"), "timeout": "3"})
-        self.assertStatusCode(r, 200)
+        def test_jsconfirm(self):
+            r = self.request({"url": self.mockurl("jsconfirm"), "timeout": "3"})
+            self.assertStatusCode(r, 200)
 
-    def test_wait(self):
-        r1 = self.request({"url": self.mockurl("jsinterval")})
-        r2 = self.request({"url": self.mockurl("jsinterval")})
-        r3 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.2"})
-        self.assertStatusCode(r1, 200)
-        self.assertStatusCode(r2, 200)
-        self.assertStatusCode(r3, 200)
-        self.assertEqual(r1.content, r2.content)
-        self.assertNotEqual(r1.content, r3.content)
+        def test_iframes(self):
+            r = self.request({"url": self.mockurl("iframes"), "timeout": "3"})
+            self.assertStatusCode(r, 200)
+
+        def test_wait(self):
+            r1 = self.request({"url": self.mockurl("jsinterval")})
+            r2 = self.request({"url": self.mockurl("jsinterval")})
+            r3 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.2"})
+            self.assertStatusCode(r1, 200)
+            self.assertStatusCode(r2, 200)
+            self.assertStatusCode(r3, 200)
+            self.assertEqual(r1.content, r2.content)
+            self.assertNotEqual(r1.content, r3.content)
 
 
-class RenderHtmlTest(_RenderTest):
+class RenderHtmlTest(Base.RenderTest):
 
     render_format = "html"
 
@@ -235,7 +238,7 @@ class RenderHtmlTest(_RenderTest):
         self.assertIn("GET request", r.text)
 
 
-class RenderPngTest(_RenderTest):
+class RenderPngTest(Base.RenderTest):
 
     render_format = "png"
 
@@ -305,7 +308,7 @@ class RenderPngTest(_RenderTest):
         self.assertEqual(color, img.getpixel((x, y)))
 
 
-class RenderJsonTest(_RenderTest):
+class RenderJsonTest(Base.RenderTest):
 
     render_format = 'json'
 
