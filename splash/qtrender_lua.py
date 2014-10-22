@@ -241,31 +241,39 @@ class LuaRender(RenderScript):
     @stop_on_error
     def dispatch(self, *args):
         """ Execute the script """
-        self.log("[lua] dispatch %s" % (args,))
+        self.log("[lua] dispatch {!s}".format(args))
 
         while True:
             try:
                 self.log("[lua] send %s" % (args,))
-                command = self.coro.send(args or None)
-                self.log("[lua] got %r" % command)
+                cmd = self.coro.send(args or None)
+                self.log("[lua] got {!r}".format(cmd))
             except StopIteration:
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
-                self.return_result(
-                    (lua2python(self.result), self.splash.result_content_type())
-                )
+                try:
+                    res = lua2python(self.result, binary=True, strict=True)
+                except ValueError as e:
+                    # can't convert result to a Python object -> requets was bad
+                    raise ScriptError("'main' returned bad result. {!s}".format(e))
+
+                self.return_result((res, self.splash.result_content_type()))
                 return
             except lupa.LuaError as e:
                 self.log("[lua] LuaError %r" % e)
                 self.splash.raise_stored()
                 # XXX: are Lua errors bad requests?
-                raise ScriptError("unhandled Lua error: %s" % e)
+                raise ScriptError("unhandled Lua error: {!s}".format(e))
 
-            if isinstance(command, _AsyncCommand):
-                self.log("[lua] executing %r" % command)
-                meth = getattr(self.tab, command.name)
-                meth(**command.kwargs)
+            if isinstance(cmd, _AsyncCommand):
+                self.log("[lua] executing {!r}".format(cmd))
+                meth = getattr(self.tab, cmd.name)
+                meth(**cmd.kwargs)
                 return
             else:
                 self.log("[lua] got non-command")
-                self.result = command
+
+                if isinstance(cmd, tuple):
+                    raise ScriptError("'main' function must return a single result")
+
+                self.result = cmd

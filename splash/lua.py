@@ -9,6 +9,7 @@ _supported = None
 _lua = None
 _LuaTable = None
 _LuaFunction = None
+_LuaThread = None
 
 
 def is_supported():
@@ -70,11 +71,11 @@ def is_lua_function(obj):
 
     >>> import lupa
     >>> lua = lupa.LuaRuntime()
-    >>> is_lua_table(lua.eval("{foo='bar'}"))
+    >>> is_lua_function(lua.eval("{foo='bar'}"))
     False
-    >>> is_lua_table(lua.eval("123"))
+    >>> is_lua_function(lua.eval("123"))
     False
-    >>> is_lua_table(lua.eval("function () end"))
+    >>> is_lua_function(lua.eval("function () end"))
     True
     """
     global _LuaFunction
@@ -82,6 +83,30 @@ def is_lua_function(obj):
         lua = get_shared_runtime()
         _LuaFunction = lua.eval("function() end").__class__
     return isinstance(obj, _LuaFunction)
+
+
+def is_lua_coroutine(obj):
+    """
+    Return True if obj is a wrapped Lua coroutine.
+
+    >>> import lupa
+    >>> lua = lupa.LuaRuntime()
+    >>> is_lua_coroutine(lua.eval("123"))
+    False
+    >>> is_lua_coroutine(lua.eval("function () end"))
+    False
+    >>> is_lua_coroutine(lua.eval("coroutine.create(function () end)"))
+    False
+    >>> is_lua_function(lua.eval("coroutine.create(function () end)"))
+    True
+    >>> is_lua_coroutine(lua.eval("coroutine.resume(coroutine.create(function () end))"))
+    False
+    """
+    global _LuaThread
+    if _LuaThread is None:
+        lua = get_shared_runtime()
+        _LuaThread = lua.eval("function() end").coroutine().__class__
+    return isinstance(obj, _LuaThread)
 
 
 def get_version():
@@ -168,16 +193,22 @@ def get_script_source(name):
         return f.read().decode('utf8')
 
 
-def lua2python(obj, binary=True, max_depth=100):
+def lua2python(obj, binary=True, strict=True, max_depth=100):
     """ Recursively convert Lua data to Python objects """
     if max_depth <= 0:
         raise ValueError("Can't convert Lua object to Python: depth limit is reached")
 
     if is_lua_table(obj):
         return {
-            lua2python(key, binary, max_depth-1): lua2python(value, binary, max_depth-1)
+            lua2python(key, binary, strict, max_depth-1): lua2python(value, binary, strict, max_depth-1)
             for key, value in obj.items()
         }
+
+    if strict:
+        if is_lua_function(obj):
+            raise ValueError("Lua functions are not allowed.")
+        if is_lua_coroutine(obj):
+            raise ValueError("Lua coroutines are not allowed.")
 
     if binary and isinstance(obj, unicode):
         obj = obj.encode('utf8')

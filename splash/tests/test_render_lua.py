@@ -57,6 +57,27 @@ class LuaRenderTest(BaseLuaRenderTest):
         self.assertEqual(resp.text, u"привет")
         self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
 
+    def test_number(self):
+        resp = self.request_lua("function main(splash) return 1 end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "1")
+        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+
+    def test_bool(self):
+        resp = self.request_lua("function main(splash) return true end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
+        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+
+    def test_empty(self):
+        resp = self.request_lua("function main(splash) end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "")
+
+        resp = self.request_lua("function main() end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "")
+
 
 class ContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
@@ -99,15 +120,6 @@ class ContentTypeTest(BaseLuaRenderTest):
 
 class EntrypointTest(BaseLuaRenderTest):
 
-    def test_empty(self):
-        resp = self.request_lua("function main(splash) end")
-        self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "")
-
-        resp = self.request_lua("function main() end")
-        self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "")
-
     def test_no_main(self):
         resp = self.request_lua("x=1")
         self.assertStatusCode(resp, 400)
@@ -131,11 +143,6 @@ class EntrypointTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
 
-    def test_unicode_error(self):
-        resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))
-        self.assertStatusCode(resp, 400)
-        self.assertIn("unexpected symbol", resp.text)
-
 
 class ErrorsTest(BaseLuaRenderTest):
 
@@ -147,13 +154,19 @@ class ErrorsTest(BaseLuaRenderTest):
         resp = self.request_lua("sdg; function main(splash) sdhgfsajhdgfjsahgd end")
         self.assertStatusCode(resp, 400)
 
+    def test_unicode_error(self):
+        resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))
+        self.assertStatusCode(resp, 400)
+        self.assertIn("unexpected symbol", resp.text)
+
     def test_user_error(self):
         resp = self.request_lua("""
         function main(splash)
-          error("Error happened")
+          error("User Error Happened")
         end
         """)
         self.assertStatusCode(resp, 400)
+        self.assertIn("User Error Happened", resp.text)
 
     def test_bad_splash_attribute(self):
         resp = self.request_lua("""
@@ -164,6 +177,42 @@ class ErrorsTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "True")
+
+    def test_return_multiple(self):
+        resp = self.request_lua("function main(splash) return 'foo', 'bar' end")
+        self.assertStatusCode(resp, 400)
+        self.assertIn("must return a single result", resp.text)
+
+    def test_return_splash(self):
+        resp = self.request_lua("function main(splash) return splash end")
+        self.assertStatusCode(resp, 400)
+
+    def test_return_function(self):
+        resp = self.request_lua("function main(splash) return function() end end")
+        self.assertStatusCode(resp, 400)
+        self.assertIn("functions are not allowed", resp.text)
+
+    def test_return_coroutine(self):
+        resp = self.request_lua("""
+        function main(splash)
+          return coroutine.create(function() end)
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("functions are not allowed", resp.text)
+
+    def test_return_started_coroutine(self):
+        resp = self.request_lua("""
+        function main(splash)
+          local co = coroutine.create(function()
+            coroutine.yield()
+          end)
+          coroutine.resume(co)
+          return co
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("coroutines are not allowed", resp.text)
 
 
 class RunjsTest(BaseLuaRenderTest):
