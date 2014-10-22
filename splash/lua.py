@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import os
 import functools
+import datetime
 from twisted.python import log
 
 _supported = None
@@ -208,5 +209,23 @@ def python2lua(lua, obj, max_depth=100):
         # lupa encodes/decodes strings automatically,
         # but this doesn't apply to nested table keys.
         return obj.encode('utf8')
+
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat() + 'Z'
+        # XXX: maybe return datetime encoded to Lua standard? E.g.:
+
+        # tm = obj.timetuple()
+        # return python2lua(lua, {
+        #     '_jstype': 'Date',
+        #     'year': tm.tm_year,
+        #     'month': tm.tm_mon,
+        #     'day': tm.tm_mday,
+        #     'yday': tm.tm_yday,
+        #     'wday': tm.tm_wday,  # fixme: in Lua Sunday is 1, in Python Monday is 0
+        #     'hour': tm.tm_hour,
+        #     'min': tm.tm_min,
+        #     'sec': tm.tm_sec,
+        #     'isdst': tm.tm_isdst,  # fixme: isdst can be -1 in Python
+        # }, max_depth)
 
     return obj

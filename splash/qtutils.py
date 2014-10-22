@@ -6,7 +6,8 @@ import sys
 import time
 from twisted.python import log
 from PyQt4.QtGui import QApplication
-from PyQt4.QtCore import QAbstractEventDispatcher, QVariant, QString, QObject
+from PyQt4.QtCore import QAbstractEventDispatcher, QVariant, QString, QObject, \
+    QDateTime, QRegExp
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager
 
@@ -97,6 +98,16 @@ def qt2py(obj, max_depth=100):
 
     if isinstance(obj, QString):
         return unicode(obj)
+
+    if isinstance(obj, QDateTime):
+        return obj.toPyDateTime()
+
+    if isinstance(obj, QRegExp):
+        return {
+            "_jstype": "RegExp",
+            "pattern": unicode(obj.pattern()),
+            "caseSensitive": bool(obj.caseSensitivity()),
+        }
 
     if isinstance(obj, dict):
         return {

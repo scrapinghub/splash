@@ -244,3 +244,34 @@ class RunjsTest(BaseLuaRenderTest):
             None,
             "nil"
         )
+
+    def test_dateobj(self):
+        # XXX: Date objects are converted to ISO8061 strings.
+        # Does it make sense to do anything else with them?
+        # E.g. make them available to Lua as tables?
+        self.assertRunjsResult(
+            'x = new Date("21 May 1958 10:12"); x',
+            "1958-05-21T04:12:00Z",
+            "string"
+        )
+
+    def test_regexp(self):
+        self.assertRunjsResult(
+            '/my-regexp/i',
+            {
+                u'_jstype': u'RegExp',
+                'caseSensitive': False,
+                'pattern': u'my-regexp'
+            },
+            'table'
+        )
+
+        self.assertRunjsResult(
+            '/my-regexp/',
+            {
+                u'_jstype': u'RegExp',
+                'caseSensitive': True,
+                'pattern': u'my-regexp'
+            },
+            'table'
+        )
