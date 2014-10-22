@@ -2,7 +2,10 @@
 from __future__ import absolute_import
 
 from . import test_render
+import unittest
+from splash.lua import get_script_source
 from .test_jsonpost import JsonPostRequestHandler
+from .utils import NON_EXISTING_RESOLVABLE
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
@@ -408,3 +411,23 @@ class JsonPostArgsTest(ArgsTest):
 
     def test_post_numbers(self):
         self.assertArgsPassed({"x": 5})
+
+
+class EmulatedRenderHtmlTest(test_render.RenderHtmlTest):
+
+    render_format = 'lua'
+    script = get_script_source("render_html.lua")
+
+    def request(self, query, render_format=None, headers=None, **kwargs):
+        query = {} or query
+        query.update({'lua_source': self.script})
+        return self._get_handler().request(query, render_format, headers, **kwargs)
+
+    def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
+        raise NotImplementedError()
+
+    # ==== overridden tests =============================
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_render_error(self):
+        r = self.request({"url": "http://non-existent-host/"})
+        self.assertStatusCode(r, 400)

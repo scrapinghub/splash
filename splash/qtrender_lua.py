@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-
-import os
 import functools
-import inspect
-from collections import namedtuple
+
 import lupa
+
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (
     table_as_kwargs_method,
@@ -22,13 +20,13 @@ class ScriptError(BadOption):
     pass
 
 
-class _AsyncCommand(object):
+class _AsyncBrowserCommand(object):
     def __init__(self, name, kwargs):
         self.name = name
         self.kwargs = kwargs
 
     def __repr__(self):
-        return "_AsyncCommand(name=%r, kwargs=%r)" % (self.name, self.kwargs)
+        return "_AsyncBrowserCommand(name=%r, kwargs=%r)" % (self.name, self.kwargs)
 
 
 def command(async=False):
@@ -106,7 +104,7 @@ class Splash(object):
     @command(async=True)
     def wait(self, time, cancel_on_redirect=False):
         # TODO: make sure it returns 'not_cancelled' flag
-        return _AsyncCommand("wait", dict(
+        return _AsyncBrowserCommand("wait", dict(
             time_ms=time*1000,
             callback=self._wait_success,
             onredirect=cancel_on_redirect,
@@ -117,7 +115,7 @@ class Splash(object):
 
     @command(async=True)
     def go(self, url, baseurl=None):
-        return _AsyncCommand("go", dict(
+        return _AsyncBrowserCommand("go", dict(
             url=url,
             baseurl=baseurl,
             callback=self._go_success,
@@ -166,6 +164,8 @@ class Splash(object):
 
     @command()
     def set_viewport(self, size):
+        if size is None:
+            return
         return self.tab.set_viewport(size)
 
     def raise_stored(self):
@@ -192,6 +192,11 @@ class Splash(object):
         Start "main" function and return it as a coroutine.
         """
         return start_main(self.lua, lua_source, args=[self.get_wrapper()])
+
+    def run_async_command(self, cmd):
+        """ Execute _AsyncCommand """
+        meth = getattr(self.tab, cmd.name)
+        return meth(**cmd.kwargs)
 
     def _create_runtime(self):
         """
@@ -266,10 +271,9 @@ class LuaRender(RenderScript):
                 # XXX: are Lua errors bad requests?
                 raise ScriptError("unhandled Lua error: {!s}".format(e))
 
-            if isinstance(cmd, _AsyncCommand):
+            if isinstance(cmd, _AsyncBrowserCommand):
                 self.log("[lua] executing {!r}".format(cmd))
-                meth = getattr(self.tab, cmd.name)
-                meth(**cmd.kwargs)
+                self.splash.run_async_command(cmd)
                 return
             else:
                 self.log("[lua] got non-command")

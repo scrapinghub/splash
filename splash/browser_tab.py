@@ -209,7 +209,7 @@ class BrowserTab(object):
         )
         self.web_page.loadFinished.connect(cb)
 
-        baseurl = QUrl(baseurl.decode('utf8'))
+        baseurl = QUrl(baseurl)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
         data = self._reply.readAll()
         self.web_page.mainFrame().setContent(data, mimeType, baseurl)
@@ -228,7 +228,7 @@ class BrowserTab(object):
 
     def _create_request(self, url):
         request = QNetworkRequest()
-        request.setUrl(QUrl(url.decode('utf8')))
+        request.setUrl(QUrl(url))
         self._set_request_headers(request, self._default_headers)
         return request
 

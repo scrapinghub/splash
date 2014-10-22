@@ -77,8 +77,8 @@ class RenderOptions(object):
 
     def _get_url(self, name, default=_REQUIRED):
         url = self.get(name, default, type=None)
-        if isinstance(url, unicode):
-            url = url.encode('utf8')
+        if isinstance(url, bytes):
+            url = url.decode('utf8')
         return url
 
     def get_uid(self):
