@@ -10,7 +10,6 @@ import pytest
 import requests
 from PIL import Image
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
-from splash.tests.utils import SplashServer
 
 
 def https_only(func):

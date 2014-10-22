@@ -216,7 +216,14 @@ def lua2python(obj, binary=True, strict=True, max_depth=100):
 
 
 def python2lua(lua, obj, max_depth=100):
-    """ Recursively convert Python object to a Lua data structure when possible """
+    """
+    Recursively convert Python object to a Lua data structure.
+    Parts that can't be converted to Lua types are passed as-is.
+
+    For Lua runtimes with restrictive attribute filters it means such values
+    are passed as "capsules" which Lua code can send back to Python as-is, but
+    can't access otherwise.
+    """
     if max_depth <= 0:
         raise ValueError("Can't convert Python object to Lua: depth limit is reached")
 
