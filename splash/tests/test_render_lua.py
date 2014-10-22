@@ -2,12 +2,16 @@
 from __future__ import absolute_import
 
 from . import test_render
+from .test_jsonpost import JsonPostRequestHandler
+
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
     render_format = 'lua'
 
-    def request_lua(self, code):
-        return self.request({"lua_source": code})
+    def request_lua(self, code, query=None):
+        q = {"lua_source": code}
+        q.update(query or {})
+        return self.request(q)
 
 
 class LuaRenderTest(BaseLuaRenderTest):
@@ -331,3 +335,76 @@ class RunjsTest(BaseLuaRenderTest):
             },
             'table'
         )
+
+
+class ArgsTest(BaseLuaRenderTest):
+    def args_request(self, query):
+        func = """
+        function main(splash)
+          return {args=splash.args}
+        end
+        """
+        return self.request_lua(func, query)
+
+    def assertArgs(self, query):
+        resp = self.args_request(query)
+        self.assertStatusCode(resp, 200)
+        data = resp.json()["args"]
+        data.pop('lua_source')
+        data.pop('uid')
+        return data
+
+    def assertArgsPassed(self, query):
+        args = self.assertArgs(query)
+        self.assertEqual(args, query)
+        return args
+
+    def test_known_args(self):
+        self.assertArgsPassed({"wait": "1.0"})
+        self.assertArgsPassed({"timeout": "2.0"})
+        self.assertArgsPassed({"url": "foo"})
+
+    def test_unknown_args(self):
+        self.assertArgsPassed({"foo": "bar"})
+
+    def test_filters_validation(self):
+        # 'global' known arguments are still validated
+        resp = self.args_request({"filters": 'foo,bar'})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("Invalid filter names", resp.text)
+
+
+class JsonPostArgsTest(ArgsTest):
+    request_handler = JsonPostRequestHandler
+
+    def test_headers(self):
+        headers = {"user-agent": "Firefox", "content-type": "text/plain"}
+        self.assertArgsPassed({"headers": headers})
+
+    def test_headers_items(self):
+        headers = [["user-agent", "Firefox"], ["content-type", "text/plain"]]
+        self.assertArgsPassed({"headers": headers})
+
+    def test_access_headers(self):
+        func = """
+        function main(splash)
+          local ua = "Unknown"
+          if splash.args.headers then
+            ua = splash.args.headers['user-agent']
+          end
+          return {ua=ua, firefox=(ua=="Firefox")}
+        end
+        """
+        resp = self.request_lua(func, {'headers': {"user-agent": "Firefox"}})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ua": "Firefox", "firefox": True})
+
+        resp = self.request_lua(func)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ua": "Unknown", "firefox": False})
+
+    def test_custom_object(self):
+        self.assertArgsPassed({"myobj": {"foo": "bar", "bar": ["egg", "spam", 1]}})
+
+    def test_post_numbers(self):
+        self.assertArgsPassed({"x": 5})

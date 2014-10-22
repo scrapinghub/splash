@@ -3,7 +3,7 @@
 
 function main(splash)
 
-  local url = "http://google.com"
+  local url = splash.args.url
 
   local ok, msg = splash:go(url) -- this is async!
   if not ok then

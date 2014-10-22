@@ -17,7 +17,7 @@ class RenderOptions(object):
     _REQUIRED = object()
 
     def __init__(self, data):
-        self._data = data
+        self.data = data
 
     @classmethod
     def fromrequest(cls, request):
@@ -60,7 +60,7 @@ class RenderOptions(object):
         return cls(data)
 
     def get(self, name, default=_REQUIRED, type=str, range=None):
-        value = self._data.get(name)
+        value = self.data.get(name)
         if value is not None:
             if type is not None:
                 value = type(value)
@@ -151,7 +151,7 @@ class RenderOptions(object):
 
         return headers
 
-    def get_viewport(self, wait):
+    def get_viewport(self, wait=None):
         viewport = self.get("viewport", defaults.VIEWPORT)
 
         if viewport == 'full':

@@ -5,7 +5,7 @@
 -- and wraps async methods to `coroutine.yield`.
 --
 Splash = function (splash)
-  local self = {}
+  local self = {args=splash.args}
 
   for key, is_async in pairs(splash.commands) do
     local command = splash[key]

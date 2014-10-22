@@ -81,18 +81,20 @@ class Splash(object):
     (wrapped in 'Splash' Lua object; see :file:`scripts/splash.lua`).
     """
     _result_content_type = None
-    _attribute_whitelist = ['commands']
+    _attribute_whitelist = ['commands', 'args']
 
     def __init__(self, tab, return_func, render_options):
         """
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable return_func: function that continues the script
+        :param splash.render_options.RenderOptions render_options: arguments
         """
         self.lua = self._create_runtime()
         self.tab = tab
-        self.render_options = render_options
         self._return = return_func
         self._exceptions = []
+
+        self.args = python2lua(self.lua, render_options.data)
 
         commands = {}
         for name in dir(self):
