@@ -166,7 +166,6 @@ class Splash(object):
     def set_viewport(self, size):
         return self.tab.set_viewport(size)
 
-    # TODO: hide from Lua using attribute filter
     def raise_stored(self):
         if self._exceptions:
             raise self._exceptions[-1]
