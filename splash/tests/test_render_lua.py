@@ -250,8 +250,8 @@ class RunjsTest(BaseLuaRenderTest):
         # Does it make sense to do anything else with them?
         # E.g. make them available to Lua as tables?
         self.assertRunjsResult(
-            'x = new Date("21 May 1958 10:12"); x',
-            "1958-05-21T04:12:00Z",
+            'x = new Date("21 May 1958 10:12 UTC"); x',
+            "1958-05-21T10:12:00Z",
             "string"
         )
 
