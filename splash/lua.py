@@ -198,8 +198,9 @@ def python2lua(lua, obj, max_depth=100):
 
     # XXX: encoding lists is tricky because Lua only has tables.
     # The problem is to preserve list type during Python -> Lua -> Python
-    # conversion. For now lists encding is disabled; lists are not visible
-    # to Lua.
+    # conversion. For now lists conversion is disabled, and lists are opaque
+    # to Lua: it is possible to receive a list and pass it back to Python,
+    # but not to access its elements or attributes.
 
     # if isinstance(obj, list):
     #     obj = [python2lua(lua, el, max_depth-1) for el in obj]
