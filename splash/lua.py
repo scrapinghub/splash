@@ -195,24 +195,29 @@ def get_script_source(name):
 
 def lua2python(obj, binary=True, strict=True, max_depth=100):
     """ Recursively convert Lua data to Python objects """
-    if max_depth <= 0:
-        raise ValueError("Can't convert Lua object to Python: depth limit is reached")
 
-    if is_lua_table(obj):
-        return {
-            lua2python(key, binary, strict, max_depth-1): lua2python(value, binary, strict, max_depth-1)
-            for key, value in obj.items()
-        }
+    def l2p(obj, depth):
+        if depth <= 0:
+            raise ValueError("Can't convert Lua object to Python: depth limit is reached")
 
-    if strict:
-        if is_lua_function(obj):
-            raise ValueError("Lua functions are not allowed.")
-        if is_lua_coroutine(obj):
-            raise ValueError("Lua coroutines are not allowed.")
+        if is_lua_table(obj):
+            return {
+                l2p(key, max_depth-1): l2p(value, max_depth-1)
+                for key, value in obj.items()
+            }
 
-    if binary and isinstance(obj, unicode):
-        obj = obj.encode('utf8')
-    return obj
+        if strict:
+            if is_lua_function(obj):
+                raise ValueError("Lua functions are not allowed.")
+            if is_lua_coroutine(obj):
+                raise ValueError("Lua coroutines are not allowed.")
+
+        if binary and isinstance(obj, unicode):
+            obj = obj.encode('utf8')
+
+        return obj
+
+    return l2p(obj, depth=max_depth)
 
 
 def python2lua(lua, obj, max_depth=100):
