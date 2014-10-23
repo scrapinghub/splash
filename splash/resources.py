@@ -235,7 +235,8 @@ CODEMIRROR_OPTIONS = """{
     matchBrackets: false,  // doesn't look good in mbo theme
     autoCloseBrackets: true,
     extraKeys: {
-        "Ctrl-Space": "autocomplete"
+        "Ctrl-Space": "autocomplete",
+        "Esc": "autocomplete",
     },
     hint: CodeMirror.hint.anyword,
     theme: 'mbo',
