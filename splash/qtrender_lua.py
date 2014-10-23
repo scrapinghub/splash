@@ -14,6 +14,7 @@ from splash.lua import (
     python2lua,
 )
 from splash.render_options import BadOption
+from splash.utils import truncated, BinaryCapsule
 
 
 class ScriptError(BadOption):
@@ -26,7 +27,13 @@ class _AsyncBrowserCommand(object):
         self.kwargs = kwargs
 
     def __repr__(self):
-        return "_AsyncBrowserCommand(name=%r, kwargs=%r)" % (self.name, self.kwargs)
+        kwargs = self.kwargs.copy()
+        if 'callback' in kwargs:
+            kwargs['callback'] = '<a callback>'
+        if 'errback' in kwargs:
+            kwargs['errback'] = '<an errback>'
+        kwargs_repr = truncated(repr(kwargs), 400, "...[long kwargs truncated]")
+        return "%s(name=%r, kwargs=%s)" % (self.__class__.__name__, self.name, kwargs_repr)
 
 
 def command(async=False):
@@ -134,10 +141,13 @@ class Splash(object):
         return self.tab.html()
 
     @command()
-    def png(self, width=None, height=None, base64=True):
-        # TODO: with base64=False return "BinaryCapsule"
-        # to prevent lupa from trying to encode/decode it.
-        return self.tab.png(width, height, b64=base64)
+    def png(self, width=None, height=None):
+        if width is not None:
+            width = int(width)
+        if height is not None:
+            height = int(height)
+        result = self.tab.png(width, height, b64=False)
+        return BinaryCapsule(result)
 
     @command()
     def har(self):
@@ -168,9 +178,14 @@ class Splash(object):
             return
         return self.tab.set_viewport(size)
 
-    def raise_stored(self):
+    @command()
+    def set_images_enabled(self, enabled):
+        if enabled is not None:
+            self.tab.set_images_enabled(int(enabled))
+
+    def get_real_exception(self):
         if self._exceptions:
-            raise self._exceptions[-1]
+            return self._exceptions[-1]
 
     def result_content_type(self):
         if self._result_content_type is None:
@@ -253,7 +268,8 @@ class LuaRender(RenderScript):
             try:
                 self.log("[lua] send %s" % (args,))
                 cmd = self.coro.send(args or None)
-                self.log("[lua] got {!r}".format(cmd))
+                cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
+                self.log("[lua] got {}".format(cmd_repr))
             except StopIteration:
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
@@ -267,7 +283,10 @@ class LuaRender(RenderScript):
                 return
             except lupa.LuaError as e:
                 self.log("[lua] LuaError %r" % e)
-                self.splash.raise_stored()
+                ex = self.splash.get_real_exception()
+                if ex:
+                    self.log("[lua] %r" % ex)
+                    raise ex
                 # XXX: are Lua errors bad requests?
                 raise ScriptError("unhandled Lua error: {!s}".format(e))
 

@@ -250,7 +250,7 @@ class RenderPngTest(Base.RenderTest):
         self._test_ok(self.ts.mockserver.https_url("jsrender"))
 
     def _test_ok(self, url):
-        r = self.request("url=%s" % url)
+        r = self.request({"url": url})
         self.assertPng(r, width=1024, height=768)
 
     def test_width(self):
@@ -265,7 +265,7 @@ class RenderPngTest(Base.RenderTest):
         for arg in ('width', 'height'):
             for val in (-1, 99999):
                 url = self.mockurl("jsrender")
-                r = self.request("url=%s&%s=%d" % (url, arg, val))
+                r = self.request({"url": url, arg: val})
                 self.assertStatusCode(r, 400)
 
     def test_viewport_full_wait(self):
@@ -275,8 +275,13 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
         self.assertStatusCode(r, 200)
 
-    def test_viewport_checks(self):
-        for viewport in ['99999x1', '1x99999', 'foo', '1xfoo', 'axe', '9000x9000', '-1x300']:
+    def test_viewport_invalid(self):
+        for viewport in ['foo', '1xfoo', 'axe', '-1x300']:
+            r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
+            self.assertStatusCode(r, 400)
+
+    def test_viewport_out_of_bounds(self):
+        for viewport in ['99999x1', '1x99999', '9000x9000']:
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 

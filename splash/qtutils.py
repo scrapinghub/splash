@@ -10,6 +10,7 @@ from PyQt4.QtCore import QAbstractEventDispatcher, QVariant, QString, QObject, \
     QDateTime, QRegExp
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager
+from splash.utils import truncated
 
 
 OPERATION_NAMES = {
@@ -65,10 +66,10 @@ def get_qt_app():
 
 
 def qurl2ascii(url):
-    """ Convert QUrl to ASCII text """
+    """ Convert QUrl to ASCII text suitable for logging """
     url = unicode(url.toString()).encode('unicode-escape').decode('ascii')
-    if url.lower().startswith('data:') and len(url) > 80:
-        url = url[:60] + '...[data uri truncated]'
+    if url.lower().startswith('data:'):
+        return truncated(url, 80, '...[data uri truncated]')
     return url
 
 

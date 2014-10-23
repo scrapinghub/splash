@@ -20,7 +20,7 @@ from splash.qtrender import (
 )
 from splash.qtrender_lua import LuaRender
 from splash.lua import get_script_source
-from splash.utils import get_num_fds, get_leaks
+from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
 
@@ -94,7 +94,7 @@ class RenderBase(_ValidatingResource):
             content_type = self.content_type
 
         if isinstance(data, dict):
-            data = json.dumps(data)
+            data = json.dumps(data, cls=SplashJSONEncoder)
             return self._writeOutput(data, request, "application/json")
 
         if isinstance(data, tuple) and len(data) == 2:
@@ -103,6 +103,9 @@ class RenderBase(_ValidatingResource):
 
         if isinstance(data, (bool, int, long)):
             return self._writeOutput(str(data), request, content_type)
+
+        if isinstance(data, BinaryCapsule):
+            return self._writeOutput(data.data, request, content_type)
 
         request.setHeader("content-type", content_type)
 
@@ -284,7 +287,7 @@ class HarViewer(_ValidatingResource):
         url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
-
+        url = url.encode('utf8')
         params = {k:v for k,v in params.items() if v is not None}
 
         request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature

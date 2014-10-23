@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-
-from . import test_render
 import unittest
+import pytest
+
 from splash.lua import get_script_source
+from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE
 
@@ -413,21 +414,58 @@ class JsonPostArgsTest(ArgsTest):
         self.assertArgsPassed({"x": 5})
 
 
-class EmulatedRenderHtmlTest(test_render.RenderHtmlTest):
+class Base:
+    # a hack to skip test running from a mixin
+    class EmulationMixin(test_render.BaseRenderTest):
+        render_format = 'lua'
 
-    render_format = 'lua'
+        def request(self, query, render_format=None, headers=None, **kwargs):
+            query = {} or query
+            query.update({'lua_source': self.script})
+            return self._get_handler().request(query, render_format, headers, **kwargs)
+
+        def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
+            raise NotImplementedError()
+
+        # ==== overridden tests =============================
+        @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+        def test_render_error(self):
+            r = self.request({"url": "http://non-existent-host/"})
+            self.assertStatusCode(r, 400)
+
+        def test_self(self):
+            # make sure mixin order is correct
+            assert self.render_format == 'lua'
+
+
+
+class EmulatedRenderHtmlTest(Base.EmulationMixin, test_render.RenderHtmlTest):
     script = get_script_source("render_html.lua")
 
-    def request(self, query, render_format=None, headers=None, **kwargs):
-        query = {} or query
-        query.update({'lua_source': self.script})
-        return self._get_handler().request(query, render_format, headers, **kwargs)
 
-    def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
-        raise NotImplementedError()
+class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
+    script = get_script_source("render_png.lua")
 
-    # ==== overridden tests =============================
-    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
-    def test_render_error(self):
-        r = self.request({"url": "http://non-existent-host/"})
-        self.assertStatusCode(r, 400)
+    # TODO: default width and height are not applied
+    @pytest.mark.xfail
+    def test_ok(self):
+        super(EmulatedRenderPngTest, self).test_ok()
+
+    @pytest.mark.xfail
+    def test_ok_https(self):
+        super(EmulatedRenderPngTest, self).test_ok_https()
+
+    # TODO: fix validation
+    @pytest.mark.xfail
+    def test_viewport_out_of_bounds(self):
+        super(EmulatedRenderPngTest, self).test_viewport_out_of_bounds()
+
+    @pytest.mark.xfail
+    def test_viewport_invalid(self):
+        super(EmulatedRenderPngTest, self).test_viewport_invalid()
+
+    @pytest.mark.xfail
+    def test_range_checks(self):
+        super(EmulatedRenderPngTest, self).test_range_checks()
+
+
