@@ -157,7 +157,9 @@ def get_new_runtime(**kwargs):
     import lupa
     kwargs.setdefault('register_eval', False)
     kwargs.setdefault('unpack_returned_tuples', True)
-    return lupa.LuaRuntime(**kwargs)
+    lua = lupa.LuaRuntime(**kwargs)
+    lua.execute("assert(os.setlocale('C'))")
+    return lua
 
 
 def _get_entrypoint(lua, script):
