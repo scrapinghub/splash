@@ -26,6 +26,24 @@ Splash = function (splash)
     end
   end
 
+  function self._wait_restart_on_redirects(self, time, max_redirects)
+    if not time then
+      return true
+    end
+
+    local redirects_remaining = max_redirects
+    local ok, reason
+    repeat
+      ok, reason = self:wait(time)
+
+      redirects_remaining = redirects_remaining - 1
+      if redirects_remaining == 0 then
+        error("Maximum number of redirects happen")
+      end
+    until ok or reason ~= 'redirect'
+    return ok, reason
+  end
+
   --
   -- Default rendering script which implements
   -- a common workflow: go to a page, wait for some time
@@ -56,8 +74,8 @@ Splash = function (splash)
     end
 
     assert(self:go{url=url, baseurl=args.baseurl})
+    assert(self:_wait_restart_on_redirects(wait, 10))
 
-    if wait then self:wait(wait) end
 
     if args.viewport == "full" then
       self:set_viewport(args.viewport)

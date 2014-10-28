@@ -538,21 +538,13 @@ class EmulatedJsRedirectTest(Base.EmulationMixin, test_redirects.JsRedirectTest)
     script = get_script_source("render_html.lua")
 
     # Overridden to return 400.
-    # FIXME: it fails because unlike splash:go() splash:wait() doesn't
-    # raise an exception on redirects.
-    @pytest.mark.xfail
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_redirect_to_non_existing(self):
         r = self.request({
             "url": self.mockurl("jsredirect-non-existing"),
-            "wait": 0.1,
+            "wait": 0.2,
         })
         self.assertStatusCode(r, 400)
-
-    # FIXME: wait repeats/cancellations
-    @pytest.mark.xfail
-    def test_redirect_chain_wait(self):
-        super(EmulatedJsRedirectTest, self).test_redirect_chain_wait()
 
 
 class EmulatedMetaRedirectTest(Base.EmulationMixin, test_redirects.MetaRedirectTest):
