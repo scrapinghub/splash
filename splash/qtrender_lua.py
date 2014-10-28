@@ -283,7 +283,7 @@ class LuaRender(RenderScript):
     @stop_on_error
     def dispatch(self, cmd_id, *args):
         """ Execute the script """
-        self.log("[lua] dispatch {} {!s}".format(cmd_id, args))
+        self.log("[lua] dispatch cmd_id={}, args={!s}".format(cmd_id, args))
 
         self.log(
             "[lua] arguments are for command %s, waiting for result of %s" % (cmd_id, self._waiting_for_result_id),
