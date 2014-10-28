@@ -22,7 +22,7 @@ class SplashQWebPage(QWebPage):
     * returns additional info about render errors;
     * logs HAR events.
     """
-    errorInfo = None
+    error_info = None
     custom_user_agent = None
 
     def __init__(self, verbosity=0):
@@ -84,7 +84,7 @@ class SplashQWebPage(QWebPage):
             elif info.domain == QWebPage.WebKit:
                 domain = 'WebKit'
 
-            self.errorInfo = RenderErrorInfo(
+            self.error_info = RenderErrorInfo(
                 domain,
                 int(info.error),
                 unicode(info.errorString),
@@ -98,7 +98,7 @@ class SplashQWebPage(QWebPage):
                     <h1>Failed loading page ({0.text})</h1>
                     <h2>{0.url}</h2>
                     <p>{0.type} error #{0.code}</p>
-                </body></html>""".format(self.errorInfo)
+                </body></html>""".format(self.error_info)
 
             errorPage = sip.cast(errorPage, QWebPage.ErrorPageExtensionReturn)
             errorPage.content = QByteArray(content.encode('utf-8'))
@@ -114,3 +114,21 @@ class SplashQWebPage(QWebPage):
         if extension == QWebPage.ErrorPageExtension:
             return True
         return False
+
+    def maybe_redirect(self, load_finished_ok):
+        """
+        Return True if the current webpage state looks like a redirect.
+        Use this function from loadFinished handler to ignore spurious
+        signals.
+
+        FIXME: This can return True if server returned incorrect
+        Content-Type header, but there is no an additional loadFinished
+        signal in this case.
+        """
+        return not load_finished_ok and self.error_info is None
+
+    def is_ok(self, load_finished_ok):
+        return load_finished_ok and self.error_info is None
+
+    def error_loading(self, load_finished_ok):
+        return load_finished_ok and self.error_info is not None

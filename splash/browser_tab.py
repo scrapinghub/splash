@@ -20,6 +20,16 @@ from splash.har.utils import without_private
 from .qwebpage import SplashQWebPage
 
 
+def skip_if_closing(meth):
+    @functools.wraps(meth)
+    def wrapped(self, *args, **kwargs):
+        if self._closing:
+            self.logger.log("%s is not called because BrowserTab is closing" % meth.__name__, min_level=2)
+            return
+        return meth(self, *args, **kwargs)
+    return wrapped
+
+
 class BrowserTab(object):
     """
     An object for controlling a single browser tab (QWebView).
@@ -230,38 +240,27 @@ class BrowserTab(object):
         self._set_request_headers(request, self._default_headers)
         return request
 
+    @skip_if_closing
     def _on_goto_load_finished(self, ok, callback, errback, callback_id):
         """
         This method is called when a QWebPage finishes loading its contents.
         """
-        if self._closing:
-            self.logger.log("loadFinished is ignored because BrowserTab is closing", min_level=2)
-            return
-
-        page_ok = ok and self.web_page.errorInfo is None
-        maybe_redirect = not ok and self.web_page.errorInfo is None
-        error_loading = ok and self.web_page.errorInfo is not None
-
-        if maybe_redirect:
+        if self.web_page.maybe_redirect(ok):
             self.logger.log("Redirect or other non-fatal error detected", min_level=2)
             # XXX: It assumes loadFinished will be called again because
             # redirect happens. If redirect is detected improperly,
             # loadFinished won't be called again, and Splash will return
             # the result only after a timeout.
-            #
-            # FIXME: This can happen if server returned incorrect
-            # Content-Type header; there is no an additional loadFinished
-            # signal in this case.
             return
 
         self.logger.log("loadFinished: disconnecting callback", min_level=3)
         self._load_finished.disconnect(callback_id)
 
-        if page_ok:  # or maybe_redirect:
+        if self.web_page.is_ok(ok):
             self.logger.log("loadFinished: ok", min_level=2)
             callback()
-        elif error_loading:
-            self.logger.log("loadFinished: %s" % (str(self.web_page.errorInfo)), min_level=1)
+        elif self.web_page.error_loading(ok):
+            self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)), min_level=1)
             # XXX: maybe return a meaningful error page instead of generic
             # error message?
             errback()
