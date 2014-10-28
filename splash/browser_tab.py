@@ -3,20 +3,18 @@ from __future__ import absolute_import
 import os
 import base64
 import copy
-import json
 import pprint
 import weakref
 import functools
-from collections import namedtuple
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import (Qt, QUrl, QBuffer, QSize, QTimer, QObject,
-                          pyqtSlot, QByteArray)
+                          pyqtSlot)
 from PyQt4.QtGui import QPainter, QImage
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
-from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py
+from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py, WrappedSignal
 from splash.har.utils import without_private
 
 from .qwebpage import SplashQWebPage
@@ -55,7 +53,7 @@ class BrowserTab(object):
         self.web_page.render_options = render_options
 
         self._set_default_webpage_options(self.web_page)
-        self._listen_to_urlchanges()
+        self._setup_webpage_events()
 
         self.web_view = QWebView()
         self.web_view.setPage(self.web_page)
@@ -84,7 +82,8 @@ class BrowserTab(object):
         )
         self.logger.enable()
 
-    def _listen_to_urlchanges(self):
+    def _setup_webpage_events(self):
+        self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
         self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
 
     def return_result(self, result):
@@ -139,12 +138,6 @@ class BrowserTab(object):
         Go to an URL. This is similar to entering an URL in
         address tab and pressing Enter.
         """
-
-        # TODO / FIXME: cancel previous goto request.
-        # We must call errback from previous goto because multiple
-        # webpages per browser tab are not supported.
-        # Does it happen automatically?
-
         self.store_har_timing("_onStarted")
 
         if baseurl:
@@ -170,12 +163,17 @@ class BrowserTab(object):
             )
             self._reply.finished.connect(cb)
         else:
-            cb = functools.partial(
+            # if not self._goto_callbacks.isempty():
+            #     self.logger.log("Only a single concurrent 'go' request is supported. "
+            #                     "Previous go requests will be cancelled.", min_level=1)
+            #     # When a new URL is loaded to mainFrame an errback will
+            #     # be called, so we're not cancelling this callback manually.
+
+            self._load_finished.connect(
                 self._on_goto_load_finished,
                 callback=callback,
                 errback=errback,
             )
-            self.web_page.loadFinished.connect(cb)
             self._load_url_to_mainframe(url, http_method, body)
 
     def stop_loading(self):
@@ -203,12 +201,11 @@ class BrowserTab(object):
         """
         self.logger.log("baseurl_request_finished", min_level=2)
 
-        cb = functools.partial(
+        self._load_finished.connect(
             self._on_goto_load_finished,
             callback=callback,
             errback=errback,
         )
-        self.web_page.loadFinished.connect(cb)
 
         baseurl = QUrl(baseurl)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
@@ -233,7 +230,7 @@ class BrowserTab(object):
         self._set_request_headers(request, self._default_headers)
         return request
 
-    def _on_goto_load_finished(self, ok, callback, errback):
+    def _on_goto_load_finished(self, ok, callback, errback, callback_id):
         """
         This method is called when a QWebPage finishes loading its contents.
         """
@@ -256,6 +253,9 @@ class BrowserTab(object):
             # Content-Type header; there is no an additional loadFinished
             # signal in this case.
             return
+
+        self.logger.log("loadFinished: disconnecting callback", min_level=3)
+        self._load_finished.disconnect(callback_id)
 
         if page_ok:  # or maybe_redirect:
             self.logger.log("loadFinished: ok", min_level=2)

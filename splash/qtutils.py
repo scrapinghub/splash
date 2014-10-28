@@ -4,12 +4,18 @@
 from __future__ import absolute_import
 import sys
 import time
+import itertools
+import functools
+
 from twisted.python import log
 from PyQt4.QtGui import QApplication
-from PyQt4.QtCore import QAbstractEventDispatcher, QVariant, QString, QObject, \
+from PyQt4.QtCore import (
+    QAbstractEventDispatcher, QVariant, QString, QObject,
     QDateTime, QRegExp
+)
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager
+
 from splash.utils import truncated
 
 
@@ -127,3 +133,29 @@ def qt2py(obj, max_depth=100):
 
     assert not isinstance(obj, QObject), (obj, obj.__class__)
     return obj
+
+
+class WrappedSignal(object):
+    """
+    A wrapper for QT signals that assigns ids to callbacks,
+    passes callback_id to the callback (as a keyword argument)
+    and allows to disconnect callbacks by their ids.
+
+    Its main purpose is to provide a way to disconnect a slot
+    when callback is fired.
+    """
+    def __init__(self, signal):
+        self.ids = itertools.count()
+        self.callbacks = {}
+        self.signal = signal
+
+    def connect(self, func, **kwargs):
+        callback_id = next(self.ids)
+        cb = functools.partial(func, callback_id=callback_id, **kwargs)
+        self.callbacks[callback_id] = cb
+        self.signal.connect(cb)
+        return callback_id
+
+    def disconnect(self, callback_id):
+        cb = self.callbacks.pop(callback_id)
+        self.signal.disconnect(cb)
