@@ -127,7 +127,7 @@ class Splash(object):
             self._return(cmd_id, True)
 
         def redirect():
-            self._return(cmd_id, False, 'redirect')
+            self._return(cmd_id, None, 'redirect')
 
         onredirect = redirect if cancel_on_redirect else False
 
@@ -146,7 +146,7 @@ class Splash(object):
 
         def error():
             # TODO: better error description?
-            self._return(cmd_id, False, "error loading page")
+            self._return(cmd_id, None, "error loading page")
 
         return _AsyncBrowserCommand(cmd_id, "go", dict(
             url=url,
