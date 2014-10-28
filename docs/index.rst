@@ -23,6 +23,7 @@ Documentation
 
    install
    api
+   scripting
    development
    changes
 
