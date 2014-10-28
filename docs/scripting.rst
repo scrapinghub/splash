@@ -55,7 +55,7 @@ to JavaScript Object or Python dict):
 
      function main(splash)
        -- this is a comment
-       return {"hello": "world"}
+       return {hello="world"}
      end
 
 The result will be encoded to JSON in this case.
