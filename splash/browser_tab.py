@@ -183,6 +183,7 @@ class BrowserTab(object):
         Stop loading of the current page and all pending page
         refresh/redirect requests.
         """
+        self.logger.log("stop_loading", min_level=2)
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
 
