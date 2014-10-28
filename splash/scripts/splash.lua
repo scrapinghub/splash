@@ -32,16 +32,14 @@ Splash = function (splash)
     end
 
     local redirects_remaining = max_redirects
-    local ok, reason
-    repeat
-      ok, reason = self:wait(time)
-
-      redirects_remaining = redirects_remaining - 1
-      if redirects_remaining == 0 then
-        error("Maximum number of redirects happen")
+    while redirects_remaining do
+      local ok, reason = self:wait(time)
+      if reason ~= 'redirect' then
+        return ok, reason
       end
-    until ok or reason ~= 'redirect'
-    return ok, reason
+      redirects_remaining = redirects_remaining - 1
+    end
+    error("Maximum number of redirects happen")
   end
 
   --
