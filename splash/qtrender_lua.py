@@ -268,6 +268,8 @@ class LuaRender(RenderScript):
             try:
                 self.log("[lua] send %s" % (args,))
                 cmd = self.coro.send(args or None)
+                args = None  # don't re-send the same value
+
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
                 self.log("[lua] got {}".format(cmd_repr))
             except StopIteration:
