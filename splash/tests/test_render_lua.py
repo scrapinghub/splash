@@ -342,89 +342,98 @@ class RunjsTest(BaseLuaRenderTest):
 
 
 class WaitTest(BaseLuaRenderTest):
-    def test_timeout(self):
+
+    def wait(self, wait_args, request_args=None):
         code = """
         function main(splash)
-          splash:wait(0.01)
+          local ok, reason = splash:wait%s
+          return {ok=ok, reason=reason}
         end
-        """
-        resp = self.request_lua(code, {"timeout": 0.1})
+        """ % wait_args
+        return self.request_lua(code, request_args)
+
+    def go_and_wait(self, wait_args, request_args):
+        code = """
+        function main(splash)
+          assert(splash:go(splash.args.url))
+          local ok, reason = splash:wait%s
+          return {ok=ok, reason=reason}
+        end
+        """ % wait_args
+        return self.request_lua(code, request_args)
+
+    def test_timeout(self):
+        resp = self.wait("(0.01)", {"timeout": 0.1})
         self.assertStatusCode(resp, 200)
 
-        code = """
-        function main(splash)
-          splash:wait(1)
-        end
-        """
-        resp = self.request_lua(code, {"timeout": 0.1})
+        resp = self.wait("(1)", {"timeout": 0.1})
         self.assertStatusCode(resp, 504)
 
     def test_wait_success(self):
-        resp = self.request_lua("""
-        function main(splash)
-          local ok, reason = splash:wait(0.01)
-          return {ok=ok, reason=reason}
-        end
-        """)
+        resp = self.wait("(0.01)")
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"ok": True})
 
     def test_wait_noredirect(self):
-        resp = self.request_lua("""
-        function main(splash)
-          local ok, reason = splash:wait{time=0.01, cancel_on_redirect=true}
-          return {ok=ok, reason=reason}
-        end
-        """)
+        resp = self.wait("{time=0.01, cancel_on_redirect=true}")
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"ok": True})
 
     def test_wait_redirect_nocancel(self):
         # jsredirect-timer redirects after 0.1ms
-        resp = self.request_lua("""
-        function main(splash)
-          assert(splash:go(splash.args.url))
-          local ok, reason = splash:wait{time=0.2, cancel_on_redirect=false}
-          return {ok=ok, reason=reason}
-        end
-        """, {'url': self.mockurl("jsredirect-timer")})
+        resp = self.go_and_wait(
+            "{time=0.2, cancel_on_redirect=false}",
+            {'url': self.mockurl("jsredirect-timer")}
+        )
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"ok": True})
 
     def test_wait_redirect_cancel(self):
         # jsredirect-timer redirects after 0.1ms
-        resp = self.request_lua("""
-        function main(splash)
-          assert(splash:go(splash.args.url))
-          local ok, reason = splash:wait{time=0.2, cancel_on_redirect=true}
-          return {ok=ok, reason=reason}
-        end
-        """, {'url': self.mockurl("jsredirect-timer")})
+        resp = self.go_and_wait(
+            "{time=0.2, cancel_on_redirect=true}",
+            {'url': self.mockurl("jsredirect-timer")}
+        )
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"reason": "redirect"})  # ok is nil
 
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_wait_onerror(self):
+        resp = self.go_and_wait(
+            "{time=0.2, cancel_on_redirect=false, cancel_on_error=true}",
+            {'url': self.mockurl("jsredirect-non-existing")}
+        )
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"reason": "error"})  # ok is nil
+
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_wait_onerror_nocancel(self):
+        resp = self.go_and_wait(
+            "{time=0.2, cancel_on_redirect=false, cancel_on_error=false}",
+            {'url': self.mockurl("jsredirect-non-existing")}
+        )
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_wait_onerror_nocancel_redirect(self):
+        resp = self.go_and_wait(
+            "{time=0.2, cancel_on_redirect=true, cancel_on_error=false}",
+            {'url': self.mockurl("jsredirect-non-existing")}
+        )
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"reason": "redirect"})
+
     def test_wait_badarg(self):
-        resp = self.request_lua("""
-        function main(splash)
-          splash:wait{time="sdf"}
-        end
-        """)
+        resp = self.wait('{time="sdf"}')
         self.assertStatusCode(resp, 400)
 
     def test_wait_noargs(self):
-        resp = self.request_lua("""
-        function main(splash)
-          splash:wait()
-        end
-        """)
+        resp = self.wait('()')
         self.assertStatusCode(resp, 400)
 
     def test_wait_negative(self):
-        resp = self.request_lua("""
-        function main(splash)
-          splash:wait(-0.2)
-        end
-        """)
+        resp = self.wait('(-0.2)')
         self.assertStatusCode(resp, 400)
 
 
@@ -523,7 +532,6 @@ class Base:
         def test_self(self):
             # make sure mixin order is correct
             assert self.render_format == 'lua'
-
 
 
 class EmulatedRenderHtmlTest(Base.EmulationMixin, test_render.RenderHtmlTest):
