@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import functools
+import itertools
 
 import lupa
 
@@ -22,7 +23,9 @@ class ScriptError(BadOption):
 
 
 class _AsyncBrowserCommand(object):
-    def __init__(self, name, kwargs):
+
+    def __init__(self, id, name, kwargs):
+        self.id = id
         self.name = name
         self.kwargs = kwargs
 
@@ -33,7 +36,7 @@ class _AsyncBrowserCommand(object):
         if 'errback' in kwargs:
             kwargs['errback'] = '<an errback>'
         kwargs_repr = truncated(repr(kwargs), 400, "...[long kwargs truncated]")
-        return "%s(name=%r, kwargs=%s)" % (self.__class__.__name__, self.name, kwargs_repr)
+        return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
 
 
 def command(async=False):
@@ -65,7 +68,7 @@ def is_command(meth):
 def can_raise(func):
     """
     Decorator for preserving Python exceptions raised in Python
-    functions called from Lua.
+    methods called from Lua.
     """
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
@@ -98,6 +101,7 @@ class Splash(object):
         self.tab = tab
         self._return = return_func
         self._exceptions = []
+        self._command_ids = itertools.count()
 
         self.args = python2lua(self.lua, render_options.data)
 
@@ -109,32 +113,48 @@ class Splash(object):
         self.commands = python2lua(self.lua, commands)
 
     @command(async=True)
-    def wait(self, time, cancel_on_redirect=False):
-        # TODO: make sure it returns 'not_cancelled' flag
-        return _AsyncBrowserCommand("wait", dict(
-            time_ms=time*1000,
-            callback=self._wait_success,
-            onredirect=cancel_on_redirect,
-        ))
+    def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
+        if not cancel_on_error:
+            raise NotImplementedError()
 
-    def _wait_success(self):
-        self._return(True)
+        time = float(time)
+        if time < 0:
+            raise BadOption("splash:wait time can't be negative")
+
+        cmd_id = next(self._command_ids)
+
+        def success():
+            self._return(cmd_id, True)
+
+        def redirect():
+            self._return(cmd_id, False, 'redirect')
+
+        onredirect = redirect if cancel_on_redirect else False
+
+        return _AsyncBrowserCommand(cmd_id, "wait", dict(
+            time_ms=time*1000,
+            callback=success,
+            onredirect=onredirect,
+        ))
 
     @command(async=True)
     def go(self, url, baseurl=None):
-        return _AsyncBrowserCommand("go", dict(
+        cmd_id = next(self._command_ids)
+
+        def success():
+            self._return(cmd_id, True)
+
+        def error():
+            # TODO: better error description?
+            self._return(cmd_id, False, "error loading page")
+
+        return _AsyncBrowserCommand(cmd_id, "go", dict(
             url=url,
             baseurl=baseurl,
-            callback=self._go_success,
-            errback=self._go_error)
-        )
+            callback=success,
+            errback=error
+        ))
 
-    def _go_success(self):
-        self._return(True)
-
-    def _go_error(self):
-        # TODO: better error description
-        self._return(None, "error loading page")
 
     @command()
     def html(self):
@@ -247,6 +267,7 @@ class LuaRender(RenderScript):
 
     default_min_log_level = 2
     result = ''
+    _waiting_for_result_id = None
 
     @stop_on_error
     def start(self, lua_source):
@@ -257,12 +278,20 @@ class LuaRender(RenderScript):
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + repr(e))
 
-        self.dispatch()
+        self.dispatch(None)
 
     @stop_on_error
-    def dispatch(self, *args):
+    def dispatch(self, cmd_id, *args):
         """ Execute the script """
-        self.log("[lua] dispatch {!s}".format(args))
+        self.log("[lua] dispatch {} {!s}".format(cmd_id, args))
+
+        self.log(
+            "[lua] arguments are for command %s, waiting for result of %s" % (cmd_id, self._waiting_for_result_id),
+            min_level=3,
+        )
+        if cmd_id != self._waiting_for_result_id:
+            self.log("[lua] skipping an out-of-order result {!r}".format(args), min_level=1)
+            return
 
         while True:
             try:
@@ -294,6 +323,7 @@ class LuaRender(RenderScript):
 
             if isinstance(cmd, _AsyncBrowserCommand):
                 self.log("[lua] executing {!r}".format(cmd))
+                self._waiting_for_result_id = cmd.id
                 self.splash.run_async_command(cmd)
                 return
             else:
