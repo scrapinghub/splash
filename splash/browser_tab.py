@@ -206,6 +206,7 @@ class BrowserTab(object):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+        self._cancel_all_timers()
 
     @skip_if_closing
     def _on_load_finished(self, ok):
@@ -340,11 +341,17 @@ class BrowserTab(object):
         if callable(errback):
             self.logger.log("calling timer errback", min_level=2)
             errback()
+        timer.deleteLater()
 
     def _cancel_timers(self, timers):
         for timer, oncancel in list(timers.items()):
             self._cancel_timer(timer, oncancel)
             timers.pop(timer, None)
+
+    def _cancel_all_timers(self):
+        self.logger.log("cancelling %d remaining timers" % len(self._active_timers), min_level=2)
+        for timer in list(self._active_timers):
+            self._cancel_timer(timer)
 
     def _on_url_changed(self, url):
         # log history
