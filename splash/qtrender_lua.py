@@ -114,9 +114,6 @@ class Splash(object):
 
     @command(async=True)
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
-        if not cancel_on_error:
-            raise NotImplementedError()
-
         time = float(time)
         if time < 0:
             raise BadOption("splash:wait time can't be negative")

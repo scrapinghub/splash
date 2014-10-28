@@ -352,6 +352,7 @@ class BrowserTab(object):
         cause_ev = self.web_page.har_log._prev_entry(url, -1)
         if cause_ev:
             self._history.append(without_private(cause_ev.data))
+
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def inject_js(self, filename):
