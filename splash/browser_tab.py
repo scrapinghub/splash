@@ -48,7 +48,8 @@ class BrowserTab(object):
         self._closing = False
         self._default_headers = None
         self._active_timers = set()
-        self._cancel_on_redirect_timers = weakref.WeakKeyDictionary()  # timer: callback
+        self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
+        self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
         self._history = []
 
@@ -94,6 +95,7 @@ class BrowserTab(object):
 
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
+        self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
         self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
 
     def return_result(self, result):
@@ -179,11 +181,12 @@ class BrowserTab(object):
             #     # When a new URL is loaded to mainFrame an errback will
             #     # be called, so we're not cancelling this callback manually.
 
-            self._load_finished.connect(
+            callback_id = self._load_finished.connect(
                 self._on_goto_load_finished,
                 callback=callback,
                 errback=errback,
             )
+            self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
             self._load_url_to_mainframe(url, http_method, body)
 
     def stop_loading(self):
@@ -204,6 +207,22 @@ class BrowserTab(object):
         self.web_page.deleteLater()
         self.web_view.deleteLater()
 
+    @skip_if_closing
+    def _on_load_finished(self, ok):
+        if self.web_page.maybe_redirect(ok):
+            self.logger.log("Redirect or other non-fatal error detected", min_level=2)
+            return
+
+        if self.web_page.is_ok(ok):  # or maybe_redirect:
+            self.logger.log("loadFinished: ok", min_level=2)
+        else:
+            self._cancel_timers(self._timers_to_cancel_on_error)
+
+            if self.web_page.error_loading(ok):
+                self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)), min_level=1)
+            else:
+                self.logger.log("loadFinished: unknown error", min_level=1)
+
     def _on_baseurl_request_finished(self, callback, errback, baseurl, url):
         """
         This method is called when ``baseurl`` is used and a
@@ -211,11 +230,12 @@ class BrowserTab(object):
         """
         self.logger.log("baseurl_request_finished", min_level=2)
 
-        self._load_finished.connect(
+        callback_id = self._load_finished.connect(
             self._on_goto_load_finished,
             callback=callback,
             errback=errback,
         )
+        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
 
         baseurl = QUrl(baseurl)
         mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
@@ -246,27 +266,23 @@ class BrowserTab(object):
         This method is called when a QWebPage finishes loading its contents.
         """
         if self.web_page.maybe_redirect(ok):
-            self.logger.log("Redirect or other non-fatal error detected", min_level=2)
             # XXX: It assumes loadFinished will be called again because
             # redirect happens. If redirect is detected improperly,
             # loadFinished won't be called again, and Splash will return
             # the result only after a timeout.
             return
 
-        self.logger.log("loadFinished: disconnecting callback", min_level=3)
+        self.logger.log("loadFinished: disconnecting callback %s" % callback_id, min_level=3)
         self._load_finished.disconnect(callback_id)
 
         if self.web_page.is_ok(ok):
-            self.logger.log("loadFinished: ok", min_level=2)
             callback()
         elif self.web_page.error_loading(ok):
-            self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)), min_level=1)
             # XXX: maybe return a meaningful error page instead of generic
             # error message?
             errback()
             # errback(RenderError())
         else:
-            self.logger.log("loadFinished: unknown error", min_level=1)
             errback()
             # errback(RenderError())
 
@@ -280,13 +296,17 @@ class BrowserTab(object):
             if name.lower() == 'user-agent':
                 self.web_page.custom_user_agent = value
 
-    def wait(self, time_ms, callback, onredirect=None):
+    def wait(self, time_ms, callback, onredirect=None, onerror=None):
         """
         Wait for time_ms, then run callback.
 
-        If onredirect is True then timer is cancelled if redirect happens.
-        If onredirect is callable then timer is cancelled and this callable
-        is called in case of redirect.
+        If onredirect is True then the timer is cancelled if redirect happens.
+        If onredirect is callable then in case of redirect the timer is
+        cancelled and this callable is called.
+
+        If onerror is True then the timer is cancelled if a render error
+        happens. If onerror is callable then in case of a render error the
+        timer is cancelled and this callable is called.
         """
 
         timer = QTimer()
@@ -302,21 +322,29 @@ class BrowserTab(object):
         timer.start(time_ms)
         self._active_timers.add(timer)
         if onredirect:
-            self._cancel_on_redirect_timers[timer] = onredirect
+            self._timers_to_cancel_on_redirect[timer] = onredirect
+        if onerror:
+            self._timers_to_cancel_on_error[timer] = onerror
 
     def _on_wait_timeout(self, timer, callback):
         self.logger.log("wait timeout for %s" % id(timer), min_level=2)
         self._active_timers.remove(timer)
-        self._cancel_on_redirect_timers.pop(timer, None)
+        self._timers_to_cancel_on_redirect.pop(timer, None)
+        self._timers_to_cancel_on_error.pop(timer, None)
         callback()
 
     def _cancel_timer(self, timer, errback=None):
         self.logger.log("cancelling timer %s" % id(timer), min_level=2)
-        self._cancel_on_redirect_timers.pop(timer, None)
         self._active_timers.remove(timer)
         timer.stop()
         if callable(errback):
+            self.logger.log("calling timer errback", min_level=2)
             errback()
+
+    def _cancel_timers(self, timers):
+        for timer, oncancel in list(timers.items()):
+            self._cancel_timer(timer, oncancel)
+            timers.pop(timer, None)
 
     def _on_url_changed(self, url):
         # log history
@@ -324,10 +352,7 @@ class BrowserTab(object):
         cause_ev = self.web_page.har_log._prev_entry(url, -1)
         if cause_ev:
             self._history.append(without_private(cause_ev.data))
-
-        # cancel all timers that should be cancelled on redirect
-        for timer, onredirect in list(self._cancel_on_redirect_timers.items()):
-            self._cancel_timer(timer, onredirect)
+        self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def inject_js(self, filename):
         """

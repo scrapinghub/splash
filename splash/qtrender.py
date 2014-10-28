@@ -121,7 +121,11 @@ class DefaultRenderScript(RenderScript):
         else:
             time_ms = int(self.wait_time * 1000)
             self.log("loadFinished; waiting %sms" % time_ms)
-            self.tab.wait(time_ms, self._loadFinishedOK)
+            self.tab.wait(
+                time_ms=time_ms,
+                callback=self._loadFinishedOK,
+                onerror=self.on_goto_load_error,
+            )
 
     def on_goto_load_error(self):
         self.return_error(RenderError())
