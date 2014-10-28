@@ -129,12 +129,14 @@ class Splash(object):
         def redirect():
             self._return(cmd_id, None, 'redirect')
 
-        onredirect = redirect if cancel_on_redirect else False
+        def error():
+            self._return(cmd_id, None, 'error')
 
         return _AsyncBrowserCommand(cmd_id, "wait", dict(
-            time_ms=time*1000,
-            callback=success,
-            onredirect=onredirect,
+            time_ms = time*1000,
+            callback = success,
+            onredirect = redirect if cancel_on_redirect else False,
+            onerror = error if cancel_on_error else False,
         ))
 
     @command(async=True)
