@@ -120,10 +120,12 @@ class JsRedirectTest(BaseRenderTest):
         self.assertNotRedirected(r)
 
     def test_redirect_timer_wait(self):
+        # jsredirect-timer redirects after 0.1ms
         r = self.request({'url': self.mockurl('jsredirect-timer'), 'wait': 0.05})
         self.assertNotRedirected(r)
 
     def test_redirect_timer_wait_enough(self):
+        # jsredirect-timer redirects after 0.1s
         r = self.request({'url': self.mockurl('jsredirect-timer'), 'wait': 0.2})
         self.assertRedirected(r)
 

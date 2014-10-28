@@ -341,6 +341,93 @@ class RunjsTest(BaseLuaRenderTest):
         )
 
 
+class WaitTest(BaseLuaRenderTest):
+    def test_timeout(self):
+        code = """
+        function main(splash)
+          splash:wait(0.01)
+        end
+        """
+        resp = self.request_lua(code, {"timeout": 0.1})
+        self.assertStatusCode(resp, 200)
+
+        code = """
+        function main(splash)
+          splash:wait(1)
+        end
+        """
+        resp = self.request_lua(code, {"timeout": 0.1})
+        self.assertStatusCode(resp, 504)
+
+    def test_wait_success(self):
+        resp = self.request_lua("""
+        function main(splash)
+          local ok, reason = splash:wait(0.01)
+          return {ok=ok, reason=reason}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    def test_wait_noredirect(self):
+        resp = self.request_lua("""
+        function main(splash)
+          local ok, reason = splash:wait{time=0.01, cancel_on_redirect=true}
+          return {ok=ok, reason=reason}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    def test_wait_redirect_nocancel(self):
+        # jsredirect-timer redirects after 0.1ms
+        resp = self.request_lua("""
+        function main(splash)
+          assert(splash:go(splash.args.url))
+          local ok, reason = splash:wait{time=0.2, cancel_on_redirect=false}
+          return {ok=ok, reason=reason}
+        end
+        """, {'url': self.mockurl("jsredirect-timer")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    def test_wait_redirect_cancel(self):
+        # jsredirect-timer redirects after 0.1ms
+        resp = self.request_lua("""
+        function main(splash)
+          assert(splash:go(splash.args.url))
+          local ok, reason = splash:wait{time=0.2, cancel_on_redirect=true}
+          return {ok=ok, reason=reason}
+        end
+        """, {'url': self.mockurl("jsredirect-timer")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"reason": "redirect"})  # ok is nil
+
+    def test_wait_badarg(self):
+        resp = self.request_lua("""
+        function main(splash)
+          splash:wait{time="sdf"}
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+    def test_wait_noargs(self):
+        resp = self.request_lua("""
+        function main(splash)
+          splash:wait()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+    def test_wait_negative(self):
+        resp = self.request_lua("""
+        function main(splash)
+          splash:wait(-0.2)
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+
 class ArgsTest(BaseLuaRenderTest):
     def args_request(self, query):
         func = """
@@ -496,4 +583,3 @@ class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
     @pytest.mark.xfail
     def test_range_checks(self):
         super(EmulatedRenderPngTest, self).test_range_checks()
-
