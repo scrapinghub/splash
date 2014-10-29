@@ -105,13 +105,11 @@ use ``splash:foo{name1=val1, name2=val2}``:
 .. code-block:: lua
 
     -- Examples of positional arguments:
-
     splash:go("http://example.com")
     splash:wait(0.5, false)
     local title = splash:runjs("document.title")
 
     -- The same using keyword arguments:
-
     splash:go{url="http://example.com"}
     splash:wait{time=0.5, cancel_on_redirect=false}
     local title = splash:runjs{source="document.title"}
@@ -148,7 +146,7 @@ PhantomJS script:
 
     var users = ["PhantomJS", "ariyahidayat", /*...*/];
 
-    function follow(user, callback) {
+    function followers(user, callback) {
         var page = require('webpage').create();
         page.open('http://mobile.twitter.com/' + user, function (status) {
             if (status === 'fail') {
@@ -167,7 +165,7 @@ PhantomJS script:
         if (users.length > 0) {
             var user = users[0];
             users.splice(0, 1);
-            follow(user, process);
+            followers(user, process);
         } else {
             phantom.exit();
         }
@@ -175,9 +173,9 @@ PhantomJS script:
     process();
 
 The code is arguably tricky: ``process`` function implements a loop
-by creating a chain of callbacks; ``follow`` function doesn't return a value
-(it would be more complex to handle), instead of that the result is logged
-to console.
+by creating a chain of callbacks; ``followers`` function doesn't return a value
+(it would be more complex to implement) - the result is logged to the console
+instead.
 
 A similar Splash script:
 
@@ -185,7 +183,7 @@ A similar Splash script:
 
     users = {'PhantomJS', 'ariyahidayat'}
 
-    function follow(splash, user)
+    function followers(splash, user)
         local ok, msg = splash:go('http://mobile.twitter.com/' .. user)
         if not ok then
             return "?"
@@ -198,7 +196,7 @@ A similar Splash script:
     function process(splash, users)
         local result = {}
         for idx, user in ipairs(users) do
-            result[user] = follow(splash, user)
+            result[user] = followers(splash, user)
         end
         return result
     end
@@ -208,42 +206,35 @@ A similar Splash script:
         return {users=users}
     end
 
-Some observations:
+Observations:
 
-* ``follow`` function can just return a result; also, it doesn't need
-  a "callback" argument;
+* some Lua knowledge is helpful to be productive in Splash Scripts:
+  ``ipairs``, ``[[multi-line strings]]`` or string concatenation via
+  ``..`` could be unfamiliar;
+* in Splash variant ``followers`` function can return a result
+  (a number of twitter followers); also, it doesn't need a "callback" argument;
 * instead of a ``page.open`` callback which receives "status" argument
   there is a "blocking" ``splash:go`` call which returns "ok" flag;
 * ``process`` function can use a standard Lua ``for`` loop;
-* it is clear where is an entry point and where processing stops;
 * instead of console messages we've got a JSON HTTP API;
 * apparently, PhantomJS allows to create multiple ``page`` objects and
   run several ``page.open`` requests in parallel (?); Splash only provides
   a single "browser tab" to a script via its ``splash`` parameter of ``main``
   function (but you're free to send multiple concurrent requests with
   Lua scripts to Splash).
-* contrary to what was said earlier, some Lua knowledge is helpful, e.g.
-  ``ipairs``, ``[[multi-line strings]]`` or string concatenation
-  via ``..`` could be unfamiliar.
 
-
-There are PhantomJS wrappers like CasperJS_ and NightmareJS_ which bring
-a sync-looking syntax to PhantomJS scripts by providing custom control flow
-mini-languages, but they all have their own gotchas and edge cases
-(loops? moving code to helper functions? error handling?). Splash scripts are
-standard Lua code.
+There are great PhantomJS wrappers like CasperJS_ and NightmareJS_ which
+(among other things) bring a sync-looking syntax to PhantomJS scripts by
+providing custom control flow mini-languages. However, they all have their
+own gotchas and edge cases (loops? moving code to helper functions? error
+handling?). Splash scripts are standard Lua code.
 
 .. _CasperJS: http://casperjs.org/
-.. _NightmareJS:
+.. _NightmareJS: http://www.nightmarejs.org/
 
 
-.. note::
-
-    For the curious, Splash uses Lua coroutines under the hood.
-
-    Internally, "main" function is executed as a coroutine by Splash,
-    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
-    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
+Living Without Callbacks
+------------------------
 
 In Splash scripts it is not explicit which calls are async and which calls
 are blocking. It is a common criticism of coroutines/greenlets; check e.g.
@@ -256,5 +247,17 @@ command at time, so in most cases the control flow is linear.
 If you want to be safe then think of all ``splash`` methods as of async;
 consider that after you call ``splash:foo()`` a webpage being
 rendered can change. Often that's the point of calling a method,
-e.g. ``splash:wait(time_ms)`` or ``splash:go(url)`` only make sense because
+e.g. ``splash:wait(time)`` or ``splash:go(url)`` only make sense because
 webpage changes after calling them, but still - keep it in mind.
+
+Currently the only async methods are :ref:`splash-go` and :ref:`splash-wait`.
+Most splash methods are currently **not** async, but thinking of them as
+of async will allow your scripts to work if we ever change that.
+
+.. note::
+
+    For the curious, Splash uses Lua coroutines under the hood.
+
+    Internally, "main" function is executed as a coroutine by Splash,
+    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
+    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
