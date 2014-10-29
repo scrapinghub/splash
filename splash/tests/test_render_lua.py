@@ -440,6 +440,11 @@ class WaitTest(BaseLuaRenderTest):
         resp = self.wait('{time="sdf"}')
         self.assertStatusCode(resp, 400)
 
+    def test_wait_good_string(self):
+        resp = self.wait('{time="0.01"}')
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
     def test_wait_noargs(self):
         resp = self.wait('()')
         self.assertStatusCode(resp, 400)
