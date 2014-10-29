@@ -241,6 +241,14 @@ providing custom control flow mini-languages. However, they all have their
 own gotchas and edge cases (loops? moving code to helper functions? error
 handling?). Splash scripts are standard Lua code.
 
+.. note::
+
+    PhantomJS itself and its wrappers are great, they deserve lots of
+    respect; please don't take this writeup as an attack on them.
+    These tools are much more mature and feature complete than Splash.
+    Splash tries to look at the problem from a different angle, but
+    for each unique Splash feature there are ten unique PhantomJS features.
+
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS: http://www.nightmarejs.org/
 
