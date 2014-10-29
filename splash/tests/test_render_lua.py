@@ -105,7 +105,7 @@ class ResultContentTypeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
-        self.assertEqual(resp.text, '{"hi":"hi!"}')
+        self.assertEqual(resp.text, '{"hi": "hi!"}')
 
     def test_bad_content_type(self):
         resp = self.request_lua("""
