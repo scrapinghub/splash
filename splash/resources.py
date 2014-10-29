@@ -219,12 +219,16 @@ class Debug(Resource):
         request.setHeader("content-type", "application/json")
         return json.dumps({
             "leaks": get_leaks(),
-            "active": [x.url for x in self.pool.active],
+            "active": [self.get_repr(r) for r in self.pool.active],
             "qsize": len(self.pool.queue.pending),
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "fds": get_num_fds(),
         })
 
+    def get_repr(self, render):
+        if hasattr(render, 'url'):
+            return render.url
+        return render.tab.url
 
 BOOTSTRAP_THEME = 'simplex'
 CODEMIRROR_OPTIONS = """{

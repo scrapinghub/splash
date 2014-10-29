@@ -145,6 +145,11 @@ class BrowserTab(object):
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
         return w, h
 
+    @property
+    def url(self):
+        """ Current URL """
+        return unicode(self.web_page.mainFrame().url().toString())
+
     def go(self, url, callback, errback, baseurl=None, http_method='GET', body=None):
         """
         Go to an URL. This is similar to entering an URL in
