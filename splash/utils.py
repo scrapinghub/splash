@@ -39,10 +39,14 @@ def get_num_fds():
 
 def get_leaks():
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
-        'QWebView', 'HtmlRender', 'PngRender', 'JsonRender', 'HarRender',
-        'QNetworkRequest', 'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl',
+        'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
+        'QWebView', 'QWebPage', 'QWebFrame', 'QNetworkRequest', 'QNetworkReply',
+        'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
         'JavascriptConsole', 'ProfilesSplashProxyFactory',
-        'SplashProxyRequest', 'Request', 'Deferred'))
+        'SplashProxyRequest', 'Request', 'Deferred',
+        'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
+        '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
+    ))
     leaks = defaultdict(int)
     gc.collect()
     for o in gc.get_objects():
