@@ -397,14 +397,14 @@ Execute a custom rendering script and return a result.
 
 :ref:`render.html`, :ref:`render.png`, :ref:`render.har` and :ref:`render.json`
 endpoints cover many common use cases, but sometimes they are not enough.
-This endpoint allows to write custom :ref:`scripts`.
+This endpoint allows to write custom :ref:`Splash Scripts <scripting-tutorial>`.
 
 Arguments:
 
 .. _arg-lua-source:
 
 lua_source : string : required
-  Browser automation script. See :ref:`scripts` for more info.
+  Browser automation script. See :ref:`scripting-tutorial` for more info.
 
 timeout : float : optional
   Same as :ref:`'timeout' <arg-timeout>` argument for `render.html`_.
