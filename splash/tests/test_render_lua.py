@@ -15,7 +15,7 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         return self.request(q)
 
 
-class LuaRenderTest(BaseLuaRenderTest):
+class MainResultsTest(BaseLuaRenderTest):
 
     def test_return_json(self):
         resp = self.request_lua("""
@@ -84,7 +84,7 @@ class LuaRenderTest(BaseLuaRenderTest):
         self.assertEqual(resp.text, "")
 
 
-class ContentTypeTest(BaseLuaRenderTest):
+class ResultContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
         resp = self.request_lua("""
         function main(splash)
@@ -95,6 +95,17 @@ class ContentTypeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'text/plain')
         self.assertEqual(resp.text, 'hi!')
+
+    def test_content_type_ignored_for_tables(self):
+        resp = self.request_lua("""
+        function main(splash)
+          splash:set_result_content_type('text/plain')
+          return {hi="hi!"}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.headers['content-type'], 'application/json')
+        self.assertEqual(resp.text, '{"hi":"hi!"}')
 
     def test_bad_content_type(self):
         resp = self.request_lua("""
@@ -425,8 +436,20 @@ class WaitTest(BaseLuaRenderTest):
         resp = self.wait('{time="sdf"}')
         self.assertStatusCode(resp, 400)
 
+    def test_wait_badarg2(self):
+        resp = self.wait('{time="sdf"}')
+        self.assertStatusCode(resp, 400)
+
     def test_wait_noargs(self):
         resp = self.wait('()')
+        self.assertStatusCode(resp, 400)
+
+    def test_wait_time_missing(self):
+        resp = self.wait('{cancel_on_redirect=false}')
+        self.assertStatusCode(resp, 400)
+
+    def test_wait_unknown_args(self):
+        resp = self.wait('{ttime=0.5}')
         self.assertStatusCode(resp, 400)
 
     def test_wait_negative(self):
