@@ -236,9 +236,10 @@ standard Lua code.
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS:
 
-For the curious, Splash uses Lua coroutines under the hood.
 
 .. note::
+
+    For the curious, Splash uses Lua coroutines under the hood.
 
     Internally, "main" function is executed as a coroutine by Splash,
     and some of the ``splash:foo()`` methods use ``coroutine.yield``.
