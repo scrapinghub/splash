@@ -12,14 +12,14 @@ splash:go
 ---------
 
 Go to url. This is similar to entering an URL in a browser
-address tab, pressing Enter and waiting until page loads.
+address bar, pressing Enter and waiting until page loads.
 
 **Signature:** ``ok, msg = splash.go(url, baseurl=nil)``
 
 **Parameters:**
 
 * url - URL to load;
-* baseurl - base URL to use;
+* baseurl - base URL to use. TODO: document me better.
 
 **Returns:** ``ok, msg`` pair. If ``ok`` is nil then error happened during
 page load, and ``msg`` contains a description of the error.

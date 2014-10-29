@@ -76,6 +76,18 @@ Let's check it with curl::
     $ curl 'http://127.0.0.1:8050/render.lua?lua_source=function+main%28splash%29%0D%0A++return+%27hello%27%0D%0Aend'
     hello
 
+"main" function receives an object that allows to control the "browser tab".
+All Splash features are exposed using this object. By a convention, this
+argument is called "splash", but you are not required to follow this convention:
+
+.. code-block:: lua
+
+    function main(please)
+        please:go("http://example.com")
+        please:wait(0.5)
+        return "ok"
+    end
+
 API Overview
 ------------
 
@@ -261,3 +273,45 @@ of async will allow your scripts to work if we ever change that.
     Internally, "main" function is executed as a coroutine by Splash,
     and some of the ``splash:foo()`` methods use ``coroutine.yield``.
     See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
+
+Error Handling
+--------------
+
+There are two ways to report errors in Lua: raise an exception and return
+an error flag. See http://www.lua.org/pil/8.3.html.
+
+Splash uses the following convention:
+
+1. for developer errors (e.g. incorrect function arguments) exception is raised;
+2. for errors outside developer control (e.g. a non-responding remote website)
+   status flag is returned: functions that can fail return ``ok, error_message``
+   pairs which developer can either handle or ignore.
+
+If ``main`` results in an unhandled exception then Splash returns HTTP 400
+response with an error message.
+
+It is possible to raise an exception manually using Lua ``error`` function:
+
+.. code-block:: lua
+
+    error("A message to be returned in a HTTP 400 response")
+
+To handle Lua exceptions (and prevent Splash from returning HTTP 400 response)
+use Lua ``pcall``; see http://www.lua.org/pil/8.4.html.
+
+To convert "status flag" errors to exceptions Lua ``assert`` function can be used.
+For example, if you expect a website to work and don't want to handle errors
+manually, then ``assert`` allows to stop processing and return HTTP 400
+if the assumption is wrong:
+
+.. code-block:: lua
+
+    local ok, msg = splash:go("http://example.com")
+    if not ok then
+        -- handle error somehow, e.g.
+        error(msg)
+    end
+
+    -- a shortcut for the code above: use assert
+    assert(splash:go("http://example.com"))
+
