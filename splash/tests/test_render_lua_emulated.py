@@ -82,3 +82,7 @@ class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
     @pytest.mark.xfail
     def test_range_checks(self):
         super(EmulatedRenderPngTest, self).test_range_checks()
+
+
+class EmulatedRenderHarTest(Base.EmulationMixin, test_har.HarRenderTest):
+    script = get_script_source("render_har.lua")
