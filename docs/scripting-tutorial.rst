@@ -40,7 +40,7 @@ in page context), and then return the result as a JSON encoded object.
 
 .. note::
 
-    Splash UI provides an easy way to try scripts: it provides a code editor
+    Splash UI provides an easy way to try scripts: there is a code editor
     for Lua and a button to submit a script to ``render.lua``. Visit
     http://127.0.0.1:8050/ (or whatever host/port Splash is listening to).
 

@@ -136,9 +136,7 @@ Example:
 
 .. code-block:: lua
 
-     --
      -- A simplistic implementation of render.html endpoint
-     --
      function main(splash)
          splash:set_result_content_type("text/html; charset=utf-8")
          assert(splash:go(splash.args.url))
@@ -166,6 +164,8 @@ initial HTML snapshot and an HTML snapshot after waiting 0.5s:
          return res
      end
 
+     -- visit first 10 http://example.com/pages/<num> pages,
+     -- return their html snapshots
      function main(splash)
          local result = {}
          for i=1,10 do
@@ -196,17 +196,15 @@ TODO: document what default values mean
 
 *width* and *height* arguments set a size of the resulting image,
 not a size of an area screenshot is taken of. For example, if the viewport
-has a width of 1024px wide then ``splash:png{width=100}`` will return a
-screenshot of a whole viewport, but an image will be downscaled to 100px width.
+is 1024px wide then ``splash:png{width=100}`` will return a screenshot
+of the whole viewport, but an image will be downscaled to 100px width.
 
 If the result of ``splash:png()`` returned directly as a result of
 "main" function, the screenshot is returned as binary data:
 
 .. code-block:: lua
 
-     --
      -- A simplistic implementation of render.png endpoint
-     --
      function main(splash)
          splash:set_result_content_type("image/png")
          assert(splash:go(splash.args.url))
