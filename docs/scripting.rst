@@ -241,7 +241,7 @@ For the curious, Splash uses Lua coroutines under the hood.
 .. note::
 
     Internally, "main" function is executed as a coroutine by Splash,
-    and ``splash:foo()`` methods use ``coroutine.yield``.
+    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
     See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
 
 In Splash scripts it is not explicit which calls are async and which calls
