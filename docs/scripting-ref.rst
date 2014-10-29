@@ -145,6 +145,37 @@ Example:
          return splash:html()
      end
 
+Nothing prevents us from taking multiple HTML snapshots. For example, let's
+visit first 10 pages on a website, and for each page store
+initial HTML snapshot and an HTML snapshot after waiting 0.5s:
+
+.. code-block:: lua
+
+     -- Given an url, this function returns a table with
+     -- two HTML snapshots: HTML right after page is loaded,
+     -- and HTML after waiting 0.5s.
+     function page_info(splash, url)
+         local ok, msg = splash:go(url)
+         if not ok then
+             return {ok=false, reason=msg}
+         end
+         local res = {before=splash:html()}
+         assert(splash:wait(0.5))  -- this shouldn't fail, so we wrap it in assert
+         res.after = splash:html() -- the same as res["after"] = splash:html()
+         res.ok = true
+         return res
+     end
+
+     function main(splash)
+         local result = {}
+         for i=1,10 do
+            local url = "http://example.com/pages/" .. page_num
+            result[i] = page_info(splash, url)
+         end
+         return result
+     end
+
+
 .. _splash-png:
 
 splash:png
