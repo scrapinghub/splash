@@ -92,8 +92,35 @@ API Overview
   to control how to return the result;
 * :ref:`splash.args <splash-args>` provides a table with incoming HTTP arguments;
 
-
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
+
+Calling Splash Methods
+----------------------
+
+There are two main ways to call Splash Lua methods: using positional and
+named arguments. To call a method using positional arguments use
+``splash:foo(val1, val2)``, to call it with named arguments
+use ``splash:foo{name1=val1, name2=val2}``:
+
+.. code-block:: lua
+
+    -- Examples of positional arguments:
+
+    splash:go("http://example.com")
+    splash:wait(0.5, false)
+    local title = splash:runjs("document.title")
+
+    -- The same using keyword arguments:
+
+    splash:go{url="http://example.com"}
+    splash:wait{time=0.5, cancel_on_redirect=false}
+    local title = splash:runjs{source="document.title"}
+
+For the convenience all ``splash`` methods are designed to support both
+styles of calling. But note that generally this convention is not
+followed in Lua. There are no "real" named arguments in Lua, and most Lua
+functions (including the ones from the standard library) choose to support
+only one style of calling. Check http://www.lua.org/pil/5.3.html for more info.
 
 Where Are My Callbacks?
 -----------------------
@@ -209,23 +236,27 @@ standard Lua code.
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS:
 
+For the curious, Splash uses Lua coroutines under the hood.
+
 .. note::
 
-    For the curious, the implementation uses Lua coroutines.
+    Internally, "main" function is executed as a coroutine by Splash,
+    and ``splash:foo()`` methods use ``coroutine.yield``.
+    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
 
-    In Splash scripts it is not explicit which calls are async and which calls
-    are blocking. It is a common criticism of coroutines/greenlets; check e.g.
-    `this <https://glyph.twistedmatrix.com/2014/02/unyielding.html>`__ article
-    for a description of the problem. However, we feel that in Splash scripts
-    negative effects are not quite there: scripts are meant to be small,
-    shared state is minimized, and an API is designed to execute a single
-    command at time, so in most cases the control flow is linear.
+In Splash scripts it is not explicit which calls are async and which calls
+are blocking. It is a common criticism of coroutines/greenlets; check e.g.
+`this <https://glyph.twistedmatrix.com/2014/02/unyielding.html>`__ article
+for a good description of the problem. However, we feel that in Splash scripts
+negative effects are not quite there: scripts are meant to be small,
+shared state is minimized, and an API is designed to execute a single
+command at time, so in most cases the control flow is linear.
 
-    If you want to be safe then think of all ``splash`` methods as of async;
-    consider that after you call ``splash:foo()`` a webpage being
-    rendered can change. Often that's the point of calling a method,
-    e.g. ``splash:wait(time_ms)`` or ``splash:go(url)`` only make sense because
-    webpage changes after calling them, but still - keep it in mind.
+If you want to be safe then think of all ``splash`` methods as of async;
+consider that after you call ``splash:foo()`` a webpage being
+rendered can change. Often that's the point of calling a method,
+e.g. ``splash:wait(time_ms)`` or ``splash:go(url)`` only make sense because
+webpage changes after calling them, but still - keep it in mind.
 
 
 .. _splash-object:
