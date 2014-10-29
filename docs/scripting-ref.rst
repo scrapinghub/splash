@@ -110,8 +110,7 @@ Execute JavaScript in page context and return the result of the last statement.
 
 **Returns:** the result of the last statement in `source`,
 serialized from JavaScript to Lua. JavaScript strings, numbers, booleans,
-Objects, Date and RegExp instances are supported. ``undefined`` is returned
-as Lua ``nil``; ``null`` is converted to an empty string. Arrays are not
+Objects, Date and RegExp instances are supported. Arrays are not
 currently supported (use Objects instead).
 
 Example:
@@ -119,6 +118,24 @@ Example:
 .. code-block:: lua
 
     local title = splash:runjs("document.title")
+
+JavaScript → Lua conversion rules:
+
+==============  =================
+JavaScript      Lua
+==============  =================
+string          string
+number          number
+boolean         boolean
+Object          table
+``undefined``   ``nil``
+``null``        ``""`` (an empty string)
+Date            string (ISO8601 representation, e.g. ``1958-05-21T10:12:00Z``)
+RegExp          table ``{_jstype='RegExp', caseSensitive=true/false, pattern='my-regexp'}``
+Array           userdata (=> it's impossible to access elements from Lua; this can change in future)
+function        an empty table ``{}`` (don't rely on it)
+==============  =================
+
 
 
 .. _splash-html:
