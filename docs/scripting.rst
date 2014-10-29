@@ -332,13 +332,13 @@ splash:runjs
 
 Execute JavaScript in page context and return the result of the last statement.
 
-**Signature:** ``result = splash:runjs(js_source)``
+**Signature:** ``result = splash:runjs(source)``
 
 **Parameters:**
 
-* js_source - a string with JavaScript source code to execute.
+* source - a string with JavaScript source code to execute.
 
-**Returns:** the result of the last statement in `js_source`,
+**Returns:** the result of the last statement in `source`,
 serialized from JavaScript to Lua. JavaScript strings, numbers, booleans,
 Objects, Date and RegExp instances are supported. ``undefined`` is returned
 as Lua ``nil``; ``null`` is converted to an empty string. Arrays are not

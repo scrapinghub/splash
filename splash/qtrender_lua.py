@@ -181,8 +181,8 @@ class Splash(object):
         self.tab.stop_loading()
 
     @command()
-    def runjs(self, js):
-        res = self.tab.runjs(js)
+    def runjs(self, source):
+        res = self.tab.runjs(source)
         return res
 
     @command()
