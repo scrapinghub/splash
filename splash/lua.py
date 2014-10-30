@@ -271,7 +271,7 @@ def python2lua(lua, obj, max_depth=100):
         return tbl
 
     if isinstance(obj, list):
-        obj =[python2lua(lua, el, max_depth-1) for el in obj]
+        obj = [python2lua(lua, el, max_depth-1) for el in obj]
         return _mark_table_as_list(lua, lua.table(*obj))
 
     if isinstance(obj, unicode):

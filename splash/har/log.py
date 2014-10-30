@@ -25,7 +25,7 @@ class HarLog(object):
 
     def __init__(self):
         self.created_at = datetime.utcnow()
-        self.network_entries_map = {}  # key => network entry map
+        self.network_entries_map = {}  # key => network entry
         self.events = []  # all entries in order, including the events
         self.pages = None
 
