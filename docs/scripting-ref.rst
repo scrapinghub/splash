@@ -21,19 +21,28 @@ address bar, pressing Enter and waiting until page loads.
 * url - URL to load;
 * baseurl - base URL to use. TODO: document me better.
 
-**Returns:** ``ok, msg`` pair. If ``ok`` is nil then error happened during
-page load, and ``msg`` contains a description of the error.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+page load; ``reason`` provides an information about error type.
+
+``ok`` can be ``nil`` in two cases (two types of errors are reported):
+
+1. There is nothing to render. This can happen if a host doesn't exist,
+   server dropped connection, etc. ``reason`` is ``"error"`` in this case.
+2. Server returned a response with 4xx or 5xx HTTP status code.
+   ``reason`` is "http<code>" in this case, e.g. for errors 404 ``reason``
+   is ``"http404"``. This only applies to "main" webpage response; if a request
+   to related resource returned 4xx or 5xx HTTP status code no error
+   is reported.
 
 Example:
 
 .. code-block:: lua
 
-    local ok, msg = splash:go("http://example.com")
+    local ok, reason = splash:go("http://example.com")
     if not ok:
         -- handle errors
     end
     -- page is loaded
-
 
 Lua "assert" can be used as a shortcut for error handling:
 

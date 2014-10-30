@@ -533,3 +533,96 @@ class JsonPostArgsTest(ArgsTest):
 
     def test_post_numbers(self):
         self.assertArgsPassed({"x": 5})
+
+
+class GoTest(BaseLuaRenderTest):
+
+    def go_status(self, url):
+        resp = self.request_lua("""
+        function main(splash)
+            local ok, reason = splash:go(splash.args.url)
+            return {ok=ok, reason=reason}
+        end
+        """, {"url": url})
+        self.assertStatusCode(resp, 200)
+        return resp.json()
+
+    def assertGoStatusCodeError(self, code):
+        data = self.go_status(self.mockurl("getrequest?code=%s" % code))
+        self.assertNotIn("ok", data)
+        self.assertEqual(data["reason"], "http%s" % code)
+
+    def assertGoNoError(self, code):
+        data = self.go_status(self.mockurl("getrequest?code=%s" % code))
+        self.assertTrue(data["ok"])
+        self.assertNotIn("reason", data)
+
+    def test_go_200(self):
+        self.assertGoNoError(200)
+
+    def test_go_400(self):
+        self.assertGoStatusCodeError(400)
+
+    def test_go_401(self):
+        self.assertGoStatusCodeError(401)
+
+    def test_go_403(self):
+        self.assertGoStatusCodeError(403)
+
+    def test_go_404(self):
+        self.assertGoStatusCodeError(404)
+
+    def test_go_500(self):
+        self.assertGoStatusCodeError(500)
+
+    def test_go_503(self):
+        self.assertGoStatusCodeError(503)
+
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_go_error(self):
+        data = self.go_status("non-existing")
+        self.assertEqual(data.get('ok', False), False)
+        self.assertEqual(data["reason"], "error")
+
+    def test_go_multiple(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url_1)
+            local html_1 = splash:html()
+            splash:go(splash.args.url_2)
+            return {html_1=html_1, html_2=splash:html()}
+        end
+        """, {
+            'url_1': self.mockurl('getrequest?foo=1'),
+            'url_2': self.mockurl('getrequest?bar=2')
+        })
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn("{'foo': ['1']}", data['html_1'])
+        self.assertIn("{'bar': ['2']}", data['html_2'])
+
+    def test_go_bad_then_good(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local ok1, err1 = splash:go(splash.args.url_1)
+            local html_1 = splash:html()
+            local ok2, err2 = splash:go(splash.args.url_2)
+            local html_2 = splash:html()
+            return {html_1=html_1, html_2=html_2, err1=err1, err2=err2, ok1=ok1, ok2=ok2}
+        end
+        """, {
+            'url_1': self.mockurl('--some-non-existing-resource--'),
+            'url_2': self.mockurl('bad-related'),
+        })
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["err1"], "http404")
+        self.assertNotIn("err2", data)
+
+        self.assertNotIn("ok1", data)
+        self.assertEqual(data["ok2"], True)
+
+        self.assertIn("No Such Resource", data["html_1"])
+        self.assertIn("http://non-existing", data["html_2"])
+
+

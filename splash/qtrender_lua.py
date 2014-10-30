@@ -141,11 +141,15 @@ class Splash(object):
         cmd_id = next(self._command_ids)
 
         def success():
-            self._return(cmd_id, True)
+            code = self.tab.last_http_status()
+            if code and 400 <= code < 600:
+                # return HTTP errors as errors
+                self._return(cmd_id, None, "http%d" % code)
+            else:
+                self._return(cmd_id, True)
 
         def error():
-            # TODO: better error description?
-            self._return(cmd_id, None, "error loading page")
+            self._return(cmd_id, None, "error")
 
         return _AsyncBrowserCommand(cmd_id, "go", dict(
             url=url,
@@ -200,6 +204,14 @@ class Splash(object):
     def set_images_enabled(self, enabled):
         if enabled is not None:
             self.tab.set_images_enabled(int(enabled))
+
+    @command()
+    def http_code(self):
+        return self.tab.last_http_status()
+
+    @command()
+    def last_network_entry(self):
+        return self.tab.last_network_entry()
 
     def get_real_exception(self):
         if self._exceptions:

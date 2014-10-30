@@ -71,9 +71,15 @@ Splash = function (splash)
       self:set_viewport(args.viewport)
     end
 
-    assert(self:go{url=url, baseurl=args.baseurl})
-    assert(self:_wait_restart_on_redirects(wait, 10))
+    local ok, reason = self:go{url=url, baseurl=args.baseurl}
+    if not ok then
+      -- render.xxx endpoints don't return HTTP errors as errors
+      if reason:sub(0,4) ~= 'http' then
+        error(reason)
+      end
+    end
 
+    assert(self:_wait_restart_on_redirects(wait, 10))
 
     if args.viewport == "full" then
       self:set_viewport(args.viewport)

@@ -461,6 +461,27 @@ class BrowserTab(object):
         self.logger.log("getting history", min_level=3)
         return copy.deepcopy(self._history)
 
+    def last_http_status(self):
+        """
+        Return HTTP status code of the currently loaded webpage
+        or None if it is not available.
+        """
+        if not self._history:
+            return
+        try:
+            return self._history[-1]["response"]["status"]
+        except KeyError:
+            return
+
+    def last_network_entry(self):
+        """
+        Return information about 'main' request/response for the current page,
+        in HAR entry format.
+        """
+        if not self._history:
+            return
+        return copy.deepcopy(self._history[-1])
+
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
