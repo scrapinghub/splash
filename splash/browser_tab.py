@@ -459,12 +459,7 @@ class BrowserTab(object):
     def history(self):
         """ Return history of 'main' HTTP requests """
         self.logger.log("getting history", min_level=3)
-
-        hist = copy.deepcopy(self._history)
-        for entry in hist:
-            if entry is not None:
-                del entry['request']['queryString']
-        return hist
+        return copy.deepcopy(self._history)
 
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
