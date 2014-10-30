@@ -291,9 +291,9 @@ class RunjsTest(BaseLuaRenderTest):
 
     def test_array(self):
         self.assertRunjsResult(
-            'x = [1, 2, 3, "foo", {}]; x',
-            [1, 2, 3, "foo", {}],
-            'userdata',  # XXX: it'be great for it to be 'table'
+            'x = [3, 2, 1, "foo", ["foo", [], "bar"], {}]; x',
+            [3, 2, 1, "foo", ["foo", [], "bar"], {}],
+            'table',
         )
 
     def test_self_referencing(self):

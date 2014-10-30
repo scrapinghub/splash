@@ -154,7 +154,6 @@ class Splash(object):
             errback=error
         ))
 
-
     @command()
     def html(self):
         return self.tab.html()
@@ -232,6 +231,9 @@ class Splash(object):
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
 
+    def lua2python(self, obj):
+        return lua2python(self.lua, obj, binary=True, strict=True)
+
     def _create_runtime(self):
         """
         Return a restricted Lua runtime.
@@ -304,7 +306,7 @@ class LuaRender(RenderScript):
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
                 try:
-                    res = lua2python(self.result, binary=True, strict=True)
+                    res = self.splash.lua2python(self.result)
                 except ValueError as e:
                     # can't convert result to a Python object -> requets was bad
                     raise ScriptError("'main' returned bad result. {!s}".format(e))

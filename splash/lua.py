@@ -195,7 +195,7 @@ def get_script_source(name):
         return f.read().decode('utf8')
 
 
-def lua2python(obj, binary=True, strict=True, max_depth=100):
+def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
     """ Recursively convert Lua data to Python objects """
 
     def l2p(obj, depth):
@@ -203,10 +203,24 @@ def lua2python(obj, binary=True, strict=True, max_depth=100):
             raise ValueError("Can't convert Lua object to Python: depth limit is reached")
 
         if is_lua_table(obj):
-            return {
-                l2p(key, max_depth-1): l2p(value, max_depth-1)
-                for key, value in obj.items()
-            }
+            if _is_table_a_list(lua, obj):
+                res = []
+                prev_key = 0
+                for key, value in obj.items():
+                    if not isinstance(key, int):
+                        raise ValueError("Can't build a Python list from Lua table: invalid key %r" % key)
+                    if key <= prev_key:
+                        raise ValueError("Can't build a Python list from Lua table: bad index %s" % key)
+
+                    res.extend([None] * (key-prev_key-1))
+                    res.append(l2p(value, max_depth-1))
+                    prev_key = key
+                return res
+            else:
+                return {
+                    l2p(key, max_depth-1): l2p(value, max_depth-1)
+                    for key, value in obj.items()
+                }
 
         if strict:
             if is_lua_function(obj):
@@ -220,6 +234,17 @@ def lua2python(obj, binary=True, strict=True, max_depth=100):
         return obj
 
     return l2p(obj, depth=max_depth)
+
+
+def _mark_table_as_list(lua, tbl):
+    mt = lua.table(__metatable="list")
+    lua.eval("setmetatable")(tbl, mt)
+    return tbl
+
+
+def _is_table_a_list(lua, tbl):
+    mt = lua.eval("getmetatable")(tbl)
+    return mt == "list"
 
 
 def python2lua(lua, obj, max_depth=100):
@@ -239,17 +264,15 @@ def python2lua(lua, obj, max_depth=100):
             python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
             for key, value in obj.items()
         }
-        return lua.table(**obj)
+        # lua.table(**obj) has limitations, see https://github.com/scoder/lupa/issues/31
+        tbl = lua.table()
+        for key, value in obj.items():
+            tbl[key] = value
+        return tbl
 
-    # XXX: encoding lists is tricky because Lua only has tables.
-    # The problem is to preserve list type during Python -> Lua -> Python
-    # conversion. For now lists conversion is disabled, and lists are opaque
-    # to Lua: it is possible to receive a list and pass it back to Python,
-    # but not to access its elements or attributes.
-
-    # if isinstance(obj, list):
-    #     obj = [python2lua(lua, el, max_depth-1) for el in obj]
-    #     return lua.table(*obj)
+    if isinstance(obj, list):
+        obj =[python2lua(lua, el, max_depth-1) for el in obj]
+        return _mark_table_as_list(lua, lua.table(*obj))
 
     if isinstance(obj, unicode):
         # lupa encodes/decodes strings automatically,

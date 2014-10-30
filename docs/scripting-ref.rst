@@ -108,10 +108,8 @@ Execute JavaScript in page context and return the result of the last statement.
 
 * source - a string with JavaScript source code to execute.
 
-**Returns:** the result of the last statement in `source`,
-serialized from JavaScript to Lua. JavaScript strings, numbers, booleans,
-Objects, Date and RegExp instances are supported. Arrays are not
-currently supported (use Objects instead).
+**Returns:** the result of the last statement in ``source``,
+converted from JavaScript to Lua data types.
 
 Example:
 
@@ -128,14 +126,13 @@ string          string
 number          number
 boolean         boolean
 Object          table
+Array           table
 ``undefined``   ``nil``
 ``null``        ``""`` (an empty string)
 Date            string (ISO8601 representation, e.g. ``1958-05-21T10:12:00Z``)
 RegExp          table ``{_jstype='RegExp', caseSensitive=true/false, pattern='my-regexp'}``
-Array           userdata (=> it's impossible to access elements from Lua; this can change in future)
 function        an empty table ``{}`` (don't rely on it)
 ==============  =================
-
 
 
 .. _splash-html:
