@@ -206,7 +206,7 @@ class Splash(object):
             self.tab.set_images_enabled(int(enabled))
 
     @command()
-    def http_code(self):
+    def status_code(self):
         return self.tab.last_http_status()
 
     def get_real_exception(self):
