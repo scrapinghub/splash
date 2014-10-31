@@ -73,7 +73,9 @@ Splash = function (splash)
 
     local ok, reason = self:go{url=url, baseurl=args.baseurl}
     if not ok then
-      -- render.xxx endpoints don't return HTTP errors as errors
+      -- render.xxx endpoints don't return HTTP errors as errors,
+      -- so here we also only raising an exception is an error is not
+      -- caused by a 4xx or 5xx HTTP response.
       if reason:sub(0,4) ~= 'http' then
         error(reason)
       end
