@@ -3,10 +3,6 @@
 Splash Scripts Tutorial
 =======================
 
-.. warning::
-
-    Scripting support is experimental; API may change in future.
-
 Intro
 -----
 
