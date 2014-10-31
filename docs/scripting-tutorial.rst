@@ -3,6 +3,10 @@
 Splash Scripts Tutorial
 =======================
 
+.. warning::
+
+    Scripting support is experimental; API may change in future.
+
 Intro
 -----
 
@@ -88,31 +92,17 @@ argument is called "splash", but you are not required to follow this convention:
         return "ok"
     end
 
-API Overview
-------------
-
-* :ref:`splash:go() <splash-go>` is a method to load an URL in the "browser tab";
-* :ref:`splash:wait() <splash-wait>` allows to pause script execution to give
-  a webpage some time to live on its own;
-* :ref:`splash:runjs() <splash-runjs>` allows to execute JavaScript code in page
-  context and get results back;
-* :ref:`splash:html() <splash-html>` returns a HTML snapshot of the current page;
-* :ref:`splash:png() <splash-png>` creates a screenshot of the webpage in PNG format;
-* :ref:`splash:har() <splash-har>` returns information about pages loaded,
-  events happened, network requests sent and responses received in HAR_ format;
-* :ref:`splash:set_result_content_type() <splash-set-result-content-type>`
-  to control how to return the result;
-* :ref:`splash.args <splash-args>` provides a table with incoming HTTP arguments;
-
-.. _HAR: http://www.softwareishard.com/blog/har-12-spec/
-
 Calling Splash Methods
 ----------------------
 
-There are two main ways to call Splash Lua methods: using positional and
-named arguments. To call a method using positional arguments use
-``splash:foo(val1, val2)``, to call it with named arguments
-use ``splash:foo{name1=val1, name2=val2}``:
+Unlike many languages, in Lua methods are usually separated from an object
+using a colon ``:``; to call "foo" method of "splash" object use
+``splash:foo()`` syntax. See http://www.lua.org/pil/16.html for more details.
+
+There are two main ways to call Lua methods in Splash scripts:
+using positional and named arguments. To call a method using positional
+arguments use parentheses ``splash:foo(val1, val2)``, to call it with
+named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
 
 .. code-block:: lua
 
@@ -227,7 +217,12 @@ Observations:
   (a number of twitter followers); also, it doesn't need a "callback" argument;
 * instead of a ``page.open`` callback which receives "status" argument
   there is a "blocking" ``splash:go`` call which returns "ok" flag;
-* ``process`` function can use a standard Lua ``for`` loop;
+* error handling is different: in case of an HTTP 4xx or 5xx error
+  PhantomJS doesn't return an error code to ``page.open`` callback - example
+  script will try to get the followers nevertheless because "status" won't
+  be "fail"; in Splash this error will be detected and "?" will be returned;
+* ``process`` function can use a standard Lua ``for`` loop without
+  a need to create a recursive callback chain;
 * instead of console messages we've got a JSON HTTP API;
 * apparently, PhantomJS allows to create multiple ``page`` objects and
   run several ``page.open`` requests in parallel (?); Splash only provides
@@ -292,7 +287,7 @@ Splash uses the following convention:
 
 1. for developer errors (e.g. incorrect function arguments) exception is raised;
 2. for errors outside developer control (e.g. a non-responding remote website)
-   status flag is returned: functions that can fail return ``ok, error_message``
+   status flag is returned: functions that can fail return ``ok, reason``
    pairs which developer can either handle or ignore.
 
 If ``main`` results in an unhandled exception then Splash returns HTTP 400
@@ -322,4 +317,3 @@ if the assumption is wrong:
 
     -- a shortcut for the code above: use assert
     assert(splash:go("http://example.com"))
-
