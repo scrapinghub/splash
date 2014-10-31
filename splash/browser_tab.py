@@ -475,15 +475,6 @@ class BrowserTab(object):
         except KeyError:
             return
 
-    def last_network_entry(self):
-        """
-        Return information about 'main' request/response for the current page,
-        in HAR entry format.
-        """
-        if not self._history:
-            return
-        return copy.deepcopy(self._history[-1])
-
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
