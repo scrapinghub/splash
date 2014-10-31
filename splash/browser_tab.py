@@ -334,14 +334,16 @@ class BrowserTab(object):
 
     def _on_wait_timeout(self, timer, callback):
         self.logger.log("wait timeout for %s" % id(timer), min_level=2)
-        self._active_timers.remove(timer)
+        if timer in self._active_timers:
+            self._active_timers.remove(timer)
         self._timers_to_cancel_on_redirect.pop(timer, None)
         self._timers_to_cancel_on_error.pop(timer, None)
         callback()
 
     def _cancel_timer(self, timer, errback=None):
         self.logger.log("cancelling timer %s" % id(timer), min_level=2)
-        self._active_timers.remove(timer)
+        if timer in self._active_timers:
+            self._active_timers.remove(timer)
         timer.stop()
         if callable(errback):
             self.logger.log("calling timer errback", min_level=2)
