@@ -317,6 +317,13 @@ class RunjsTest(BaseLuaRenderTest):
             "nil"
         )
 
+    def test_function_call(self):
+        self.assertRunjsResult(
+            "function x(){return 5}; x();",
+            5,
+            "number"
+        )
+
     def test_dateobj(self):
         # XXX: Date objects are converted to ISO8061 strings.
         # Does it make sense to do anything else with them?
