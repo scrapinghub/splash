@@ -213,7 +213,7 @@ class ErrorsTest(BaseLuaRenderTest):
     def test_return_function(self):
         resp = self.request_lua("function main(splash) return function() end end")
         self.assertStatusCode(resp, 400)
-        self.assertIn("functions are not allowed", resp.text)
+        self.assertIn("function objects are not allowed", resp.text)
 
     def test_return_coroutine(self):
         resp = self.request_lua("""
@@ -222,7 +222,7 @@ class ErrorsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("functions are not allowed", resp.text)
+        self.assertIn("function objects are not allowed", resp.text)
 
     def test_return_started_coroutine(self):
         resp = self.request_lua("""
@@ -235,7 +235,7 @@ class ErrorsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("coroutines are not allowed", resp.text)
+        self.assertIn("thread objects are not allowed", resp.text)
 
 
 class RunjsTest(BaseLuaRenderTest):

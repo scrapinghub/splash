@@ -4,12 +4,13 @@ import os
 import functools
 import datetime
 from twisted.python import log
+try:
+    import lupa
+except ImportError:
+    lupa = None
 
 _supported = None
 _lua = None
-_LuaTable = None
-_LuaFunction = None
-_LuaThread = None
 
 
 def is_supported():
@@ -38,75 +39,10 @@ def is_supported():
 
 def get_shared_runtime():
     """ Return a shared LuaRuntime instance, creating it if necessary. """
-    import lupa
     global _lua
     if _lua is None:
         _lua = lupa.LuaRuntime()
     return _lua
-
-
-def is_lua_table(obj):
-    """
-    Return True if obj is a wrapped Lua table.
-
-    >>> import lupa
-    >>> lua = lupa.LuaRuntime()
-    >>> is_lua_table(lua.eval("{foo='bar'}"))
-    True
-    >>> is_lua_table(lua.eval("123"))
-    False
-    >>> is_lua_table(lua.eval("function () end"))
-    False
-    """
-    global _LuaTable
-    if _LuaTable is None:
-        lua = get_shared_runtime()
-        _LuaTable = lua.eval("{}").__class__
-    return isinstance(obj, _LuaTable)
-
-
-def is_lua_function(obj):
-    """
-    Return True if obj is a wrapped Lua function.
-
-    >>> import lupa
-    >>> lua = lupa.LuaRuntime()
-    >>> is_lua_function(lua.eval("{foo='bar'}"))
-    False
-    >>> is_lua_function(lua.eval("123"))
-    False
-    >>> is_lua_function(lua.eval("function () end"))
-    True
-    """
-    global _LuaFunction
-    if _LuaFunction is None:
-        lua = get_shared_runtime()
-        _LuaFunction = lua.eval("function() end").__class__
-    return isinstance(obj, _LuaFunction)
-
-
-def is_lua_coroutine(obj):
-    """
-    Return True if obj is a wrapped Lua coroutine.
-
-    >>> import lupa
-    >>> lua = lupa.LuaRuntime()
-    >>> is_lua_coroutine(lua.eval("123"))
-    False
-    >>> is_lua_coroutine(lua.eval("function () end"))
-    False
-    >>> is_lua_coroutine(lua.eval("coroutine.create(function () end)"))
-    False
-    >>> is_lua_function(lua.eval("coroutine.create(function () end)"))
-    True
-    >>> is_lua_coroutine(lua.eval("coroutine.resume(coroutine.create(function () end))"))
-    False
-    """
-    global _LuaThread
-    if _LuaThread is None:
-        lua = get_shared_runtime()
-        _LuaThread = lua.eval("function() end").coroutine().__class__
-    return isinstance(obj, _LuaThread)
 
 
 def get_version():
@@ -120,7 +56,7 @@ def _fix_args_kwargs(args):
     # convert them to kwargs if only one argument is passed and
     # it is a table.
     kwargs = {}
-    if len(args) == 1 and is_lua_table(args[0]):
+    if len(args) == 1 and lupa.lua_type(args[0]) == 'table':
         kwargs = dict(args[0])
         args = []
     return args, kwargs
@@ -154,7 +90,6 @@ def table_as_kwargs_method(func):
 
 def get_new_runtime(**kwargs):
     """ Return a pre-configured LuaRuntime. """
-    import lupa
     kwargs.setdefault('register_eval', False)
     kwargs.setdefault('unpack_returned_tuples', True)
     lua = lupa.LuaRuntime(**kwargs)
@@ -183,7 +118,7 @@ def start_main(lua, script, args):
     main = _get_entrypoint(lua, script)
     if main is None:
         raise ValueError("'main' function is not found")
-    if not is_lua_function(main):
+    if lupa.lua_type(main) != 'function':
         raise ValueError("'main' is not a function")
     return main.coroutine(*args)
 
@@ -202,7 +137,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
         if depth <= 0:
             raise ValueError("Can't convert Lua object to Python: depth limit is reached")
 
-        if is_lua_table(obj):
+        if lupa.lua_type(obj) == 'table':
             if _is_table_a_list(lua, obj):
                 res = []
                 prev_key = 0
@@ -222,11 +157,10 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
                     for key, value in obj.items()
                 }
 
-        if strict:
-            if is_lua_function(obj):
-                raise ValueError("Lua functions are not allowed.")
-            if is_lua_coroutine(obj):
-                raise ValueError("Lua coroutines are not allowed.")
+        if strict and lupa.lua_type(obj) is not None:
+            raise ValueError(
+                "Lua %s objects are not allowed." % lupa.lua_type(obj)
+            )
 
         if binary and isinstance(obj, unicode):
             obj = obj.encode('utf8')
