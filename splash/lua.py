@@ -194,19 +194,14 @@ def python2lua(lua, obj, max_depth=100):
         raise ValueError("Can't convert Python object to Lua: depth limit is reached")
 
     if isinstance(obj, dict):
-        obj = {
+        return lua.table_from({
             python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
-            for key, value in obj.items()
-        }
-        # lua.table(**obj) has limitations, see https://github.com/scoder/lupa/issues/31
-        tbl = lua.table()
-        for key, value in obj.items():
-            tbl[key] = value
-        return tbl
+            for key, value in obj.iteritems()
+        })
 
     if isinstance(obj, list):
-        obj = [python2lua(lua, el, max_depth-1) for el in obj]
-        return _mark_table_as_list(lua, lua.table(*obj))
+        tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
+        return _mark_table_as_list(lua, tbl)
 
     if isinstance(obj, unicode):
         # lupa encodes/decodes strings automatically,
