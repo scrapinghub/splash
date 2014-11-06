@@ -112,6 +112,9 @@ named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
     splash:wait{time=0.5, cancel_on_redirect=false}
     local title = splash:runjs{source="document.title"}
 
+    -- Mixed arguments example:
+    splash:wait{0.5, cancel_on_redirect=false}
+
 For the convenience all ``splash`` methods are designed to support both
 styles of calling. But note that generally this convention is not
 followed in Lua. There are no "real" named arguments in Lua, and most Lua

@@ -15,7 +15,7 @@ splash:go
 Go to an URL. This is similar to entering an URL in a browser
 address bar, pressing Enter and waiting until page loads.
 
-**Signature:** ``ok, reason = splash.go(url, baseurl=nil)``
+**Signature:** ``ok, reason = splash.go{url, baseurl=nil}``
 
 **Parameters:**
 
@@ -73,7 +73,7 @@ splash:wait
 Wait for ``time`` seconds. When script is waiting WebKit continues
 processing the webpage.
 
-**Signature:** ``ok, reason = splash:wait(time, cancel_on_redirect=false, cancel_on_error=true)``
+**Signature:** ``ok, reason = splash:wait{time, cancel_on_redirect=false, cancel_on_error=true}``
 
 **Parameters:**
 
@@ -254,7 +254,7 @@ splash:png
 
 Return a `width x height` screenshot of a current page in PNG format.
 
-**Signature:** ``png = splash:png(width=nil, height=nil)``
+**Signature:** ``png = splash:png{width=nil, height=nil}``
 
 **Parameters:**
 

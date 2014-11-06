@@ -21,6 +21,11 @@ def func_2(x, y):
     return ("x=%s, y=%s" % (x, y))
 
 
+@table_as_kwargs
+def func_3(x, y, z='default'):
+    return ("x=%s, y=%s, z=%s" % (x, y, z))
+
+
 class MyCls_1(object):
     @table_as_kwargs_method
     def meth(self, x):
@@ -33,6 +38,12 @@ class MyCls_2(object):
         return ("x=%s, y=%s" % (x, y))
 
 
+class MyCls_3(object):
+    @table_as_kwargs_method
+    def meth(self, x, y, z='default'):
+        return ("x=%s, y=%s, z=%s" % (x, y, z))
+
+
 @pytest.mark.usefixtures("lua")
 class KwargsDecoratorTest(unittest.TestCase):
 
@@ -40,6 +51,7 @@ class KwargsDecoratorTest(unittest.TestCase):
         super(KwargsDecoratorTest, self).__init__(*args, **kwargs)
         self.arg1 = func_1
         self.arg2 = func_2
+        self.arg3 = func_3
 
     def assertResult(self, f, call_txt, res_txt):
         lua_func = self.lua.eval("function (f) return f%s end" % call_txt)
@@ -61,6 +73,13 @@ class KwargsDecoratorTest(unittest.TestCase):
         self.assertResult(self.arg1, "(1)", "x=1")
         self.assertResult(self.arg1, "(nil)", "x=None")
 
+    def test_defaults(self):
+        self.assertResult(self.arg3, "{x=1, y=2}", "x=1, y=2, z=default")
+        self.assertResult(self.arg3, "{x=1, y=2, z=3}", "x=1, y=2, z=3")
+
+    def test_defaults_incorrect(self):
+        self.assertIncorrect(self.arg3, "{x=1, z=3}")
+
     def test_kwargs_unknown(self):
         self.assertIncorrect(self.arg2, "{x=1, y=2, z=3}")
         self.assertIncorrect(self.arg2, "{y=2, z=3}")
@@ -70,6 +89,29 @@ class KwargsDecoratorTest(unittest.TestCase):
         self.assertIncorrect(self.arg1, "(1,2)")
         self.assertIncorrect(self.arg1, "()")
 
+    def test_posargs_kwargs(self):
+        self.assertResult(self.arg2, "{5, y=6}", "x=5, y=6")
+        self.assertResult(self.arg2, "{y=6, 5}", "x=5, y=6")
+
+        self.assertResult(self.arg3, "{x=5, y=6, z=8}", "x=5, y=6, z=8")
+        self.assertResult(self.arg3, "{5, y=6, z=8}", "x=5, y=6, z=8")
+        self.assertResult(self.arg3, "{5, y=6}", "x=5, y=6, z=default")
+        self.assertResult(self.arg3, "{5, 6}", "x=5, y=6, z=default")
+        self.assertResult(self.arg3, "{5, 6, 7}", "x=5, y=6, z=7")
+        self.assertResult(self.arg3, "{z=7, 5, 6}", "x=5, y=6, z=7")
+
+    def test_posargs_kwargs_nil(self):
+        self.assertResult(self.arg3, "{5, nil, 6}", "x=5, y=None, z=6")
+        self.assertResult(self.arg3, "{nil, nil, 6}", "x=None, y=None, z=6")
+        # self.assertResult(self.arg3, "{nil, y=nil, z=6}", "x=None, y=None, z=6")
+        # self.assertResult(self.arg3, "{x=nil, y=nil}", "x=None, y=None, z=default")
+
+    def test_posargs_kwargs_bad(self):
+        self.assertIncorrect(self.arg2, "{5, y=6, z=7}")
+
+        self.assertIncorrect(self.arg3, "{5, z=7}")
+        self.assertIncorrect(self.arg3, "{5}")
+
 
 class MethodKwargsDecoratorTest(KwargsDecoratorTest):
 
@@ -77,6 +119,7 @@ class MethodKwargsDecoratorTest(KwargsDecoratorTest):
         super(MethodKwargsDecoratorTest, self).__init__(*args, **kwargs)
         self.arg1 = MyCls_1()
         self.arg2 = MyCls_2()
+        self.arg3 = MyCls_3()
 
     def assertResult(self, f, call_txt, res_txt):
         lua_func = self.lua.eval("function (obj) return obj:meth%s end" % call_txt)

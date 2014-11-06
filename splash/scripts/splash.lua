@@ -33,7 +33,7 @@ Splash = function (splash)
 
     local redirects_remaining = max_redirects
     while redirects_remaining do
-      local ok, reason = self:wait{time=time, cancel_on_redirect=true}
+      local ok, reason = self:wait{time, cancel_on_redirect=true}
       if reason ~= 'redirect' then
         return ok, reason
       end

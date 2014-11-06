@@ -57,8 +57,12 @@ def _fix_args_kwargs(args):
     # it is a table.
     kwargs = {}
     if len(args) == 1 and lupa.lua_type(args[0]) == 'table':
-        kwargs = dict(args[0])
-        args = []
+        table = args[0]
+        args = [table[key] for key in range(1, len(table)+1)]
+        kwargs = {
+            key: value for key, value in table.items()
+            if not isinstance(key, int)
+        }
     return args, kwargs
 
 
