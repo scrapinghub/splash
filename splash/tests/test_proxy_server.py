@@ -152,7 +152,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
 
     def test_post_request(self):
         r = self.post({"url": self.mockurl("postrequest")})
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertTrue("From POST" in r.text)
 
     def test_post_headers(self):
@@ -163,7 +163,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
             'Connection': 'custom-Header3, Foo, Bar',
         }
         r = self.post({"url": self.mockurl("postrequest")}, headers=headers)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
 
@@ -181,7 +181,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
             "url": self.mockurl("postrequest"),
             "baseurl": self.mockurl("postrequest"),
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertTrue("From POST" in r.text)
 
     @pytest.mark.xfail
@@ -196,7 +196,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
             },
             headers=headers
         )
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
@@ -205,7 +205,7 @@ class ProxyPostTest(test_render.BaseRenderTest):
         r = self.post({"url": self.mockurl("postrequest")}, headers={
             'User-Agent': 'Mozilla',
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertNotIn("x-splash", r.text.lower())
         self.assertIn("'user-agent': 'Mozilla'", r.text)
 
@@ -214,14 +214,14 @@ class ProxyPostTest(test_render.BaseRenderTest):
         payload = {'some': 'data'}
         json_payload = json.dumps(payload)
         r = self.post({"url": self.mockurl("postrequest")}, payload=json_payload)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn(json_payload, r.text)
 
         # form encoded fields
         payload = {'form_field1': 'value1',
                    'form_field2': 'value2', }
         r = self.post({"url": self.mockurl("postrequest")}, payload=payload)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn('form_field2=value2&amp;form_field1=value1', r.text)
 
 
@@ -242,7 +242,7 @@ class ProxyGetTest(test_render.BaseRenderTest):
             'Connection': 'custom-Header3, Foo, Bar',
         }
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertIn("'custom-header2': 'some-val2'", r.text)
         self.assertIn("'user-agent': 'Mozilla'", r.text)
@@ -258,7 +258,7 @@ class ProxyGetTest(test_render.BaseRenderTest):
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
@@ -267,7 +267,7 @@ class ProxyGetTest(test_render.BaseRenderTest):
             'Connection': 'User-agent',
         }
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertNotIn("'user-agent': 'Mozilla123'", r.text)
         self.assertNotIn("mozilla123", r.text.lower())
 
@@ -285,7 +285,7 @@ class NoProxyGetTest(test_render.BaseRenderTest):
             'User-Agent': 'Mozilla',
         }
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertNotIn("'custom-header2': 'some-val2'", r.text)
         self.assertNotIn("'user-agent': 'Mozilla'", r.text)
@@ -301,7 +301,7 @@ class NoProxyPostTest(test_render.BaseRenderTest):
             'Content-Type': 'application/javascript', # required by non-proxy POSTs
         }
         r = self.post({"url": self.mockurl("postrequest")}, headers=headers)
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
         self.assertNotIn("'custom-header2': 'some-val2'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
@@ -312,7 +312,7 @@ class NoProxyPostTest(test_render.BaseRenderTest):
             'User-Agent': 'Mozilla',
             'Content-Type': 'application/javascript',  # required by non-proxy POSTs
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertNotIn("x-splash", r.text.lower())
         self.assertNotIn("'user-agent': 'Mozilla'", r.text)
         self.assertNotIn("'content-type': 'application/javascript'", r.text)

@@ -16,18 +16,20 @@ from twisted.python import log
 
 import splash
 from splash.qtrender import (
-    HtmlRender, PngRender, JsonRender, HarRender, RenderError,
+    HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
-from splash.utils import getarg, getarg_bool, BadRequest, get_num_fds, get_leaks
+from splash.qtrender_lua import LuaRender
+from splash.lua import get_script_source
+from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
-from splash import defaults
+from splash.render_options import RenderOptions, BadOption
 
 
 class _ValidatingResource(Resource):
     def render(self, request):
         try:
             return Resource.render(self, request)
-        except BadRequest as e:
+        except BadOption as e:
             request.setResponseCode(400)
             return str(e) + "\n"
 
@@ -45,10 +47,15 @@ class RenderBase(_ValidatingResource):
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
-        _check_filters(self.pool, request)
-        pool_d = self._getRender(request)
-        timeout = _get_timeout_arg(request)
-        wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
+
+        request.starttime = time.time()
+        render_options = RenderOptions.fromrequest(request)
+        render_options.get_filters(self.pool)  # check filters earlier
+
+        pool_d = self._getRender(request, render_options)
+
+        timeout = render_options.get_timeout()
+        wait_time = render_options.get_wait()
 
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
@@ -58,14 +65,13 @@ class RenderBase(_ValidatingResource):
         pool_d.addErrback(self._badRequest, request)
         pool_d.addErrback(self._internalError, request)
         pool_d.addBoth(self._finishRequest, request)
-        request.starttime = time.time()
         return NOT_DONE_YET
 
     def render_POST(self, request):
         if self.is_proxy_request:
             # If request comes from splash proxy service don't handle
             # special content-types.
-            # TODO: pass http method to WebpageRender explicitly.
+            # TODO: pass http method to RenderScript explicitly.
             return self.render_GET(request)
 
         content_type = request.getHeader('content-type')
@@ -81,8 +87,32 @@ class RenderBase(_ValidatingResource):
         timer.cancel()
         return _
 
-    def _writeOutput(self, html, request):
+    def _writeOutput(self, data, request, content_type=None):
         # log.msg("_writeOutput: %s" % id(request))
+
+        if content_type is None:
+            content_type = self.content_type
+
+        if isinstance(data, dict):
+            data = json.dumps(data, cls=SplashJSONEncoder)
+            return self._writeOutput(data, request, "application/json")
+
+        if isinstance(data, tuple) and len(data) == 2:
+            data, content_type = data
+            return self._writeOutput(data, request, content_type)
+
+        if isinstance(data, (bool, int, long)):
+            return self._writeOutput(str(data), request, content_type)
+
+        if isinstance(data, BinaryCapsule):
+            return self._writeOutput(data.data, request, content_type)
+
+        request.setHeader("content-type", content_type)
+
+        self._logStats(request)
+        request.write(data)
+
+    def _logStats(self, request):
         stats = {
             "path": request.path,
             "args": request.args,
@@ -95,8 +125,6 @@ class RenderBase(_ValidatingResource):
             "_id": id(request),
         }
         log.msg(json.dumps(stats), system="stats")
-        request.setHeader("content-type", self.content_type)
-        request.write(html)
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
@@ -117,7 +145,7 @@ class RenderBase(_ValidatingResource):
         sentry.capture(failure)
 
     def _badRequest(self, failure, request):
-        failure.trap(BadRequest)
+        failure.trap(BadOption)
         request.setResponseCode(400)
         request.write(str(failure.value) + "\n")
 
@@ -126,181 +154,57 @@ class RenderBase(_ValidatingResource):
             request.finish()
         #log.msg("_finishRequest: %s" % id(request))
 
-    def _getRender(self, request):
+    def _getRender(self, request, options):
         raise NotImplementedError()
 
 
-def _get_timeout_arg(request):
-    return getarg(request, "timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
-
-
-def _check_viewport(viewport, wait, max_width, max_heigth, max_area):
-    if viewport is None:
-        return
-
-    if viewport == 'full':
-        if wait == 0:
-            raise BadRequest("Pass non-zero 'wait' to render full webpage")
-        return
-
-    try:
-        w, h = map(int, viewport.split('x'))
-        if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
-            return
-        raise BadRequest("Viewport is out of range (%dx%d, area=%d)" % (max_width, max_heigth, max_area))
-    except (ValueError):
-        raise BadRequest("Invalid viewport format: %s" % viewport)
-
-
-def _check_filters(pool, request):
-    network_manager = pool.network_manager
-    if not hasattr(network_manager, 'unknownFilters'):
-        # allow custom non-filtering network access managers
-        return
-
-    filter_names = getarg(request, 'filters', '')
-    unknown_filters = network_manager.unknownFilters(filter_names)
-    if unknown_filters:
-        raise BadRequest("Invalid filter names: %s" % unknown_filters)
-
-
-def _get_javascript_params(request, js_profiles_path):
-    return dict(
-        js_profile=_check_js_profile(request, js_profiles_path, getarg(request, 'js', None)),
-        js_source=_get_js_source(request),
-    )
-
-def _get_headers_params(request):
-    headers = None
-
-    if getattr(request, 'inspect_me', False):
-        # use headers from splash_request
-        headers = [
-            (name, value)
-            for name, values in request.requestHeaders.getAllRawHeaders()
-            for value in values
-        ]
-
-    headers = getarg(request, "headers", default=headers, type=None)
-    if headers is None:
-        return headers
-
-    if not isinstance(headers, (list, tuple, dict)):
-        raise BadRequest("'headers' must be either JSON array of (name, value) pairs or JSON object")
-
-    if isinstance(headers, (list, tuple)):
-        for el in headers:
-            if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
-                raise BadRequest("'headers' must be either JSON array of (name, value) pairs or JSON object")
-
-    return headers
-
-
-def _get_js_source(request):
-    js_source = getarg(request, 'js_source', None)
-    if js_source is not None:
-        return js_source
-
-    # handle application/javascript POST requests
-    if request.method == 'POST':
-        content_type = request.getHeader('Content-Type')
-        if content_type and 'application/javascript' in content_type:
-            return request.content.read()
-
-
-def _check_js_profile(request, js_profiles_path, js_profile):
-    if js_profile:
-        if js_profiles_path is None:
-            raise BadRequest('Javascript profiles are not enabled')
-        profile_dir = os.path.join(js_profiles_path, js_profile)
-        if not profile_dir.startswith(js_profiles_path + os.path.sep):
-            # security check fails
-            raise BadRequest('Javascript profile does not exist')
-        if not os.path.isdir(profile_dir):
-            raise BadRequest('Javascript profile does not exist')
-        return profile_dir
-
-
-def _get_png_params(request):
-    return dict(
-        width = getarg(request, "width", None, type=int, range=(1, defaults.MAX_WIDTH)),
-        height = getarg(request, "height", None, type=int, range=(1, defaults.MAX_HEIGTH)),
-    )
-
-
-def _get_common_params(request, js_profiles_path):
-    """ Return arguments common for all endpoints """
-    wait_time = getarg(request, "wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
-    viewport = getarg(request, "viewport", defaults.VIEWPORT)
-    _check_viewport(viewport, wait_time, defaults.VIEWPORT_MAX_WIDTH,
-                    defaults.VIEWPORT_MAX_HEIGTH, defaults.VIEWPORT_MAX_AREA)
-
-    url = getarg(request, "url", type=None)
-    baseurl = getarg(request, "baseurl", default=None, type=None)
-    if isinstance(url, unicode):
-        url = url.encode('utf8')
-    if isinstance(baseurl, unicode):
-        baseurl = baseurl.encode('utf8')
-
-    res = dict(
-        url = url,
-        baseurl = baseurl,
-        wait = wait_time,
-        viewport = viewport,
-        images = getarg_bool(request, "images", defaults.AUTOLOAD_IMAGES),
-        headers = _get_headers_params(request),
-
-        proxy = getarg(request, "proxy", None),
-    )
-    res.update(_get_javascript_params(request, js_profiles_path))
-    return res
-
-
 class RenderHtml(RenderBase):
-
     content_type = "text/html; charset=utf-8"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        return self.pool.render(HtmlRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        return self.pool.render(HtmlRender, options, **params)
+
+
+class RenderLua(RenderBase):
+    content_type = "text/plain; charset=utf-8"
+
+    def _getRender(self, request, options):
+        params = dict(
+            proxy = options.get_proxy(),
+            lua_source = options.get_lua_source()
+        )
+        return self.pool.render(LuaRender, options, **params)
 
 
 class RenderPng(RenderBase):
 
     content_type = "image/png"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        params.update(_get_png_params(request))
-        return self.pool.render(PngRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        params.update(options.get_png_params())
+        return self.pool.render(PngRender, options, **params)
 
 
 class RenderJson(RenderBase):
 
     content_type = "application/json"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        params.update(_get_png_params(request))
-        params.update(
-            html = getarg_bool(request, "html", defaults.DO_HTML),
-            iframes = getarg_bool(request, "iframes", defaults.DO_IFRAMES),
-            png = getarg_bool(request, "png", defaults.DO_PNG),
-            script = getarg_bool(request, "script", defaults.SHOW_SCRIPT),
-            console = getarg_bool(request, "console", defaults.SHOW_CONSOLE),
-            history = getarg_bool(request, "history", defaults.SHOW_HISTORY),
-            har = getarg_bool(request, "har", defaults.SHOW_HAR),
-        )
-        return self.pool.render(JsonRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        params.update(options.get_png_params())
+        params.update(options.get_include_params())
+        return self.pool.render(JsonRender, options, **params)
 
 
 class RenderHar(RenderBase):
 
     content_type = "application/json"
 
-    def _getRender(self, request):
-        params = _get_common_params(request, self.js_profiles_path)
-        return self.pool.render(HarRender, request, **params)
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        return self.pool.render(HarRender, options, **params)
 
 
 class Debug(Resource):
@@ -315,12 +219,49 @@ class Debug(Resource):
         request.setHeader("content-type", "application/json")
         return json.dumps({
             "leaks": get_leaks(),
-            "active": [x.url for x in self.pool.active],
+            "active": [self.get_repr(r) for r in self.pool.active],
             "qsize": len(self.pool.queue.pending),
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "fds": get_num_fds(),
         })
 
+    def get_repr(self, render):
+        if hasattr(render, 'url'):
+            return render.url
+        return render.tab.url
+
+BOOTSTRAP_THEME = 'simplex'
+CODEMIRROR_OPTIONS = """{
+    mode: 'lua',
+    lineNumbers: true,
+    autofocus: true,
+    tabSize: 2,
+    matchBrackets: false,  // doesn't look good in mbo theme
+    autoCloseBrackets: true,
+    extraKeys: {
+        "Ctrl-Space": "autocomplete",
+        "Esc": "autocomplete",
+    },
+    hint: CodeMirror.hint.anyword,
+    theme: 'mbo',
+}
+"""
+
+CODEMIRROR_RESOURCES = """
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/monokai.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/midnight.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/anyword-hint.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/matchbrackets.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/closebrackets.min.js"></script>
+
+"""
 
 class HarViewer(_ValidatingResource):
     isLeaf = True
@@ -333,22 +274,25 @@ class HarViewer(_ValidatingResource):
         self.pool = pool
 
     def _validate_params(self, request):
-        _check_filters(self.pool, request)
-        return _get_common_params(request, self.pool.js_profiles_path)
+        options = RenderOptions.fromrequest(request)
+        options.get_filters(self.pool)  # check
+        params = options.get_common_params(self.pool.js_profiles_path)
+        params.update({
+            'timeout': options.get_timeout(),
+            'lua_source': options.get_lua_source(),
+            'har': 1,
+            'png': 1,
+            'html': 1,
+        })
+        return params
+
 
     def render_GET(self, request):
         params = self._validate_params(request)
         url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
-
-        params.update({
-            'timeout': _get_timeout_arg(request),
-
-            'har': 1,
-            'png': 1,
-            'html': 1,
-        })
+        url = url.encode('utf8')
         params = {k:v for k,v in params.items() if v is not None}
 
         request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
@@ -358,7 +302,15 @@ class HarViewer(_ValidatingResource):
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
             <link rel="stylesheet" href="_harviewer/css/harViewer.css" type="text/css"/>
-            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
+            <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="http://code.jquery.com/jquery-migrate-1.2.1.js"></script>
+
+            <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+            %(cm_resources)s
+
             <style>
                 /* fix bootstrap + harviewer compatibility issues */
                 .label { color: #000; font-weight: normal; font-size: 100%%; }
@@ -390,6 +342,9 @@ class HarViewer(_ValidatingResource):
                 ._onScreenshotPrepared { background-color: magenta; }
                 ._onPngRendered { background-color: magenta; }
                 ._onIframesRendered { background-color: black; }
+
+                /* editor styling */
+                #lua-code-editor-panel {padding: 0}
             </style>
         </head>
         <body class="harBody" style="color:#000">
@@ -414,7 +369,16 @@ class HarViewer(_ValidatingResource):
                       <input type="hidden" name="wait" value="0.5">
                       <input type="hidden" name="images" value="1">
                       <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
-                      <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
+
+                      <div class="btn-group" id="render-form">
+                          <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
+                          <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
+                          <div class="dropdown-menu panel panel-default" id="lua-code-editor-panel">
+                            <div class="panel-body2">
+                              <textarea id="lua-code-editor" name='lua_source'></textarea>
+                            </div>
+                          </div>
+                      </div>
                       <button class="btn btn-success" type="submit">Render!</button>
                     </form>
 
@@ -440,11 +404,26 @@ class HarViewer(_ValidatingResource):
                 </div>
             </div>
 
-            <script src="_harviewer/scripts/jquery.js"></script>
             <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
 
             <script>
             var params = %(params)s;
+
+            /* Create editor */
+            var editor = null;
+            var textarea = document.getElementById('lua-code-editor');
+            textarea.value = params["lua_source"] || "";
+
+            $('#render-form').on("shown.bs.dropdown", function(e){
+                if (editor === null) {
+                    editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
+                    editor.setSize(600, 464);
+                }
+            });
+            $('#lua-code-editor-panel').click(function(e){e.stopPropagation();});
+
+
+            /* Initialize HAR viewer & send AJAX requests */
             $("#content").bind("onViewerPreInit", function(event){
                 // Get application object
                 var viewer = event.target.repObject;
@@ -495,7 +474,7 @@ class HarViewer(_ValidatingResource):
                 var viewer = event.target.repObject;
                 $("#status").text("Rendering, please wait..");
 
-                $.ajax("/render.json", {
+                $.ajax("/render.lua", {
                     "contentType": "application/json",
                     "dataType": "json",
                     "type": "POST",
@@ -519,7 +498,14 @@ class HarViewer(_ValidatingResource):
             </script>
         </body>
         </html>
-        """ % dict(version=splash.__version__, params=json.dumps(params), url=url)
+        """ % dict(
+            version=splash.__version__,
+            params=json.dumps(params),
+            url=url,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES,
+        )
 
 
 class Root(Resource):
@@ -537,6 +523,7 @@ class Root(Resource):
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("render.har", RenderHar(pool))
+        self.putChild("render.lua", RenderLua(pool))
         self.putChild("debug", Debug(pool))
 
         if self.ui_enabled:
@@ -548,12 +535,29 @@ class Root(Resource):
             return self
         return Resource.getChild(self, name, request)
 
+    def get_example_script(self):
+        return get_script_source("example.lua")
+
     def render_GET(self, request):
-        return """<html>
+        result = """<html>
         <head>
             <title>Splash %(version)s</title>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/simplex/bootstrap.min.css" rel="stylesheet">
+            <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
+
+            <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+
+            %(cm_resources)s
+
+            <script>
+               $(document).ready(function(){
+                    /* Create editor */
+                    var textarea = document.getElementById('lua-code-editor');
+                    var editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
+                    editor.setSize(464, 464);
+               });
+            </script>
+
         </head>
         <body>
             <div class="container">
@@ -584,6 +588,10 @@ class Root(Resource):
                             Commercial support is also available by
                             <a href="http://scrapinghub.com/">Scrapinghub</a>.
                         </p>
+                        <p>
+                            <a class="btn btn-info" href="http://splash.readthedocs.org/">Documentation</a>
+                            <a class="btn btn-info" href="https://github.com/scrapinghub/splash">Source code</a>
+                        </p>
 
                     </div>
                     <div class="col-lg-6">
@@ -595,21 +603,26 @@ class Root(Resource):
                           <fieldset>
                             <div class="">
                               <div class="input-group col-lg-10">
-                                <input class="form-control" type="text" placeholder="Paste an URL" value="http://google.com" type="text" name="url">
+                                <input class="form-control" type="text" placeholder="Paste an URL" value="http://google.com" name="url">
                                 <span class="input-group-btn">
                                   <button class="btn btn-success" type="submit">Render me!</button>
                                 </span>
                               </div>
+                              <div class="input-group col-lg-10">
+                                <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
+                              </div>
                             </div>
                           </fieldset>
                         </form>
-                        <p>
-                            <a class="btn btn-default" href="http://splash.readthedocs.org/">Documentation</a>
-                            <a class="btn btn-default" href="https://github.com/scrapinghub/splash">Source code</a>
-                        </p>
-
                     </div>
                 </div>
             </div>
         </body>
-        </html>""" % dict(version=splash.__version__)
+        </html>""" % dict(
+            version = splash.__version__,
+            theme = BOOTSTRAP_THEME,
+            cm_options = CODEMIRROR_OPTIONS,
+            cm_resources = CODEMIRROR_RESOURCES,
+            lua_script = self.get_example_script(),
+        )
+        return result.encode('utf8')

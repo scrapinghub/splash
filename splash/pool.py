@@ -17,11 +17,11 @@ class RenderPool(object):
         for n in range(slots):
             self._wait_for_render(None, n, log=False)
 
-    def render(self, rendercls, splash_request, proxy, **kwargs):
+    def render(self, rendercls, render_options, proxy, **kwargs):
         splash_proxy_factory = self.splash_proxy_factory_cls(proxy)
         pool_d = defer.Deferred()
-        self.queue.put((rendercls, splash_request, splash_proxy_factory, kwargs, pool_d))
-        self.log("queued %s" % id(splash_request))
+        self.queue.put((rendercls, render_options, splash_proxy_factory, kwargs, pool_d))
+        self.log("[%s] queued" % render_options.get_uid())
         return pool_d
 
     def _wait_for_render(self, _, slot, log=True):
@@ -32,12 +32,12 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, splash_request, splash_proxy_factory, kwargs, pool_d), slot):
+    def _start_render(self, (rendercls, render_options, splash_proxy_factory, kwargs, pool_d), slot):
         self.log("initializing SLOT %d" % (slot, ))
         render = rendercls(
             network_manager=self.network_manager,
             splash_proxy_factory=splash_proxy_factory,
-            splash_request=splash_request,
+            render_options=render_options,
             verbosity=self.verbosity,
         )
         self.active.add(render)
@@ -45,26 +45,28 @@ class RenderPool(object):
         pool_d.addErrback(self._error, render, slot)
         pool_d.addBoth(self._close_render, render, slot)
 
-        self.log("SLOT %d is creating request %s" % (slot, id(splash_request)))
+        self.log("[%s] SLOT %d is starting" % (render_options.get_uid(), slot))
         try:
             render.start(**kwargs)
         except:
             render.deferred.errback()
             raise
-        self.log("SLOT %d is working on %s" % (slot, id(splash_request)))
+        self.log("[%s] SLOT %d is working" % (render_options.get_uid(), slot))
 
         return render.deferred
 
     def _error(self, _, render, slot):
-        self.log("SLOT %d finished with an error %s %s" % (slot, id(render.splash_request), render))
+        uid = render.render_options.get_uid()
+        self.log("[%s] SLOT %d finished with an error %s" % (uid, slot, render))
         return _
 
     def _close_render(self, _, render, slot):
-        self.log("SLOT %d is closing %s %s" % (slot, id(render.splash_request), render))
+        uid = render.render_options.get_uid()
+        self.log("[%s] SLOT %d is closing %s" % (uid, slot, render))
         self.active.remove(render)
         render.deferred.cancel()
         render.close()
-        self.log("SLOT %d done with %s %s" % (slot, id(render.splash_request), render))
+        self.log("[%s] SLOT %d done with %s" % (uid, slot, render))
         return _
 
     def log(self, text):

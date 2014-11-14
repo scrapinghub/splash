@@ -23,3 +23,11 @@ def class_ts(request, test_servers):
 @pytest.fixture()
 def print_ts_output(class_ts):
     class_ts.print_output()
+
+
+@pytest.fixture()
+def lua(request):
+    import lupa
+    lua = lupa.LuaRuntime()
+    request.cls.lua = lua
+    return lua

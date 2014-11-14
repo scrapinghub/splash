@@ -15,12 +15,12 @@ Functional Tests
 
 Run with::
 
-    py.test
+    py.test --doctest-modules splash
 
 To speedup test running install ``pytest-xdist`` Python package and run
 Splash tests in parallel::
 
-    py.test -n4
+    py.test --doctest-modules -n4 splash
 
 Stress tests
 ------------

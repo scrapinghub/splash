@@ -28,7 +28,7 @@ class RenderHtmlJsonPostTest(test_render.RenderHtmlTest):
             query={"url": self.mockurl("jsrender")},
             headers={"content-type": "application/json; charset=UTF-8"}
         )
-        self.assertEqual(resp.status_code, 200)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers["content-type"].lower(), "text/html; charset=utf-8")
         self.assertTrue("Before" not in resp.text)
         self.assertTrue("After" in resp.text)
@@ -82,7 +82,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         })
 
         for r in [r1, r2]:
-            self.assertEqual(r.status_code, 200)
+            self.assertStatusCode(r, 200)
             self.assertIn("'x-custom-header1': 'some-val1'", r.text)
             self.assertIn("'custom-header2': 'some-val2'", r.text)
             self.assertIn("'user-agent': 'Mozilla'", r.text)
@@ -99,20 +99,20 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": "foo",
         })
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
     def test_bad_headers_list(self):
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("foo", ), ("bar", {"hello": "world"})],
         })
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("bar", {"hello": "world"})],
         })
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
@@ -120,7 +120,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": headers,
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
@@ -132,7 +132,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": headers
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
 
         # this is not a proxy request - don't remove headers
         self.assertIn("'user-agent': 'Mozilla123'", r.text)

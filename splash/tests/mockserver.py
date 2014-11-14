@@ -9,7 +9,20 @@ from twisted.web.resource import Resource
 from twisted.web import proxy, http
 from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
-from splash.utils import getarg
+
+
+_REQUIRED = object()
+
+def getarg(request, name, default=_REQUIRED, type=str):
+    value = request.args.get(name, [None])[0]
+    if value is not None:
+        if type is not None:
+            value = type(value)
+        return value
+    elif default is _REQUIRED:
+        raise Exception("Missing argument: %s" % name)
+    else:
+        return default
 
 
 def _html_resource(html):
