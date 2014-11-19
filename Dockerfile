@@ -12,9 +12,13 @@ RUN sed 's/main$/main universe/' -i /etc/apt/sources.list && \
     apt-get install -y netbase ca-certificates python \
         python-dev build-essential \
         xvfb libqt4-webkit python-qt4 libre2-dev \
-        git-core python-pip libicu48 lua5.2-dev
+        git-core python-pip libicu48 liblua5.2-dev
 
 RUN pip install -U pip
+
+# temporary, until lupa is released
+RUN pip install 'cython > 0.21'
+
 RUN pip install \
             Twisted==14.0.2 \
             qt4reactor==1.6 \
@@ -22,7 +26,7 @@ RUN pip install \
             adblockparser==0.3 \
             git+https://github.com/axiak/pyre2.git@382bb743f16722b582cc2bac8fc08ff121dec20e#egg=re2 \
             xvfbwrapper==0.2.4 \
-            lupa == 1.0.1
+            git+https://github.com/scoder/lupa.git@7a19cda9be9c7df9ab21be88ff9540cb3d2c702c#egg=lupa
 
 ADD . /app
 RUN pip install /app
