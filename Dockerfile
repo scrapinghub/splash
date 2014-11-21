@@ -16,9 +16,6 @@ RUN sed 's/main$/main universe/' -i /etc/apt/sources.list && \
 
 RUN pip install -U pip
 
-# temporary, until lupa is released
-RUN pip install 'cython > 0.21'
-
 RUN pip install \
             Twisted==14.0.2 \
             qt4reactor==1.6 \
@@ -26,7 +23,7 @@ RUN pip install \
             adblockparser==0.3 \
             git+https://github.com/axiak/pyre2.git@382bb743f16722b582cc2bac8fc08ff121dec20e#egg=re2 \
             xvfbwrapper==0.2.4 \
-            git+https://github.com/scoder/lupa.git@7a19cda9be9c7df9ab21be88ff9540cb3d2c702c#egg=lupa
+            lupa==1.1
 
 ADD . /app
 RUN pip install /app

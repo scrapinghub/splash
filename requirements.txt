@@ -7,7 +7,7 @@ adblockparser >= 0.2
 xvfbwrapper
 
 # for scripting support
-lupa >= 1.0.1
+lupa >= 1.1
 
 # the following libraries are only required by tests
 pytest
