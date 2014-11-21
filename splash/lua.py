@@ -51,47 +51,6 @@ def get_version():
     return lua.globals()["_VERSION"]
 
 
-def _fix_args_kwargs(args):
-    # lupa calls Python functions from Lua using args only;
-    # convert them to kwargs if only one argument is passed and
-    # it is a table.
-    kwargs = {}
-    if len(args) == 1 and lupa.lua_type(args[0]) == 'table':
-        table = args[0]
-        args = [table[key] for key in range(1, len(table)+1)]
-        kwargs = {
-            key: value for key, value in table.items()
-            if not isinstance(key, int)
-        }
-    return args, kwargs
-
-
-def table_as_kwargs(func):
-    """
-    A decorator to make decorated function receive kwargs
-    when it is called from Lua with a single Lua table argument.
-
-    It makes it possible to support both ``func(foo, bar)`` and
-    ``func{foo=foo, bar=bar}`` in Lua code.
-
-    WARNING: don't apply this decorator to functions which
-    first argument can be a Lua table! For consistency it is better
-    to avoid such functions in API.
-    """
-    def wrapper(*args):
-        args, kwargs = _fix_args_kwargs(args)
-        return func(*args, **kwargs)
-    return functools.wraps(func)(wrapper)
-
-
-def table_as_kwargs_method(func):
-    """ This is :func:`table_as_kwargs` for methods. """
-    def wrapper(self, *args):
-        args, kwargs = _fix_args_kwargs(args)
-        return func(self, *args, **kwargs)
-    return functools.wraps(func)(wrapper)
-
-
 def get_new_runtime(**kwargs):
     """ Return a pre-configured LuaRuntime. """
     kwargs.setdefault('register_eval', False)

@@ -7,7 +7,6 @@ import lupa
 
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (
-    table_as_kwargs_method,
     get_new_runtime,
     start_main,
     get_script_source,
@@ -42,7 +41,7 @@ class _AsyncBrowserCommand(object):
 def command(async=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
-        meth = can_raise(emits_lua_objects(table_as_kwargs_method(meth)))
+        meth = can_raise(emits_lua_objects(lupa.unpacks_lua_table_method(meth)))
         meth._is_command = True
         meth._is_async = async
         return meth
