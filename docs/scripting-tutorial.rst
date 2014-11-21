@@ -88,39 +88,6 @@ argument is called "splash", but you are not required to follow this convention:
         return "ok"
     end
 
-Calling Splash Methods
-----------------------
-
-Unlike many languages, in Lua methods are usually separated from an object
-using a colon ``:``; to call "foo" method of "splash" object use
-``splash:foo()`` syntax. See http://www.lua.org/pil/16.html for more details.
-
-There are two main ways to call Lua methods in Splash scripts:
-using positional and named arguments. To call a method using positional
-arguments use parentheses ``splash:foo(val1, val2)``, to call it with
-named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
-
-.. code-block:: lua
-
-    -- Examples of positional arguments:
-    splash:go("http://example.com")
-    splash:wait(0.5, false)
-    local title = splash:runjs("document.title")
-
-    -- The same using keyword arguments:
-    splash:go{url="http://example.com"}
-    splash:wait{time=0.5, cancel_on_redirect=false}
-    local title = splash:runjs{source="document.title"}
-
-    -- Mixed arguments example:
-    splash:wait{0.5, cancel_on_redirect=false}
-
-For the convenience all ``splash`` methods are designed to support both
-styles of calling. But note that generally this convention is not
-followed in Lua. There are no "real" named arguments in Lua, and most Lua
-functions (including the ones from the standard library) choose to support
-only one style of calling. Check http://www.lua.org/pil/5.3.html for more info.
-
 Where Are My Callbacks?
 -----------------------
 
@@ -275,6 +242,41 @@ of async will allow your scripts to work if we ever change that.
     Internally, "main" function is executed as a coroutine by Splash,
     and some of the ``splash:foo()`` methods use ``coroutine.yield``.
     See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
+
+
+Calling Splash Methods
+----------------------
+
+Unlike many languages, in Lua methods are usually separated from an object
+using a colon ``:``; to call "foo" method of "splash" object use
+``splash:foo()`` syntax. See http://www.lua.org/pil/16.html for more details.
+
+There are two main ways to call Lua methods in Splash scripts:
+using positional and named arguments. To call a method using positional
+arguments use parentheses ``splash:foo(val1, val2)``, to call it with
+named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
+
+.. code-block:: lua
+
+    -- Examples of positional arguments:
+    splash:go("http://example.com")
+    splash:wait(0.5, false)
+    local title = splash:runjs("document.title")
+
+    -- The same using keyword arguments:
+    splash:go{url="http://example.com"}
+    splash:wait{time=0.5, cancel_on_redirect=false}
+    local title = splash:runjs{source="document.title"}
+
+    -- Mixed arguments example:
+    splash:wait{0.5, cancel_on_redirect=false}
+
+For the convenience all ``splash`` methods are designed to support both
+styles of calling. But note that generally this convention is not
+followed in Lua. There are no "real" named arguments in Lua, and most Lua
+functions (including the ones from the standard library) choose to support
+only one style of calling. Check http://www.lua.org/pil/5.3.html for more info.
+
 
 Error Handling
 --------------
