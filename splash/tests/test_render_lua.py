@@ -304,7 +304,7 @@ class RunjsTest(BaseLuaRenderTest):
         )
 
     def test_function(self):
-        # XXX: complex objects are not returned by QT
+        # XXX: functions are not returned by QT
         self.assertRunjsResult(
             "x = function(){return 5}; x",
             {},
@@ -315,6 +315,14 @@ class RunjsTest(BaseLuaRenderTest):
             "function(){return 5}",
             None,
             "nil"
+        )
+
+    def test_object_with_function(self):
+        # XXX: complex objects are unsupported
+        self.assertRunjsResult(
+            '{"x":2, "y": function(){}}',
+            None,
+            "nil",
         )
 
     def test_function_call(self):
