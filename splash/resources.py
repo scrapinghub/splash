@@ -101,7 +101,7 @@ class RenderBase(_ValidatingResource):
             data, content_type = data
             return self._writeOutput(data, request, content_type)
 
-        if isinstance(data, (bool, int, long)):
+        if isinstance(data, (bool, int, long, float)):
             return self._writeOutput(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):

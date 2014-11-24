@@ -16,7 +16,7 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         return self.request(q)
 
 
-class MainResultsTest(BaseLuaRenderTest):
+class MainFunctionTest(BaseLuaRenderTest):
 
     def test_return_json(self):
         resp = self.request_lua("""
@@ -69,6 +69,12 @@ class MainResultsTest(BaseLuaRenderTest):
         self.assertEqual(resp.text, "1")
         self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
 
+    def test_number_float(self):
+        resp = self.request_lua("function main(splash) return 1.5 end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "1.5")
+        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+
     def test_bool(self):
         resp = self.request_lua("function main(splash) return true end")
         self.assertStatusCode(resp, 200)
@@ -83,6 +89,35 @@ class MainResultsTest(BaseLuaRenderTest):
         resp = self.request_lua("function main() end")
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "")
+
+    def test_no_main(self):
+        resp = self.request_lua("x=1")
+        self.assertStatusCode(resp, 400)
+        self.assertIn("function is not found", resp.text)
+
+    def test_bad_main(self):
+        resp = self.request_lua("main=1")
+        self.assertStatusCode(resp, 400)
+        self.assertIn("is not a function", resp.text)
+
+    def test_ugly_main(self):
+        resp = self.request_lua("main={coroutine=123}")
+        self.assertStatusCode(resp, 400)
+        self.assertIn("is not a function", resp.text)
+
+    def test_nasty_main(self):
+        resp = self.request_lua("""
+        main = {coroutine=function()
+          return {
+            send=function() end,
+            next=function() end
+          }
+        end}
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("is not a function", resp.text)
+
+
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):
@@ -136,36 +171,6 @@ class ResultContentTypeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
         self.assertIn("argument must be a string", resp.text)
-
-
-class EntrypointTest(BaseLuaRenderTest):
-
-    def test_no_main(self):
-        resp = self.request_lua("x=1")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("function is not found", resp.text)
-
-    def test_bad_main(self):
-        resp = self.request_lua("main=1")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
-
-    def test_ugly_main(self):
-        resp = self.request_lua("main={coroutine=123}")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
-
-    def test_nasty_main(self):
-        resp = self.request_lua("""
-        main = {coroutine=function()
-          return {
-            send=function() end,
-            next=function() end
-          }
-        end}
-        """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
 
 
 class ErrorsTest(BaseLuaRenderTest):
