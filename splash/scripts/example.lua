@@ -13,16 +13,14 @@ function main(splash)
   splash:wait(0.5)
   splash:stop()
 
-  local div_count = splash:runjs([[
-    var body = document.body;
-    var divs = body.getElementsByTagName('div');
-
-    // value of the last expression is returned
-    divs.length
+  local prefixed_title = splash:jsfunc([[
+    function(prefix){
+      return prefix + " " + document.title;
+    }
   ]])
 
   return {
-    div_count = div_count,
+    greeting = prefixed_title("Hello, "),
     html = splash:html(),
     png = splash:png{width=640},
     har = splash:har(),
