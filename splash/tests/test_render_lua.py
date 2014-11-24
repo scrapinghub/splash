@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import json
 import unittest
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
@@ -362,6 +363,63 @@ class RunjsTest(BaseLuaRenderTest):
             },
             'table'
         )
+
+
+class JsfuncTest(BaseLuaRenderTest):
+    def assertJsfuncResult(self, source, arguments, result):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc([[%s]])
+            return func(%s)
+        end
+        """ % (source, arguments))
+        self.assertStatusCode(resp, 200)
+        if isinstance(result, dict):
+            self.assertEqual(resp.json(), result)
+        else:
+            self.assertEqual(resp.text, result)
+
+    def test_jsfunc_Math(self):
+        self.assertJsfuncResult("Math.pow", "5, 2", "25")
+
+    def test_jsfunc_helloworld(self):
+        self.assertJsfuncResult(
+            "function(s) {return 'Hello, ' + s;}",
+            "'world!'",
+            "Hello, world!"
+        )
+
+    def test_jsfunc_object_argument(self):
+        self.assertJsfuncResult(
+            "function(obj) {return obj.foo;}",
+            "{foo='bar'}",
+            "bar",
+        )
+
+    def test_jsfunc_object_result(self):
+        self.assertJsfuncResult(
+            "function(obj) {return obj.foo;}",
+            "{foo={x=5, y=10}}",
+            {"x": 5, "y": 10},
+        )
+
+    def test_jsfunc_object_result_pass(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func1 = splash:jsfunc("function(){return {foo:{x:5}}}")
+            local func2 = splash:jsfunc("function(obj){return obj.foo}")
+            local obj = func1()
+            return func2(obj)
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"x": 5})
+
+    def test_jsfunc_bool(self):
+        is5 = "function(num){return num==5}"
+        self.assertJsfuncResult(is5, "5", "True")
+        self.assertJsfuncResult(is5, "6", "False")
+
 
 
 class WaitTest(BaseLuaRenderTest):

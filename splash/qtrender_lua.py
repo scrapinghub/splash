@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import json
 import functools
 import itertools
 
@@ -80,6 +81,29 @@ def can_raise(func):
             self._exceptions.append(ScriptError(e))
             raise
     return wrapper
+
+
+class _WrappedJavascriptFunction(object):
+    """
+    JavaScript functions wrapper. It allows to call JS functions
+    with arguments.
+    """
+    def __init__(self, splash, source):
+        """
+        :param splash.browser_tab.BrowserTab tab: BrowserTab object
+        :param str source: function source code
+        """
+        self._lua = splash.lua
+        self._tab = splash.tab
+        self._exceptions = splash._exceptions
+        self._source = source
+
+    @can_raise
+    def __call__(self, *args):
+        args = lua2python(self._lua, args)
+        args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
+        js_source = "(%s)(%s)" % (self._source, args_text)
+        return self._tab.runjs(js_source)
 
 
 class Splash(object):
@@ -183,9 +207,13 @@ class Splash(object):
         self.tab.stop_loading()
 
     @command()
-    def runjs(self, source):
-        res = self.tab.runjs(source)
+    def runjs(self, snippet):
+        res = self.tab.runjs(snippet)
         return res
+
+    @command()
+    def jsfunc(self, func):
+        return _WrappedJavascriptFunction(self, func)
 
     @command()
     def set_result_content_type(self, content_type):

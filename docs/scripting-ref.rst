@@ -122,21 +122,86 @@ time after each page load in case of redirects:
     end
 
 
-.. _splash-runjs:
+.. _splash-jsfunc:
 
-splash:runjs
-------------
+splash:jsfunc
+-------------
 
-Execute JavaScript in page context and return the result of the last statement.
+Create a Lua function from a JavaScript function.
 
-**Signature:** ``result = splash:runjs(source)``
+**Signature:** ``func = splash:jsfunc(func)``
 
 **Parameters:**
 
-* source - a string with JavaScript source code to execute.
+* func - a string which defines a JavaScript function.
 
-**Returns:** the result of the last statement in ``source``,
-converted from JavaScript to Lua data types.
+**Returns:** a function that can be called from Lua to execute JavaScript
+code in page context.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+        local get_div_count = splash:jsfunc([[
+            function (){
+                var body = document.body;
+                var divs = body.getElementsByTagName('div');
+                return divs.length;
+            }
+        ]])
+
+        splash:go(splash.args.url)
+        return get_div_count()
+    end
+
+Note how Lua ``[[ ]]`` string syntax is helpful here.
+
+JavaScript functions may accept arguments:
+
+.. code-block:: lua
+
+    local vec_len = splash:jsfunc([[
+        function(x, y) {
+           return Math.sqrt(x*x + y*y)
+        }
+    ]])
+    return {res=vec_len(5, 4)}
+
+Global JavaScript functions can be wrapped directly:
+
+.. code-block:: lua
+
+    local pow = splash:jsfunc("Math.pow")
+    local twenty_five = pow(5, 2)  -- 5^2 is 25
+    local thousand = pow(10, 3)    -- 10^3 is 1000
+
+
+Lua strings, numbers, booleans and tables can be passed as arguments;
+they are converted to JS strings/numbers/booleans/objects.
+Currently it is not possible to pass other Lua objects. For example, it
+is not possible to pass a wrapped JavaScript function or a regular Lua function
+as an argument to another wrapped JavaScript function.
+
+.. _lua-js-conversion-rules:
+
+Lua → JavaScript conversion rules:
+
+==============  =================
+Lua             JavaScript
+==============  =================
+string          string
+number          number
+boolean         boolean
+table           Object
+nil             undefined
+==============  =================
+
+Function result is converted from JavaScript to Lua data type. Only simple
+JS objects are supported. For example, returning a function or a
+JQuery selector from a wrapped function won't work.
+
+.. _js-lua-conversion-rules:
 
 JavaScript → Lua conversion rules:
 
@@ -155,6 +220,33 @@ RegExp          table ``{_jstype='RegExp', caseSensitive=true/false, pattern='my
 function        an empty table ``{}`` (don't rely on it)
 ==============  =================
 
+Function arguments and return values are passed by value. For example,
+if you modify an argument from inside a JavaScript function then the caller
+Lua code won't see the changes, and if you return a global JS object and modify
+it in Lua then object won't be changed in webpage context.
+
+.. _splash-runjs:
+
+splash:runjs
+------------
+
+Execute a JavaScript snippet in page context and return the result of the
+last statement.
+
+**Signature:** ``result = splash:runjs(snippet)``
+
+**Parameters:**
+
+* snippet - a string with JavaScript source code to execute.
+
+**Returns:** the result of the last statement in ``snippet``,
+converted from JavaScript to Lua data types.
+
+JavaScript → Lua conversion rules are the same as for
+:ref:`splash:jsfunc <js-lua-conversion-rules>`.
+
+``splash:runjs`` is useful to evaluate short snippets of code or to
+execute some code without defining a wrapper function.
 
 Example:
 
@@ -162,22 +254,9 @@ Example:
 
     local title = splash:runjs("document.title")
 
-Lua ``[[ ]]`` string syntax is helpful for larger JavaScript scripts:
-
-.. code-block:: lua
-
-      local div_count = splash:runjs([[
-          function getDivsCount(){
-              var body = document.body;
-              var divs = body.getElementsByTagName('div');
-              return divs.length;
-          }
-
-          getDivsCount();
-      ]])
-
-Currently to pass data to JavaScript code you need to use string formatting;
-this will be improved in future releases:
+`splash-jsfunc`_ is more versatile because it allows to pass arguments
+to JavaScript functions; to do that with ``splash:runjs`` string formatting
+must be used. Compare:
 
 .. code-block:: lua
 
@@ -189,6 +268,12 @@ this will be improved in future releases:
             tonumber(y)
         )
         return splash:runjs(js)
+    end
+
+    -- a simpler version using splash:jsfunc
+    function scroll_to2(splash, x, y)
+        local window_scroll = splash:jsfunc("window.scrollTo")
+        return window_scroll(x, y)
     end
 
 
