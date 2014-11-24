@@ -52,6 +52,19 @@ class LuaPythonConversionTest(unittest.TestCase):
         with pytest.raises(ValueError):
             python2lua(self.lua, dct)
 
+    def test_lua_table_in_python_container(self):
+        dct = {
+            "foo": "foo",
+            "bar": self.lua.table_from({"egg": "spam"}),
+            "baz": [self.lua.table_from({"foo": "bar"})],
+        }
+        value = lua2python(self.lua, dct)
+        self.assertEqual(value, {
+            "foo": "foo",
+            "bar": {"egg": "spam"},
+            "baz": [{"foo": "bar"}],
+        })
+
     def test_object(self):
         self.assertSurvivesConversion(object())
 

@@ -100,6 +100,21 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
         if depth <= 0:
             raise ValueError("Can't convert Lua object to Python: depth limit is reached")
 
+        if isinstance(obj, dict):
+            return {
+                l2p(key, depth-1): l2p(value, depth-1)
+                for key, value in obj.iteritems()
+            }
+
+        if isinstance(obj, list):
+            return [l2p(el, depth-1) for el in obj]
+
+        if isinstance(obj, tuple):
+            return tuple([l2p(el, depth-1) for el in obj])
+
+        if isinstance(obj, set):
+            return {l2p(el, depth-1) for el in obj}
+
         if lupa.lua_type(obj) == 'table':
             if _is_table_a_list(lua, obj):
                 res = []
@@ -111,12 +126,12 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
                         raise ValueError("Can't build a Python list from Lua table: bad index %s" % key)
 
                     res.extend([None] * (key-prev_key-1))
-                    res.append(l2p(value, max_depth-1))
+                    res.append(l2p(value, depth-1))
                     prev_key = key
                 return res
             else:
                 return {
-                    l2p(key, max_depth-1): l2p(value, max_depth-1)
+                    l2p(key, depth-1): l2p(value, depth-1)
                     for key, value in obj.items()
                 }
 
