@@ -127,9 +127,9 @@ time after each page load in case of redirects:
 splash:jsfunc
 -------------
 
-Create a Lua function from a JavaScript function.
+Convert JavaScript function to a Lua callable.
 
-**Signature:** ``func = splash:jsfunc(func)``
+**Signature:** ``lua_func = splash:jsfunc(func)``
 
 **Parameters:**
 
