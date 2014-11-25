@@ -42,7 +42,13 @@ class _AsyncBrowserCommand(object):
 def command(async=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
-        meth = can_raise(emits_lua_objects(lupa.unpacks_lua_table_method(meth)))
+        meth = exceptions_as_return_values(
+            can_raise(
+                emits_lua_objects(
+                    lupa.unpacks_lua_table_method(meth)
+                )
+            )
+        )
         meth._is_command = True
         meth._is_async = async
         return meth
@@ -54,10 +60,11 @@ def emits_lua_objects(meth):
     This decorator makes method convert results to
     native Lua formats when possible
     """
+    @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
         return python2lua(self.lua, res)
-    return functools.wraps(meth)(wrapper)
+    return wrapper
 
 
 def is_command(meth):
@@ -65,21 +72,41 @@ def is_command(meth):
     return getattr(meth, '_is_command', False)
 
 
-def can_raise(func):
+def can_raise(meth):
     """
     Decorator for preserving Python exceptions raised in Python
     methods called from Lua.
     """
-    @functools.wraps(func)
+    @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         try:
-            return func(self, *args, **kwargs)
+            return meth(self, *args, **kwargs)
         except ScriptError as e:
             self._exceptions.append(e)
             raise
-        except Exception as e:
+        except BaseException as e:
             self._exceptions.append(ScriptError(e))
             raise
+    return wrapper
+
+
+def exceptions_as_return_values(meth):
+    """
+    Decorator for allowing Python exceptions to be caught from Lua.
+
+    It makes wrapped methods return ``True, result`` and ``False, repr(exception)``
+    pairs instead of raising an exception; Lua script should handle it itself
+    and raise an error when needed. In Splash this is done by
+    splash/scripts/splash.lua wrap_errors decorator.
+    """
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        try:
+            result = meth(self, *args, **kwargs)
+            return True, result
+        except Exception as e:
+            return False, repr(e)
+    wrapper._returns_error_flag = True
     return wrapper
 
 
@@ -93,17 +120,46 @@ class _WrappedJavascriptFunction(object):
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param str source: function source code
         """
-        self._lua = splash.lua
-        self._tab = splash.tab
+        self.lua = splash.lua
+        self.tab = splash.tab
+        self.source = source
         self._exceptions = splash._exceptions
-        self._source = source
 
+    @exceptions_as_return_values
     @can_raise
+    @emits_lua_objects
     def __call__(self, *args):
-        args = lua2python(self._lua, args)
+        args = lua2python(self.lua, args)
         args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
-        js_source = "(%s)(%s)" % (self._source, args_text)
-        return self._tab.runjs(js_source)
+        func_text = json.dumps([self.source], ensure_ascii=False, encoding='utf8')[1:-1]
+        wrapper_script = """
+        (function(func_text){
+            try{
+                var func = eval("(" + func_text + ")");
+                return {
+                    result: func(%(args)s),
+                    error: false,
+                }
+            }
+            catch(e){
+                return {
+                    error: true,
+                    error_repr: e.toString(),
+                }
+            }
+        })(%(func_text)s)
+        """ % {"func_text": func_text, "args": args_text}
+
+        # print(wrapper_script)
+        res = self.tab.runjs(wrapper_script)
+
+        if not isinstance(res, dict):
+            raise ScriptError("[lua] unknown error during JS function call: %r; %r" % (res, wrapper_script))
+
+        if res["error"]:
+            raise ScriptError("[lua] error during JS function call: %r" % (res.get("error_repr", "<unknown error>"),))
+
+        return res.get("result")
 
 
 class Splash(object):
@@ -132,7 +188,10 @@ class Splash(object):
         for name in dir(self):
             value = getattr(self, name)
             if is_command(value):
-                commands[name] = getattr(value, '_is_async')
+                commands[name] = self.lua.table_from({
+                    'is_async': getattr(value, '_is_async'),
+                    'returns_error_flag': getattr(value, '_returns_error_flag', False),
+                })
         self.commands = python2lua(self.lua, commands)
 
     @command(async=True)
@@ -212,7 +271,7 @@ class Splash(object):
         return res
 
     @command()
-    def jsfunc(self, func):
+    def jsfunc_private(self, func):
         return _WrappedJavascriptFunction(self, func)
 
     @command()
@@ -303,7 +362,8 @@ class LuaRender(RenderScript):
 
     default_min_log_level = 2
     result = ''
-    _waiting_for_result_id = None
+    _START_CMD = '__START__'
+    _waiting_for_result_id = _START_CMD
 
     @stop_on_error
     def start(self, lua_source):
@@ -314,7 +374,7 @@ class LuaRender(RenderScript):
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + repr(e))
 
-        self.dispatch(None)
+        self.dispatch(self._START_CMD)
 
     @stop_on_error
     def dispatch(self, cmd_id, *args):
@@ -331,13 +391,19 @@ class LuaRender(RenderScript):
 
         while True:
             try:
-                self.log("[lua] send %s" % (args,))
-                cmd = self.coro.send(args or None)
-                args = None  # don't re-send the same value
+                args = args or None
 
+                # Got arguments from an async command; send them to coroutine
+                # and wait for the next async command.
+                self.log("[lua] send %s" % (args,))
+                cmd = self.coro.send(args)  # cmd is a next async command
+
+                args = None  # don't re-send the same value
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
                 self.log("[lua] got {}".format(cmd_repr))
+
             except StopIteration:
+                # "main" coroutine is stopped;
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
                 try:
@@ -349,10 +415,11 @@ class LuaRender(RenderScript):
                 self.return_result((res, self.splash.result_content_type()))
                 return
             except lupa.LuaError as e:
-                self.log("[lua] LuaError %r" % e)
+                # Lua script raised an error
+                self.log("[lua] caught LuaError %r" % e)
                 ex = self.splash.get_real_exception()
                 if ex:
-                    self.log("[lua] %r" % ex)
+                    self.log("[lua] LuaError is caused by %r" % ex)
                     raise ex
                 # XXX: are Lua errors bad requests?
                 raise ScriptError("unhandled Lua error: {!s}".format(e))

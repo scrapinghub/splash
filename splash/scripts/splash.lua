@@ -1,31 +1,77 @@
 --
 -- Lua wrapper for Splash Python object.
 --
--- It hides attributes that should not be exposed
--- and wraps async methods to `coroutine.yield`.
+-- It hides attributes that should not be exposed,
+-- wraps async methods to `coroutine.yield` and fixes Lua <-> Python
+-- error handling.
 --
 Splash = function (splash)
   local self = {args=splash.args}
 
   --
-  -- Create Lua splash:<...> methods from Python Splash object.
+  -- Python Splash commands return `ok, result` pairs; this decorator
+  -- raises an error if "ok" is false and returns "result" otherwise.
   --
-  for key, is_async in pairs(splash.commands) do
-    local command = splash[key]
-
-    if is_async then
-      self[key] = function(self, ...)
-        -- XXX: can Lua code access command(...) result
-        -- from here? It should be prevented.
-        return coroutine.yield(command(...))
-      end
-    else
-      self[key] = function(self, ...)
-        return command(...)
+  local function unwraps_errors(func)
+    return function(...)
+      local ok, result = func(...)
+      if not ok then
+        error(result)
+      else
+        return result
       end
     end
   end
 
+  --
+  -- Python methods don't want explicit 'self' argument;
+  -- this decorator adds a dummy 'self' argument to allow Lua
+  -- methods syntax.
+  --
+  local function drops_self_argument(func)
+    return function(self, ...)
+      return func(...)
+    end
+  end
+
+  --
+  -- This decorator makes function yields the result instead of returning it
+  --
+  local function yields_result(func)
+    return function(...)
+      -- XXX: can Lua code access command(...) result
+      -- from here? It should be prevented.
+      return coroutine.yield(func(...))
+    end
+  end
+
+  --
+  -- Create Lua splash:<...> methods from Python Splash object.
+  --
+  for key, opts in pairs(splash.commands) do
+    local command = drops_self_argument(splash[key])
+
+    if opts.returns_error_flag then
+      command = unwraps_errors(command)
+    end
+
+    if opts.is_async then
+      command = yields_result(command)
+    end
+
+    self[key] = command
+  end
+
+  --
+  -- Create jsfunc method from jsfunc_private.
+  -- It is required to handle errors properly.
+  --
+  function self.jsfunc(...)
+    local func = self.jsfunc_private(...)
+    return unwraps_errors(func)
+  end
+
+  -- a helper function
   function self._wait_restart_on_redirects(self, time, max_redirects)
     if not time then
       return true

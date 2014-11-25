@@ -229,6 +229,11 @@ it in Lua then object won't be changed in webpage context.
     The rule of thumb: if an argument or a return value can be serialized
     via JSON, then it is fine.
 
+If a JavaScript function throws an error, it is re-throwed as a Lua error.
+To handle errors it is better to use JavaScript try/catch because some of the
+information about the error can be lost in JavaScript → Lua conversion.
+
+
 .. _splash-runjs:
 
 splash:runjs

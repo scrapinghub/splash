@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import json
 import unittest
+import pytest
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE
@@ -116,8 +117,6 @@ class MainFunctionTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
         self.assertIn("is not a function", resp.text)
-
-
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):
@@ -264,6 +263,10 @@ class RunjsTest(BaseLuaRenderTest):
         self.assertRunjsResult("1", 1, "number")
         self.assertRunjsResult("1+2", 3, "number")
 
+    def test_inf(self):
+        self.assertRunjsResult("1/0", float('inf'), "number")
+        self.assertRunjsResult("-1/0", float('-inf'), "number")
+
     def test_string(self):
         self.assertRunjsResult("'foo'", u'foo', 'string')
 
@@ -379,36 +382,36 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """ % (source, arguments))
         self.assertStatusCode(resp, 200)
-        if isinstance(result, dict):
+        if isinstance(result, (dict, list)):
             self.assertEqual(resp.json(), result)
         else:
             self.assertEqual(resp.text, result)
 
-    def test_jsfunc_Math(self):
+    def test_Math(self):
         self.assertJsfuncResult("Math.pow", "5, 2", "25")
 
-    def test_jsfunc_helloworld(self):
+    def test_helloworld(self):
         self.assertJsfuncResult(
             "function(s) {return 'Hello, ' + s;}",
             "'world!'",
             "Hello, world!"
         )
 
-    def test_jsfunc_object_argument(self):
+    def test_object_argument(self):
         self.assertJsfuncResult(
             "function(obj) {return obj.foo;}",
             "{foo='bar'}",
             "bar",
         )
 
-    def test_jsfunc_object_result(self):
+    def test_object_result(self):
         self.assertJsfuncResult(
             "function(obj) {return obj.foo;}",
             "{foo={x=5, y=10}}",
             {"x": 5, "y": 10},
         )
 
-    def test_jsfunc_object_result_pass(self):
+    def test_object_result_pass(self):
         resp = self.request_lua("""
         function main(splash)
             local func1 = splash:jsfunc("function(){return {foo:{x:5}}}")
@@ -420,11 +423,76 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"x": 5})
 
-    def test_jsfunc_bool(self):
+    def test_bool(self):
         is5 = "function(num){return num==5}"
         self.assertJsfuncResult(is5, "5", "True")
         self.assertJsfuncResult(is5, "6", "False")
 
+    def test_undefined_result(self):
+        self.assertJsfuncResult("function(){}", "", "None")
+
+    def test_undefined_argument(self):
+        self.assertJsfuncResult("function(foo){return foo}", "", "None")
+
+    def test_throw_string(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){throw 'ABC'}")
+            return func()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("error during JS function call: u'ABC'", resp.text)
+
+    def test_throw_pcall(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){throw 'ABC'}")
+            local ok, res = pcall(func)
+            return {ok=ok, res=res}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["ok"], False)
+        self.assertIn("error during JS function call: u'ABC'", data["res"])
+
+    def test_array_result(self):
+        self.assertJsfuncResult(
+            "function(){return [1, 2, 'foo']}",
+            "",
+            [1, 2, "foo"]
+        )
+
+    def test_array_result_processed(self):
+        # XXX: note that index is started from 1
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){return [1, 2, 'foo']}")
+            local arr = func()
+            local first = arr[1]
+            return {arr=arr, first=1}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"arr": [1, 2, "foo"], "first": 1})
+
+    def test_array_argument(self):
+        # XXX: note that index is started from 1
+        self.assertJsfuncResult(
+            "function(arr){return arr[1]}",
+            "{5, 6, 'foo'}",
+            "5",
+        )
+
+    # this doesn't work because table is passed as an object
+    @pytest.mark.xfail
+    def test_array_length(self):
+        self.assertJsfuncResult(
+            "function(arr){return arr.length}",
+            "{5, 6, 'foo'}",
+            "3",
+        )
 
 
 class WaitTest(BaseLuaRenderTest):
@@ -702,5 +770,3 @@ class GoTest(BaseLuaRenderTest):
 
         self.assertIn("No Such Resource", data["html_1"])
         self.assertIn("http://non-existing", data["html_2"])
-
-
