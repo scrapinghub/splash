@@ -9,6 +9,7 @@ from cStringIO import StringIO
 import pytest
 import requests
 from PIL import Image
+from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 
 
@@ -94,7 +95,8 @@ class BaseRenderTest(unittest.TestCase):
         return self._get_handler().post(query, render_format, payload, headers, **kwargs)
 
     def assertStatusCode(self, response, code):
-        self.assertEqual(response.status_code, code, (response.status_code, response.content))
+        msg = (response.status_code, truncated(response.content, 1000))
+        self.assertEqual(response.status_code, code, msg)
 
 
 class Base(object):
@@ -159,8 +161,8 @@ class RenderHtmlTest(Base.RenderTest):
         r = self.request({"url": url})
         self.assertStatusCode(r, 200)
         self.assertEqual(r.headers["content-type"].lower(), "text/html; charset=utf-8")
-        self.assertTrue("Before" not in r.text)
-        self.assertTrue("After" in r.text)
+        self.assertNotIn("Before", r.text)
+        self.assertIn("After", r.text)
 
     def test_baseurl(self):
         # first make sure that script.js is served under the right url
@@ -173,20 +175,20 @@ class RenderHtmlTest(Base.RenderTest):
             "baseurl": self.mockurl("baseurl/"),
         })
         self.assertStatusCode(r, 200)
-        self.assertTrue("Before" not in r.text)
-        self.assertTrue("After" in r.text)
+        self.assertNotIn("Before", r.text)
+        self.assertIn("After", r.text)
 
     def test_otherdomain(self):
         r = self.request({"url": self.mockurl("iframes")})
         self.assertStatusCode(r, 200)
-        self.assertTrue('SAME_DOMAIN' in r.text)
-        self.assertTrue('OTHER_DOMAIN' in r.text)
+        self.assertIn('SAME_DOMAIN', r.text)
+        self.assertIn('OTHER_DOMAIN', r.text)
 
     def test_allowed_domains(self):
         r = self.request({'url': self.mockurl('iframes'), 'allowed_domains': 'localhost'})
         self.assertStatusCode(r, 200)
-        self.assertTrue('SAME_DOMAIN' in r.text)
-        self.assertFalse('OTHER_DOMAIN' in r.text)
+        self.assertIn('SAME_DOMAIN', r.text)
+        self.assertNotIn('OTHER_DOMAIN', r.text)
 
     def test_viewport(self):
         r = self.request({'url': self.mockurl('jsviewport'), 'viewport': '300x400'})
@@ -208,12 +210,12 @@ class RenderHtmlTest(Base.RenderTest):
         r1 = requests.get(self.mockurl('cp1251'))
         self.assertStatusCode(r1, 200)
         self.assertEqual(r1.encoding, 'windows-1251')
-        self.assertTrue(u'проверка' in r1.text)
+        self.assertIn(u'проверка', r1.text)
 
         r2 = self.request({'url': self.mockurl('cp1251')})
         self.assertStatusCode(r2, 200)
         self.assertEqual(r2.encoding, 'utf-8')
-        self.assertTrue(u'проверка' in r2.text)
+        self.assertIn(u'проверка', r2.text)
 
     @skip_proxy
     def test_404_get(self):
