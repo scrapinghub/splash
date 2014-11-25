@@ -16,14 +16,19 @@ endpoint in a :ref:`lua_source <arg-lua-source>` argument.
     Most likely you'll be able to follow Splash scripting examples even
     without knowing Lua. Nevertheless, the language worths learning -
     with Lua you can, for example, write Redis_, Nginx_, Apache_,
-    `World of Warcraft`_ scripts or use state of the arts Deep Learning
+    `World of Warcraft`_ scripts, create mobile apps using
+    Moai_ or `Corona SDK`_ or use state of the arts Deep Learning
     framework Torch7_. It is easy to get started and there are good online
-    resources available like the `Programming in Lua`_ book.
+    resources available like `Learn Lua in 15 minutes`_ tutorial and
+    `Programming in Lua`_ book.
 
+.. _Learn Lua in 15 minutes: http://tylerneylon.com/a/learn-lua/
 .. _Nginx: http://wiki.nginx.org/HttpLuaModule
 .. _Redis: http://redis.io/commands/EVAL
 .. _Apache: http://httpd.apache.org/docs/trunk/mod/mod_lua.html
 .. _World of Warcraft: http://www.wowwiki.com/Lua
+.. _Moai: http://getmoai.com/
+.. _Corona SDK: http://coronalabs.com/products/corona-sdk/
 .. _Torch7: http://torch.ch/
 .. _Programming in Lua: http://www.lua.org/pil/contents.html
 .. _Lua: http://www.lua.org/
