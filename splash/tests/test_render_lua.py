@@ -457,6 +457,40 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertEqual(data["ok"], False)
         self.assertIn("error during JS function call: u'ABC'", data["res"])
 
+    def test_throw_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){throw new Error('ABC')}")
+            return func()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("error during JS function call: u'Error: ABC'", resp.text)
+
+    def test_throw_error_pcall(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){throw new Error('ABC')}")
+            local ok, res = pcall(func)
+            return {ok=ok, res=res}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["ok"], False)
+        self.assertIn("error during JS function call: u'Error: ABC'", data["res"])
+
+    def test_js_syntax_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){")
+            return func()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("error during JS function call", resp.text)
+        self.assertIn("SyntaxError", resp.text)
+
     def test_array_result(self):
         self.assertJsfuncResult(
             "function(){return [1, 2, 'foo']}",
@@ -471,11 +505,11 @@ class JsfuncTest(BaseLuaRenderTest):
             local func = splash:jsfunc("function(){return [1, 2, 'foo']}")
             local arr = func()
             local first = arr[1]
-            return {arr=arr, first=1}
+            return {arr=arr, first=1, tp=type(arr)}
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"arr": [1, 2, "foo"], "first": 1})
+        self.assertEqual(resp.json(), {"arr": [1, 2, "foo"], "first": 1, "tp": "table"})
 
     def test_array_argument(self):
         # XXX: note that index is started from 1
@@ -493,6 +527,36 @@ class JsfuncTest(BaseLuaRenderTest):
             "{5, 6, 'foo'}",
             "3",
         )
+
+    def test_jsfunc_attributes(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){return 123}")
+            return func.source
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+    def test_jsfunc_private_attributes(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc_private("function(){return 123}")
+            return func.source
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+    # see https://github.com/scoder/lupa/pull/46
+    @pytest.mark.xfail
+    def test_jsfunc_private_attributes_error_message(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc_private("function(){return 123}")
+            return func.source
+        end
+        """)
+        self.assertNotIn("str()", resp.text)
+        self.assertIn("AttributeError", resp.text)
 
 
 class WaitTest(BaseLuaRenderTest):
