@@ -5,8 +5,9 @@ exposed to the user).
 from __future__ import absolute_import
 import os
 import time
-import resource
 import json
+import types
+import resource
 
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
@@ -93,7 +94,7 @@ class RenderBase(_ValidatingResource):
         if content_type is None:
             content_type = self.content_type
 
-        if isinstance(data, dict):
+        if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
             return self._writeOutput(data, request, "application/json")
 
@@ -101,7 +102,7 @@ class RenderBase(_ValidatingResource):
             data, content_type = data
             return self._writeOutput(data, request, content_type)
 
-        if isinstance(data, (bool, int, long, float)):
+        if isinstance(data, (bool, int, long, float, types.NoneType)):
             return self._writeOutput(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
