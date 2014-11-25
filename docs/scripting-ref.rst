@@ -176,7 +176,6 @@ Global JavaScript functions can be wrapped directly:
     local twenty_five = pow(5, 2)  -- 5^2 is 25
     local thousand = pow(10, 3)    -- 10^3 is 1000
 
-
 Lua strings, numbers, booleans and tables can be passed as arguments;
 they are converted to JS strings/numbers/booleans/objects.
 Currently it is not possible to pass other Lua objects. For example, it
@@ -224,6 +223,11 @@ Function arguments and return values are passed by value. For example,
 if you modify an argument from inside a JavaScript function then the caller
 Lua code won't see the changes, and if you return a global JS object and modify
 it in Lua then object won't be changed in webpage context.
+
+.. note::
+
+    The rule of thumb: if an argument or a return value can be serialized
+    via JSON, then it is fine.
 
 .. _splash-runjs:
 
