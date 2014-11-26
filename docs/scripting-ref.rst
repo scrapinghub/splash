@@ -263,7 +263,7 @@ Example:
 
     local title = splash:runjs("document.title")
 
-`splash-jsfunc`_ is more versatile because it allows to pass arguments
+:ref:`splash:jsfunc() <splash-jsfunc>` is more versatile because it allows to pass arguments
 to JavaScript functions; to do that with ``splash:runjs`` string formatting
 must be used. Compare:
 
