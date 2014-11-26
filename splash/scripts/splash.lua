@@ -16,7 +16,7 @@ Splash = function (splash)
     return function(...)
       local ok, result = func(...)
       if not ok then
-        error(result)
+        error(result, 2)
       else
         return result
       end
@@ -39,9 +39,19 @@ Splash = function (splash)
   --
   local function yields_result(func)
     return function(...)
-      -- XXX: can Lua code access command(...) result
+      -- XXX: can Lua code access func(...) result
       -- from here? It should be prevented.
-      return coroutine.yield(func(...))
+
+      -- errors are catched and reraised to preserve the original line number
+      local f = function (...)
+        return table.pack(coroutine.yield(func(...)))
+      end
+      local ok, res = pcall(f, ...)
+      if ok then
+        return table.unpack(res)
+      else
+        error(res, 2)
+      end
     end
   end
 

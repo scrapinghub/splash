@@ -19,7 +19,16 @@ from splash.utils import truncated, BinaryCapsule
 
 
 class ScriptError(BadOption):
-    pass
+
+    def enrich_from_lua_error(self, e):
+        if not isinstance(e, lupa.LuaError):
+            return
+
+        self_repr = repr(self.args[0])
+        if self_repr in e.args[0]:
+            self.args = (e.args[0],) + self.args[1:]
+        else:
+            self.args = (e.args[0] + "; " + self_repr,) + self.args[1:]
 
 
 class _AsyncBrowserCommand(object):
@@ -420,6 +429,8 @@ class LuaRender(RenderScript):
                 ex = self.splash.get_real_exception()
                 if ex:
                     self.log("[lua] LuaError is caused by %r" % ex)
+                    if isinstance(ex, ScriptError):
+                        ex.enrich_from_lua_error(e)
                     raise ex
                 # XXX: are Lua errors bad requests?
                 raise ScriptError("unhandled Lua error: {!s}".format(e))

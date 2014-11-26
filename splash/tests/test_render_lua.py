@@ -242,6 +242,50 @@ class ErrorsTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
         self.assertIn("thread objects are not allowed", resp.text)
 
+    def test_error_line_number_attribute_access(self):
+        resp = self.request_lua("""
+        function main(splash)
+           local x = 5
+           splash.set_result_content_type("hello")
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn(":4:", resp.text)
+
+    def test_error_line_number_bad_argument(self):
+        resp = self.request_lua("""
+        function main(splash)
+           local x = 5
+           splash:set_result_content_type(48)
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn(":4:", resp.text)
+
+    def test_error_line_number_wrong_keyword_argument(self):
+        resp = self.request_lua("""  -- 1
+        function main(splash)        -- 2
+           splash:wait{timeout=0.7}  -- 3 <--
+        end                          -- 4
+        """)                       # -- 5
+        self.assertStatusCode(resp, 400)
+        self.assertIn(":3:", resp.text)
+
+    def test_pcall_wrong_keyword_arguments(self):
+        resp = self.request_lua("""
+        function main(splash)
+           local x = function()
+               return splash:wait{timeout=0.7}
+           end
+           local ok, res = pcall(x)
+           return {ok=ok, res=res}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["ok"], False)
+
+
 
 class RunjsTest(BaseLuaRenderTest):
 
