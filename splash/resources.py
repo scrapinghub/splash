@@ -19,11 +19,15 @@ import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
-from splash.qtrender_lua import LuaRender
-from splash.lua import get_script_source
+from splash.lua import get_script_source, is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
+
+if lua_is_supported():
+    from splash.qtrender_lua import LuaRender
+else:
+    LuaRender = None
 
 
 class _ValidatingResource(Resource):
@@ -264,15 +268,16 @@ CODEMIRROR_RESOURCES = """
 
 """
 
-class HarViewer(_ValidatingResource):
+class DemoUI(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
     PATH = 'info'
 
-    def __init__(self, pool):
+    def __init__(self, pool, lua_enabled):
         Resource.__init__(self)
         self.pool = pool
+        self.lua_enabled = lua_enabled
 
     def _validate_params(self, request):
         options = RenderOptions.fromrequest(request)
@@ -280,13 +285,15 @@ class HarViewer(_ValidatingResource):
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
             'timeout': options.get_timeout(),
-            'lua_source': options.get_lua_source(),
             'har': 1,
             'png': 1,
             'html': 1,
         })
+        if self.lua_enabled:
+            params.update({
+                'lua_source': options.get_lua_source(),
+            })
         return params
-
 
     def render_GET(self, request):
         params = self._validate_params(request)
@@ -297,6 +304,15 @@ class HarViewer(_ValidatingResource):
         params = {k:v for k,v in params.items() if v is not None}
 
         request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
+
+        LUA_EDITOR = """
+          <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
+          <div class="dropdown-menu panel panel-default" id="lua-code-editor-panel">
+            <div class="panel-body2">
+              <textarea id="lua-code-editor" name='lua_source'></textarea>
+            </div>
+          </div>
+        """
 
         return """<html>
         <head>
@@ -373,12 +389,7 @@ class HarViewer(_ValidatingResource):
 
                       <div class="btn-group" id="render-form">
                           <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
-                          <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
-                          <div class="dropdown-menu panel panel-default" id="lua-code-editor-panel">
-                            <div class="panel-body2">
-                              <textarea id="lua-code-editor" name='lua_source'></textarea>
-                            </div>
-                          </div>
+                          %(lua_editor)s
                       </div>
                       <button class="btn btn-success" type="submit">Render!</button>
                     </form>
@@ -413,16 +424,17 @@ class HarViewer(_ValidatingResource):
             /* Create editor */
             var editor = null;
             var textarea = document.getElementById('lua-code-editor');
-            textarea.value = params["lua_source"] || "";
+            if (textarea) {
+                textarea.value = params["lua_source"] || "";
 
-            $('#render-form').on("shown.bs.dropdown", function(e){
-                if (editor === null) {
-                    editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
-                    editor.setSize(600, 464);
-                }
-            });
-            $('#lua-code-editor-panel').click(function(e){e.stopPropagation();});
-
+                $('#render-form').on("shown.bs.dropdown", function(e){
+                    if (editor === null) {
+                        editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
+                        editor.setSize(600, 464);
+                    }
+                });
+                $('#lua-code-editor-panel').click(function(e){e.stopPropagation();});
+            }
 
             /* Initialize HAR viewer & send AJAX requests */
             $("#content").bind("onViewerPreInit", function(event){
@@ -475,7 +487,7 @@ class HarViewer(_ValidatingResource):
                 var viewer = event.target.repObject;
                 $("#status").text("Rendering, please wait..");
 
-                $.ajax("/render.lua", {
+                $.ajax("/%(endpoint)s", {
                     "contentType": "application/json",
                     "dataType": "json",
                     "type": "POST",
@@ -500,12 +512,14 @@ class HarViewer(_ValidatingResource):
         </body>
         </html>
         """ % dict(
-            version=splash.__version__,
-            params=json.dumps(params),
-            url=url,
-            theme=BOOTSTRAP_THEME,
-            cm_options=CODEMIRROR_OPTIONS,
-            cm_resources=CODEMIRROR_RESOURCES,
+            version = splash.__version__,
+            params = json.dumps(params),
+            url = url,
+            theme = BOOTSTRAP_THEME,
+            cm_options = CODEMIRROR_OPTIONS,
+            cm_resources = CODEMIRROR_RESOURCES if self.lua_enabled else "",
+            endpoint = "render.lua" if self.lua_enabled else "render.json",
+            lua_editor = LUA_EDITOR if self.lua_enabled else "",
         )
 
 
@@ -517,19 +531,22 @@ class Root(Resource):
         'webapp',
     )
 
-    def __init__(self, pool, ui_enabled):
+    def __init__(self, pool, ui_enabled, lua_enabled):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
+        self.lua_enabled = lua_enabled
         self.putChild("render.html", RenderHtml(pool))
         self.putChild("render.png", RenderPng(pool))
         self.putChild("render.json", RenderJson(pool))
         self.putChild("render.har", RenderHar(pool))
-        self.putChild("render.lua", RenderLua(pool))
         self.putChild("debug", Debug(pool))
+
+        if self.lua_enabled and RenderLua is not None:
+            self.putChild("render.lua", RenderLua(pool))
 
         if self.ui_enabled:
             self.putChild("_harviewer", File(self.HARVIEWER_PATH))
-            self.putChild(HarViewer.PATH, HarViewer(pool))
+            self.putChild(DemoUI.PATH, DemoUI(pool, self.lua_enabled))
 
     def getChild(self, name, request):
         if name == "" and self.ui_enabled:
@@ -540,6 +557,14 @@ class Root(Resource):
         return get_script_source("example.lua")
 
     def render_GET(self, request):
+        LUA_EDITOR = """
+        <div class="input-group col-lg-10">
+          <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
+        </div>
+        """ % dict(
+            lua_script = self.get_example_script(),
+        )
+
         result = """<html>
         <head>
             <title>Splash %(version)s</title>
@@ -609,9 +634,7 @@ class Root(Resource):
                                   <button class="btn btn-success" type="submit">Render me!</button>
                                 </span>
                               </div>
-                              <div class="input-group col-lg-10">
-                                <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
-                              </div>
+                              %(lua_editor)s
                             </div>
                           </fieldset>
                         </form>
@@ -624,6 +647,6 @@ class Root(Resource):
             theme = BOOTSTRAP_THEME,
             cm_options = CODEMIRROR_OPTIONS,
             cm_resources = CODEMIRROR_RESOURCES,
-            lua_script = self.get_example_script(),
+            lua_editor = LUA_EDITOR if self.lua_enabled else "",
         )
         return result.encode('utf8')

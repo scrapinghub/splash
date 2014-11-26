@@ -3,9 +3,10 @@ from __future__ import absolute_import
 import json
 import unittest
 import pytest
+import requests
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
-from .utils import NON_EXISTING_RESOLVABLE
+from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
@@ -878,3 +879,23 @@ class GoTest(BaseLuaRenderTest):
 
         self.assertIn("No Such Resource", data["html_1"])
         self.assertIn("http://non-existing", data["html_2"])
+
+
+class DisableScriptsTest(BaseLuaRenderTest):
+
+    def test_nolua(self):
+        with SplashServer(extra_args=['--disable-lua']) as splash:
+
+            # Check that Lua is disabled in UI
+            resp = requests.get(splash.url("/"))
+            self.assertStatusCode(resp, 200)
+            self.assertNotIn("<textarea", resp.text)  # no code editor
+
+            script = "function main(splash) return 'foo' end"
+
+            # Check that render.lua doesn't work
+            resp = requests.get(
+                url=splash.url("render.lua"),
+                params={'lua_source': script},
+            )
+            self.assertStatusCode(resp, 404)
