@@ -8,7 +8,8 @@ may be sent either as GET arguments or encoded to JSON and
 POSTed with ``Content-Type: application/json`` header.
 
 The most versatile endpoint that provides all Splash features
-is :ref:`render.lua`. Other endpoints may be easier to use in specific
+is :ref:`render.lua` (WARNING: it is still experimental).
+Other endpoints may be easier to use in specific
 cases - for example, :ref:`render.png` returns a screenshot in PNG format
 that can be used as `img src` without any further processing, and
 :ref:`render.json` is convenient if you don't need to interact with a page.
@@ -392,6 +393,10 @@ Curl examples::
 
 render.lua
 ----------
+
+.. warning::
+
+    This endpoint is experimental. API could change in future releases.
 
 Execute a custom rendering script and return a result.
 

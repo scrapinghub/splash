@@ -3,6 +3,11 @@
 Splash Scripts Reference
 ========================
 
+.. warning::
+
+    Scripting support is an experimental feature for early adopters;
+    API could change in future releases.
+
 ``splash`` object is passed to ``main`` function; via this object
 a script can control the browser. Think of it as of an API to
 a single browser tab.

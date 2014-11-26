@@ -3,6 +3,11 @@
 Splash Scripts Tutorial
 =======================
 
+.. warning::
+
+    Scripting support is an experimental feature for early adopters;
+    API could change in future releases.
+
 Intro
 -----
 
