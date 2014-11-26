@@ -423,9 +423,6 @@ proxy : string : optional
 filters : string : optional
   Same as :ref:`'filters' <arg-filters>` argument for `render.html`_.
 
-allowed_domains : string : optional
-  Same as :ref:`'allowed_domains' <arg-allowed-domains>` argument for `render.html`_.
-
 .. _execute javascript:
 
 Executing custom Javascript code within page context
@@ -433,7 +430,7 @@ Executing custom Javascript code within page context
 
 .. note::
 
-    See also: :ref:`executing JavaScript in Splash scripts <splash-runjs>`
+    See also: :ref:`executing JavaScript in Splash scripts <splash-jsfunc>`
 
 Splash supports executing JavaScript code within the context of the page.
 The JavaScript code is executed after the page finished loading (including
