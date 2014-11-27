@@ -228,7 +228,22 @@ class ErrorsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("function objects are not allowed", resp.text)
+        self.assertIn("(a nil value)", resp.text)
+
+    def test_return_coroutine_nosandbox(self):
+        with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
+            resp = requests.get(
+                url=splash.url("render.lua"),
+                params={
+                    'lua_source': """
+                        function main(splash)
+                            return coroutine.create(function() end)
+                        end
+                    """
+                },
+            )
+            self.assertStatusCode(resp, 400)
+            self.assertIn("function objects are not allowed", resp.text)
 
     def test_return_started_coroutine(self):
         resp = self.request_lua("""
@@ -241,7 +256,26 @@ class ErrorsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("thread objects are not allowed", resp.text)
+        self.assertIn("(a nil value)", resp.text)
+
+    def test_return_started_coroutine_nosandbox(self):
+        with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
+            resp = requests.get(
+                url=splash.url("render.lua"),
+                params={
+                    'lua_source': """
+                        function main(splash)
+                          local co = coroutine.create(function()
+                            coroutine.yield()
+                          end)
+                          coroutine.resume(co)
+                          return co
+                        end
+                    """
+                },
+            )
+            self.assertStatusCode(resp, 400)
+            self.assertIn("thread objects are not allowed", resp.text)
 
     def test_error_line_number_attribute_access(self):
         resp = self.request_lua("""
@@ -899,3 +933,23 @@ class DisableScriptsTest(BaseLuaRenderTest):
                 params={'lua_source': script},
             )
             self.assertStatusCode(resp, 404)
+
+
+class DisableSandboxTest(BaseLuaRenderTest):
+
+    def test_sandbox(self):
+        # dofile function should be always sandboxed
+        is_sandbox = "function main(splash) return {s=(dofile==nil)} end"
+
+        resp = self.request_lua(is_sandbox)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"s": True})
+
+        with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
+            resp = requests.get(
+                url=splash.url("render.lua"),
+                params={'lua_source': is_sandbox},
+            )
+            self.assertStatusCode(resp, 200)
+            self.assertEqual(resp.json(), {"s": False})
+

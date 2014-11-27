@@ -9,7 +9,8 @@ import lupa
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (
     get_new_runtime,
-    start_main,
+    get_main,
+    get_main_sandboxed,
     get_script_source,
     lua2python,
     python2lua,
@@ -179,14 +180,16 @@ class Splash(object):
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args']
 
-    def __init__(self, tab, return_func, render_options):
+    def __init__(self, tab, return_func, render_options, sandboxed):
         """
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable return_func: function that continues the script
         :param splash.render_options.RenderOptions render_options: arguments
+        :param bool sandboxed: whether the script should be sandboxed
         """
         self.lua = self._create_runtime()
         self.tab = tab
+        self.sandboxed = sandboxed
         self._return = return_func
         self._exceptions = []
         self._command_ids = itertools.count()
@@ -318,8 +321,8 @@ class Splash(object):
         Return a Lua wrapper for this object.
         """
         # FIXME: cache file contents
-        code = get_script_source("splash.lua")
-        self.lua.execute(code)
+        splash_lua_code = get_script_source("splash.lua")
+        self.lua.execute(splash_lua_code)
         wrapper = self.lua.globals()["Splash"]
         return wrapper(self)
 
@@ -327,7 +330,13 @@ class Splash(object):
         """
         Start "main" function and return it as a coroutine.
         """
-        return start_main(self.lua, lua_source, args=[self.get_wrapper()])
+        splash_obj = self.get_wrapper()
+        if self.sandboxed:
+            main, env = get_main_sandboxed(self.lua, lua_source)
+        else:
+            main, env = get_main(self.lua, lua_source)
+        self.script_globals = env  # XXX: does it work well with GC?
+        return main.coroutine(splash_obj)
 
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
@@ -375,9 +384,14 @@ class LuaRender(RenderScript):
     _waiting_for_result_id = _START_CMD
 
     @stop_on_error
-    def start(self, lua_source):
+    def start(self, lua_source, sandboxed):
         self.log(lua_source)
-        self.splash = Splash(self.tab, self.dispatch, self.render_options)
+        self.splash = Splash(
+            tab=self.tab,
+            return_func=self.dispatch,
+            render_options=self.render_options,
+            sandboxed=sandboxed
+        )
         try:
             self.coro = self.splash.start_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:

@@ -67,6 +67,8 @@ def parse_opts():
         help="disable Xvfb auto start")
     op.add_option("--disable-lua", action="store_true", default=False,
         help="disable Lua scripting")
+    op.add_option("--disable-lua-sandbox", action="store_true", default=False,
+        help="disable Lua sandbox")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5")
     op.add_option("--version", action="store_true",
@@ -148,7 +150,9 @@ def manhole_server(portnum=None, username=None, password=None):
 
 def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
-                  ui_enabled=True, lua_enabled=False, verbosity=None):
+                  ui_enabled=True,
+                  lua_enabled=True, lua_sandbox_enabled=True,
+                  verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -172,14 +176,20 @@ def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None
     # HTTP API
     onoff = {True: "enabled", False: "disabled"}
     log.msg(
-        "Web UI: %s, Lua: %s, Proxy Server: %s" % (
+        "Web UI: %s, Lua: %s (sandbox: %s), Proxy Server: %s" % (
             onoff[ui_enabled],
             onoff[lua_enabled],
+            onoff[lua_sandbox_enabled],
             onoff[not disable_proxy],
         )
     )
 
-    root = Root(pool, ui_enabled=ui_enabled, lua_enabled=lua_enabled)
+    root = Root(
+        pool=pool,
+        ui_enabled=ui_enabled,
+        lua_enabled=lua_enabled,
+        lua_sandbox_enabled=lua_sandbox_enabled,
+    )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
 
@@ -217,7 +227,9 @@ def default_splash_server(portnum, slots=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
-                          ui_enabled=True, lua_enabled=False,
+                          ui_enabled=True,
+                          lua_enabled=True,
+                          lua_sandbox_enabled=True,
                           verbosity=None):
     from splash import network_manager
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
@@ -245,6 +257,7 @@ def default_splash_server(portnum, slots=None,
         proxy_portnum=proxy_portnum,
         ui_enabled=ui_enabled,
         lua_enabled=lua_enabled,
+        lua_sandbox_enabled=lua_sandbox_enabled,
         verbosity=verbosity
     )
 
@@ -334,6 +347,7 @@ def main():
                       allowed_schemes=opts.allowed_schemes,
                       ui_enabled=not opts.disable_ui,
                       lua_enabled=not opts.disable_lua,
+                      lua_sandbox_enabled=not opts.disable_lua_sandbox,
                       verbosity=opts.verbosity)
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 

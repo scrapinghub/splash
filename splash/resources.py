@@ -174,10 +174,15 @@ class RenderHtml(RenderBase):
 class RenderLua(RenderBase):
     content_type = "text/plain; charset=utf-8"
 
+    def __init__(self, pool, is_proxy_request=False, sandboxed=True):
+        RenderBase.__init__(self, pool, is_proxy_request)
+        self.sandboxed = sandboxed
+
     def _getRender(self, request, options):
         params = dict(
             proxy = options.get_proxy(),
-            lua_source = options.get_lua_source()
+            lua_source = options.get_lua_source(),
+            sandboxed = self.sandboxed,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -531,7 +536,7 @@ class Root(Resource):
         'webapp',
     )
 
-    def __init__(self, pool, ui_enabled, lua_enabled):
+    def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
@@ -542,7 +547,10 @@ class Root(Resource):
         self.putChild("debug", Debug(pool))
 
         if self.lua_enabled and RenderLua is not None:
-            self.putChild("render.lua", RenderLua(pool))
+            self.putChild("render.lua", RenderLua(
+                pool=pool,
+                sandboxed=lua_sandbox_enabled
+            ))
 
         if self.ui_enabled:
             self.putChild("_harviewer", File(self.HARVIEWER_PATH))

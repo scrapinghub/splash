@@ -60,6 +60,46 @@ def get_new_runtime(**kwargs):
     return lua
 
 
+def get_main(lua, script):
+    """
+    Get "main" function and its global environment from a ``script``.
+    """
+    main = _get_entrypoint(lua, script)
+    _check_main(main)
+    return main, lua.eval("_G")
+
+
+def get_main_sandboxed(lua, script, sandbox=None):
+    """
+    Get "main" function and its (sandboxed) global environment
+    from a ``script``.
+    """
+    env = execute_in_sandbox(lua, script, sandbox)
+    main = env["main"]
+    _check_main(main)
+    return main, env
+
+
+def execute_in_sandbox(lua, script, sandbox=None):
+    """
+    Execute ``script`` in ``lua`` runtime using ``sandbox``.
+    Return a (sandboxed) global environment for the executed script.
+
+    ``sandbox`` script should provide a ``run(untrusted_code)`` Lua function
+    and ``env`` table with a global environment. By default, a sandbox
+    from ``splash/scripts/sandbox.lua`` is used.
+    """
+    if sandbox is None:
+        sandbox = get_script_source("sandbox.lua")
+    lua.execute(sandbox)
+    run = lua.globals()["run"]
+    result = run(script)
+    if result is not True:
+        ok, res = result
+        raise lupa.LuaError(res)
+    return lua.globals()["env"]
+
+
 def _get_entrypoint(lua, script):
     """
     Execute a script and return its "main" function.
@@ -73,17 +113,11 @@ def _get_entrypoint(lua, script):
     return lua.globals()["main"]
 
 
-def start_main(lua, script, args):
-    """
-    Start "main" coroutine and pass args to it.
-    Return the started coroutine.
-    """
-    main = _get_entrypoint(lua, script)
+def _check_main(main):
     if main is None:
         raise ValueError("'main' function is not found")
     if lupa.lua_type(main) != 'function':
         raise ValueError("'main' is not a function")
-    return main.coroutine(*args)
 
 
 def get_script_source(name):
