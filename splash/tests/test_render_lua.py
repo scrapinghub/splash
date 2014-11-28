@@ -1010,7 +1010,8 @@ class SandboxTest(BaseLuaRenderTest):
             return t
         end
         """)
-        self.assertTooMuchMemory(resp)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("too much", resp.text)  # it can be either memory or CPU
 
     def test_memory_attack(self):
         resp = self.request_lua("""
