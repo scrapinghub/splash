@@ -156,7 +156,7 @@ local memlimit = 10000
 -- maximum "steps" that can be performed; each step is 1000 instructions
 -- XXX: the slowdown only becomes percievable at ~100m instructions
 -- (100k steps).
-local steplimit = 1000 -- allow 1m instructions (1k steps)
+local steplimit = 50000 -- allow 50m instructions (50k steps)
 
 do
   -- track memory use
@@ -170,10 +170,10 @@ do
   setmetatable({}, mt)
 end
 
-local count = 0
-local function step ()
-  count = count + 1
-  if count > steplimit then
+step_count = 0
+local function step()
+  step_count = step_count + 1
+  if step_count > steplimit then
     error("script uses too much CPU")
   end
 end

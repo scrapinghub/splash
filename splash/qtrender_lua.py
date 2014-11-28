@@ -342,6 +342,15 @@ class Splash(object):
             # self.script_globals = env  # XXX: does it work well with GC?
             return main.coroutine(splash_obj)
 
+    def step_count(self):
+        if not self.sandboxed:
+            return -1
+        try:
+            return self.lua.eval("step_count")
+        except Exception as e:
+            print(e)
+            return -1
+
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
         meth = getattr(self.tab, cmd.name)
@@ -390,6 +399,7 @@ class LuaRender(RenderScript):
     @stop_on_error
     def start(self, lua_source, sandboxed):
         self.log(lua_source)
+        self.sandboxed = sandboxed
         self.splash = Splash(
             tab=self.tab,
             return_func=self.dispatch,
@@ -428,6 +438,7 @@ class LuaRender(RenderScript):
                 args = None  # don't re-send the same value
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
                 self.log("[lua] got {}".format(cmd_repr))
+                self._print_instructions_used()
 
             except StopIteration:
                 # "main" coroutine is stopped;
@@ -439,10 +450,12 @@ class LuaRender(RenderScript):
                     # can't convert result to a Python object -> requets was bad
                     raise ScriptError("'main' returned bad result. {!s}".format(e))
 
+                self._print_instructions_used()
                 self.return_result((res, self.splash.result_content_type()))
                 return
             except lupa.LuaError as e:
                 # Lua script raised an error
+                self._print_instructions_used()
                 self.log("[lua] caught LuaError %r" % e)
                 ex = self.splash.get_real_exception()
                 if ex:
@@ -465,3 +478,8 @@ class LuaRender(RenderScript):
                     raise ScriptError("'main' function must return a single result")
 
                 self.result = cmd
+
+    def _print_instructions_used(self):
+        if self.sandboxed:
+            self.log("[lua] instructions used: %dK" % self.splash.step_count())
+
