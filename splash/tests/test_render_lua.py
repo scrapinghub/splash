@@ -17,6 +17,10 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         q.update(query or {})
         return self.request(q)
 
+    def assertErrorLineNumber(self, resp, linenum):
+        self.assertStatusCode(resp, 400)
+        self.assertIn(":%d:" % linenum, resp.text)
+
 
 class MainFunctionTest(BaseLuaRenderTest):
 
@@ -284,8 +288,7 @@ class ErrorsTest(BaseLuaRenderTest):
            splash.set_result_content_type("hello")
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn(":4:", resp.text)
+        self.assertErrorLineNumber(resp, 4)
 
     def test_error_line_number_bad_argument(self):
         resp = self.request_lua("""
@@ -294,8 +297,7 @@ class ErrorsTest(BaseLuaRenderTest):
            splash:set_result_content_type(48)
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn(":4:", resp.text)
+        self.assertErrorLineNumber(resp, 4)
 
     def test_error_line_number_wrong_keyword_argument(self):
         resp = self.request_lua("""  -- 1
@@ -303,8 +305,7 @@ class ErrorsTest(BaseLuaRenderTest):
            splash:wait{timeout=0.7}  -- 3 <--
         end                          -- 4
         """)                       # -- 5
-        self.assertStatusCode(resp, 400)
-        self.assertIn(":3:", resp.text)
+        self.assertErrorLineNumber(resp, 3)
 
     def test_pcall_wrong_keyword_arguments(self):
         resp = self.request_lua("""
@@ -935,9 +936,127 @@ class DisableScriptsTest(BaseLuaRenderTest):
             self.assertStatusCode(resp, 404)
 
 
-class DisableSandboxTest(BaseLuaRenderTest):
+class SandboxTest(BaseLuaRenderTest):
 
-    def test_sandbox(self):
+    def assertTooMuchCPU(self, resp):
+        self.assertStatusCode(resp, 400)
+        self.assertIn("script uses too much CPU", resp.text)
+
+    def assertTooMuchMemory(self, resp):
+        self.assertStatusCode(resp, 400)
+        self.assertIn("script uses too much memory", resp.text)
+
+    def test_sandbox_string_function(self):
+        resp = self.request_lua("""
+        function main(self)
+            return string.rep("x", 10000)
+        end
+        """)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertIn("rep", resp.text)
+        self.assertIn("(a nil value)", resp.text)
+
+    def test_sandbox_string_method(self):
+        resp = self.request_lua("""
+        function main(self)
+            return ("x"):rep(10000)
+        end
+        """)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertIn("attempt to index constant", resp.text)
+
+    # TODO: strings should use a sandboxed string module as a metatable
+    @pytest.mark.xfail
+    def test_non_sandboxed_string_method(self):
+        resp = self.request_lua("""
+        function main(self)
+            return ("X"):lower()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "x")
+
+    def test_infinite_loop(self):
+        resp = self.request_lua("""
+        function main(self)
+            local x = 0
+            while true do
+                x = x + 1
+            end
+            return x
+        end
+        """)
+        self.assertTooMuchCPU(resp)
+
+    def test_infinite_loop_toplevel(self):
+        resp = self.request_lua("""
+        x = 0
+        while true do
+            x = x + 1
+        end
+        function main(self)
+            return 5
+        end
+        """)
+        self.assertTooMuchCPU(resp)
+
+    def test_infinite_loop_memory(self):
+        resp = self.request_lua("""
+        function main(self)
+            t = {}
+            while true do
+                t = { t }
+            end
+            return t
+        end
+        """)
+        self.assertTooMuchMemory(resp)
+
+    def test_memory_attack(self):
+        resp = self.request_lua("""
+        function main(self)
+            local s = "aaaaaaaaaaaaaaaaaaaa"
+            while true do
+                s = s..s
+            end
+            return s
+        end
+        """)
+        self.assertTooMuchMemory(resp)
+
+    def test_memory_attack_toplevel(self):
+        resp = self.request_lua("""
+        s = "aaaaaaaaaaaaaaaaaaaa"
+        while true do
+            s = s..s
+        end
+        function main(self)
+            return s
+        end
+        """)
+        self.assertTooMuchMemory(resp)
+
+    def test_billion_laughs(self):
+        resp = self.request_lua("""
+        s = "s"
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
+        function main() end
+        """)
+        self.assertTooMuchMemory(resp)
+
+    def test_disable_sandbox(self):
         # dofile function should be always sandboxed
         is_sandbox = "function main(splash) return {s=(dofile==nil)} end"
 

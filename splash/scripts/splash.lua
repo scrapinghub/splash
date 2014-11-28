@@ -132,7 +132,7 @@ Splash = function (splash)
       -- render.xxx endpoints don't return HTTP errors as errors,
       -- so here we also only raising an exception is an error is not
       -- caused by a 4xx or 5xx HTTP response.
-      if reason:sub(0,4) ~= 'http' then
+      if string.sub(reason, 0,4) ~= 'http' then
         error(reason)
       end
     end

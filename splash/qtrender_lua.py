@@ -333,10 +333,14 @@ class Splash(object):
         splash_obj = self.get_wrapper()
         if self.sandboxed:
             main, env = get_main_sandboxed(self.lua, lua_source)
+            # self.script_globals = env  # XXX: does it work well with GC?
+            create_coroutine = self.lua.globals()["create_sandboxed_coroutine"]
+            coro = create_coroutine(main)
+            return coro(splash_obj)
         else:
             main, env = get_main(self.lua, lua_source)
-        self.script_globals = env  # XXX: does it work well with GC?
-        return main.coroutine(splash_obj)
+            # self.script_globals = env  # XXX: does it work well with GC?
+            return main.coroutine(splash_obj)
 
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
