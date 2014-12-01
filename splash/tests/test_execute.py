@@ -10,7 +10,7 @@ from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
-    render_format = 'lua'
+    endpoint = 'execute'
 
     def request_lua(self, code, query=None):
         q = {"lua_source": code}
@@ -237,7 +237,7 @@ class ErrorsTest(BaseLuaRenderTest):
     def test_return_coroutine_nosandbox(self):
         with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
             resp = requests.get(
-                url=splash.url("render.lua"),
+                url=splash.url("execute"),
                 params={
                     'lua_source': """
                         function main(splash)
@@ -265,7 +265,7 @@ class ErrorsTest(BaseLuaRenderTest):
     def test_return_started_coroutine_nosandbox(self):
         with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
             resp = requests.get(
-                url=splash.url("render.lua"),
+                url=splash.url("execute"),
                 params={
                     'lua_source': """
                         function main(splash)
@@ -928,9 +928,9 @@ class DisableScriptsTest(BaseLuaRenderTest):
 
             script = "function main(splash) return 'foo' end"
 
-            # Check that render.lua doesn't work
+            # Check that /execute doesn't work
             resp = requests.get(
-                url=splash.url("render.lua"),
+                url=splash.url("execute"),
                 params={'lua_source': script},
             )
             self.assertStatusCode(resp, 404)
@@ -1067,7 +1067,7 @@ class SandboxTest(BaseLuaRenderTest):
 
         with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
             resp = requests.get(
-                url=splash.url("render.lua"),
+                url=splash.url("execute"),
                 params={'lua_source': is_sandbox},
             )
             self.assertStatusCode(resp, 200)

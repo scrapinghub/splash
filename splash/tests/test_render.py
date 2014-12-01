@@ -37,7 +37,7 @@ def skip_proxy(func):
 
 class DirectRequestHandler(object):
 
-    render_format = "html"
+    endpoint = "render.html"
 
     def __init__(self, ts):
         self.ts = ts
@@ -46,21 +46,21 @@ class DirectRequestHandler(object):
     def host(self):
         return "localhost:%s" % self.ts.splashserver.portnum
 
-    def request(self, query, render_format=None, headers=None):
-        url, params = self._url_and_params(render_format, query)
+    def request(self, query, endpoint=None, headers=None):
+        url, params = self._url_and_params(endpoint, query)
         return requests.get(url, params=params, headers=headers)
 
-    def post(self, query, render_format=None, payload=None, headers=None):
-        url, params = self._url_and_params(render_format, query)
+    def post(self, query, endpoint=None, payload=None, headers=None):
+        url, params = self._url_and_params(endpoint, query)
         return requests.post(url, params=params, data=payload, headers=headers)
 
-    def _url_and_params(self, render_format, query):
-        render_format = render_format or self.render_format
+    def _url_and_params(self, endpoint, query):
+        endpoint = endpoint or self.endpoint
         if isinstance(query, dict):
-            url = "http://%s/render.%s" % (self.host, render_format)
+            url = "http://%s/%s" % (self.host, endpoint)
             params = query
         else:
-            url = "http://%s/render.%s?%s" % (self.host, render_format, query)
+            url = "http://%s/%s?%s" % (self.host, endpoint, query)
             params = None
         return url, params
 
@@ -69,7 +69,7 @@ class DirectRequestHandler(object):
 @pytest.mark.usefixtures("print_ts_output")
 class BaseRenderTest(unittest.TestCase):
 
-    render_format = "html"
+    endpoint = "render.html"
     request_handler = DirectRequestHandler
     use_gzip = False
 
@@ -85,14 +85,14 @@ class BaseRenderTest(unittest.TestCase):
 
     def _get_handler(self):
         handler = self.request_handler(self.ts)
-        handler.render_format = self.render_format
+        handler.endpoint = self.endpoint
         return handler
 
-    def request(self, query, render_format=None, headers=None, **kwargs):
-        return self._get_handler().request(query, render_format, headers, **kwargs)
+    def request(self, query, endpoint=None, headers=None, **kwargs):
+        return self._get_handler().request(query, endpoint, headers, **kwargs)
 
-    def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
-        return self._get_handler().post(query, render_format, payload, headers, **kwargs)
+    def post(self, query, endpoint=None, payload=None, headers=None, **kwargs):
+        return self._get_handler().post(query, endpoint, payload, headers, **kwargs)
 
     def assertStatusCode(self, response, code):
         msg = (response.status_code, truncated(response.content, 1000))
@@ -148,7 +148,7 @@ class Base(object):
 
 class RenderHtmlTest(Base.RenderTest):
 
-    render_format = "html"
+    endpoint = "render.html"
 
     def test_jsrender(self):
         self._test_jsrender(self.mockurl("jsrender"))
@@ -242,7 +242,7 @@ class RenderHtmlTest(Base.RenderTest):
 
 class RenderPngTest(Base.RenderTest):
 
-    render_format = "png"
+    endpoint = "render.png"
 
     def test_ok(self):
         self._test_ok(self.mockurl("jsrender"))
@@ -317,7 +317,7 @@ class RenderPngTest(Base.RenderTest):
 
 class RenderJsonTest(Base.RenderTest):
 
-    render_format = 'json'
+    endpoint = 'render.json'
 
     def test_jsrender_html(self):
         self.assertSameHtml(self.mockurl("jsrender"))
@@ -485,15 +485,15 @@ class RenderJsonTest(Base.RenderTest):
     def _do_same_requests(self, url, params, other_format):
         query = {'url': url}
         query.update(params or {})
-        r1 = self.request(query, render_format='json')
-        r2 = self.request(query, render_format=other_format)
+        r1 = self.request(query, endpoint='render.json')
+        r2 = self.request(query, endpoint='render.' + other_format)
         self.assertStatusCode(r1, 200)
         self.assertStatusCode(r2, 200)
         return r1, r2
 
 
 class RenderJsonHistoryTest(BaseRenderTest):
-    render_format = 'json'
+    endpoint = 'render.json'
 
     def test_history_simple(self):
         self.assertHistoryUrls(
@@ -553,7 +553,7 @@ class RenderJsonHistoryTest(BaseRenderTest):
 
 
 class IframesRenderTest(BaseRenderTest):
-    render_format = 'json'
+    endpoint = 'render.json'
 
     def test_basic(self):
         self.assertIframesText('IFRAME_1_OK')

@@ -171,7 +171,7 @@ class RenderHtml(RenderBase):
         return self.pool.render(HtmlRender, options, **params)
 
 
-class RenderLua(RenderBase):
+class ExecuteLuaScript(RenderBase):
     content_type = "text/plain; charset=utf-8"
 
     def __init__(self, pool, is_proxy_request=False, sandboxed=True):
@@ -523,7 +523,7 @@ class DemoUI(_ValidatingResource):
             theme = BOOTSTRAP_THEME,
             cm_options = CODEMIRROR_OPTIONS,
             cm_resources = CODEMIRROR_RESOURCES if self.lua_enabled else "",
-            endpoint = "render.lua" if self.lua_enabled else "render.json",
+            endpoint = "execute" if self.lua_enabled else "render.json",
             lua_editor = LUA_EDITOR if self.lua_enabled else "",
         )
 
@@ -546,8 +546,8 @@ class Root(Resource):
         self.putChild("render.har", RenderHar(pool))
         self.putChild("debug", Debug(pool))
 
-        if self.lua_enabled and RenderLua is not None:
-            self.putChild("render.lua", RenderLua(
+        if self.lua_enabled and ExecuteLuaScript is not None:
+            self.putChild("execute", ExecuteLuaScript(
                 pool=pool,
                 sandboxed=lua_sandbox_enabled
             ))

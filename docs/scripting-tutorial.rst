@@ -13,7 +13,7 @@ Intro
 
 Splash can execute custom rendering scripts written in Lua_ programming language.
 This allows to use Splash as a browser automation tool similar to PhantomJS_.
-To execute a script and get the result back send it to :ref:`render.lua`
+To execute a script and get the result back send it to :ref:`execute`
 endpoint in a :ref:`lua_source <arg-lua-source>` argument.
 
 .. note::
@@ -50,7 +50,7 @@ Let's start with a basic example:
          return {title=title}
      end
 
-If we submit this script to :ref:`render.lua` endpoint in a ``lua_source``
+If we submit this script to :ref:`execute` endpoint in a ``lua_source``
 argument, Splash will go to example.com website, wait until it loads,
 then wait 0.5s more, then get page title (by evaluating a JavaScript snippet
 in page context), and then return the result as a JSON encoded object.
@@ -58,7 +58,7 @@ in page context), and then return the result as a JSON encoded object.
 .. note::
 
     Splash UI provides an easy way to try scripts: there is a code editor
-    for Lua and a button to submit a script to ``render.lua``. Visit
+    for Lua and a button to submit a script to ``execute``. Visit
     http://127.0.0.1:8050/ (or whatever host/port Splash is listening to).
 
 Entry Point: the "main" Function
@@ -90,7 +90,7 @@ Script can also return a string:
 Strings are returned as-is (unlike tables they are not encoded to JSON).
 Let's check it with curl::
 
-    $ curl 'http://127.0.0.1:8050/render.lua?lua_source=function+main%28splash%29%0D%0A++return+%27hello%27%0D%0Aend'
+    $ curl 'http://127.0.0.1:8050/execute?lua_source=function+main%28splash%29%0D%0A++return+%27hello%27%0D%0Aend'
     hello
 
 "main" function receives an object that allows to control the "browser tab".

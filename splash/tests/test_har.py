@@ -11,7 +11,7 @@ from .test_render import BaseRenderTest
 
 
 class BaseHarRenderTest(BaseRenderTest):
-    render_format = 'har'
+    endpoint = 'render.har'
 
     try:
         schema.get_validator()
@@ -241,7 +241,7 @@ class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):
 class RenderJsonHarTest(HarRenderTest):
     """ Tests for HAR data in render.json endpoint """
 
-    render_format = 'json'
+    endpoint = 'render.json'
 
     def assertValidHar(self, url, **params):
         query = {"url": url, "har": 1}

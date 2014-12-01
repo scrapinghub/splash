@@ -11,7 +11,7 @@ SPLASH_HEADER_PREFIX = 'x-splash-'
 
 class ProxyRequestHandler(object):
 
-    render_format = "html"
+    endpoint = "render.html"
 
     def __init__(self, ts):
         self.ts = ts
@@ -20,19 +20,20 @@ class ProxyRequestHandler(object):
     def proxies(self):
         return {'http': self.ts.splashserver.proxy_url()}
 
-    def request(self, query, render_format=None, headers=None, proxies=None):
-        url, headers = self._request_params(query, render_format, headers)
+    def request(self, query, endpoint=None, headers=None, proxies=None):
+        url, headers = self._request_params(query, endpoint, headers)
         proxies = proxies if proxies is not None else self.proxies
         return requests.get(url, headers=headers, proxies=proxies)
 
-    def post(self, query, render_format=None, payload=None, headers=None, proxies=None):
-        url, headers = self._request_params(query, render_format, headers)
+    def post(self, query, endpoint=None, payload=None, headers=None, proxies=None):
+        url, headers = self._request_params(query, endpoint, headers)
         proxies = proxies if proxies is not None else self.proxies
         return requests.post(url, data=payload, headers=headers, proxies=proxies)
 
-    def _request_params(self, query, render_format, headers):
-        render_format = render_format or self.render_format
-        _headers = {self._get_header('render'): render_format}
+    def _request_params(self, query, endpoint, headers):
+        endpoint = endpoint or self.endpoint
+        assert endpoint.startswith("render.")
+        _headers = {self._get_header('render'): endpoint[len("render."):]}
         _headers.update(headers or {})
         if not isinstance(query, dict):
             query = urlparse.parse_qs(query)
@@ -133,12 +134,12 @@ class ProxyRunJsTest(test_runjs.RunJsTest):
     proxy_test = True
     use_gzip = False
 
-    def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
+    def _runjs_request(self, js_source, endpoint=None, params=None, headers=None):
         query = {'url': self.mockurl("jsrender"),
                  'js_source': js_source,
                  'script': 1}
         query.update(params or {})
-        return self.request(query, render_format=render_format)
+        return self.request(query, endpoint=endpoint)
 
 
 class GzipProxyRunJsTest(ProxyRunJsTest):

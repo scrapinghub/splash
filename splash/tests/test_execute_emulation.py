@@ -12,14 +12,14 @@ from .utils import NON_EXISTING_RESOLVABLE
 class Base:
     # a hack to skip test running from a mixin
     class EmulationMixin(test_render.BaseRenderTest):
-        render_format = 'lua'
+        endpoint = 'execute'
 
-        def request(self, query, render_format=None, headers=None, **kwargs):
+        def request(self, query, endpoint=None, headers=None, **kwargs):
             query = {} or query
             query.update({'lua_source': self.script})
-            return self._get_handler().request(query, render_format, headers, **kwargs)
+            return self._get_handler().request(query, endpoint, headers, **kwargs)
 
-        def post(self, query, render_format=None, payload=None, headers=None, **kwargs):
+        def post(self, query, endpoint=None, payload=None, headers=None, **kwargs):
             raise NotImplementedError()
 
         # ==== overridden tests =============================
@@ -30,7 +30,7 @@ class Base:
 
         def test_self(self):
             # make sure mixin order is correct
-            assert self.render_format == 'lua'
+            assert self.endpoint == 'execute'
 
 
 class EmulatedRenderHtmlTest(Base.EmulationMixin, test_render.RenderHtmlTest):

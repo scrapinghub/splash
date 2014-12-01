@@ -7,16 +7,16 @@ from . import test_render, test_har, test_request_filters, test_runjs
 
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
 
-    def request(self, query, render_format=None, headers=None):
+    def request(self, query, endpoint=None, headers=None):
         assert not isinstance(query, basestring)
-        render_format = render_format or self.render_format
-        url = "http://%s/render.%s" % (self.host, render_format)
+        endpoint = endpoint or self.endpoint
+        url = "http://%s/%s" % (self.host, endpoint)
         data = json.dumps(query, encoding='utf8')
         _headers = {'content-type': 'application/json'}
         _headers.update(headers or {})
         return requests.post(url, data=data, headers=_headers)
 
-    def post(self, query, render_format=None, payload=None, headers=None):
+    def post(self, query, endpoint=None, payload=None, headers=None):
         raise NotImplementedError()
 
 
@@ -50,14 +50,14 @@ class FiltersJsonPostTest(test_request_filters.FiltersTestHTML):
 class RunJsJsonPostTest(test_runjs.RunJsTest):
     request_handler = JsonPostRequestHandler
 
-    def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
+    def _runjs_request(self, js_source, endpoint=None, params=None, headers=None):
         query = {
             'url': self.mockurl("jsrender"),
             'script': 1,
             'js_source': js_source,
         }
         query.update(params or {})
-        return self.request(query, render_format=render_format, headers=headers)
+        return self.request(query, endpoint=endpoint, headers=headers)
 
 
 class HttpHeadersTest(test_render.BaseRenderTest):

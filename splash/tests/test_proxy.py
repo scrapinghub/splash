@@ -72,7 +72,7 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
     def test_blacklist(self):
         params = {'url': self.mockurl('iframes'),
                   'proxy': 'test', 'html': 1, 'iframes': 1}
-        r = self.request(params, render_format='json')
+        r = self.request(params, endpoint='render.json')
         data = r.json()
 
         # only 1.html is blacklisted in test.ini
@@ -106,8 +106,8 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
 
-    def ts2_request(self, ts2, query, render_format='html'):
-        url = "http://localhost:%s/render.%s" % (ts2.splashserver.portnum, render_format)
+    def ts2_request(self, ts2, query, endpoint='render.html'):
+        url = "http://localhost:%s/%s" % (ts2.splashserver.portnum, endpoint)
         return requests.get(url, params=query)
 
     def create_default_ini(self, ts2):

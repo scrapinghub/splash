@@ -56,8 +56,8 @@ class FiltersTestHTML(BaseFiltersTest):
 
 
 class DefaultFiltersTest(BaseFiltersTest):
-    def ts_request(self, ts2, query=None, render_format='html'):
-        url = "http://localhost:%s/render.%s" % (ts2.splashserver.portnum, render_format)
+    def ts_request(self, ts2, query=None, endpoint='render.html'):
+        url = "http://localhost:%s/%s" % (ts2.splashserver.portnum, endpoint)
         return requests.get(url, params=self.params(**(query or {})))
 
     def create_default_txt(self, ts2, copy_from):
