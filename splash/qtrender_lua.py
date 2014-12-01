@@ -342,11 +342,11 @@ class Splash(object):
             # self.script_globals = env  # XXX: does it work well with GC?
             return main.coroutine(splash_obj)
 
-    def step_count(self):
+    def instruction_count(self):
         if not self.sandboxed:
             return -1
         try:
-            return self.lua.eval("step_count")
+            return self.lua.eval("instruction_count")
         except Exception as e:
             print(e)
             return -1
@@ -481,5 +481,5 @@ class LuaRender(RenderScript):
 
     def _print_instructions_used(self):
         if self.sandboxed:
-            self.log("[lua] instructions used: %dK" % self.splash.step_count())
+            self.log("[lua] instructions used: %d" % self.splash.instruction_count())
 

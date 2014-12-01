@@ -151,17 +151,17 @@ debug.setmetatable(true, nil)
 --
 
 -- maximum memory (in KB) that can be used by Lua script
-local memlimit = 10000
+local mem_limit = 10000
 
--- maximum "steps" that can be performed; each step is 1000 instructions
--- XXX: the slowdown only becomes percievable at ~100m instructions
--- (100k steps).
-local steplimit = 50000 -- allow 50m instructions (50k steps)
+-- Maximum number of instructions that can be executed.
+-- XXX: the slowdown only becomes percievable at ~5m instructions.
+local instruction_limit = 1e6
+
 
 do
   -- track memory use
   local mt = {__gc = function (u)
-    if collectgarbage("count") > memlimit then
+    if collectgarbage("count") > mem_limit then
       error("script uses too much memory")
     else
       setmetatable({}, getmetatable(u))
@@ -170,17 +170,18 @@ do
   setmetatable({}, mt)
 end
 
-step_count = 0
-local function step()
-  step_count = step_count + 1
-  if step_count > steplimit then
-    error("script uses too much CPU")
+
+instruction_count = 0
+local function step(event, line)
+  instruction_count = instruction_count + 1
+  if instruction_count > instruction_limit then
+    error("script uses too much CPU", 2)
   end
 end
 
 -- enable sandbox hooks
 local enable_debug_hooks = function()
-  debug.sethook(step, 'c', 1000)
+  debug.sethook(step, '', 1)
 end
 
 
