@@ -102,6 +102,26 @@ class LuaPythonConversionTest(unittest.TestCase):
         self.assertSurvivesConversion([None, "foo", None, 2])
         self.assertSurvivesConversion([None, None, None, 2])
 
+    def test_sparse_list(self):
+        func1 = self.lua.eval("""
+        function (arr)
+            arr[5] = "foo"
+            return arr
+        end
+        """)
+        func2 = self.lua.eval("""
+        function (arr)
+            arr[100000] = "foo"
+            return arr
+        end
+        """)
+        arr = python2lua(self.lua, [1, 2])
+        arr1 = lua2python(self.lua, func1(arr))
+        self.assertEqual(arr1, [1, 2, None, None, "foo"])
+
+        with pytest.raises(ValueError):
+            arr2 = lua2python(self.lua, func2(arr))
+
     def test_list_like_tables(self):
         # List-like tables are still returned as dicts;
         # only tables which were lists originally are lists.

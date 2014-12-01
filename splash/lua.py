@@ -127,7 +127,7 @@ def get_script_source(name):
         return f.read().decode('utf8')
 
 
-def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
+def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=10):
     """ Recursively convert Lua data to Python objects """
 
     def l2p(obj, depth):
@@ -159,7 +159,10 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100):
                     if key <= prev_key:
                         raise ValueError("Can't build a Python list from Lua table: bad index %s" % key)
 
-                    res.extend([None] * (key-prev_key-1))
+                    filler_size = key - prev_key - 1
+                    if filler_size > sparse_limit:
+                        raise ValueError("Lua table is too sparse. Try not to use nil values.")
+                    res.extend([None] * filler_size)
                     res.append(l2p(value, depth-1))
                     prev_key = key
                 return res
