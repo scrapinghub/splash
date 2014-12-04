@@ -23,6 +23,8 @@ Documentation
 
    install
    api
+   scripting-tutorial
+   scripting-ref
    development
    changes
 

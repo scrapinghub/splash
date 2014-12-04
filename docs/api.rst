@@ -8,9 +8,11 @@ may be sent either as GET arguments or encoded to JSON and
 POSTed with ``Content-Type: application/json`` header.
 
 The most versatile endpoint that provides all Splash features
-is :ref:`render.json`. Other endpoints may be easier to use in specific
+is :ref:`execute` (WARNING: it is still experimental).
+Other endpoints may be easier to use in specific
 cases - for example, :ref:`render.png` returns a screenshot in PNG format
-that can be used as `img src` without any further processing.
+that can be used as `img src` without any further processing, and
+:ref:`render.json` is convenient if you don't need to interact with a page.
 
 The following endpoints are supported:
 
@@ -387,10 +389,48 @@ Curl examples::
         'http://localhost:8050/render.json?url=http://domain.com&script=1&console=1'
 
 
+.. _execute:
+
+execute
+-------
+
+.. warning::
+
+    This endpoint is experimental. API could change in future releases.
+
+Execute a custom rendering script and return a result.
+
+:ref:`render.html`, :ref:`render.png`, :ref:`render.har` and :ref:`render.json`
+endpoints cover many common use cases, but sometimes they are not enough.
+This endpoint allows to write custom :ref:`Splash Scripts <scripting-tutorial>`.
+
+Arguments:
+
+.. _arg-lua-source:
+
+lua_source : string : required
+  Browser automation script. See :ref:`scripting-tutorial` for more info.
+
+timeout : float : optional
+  Same as :ref:`'timeout' <arg-timeout>` argument for `render.html`_.
+
+allowed_domains : string : optional
+  Same as :ref:`'allowed_domains' <arg-allowed-domains>` argument for `render.html`_.
+
+proxy : string : optional
+  Same as :ref:`'proxy' <arg-proxy>` argument for `render.html`_.
+
+filters : string : optional
+  Same as :ref:`'filters' <arg-filters>` argument for `render.html`_.
+
 .. _execute javascript:
 
 Executing custom Javascript code within page context
 ----------------------------------------------------
+
+.. note::
+
+    See also: :ref:`executing JavaScript in Splash scripts <splash-jsfunc>`
 
 Splash supports executing JavaScript code within the context of the page.
 The JavaScript code is executed after the page finished loading (including

@@ -65,6 +65,10 @@ def parse_opts():
         help="path to a folder with network request filters")
     op.add_option("--disable-xvfb", action="store_true", default=False,
         help="disable Xvfb auto start")
+    op.add_option("--disable-lua", action="store_true", default=False,
+        help="disable Lua scripting")
+    op.add_option("--disable-lua-sandbox", action="store_true", default=False,
+        help="disable Lua sandbox")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5")
     op.add_option("--version", action="store_true",
@@ -115,11 +119,22 @@ def log_splash_version():
     import sip
     from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
     from PyQt4.QtWebKit import qWebKitVersion
+    from splash import lua
 
     log.msg("Splash version: %s" % __version__)
-    log.msg("Qt %s, PyQt %s, WebKit %s, sip %s, Twisted %s" % (
-        QT_VERSION_STR, PYQT_VERSION_STR, qWebKitVersion(), sip.SIP_VERSION_STR, twisted.version.short()
-    ))
+
+    versions = [
+        "Qt %s" % QT_VERSION_STR,
+        "PyQt %s" % PYQT_VERSION_STR,
+        "WebKit %s" % qWebKitVersion(),
+        "sip %s" % sip.SIP_VERSION_STR,
+        "Twisted %s" % twisted.version.short(),
+    ]
+
+    if lua.is_supported():
+        versions.append(lua.get_version())
+
+    log.msg(", ".join(versions))
 
 
 def manhole_server(portnum=None, username=None, password=None):
@@ -135,7 +150,9 @@ def manhole_server(portnum=None, username=None, password=None):
 
 def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
-                  ui_enabled=True, verbosity=None):
+                  ui_enabled=True,
+                  lua_enabled=True, lua_sandbox_enabled=True,
+                  verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -157,7 +174,22 @@ def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None
     )
 
     # HTTP API
-    root = Root(pool, ui_enabled=ui_enabled)
+    onoff = {True: "enabled", False: "disabled"}
+    log.msg(
+        "Web UI: %s, Lua: %s (sandbox: %s), Proxy Server: %s" % (
+            onoff[ui_enabled],
+            onoff[lua_enabled],
+            onoff[lua_sandbox_enabled],
+            onoff[not disable_proxy],
+        )
+    )
+
+    root = Root(
+        pool=pool,
+        ui_enabled=ui_enabled,
+        lua_enabled=lua_enabled,
+        lua_sandbox_enabled=lua_sandbox_enabled,
+    )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
 
@@ -196,6 +228,8 @@ def default_splash_server(portnum, slots=None,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
                           ui_enabled=True,
+                          lua_enabled=True,
+                          lua_sandbox_enabled=True,
                           verbosity=None):
     from splash import network_manager
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
@@ -222,6 +256,8 @@ def default_splash_server(portnum, slots=None,
         disable_proxy=disable_proxy,
         proxy_portnum=proxy_portnum,
         ui_enabled=ui_enabled,
+        lua_enabled=lua_enabled,
+        lua_sandbox_enabled=lua_sandbox_enabled,
         verbosity=verbosity
     )
 
@@ -310,6 +346,8 @@ def main():
                       filters_path=opts.filters_path,
                       allowed_schemes=opts.allowed_schemes,
                       ui_enabled=not opts.disable_ui,
+                      lua_enabled=not opts.disable_lua,
+                      lua_sandbox_enabled=not opts.disable_lua_sandbox,
                       verbosity=opts.verbosity)
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 

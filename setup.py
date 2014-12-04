@@ -45,6 +45,9 @@ setup_args = {
         'vendor/harviewer/webapp/scripts/syntax-highlighter/*.js',
         'vendor/harviewer/webapp/scripts/tabs/*.*',
         'vendor/harviewer/webapp/har.js',
+
+        'scripts/example.lua',
+        'scripts/splash.lua',
     ]},
     'classifiers': [
         'Programming Language :: Python',

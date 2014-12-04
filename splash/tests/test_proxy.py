@@ -72,7 +72,7 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
     def test_blacklist(self):
         params = {'url': self.mockurl('iframes'),
                   'proxy': 'test', 'html': 1, 'iframes': 1}
-        r = self.request(params, render_format='json')
+        r = self.request(params, endpoint='render.json')
         data = r.json()
 
         # only 1.html is blacklisted in test.ini
@@ -88,26 +88,26 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
     def test_insecure(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
 
     def test_nonexisting(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
         self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
 
     def test_no_proxy_settings(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'no-proxy-settings'})
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
 
-    def ts2_request(self, ts2, query, render_format='html'):
-        url = "http://localhost:%s/render.%s" % (ts2.splashserver.portnum, render_format)
+    def ts2_request(self, ts2, query, endpoint='render.html'):
+        url = "http://localhost:%s/%s" % (ts2.splashserver.portnum, endpoint)
         return requests.get(url, params=query)
 
     def create_default_ini(self, ts2):
@@ -150,7 +150,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
                     'url': ts2.mockserver.url('jsrender', gzip=False),
                     'proxy': 'nonexisting',
                 })
-                self.assertEqual(r3.status_code, 400)
+                self.assertStatusCode(r3, 400)
 
                 # 'none' disables default.ini
                 r4 = self.ts2_request(ts2, {

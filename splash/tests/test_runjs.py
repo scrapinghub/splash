@@ -14,7 +14,7 @@ getContents();"""
 
 
 class RunJsTest(BaseRenderTest):
-    render_format = 'json'
+    endpoint = 'render.json'
 
     def test_simple_js(self):
         js_source = "function test(x){ return x; } test('abc');"
@@ -35,7 +35,7 @@ test('abc');"""
         js_source = """function test(x){ document.getElementById("p1").innerHTML=x; }
 test('Changed');"""
         params = {'url': self.mockurl("jsrender")}
-        r = self._runjs_request(js_source, render_format='html', params=params)
+        r = self._runjs_request(js_source, endpoint='render.html', params=params)
         self.assertTrue("Before" not in r.text)
         self.assertTrue("Changed" in r.text)
 
@@ -69,7 +69,7 @@ test('Changed');"""
         js_source = "function test(x){ return x; } test('abc');"
         headers = {'content-type': 'text/plain'}
         r = self._runjs_request(js_source, headers=headers)
-        self.assertEqual(r.status_code, 415)
+        self.assertStatusCode(r, 415)
 
     def test_proper_viewport(self):
         js_source = """
@@ -86,14 +86,15 @@ test('Changed');"""
         js_source = """test('abc');"""
         params = {'url': self.mockurl("jsrender"), 'js' : 'not_a_profile'}
         r = self._runjs_request(js_source, params=params)
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
-    def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
+
+    def _runjs_request(self, js_source, endpoint=None, params=None, headers=None):
         query = {'url': self.mockurl("jsrender"), 'script': 1}
         query.update(params or {})
         req_headers = {'content-type': 'application/javascript'}
         req_headers.update(headers or {})
-        return self.post(query, render_format=render_format,
+        return self.post(query, endpoint=endpoint,
                          payload=js_source, headers=req_headers)
 
 

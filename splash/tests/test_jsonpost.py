@@ -7,16 +7,16 @@ from . import test_render, test_har, test_request_filters, test_runjs
 
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
 
-    def request(self, query, render_format=None, headers=None):
+    def request(self, query, endpoint=None, headers=None):
         assert not isinstance(query, basestring)
-        render_format = render_format or self.render_format
-        url = "http://%s/render.%s" % (self.host, render_format)
+        endpoint = endpoint or self.endpoint
+        url = "http://%s/%s" % (self.host, endpoint)
         data = json.dumps(query, encoding='utf8')
         _headers = {'content-type': 'application/json'}
         _headers.update(headers or {})
         return requests.post(url, data=data, headers=_headers)
 
-    def post(self, query, render_format=None, payload=None, headers=None):
+    def post(self, query, endpoint=None, payload=None, headers=None):
         raise NotImplementedError()
 
 
@@ -28,7 +28,7 @@ class RenderHtmlJsonPostTest(test_render.RenderHtmlTest):
             query={"url": self.mockurl("jsrender")},
             headers={"content-type": "application/json; charset=UTF-8"}
         )
-        self.assertEqual(resp.status_code, 200)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers["content-type"].lower(), "text/html; charset=utf-8")
         self.assertTrue("Before" not in resp.text)
         self.assertTrue("After" in resp.text)
@@ -50,14 +50,14 @@ class FiltersJsonPostTest(test_request_filters.FiltersTestHTML):
 class RunJsJsonPostTest(test_runjs.RunJsTest):
     request_handler = JsonPostRequestHandler
 
-    def _runjs_request(self, js_source, render_format=None, params=None, headers=None):
+    def _runjs_request(self, js_source, endpoint=None, params=None, headers=None):
         query = {
             'url': self.mockurl("jsrender"),
             'script': 1,
             'js_source': js_source,
         }
         query.update(params or {})
-        return self.request(query, render_format=render_format, headers=headers)
+        return self.request(query, endpoint=endpoint, headers=headers)
 
 
 class HttpHeadersTest(test_render.BaseRenderTest):
@@ -82,7 +82,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         })
 
         for r in [r1, r2]:
-            self.assertEqual(r.status_code, 200)
+            self.assertStatusCode(r, 200)
             self.assertIn("'x-custom-header1': 'some-val1'", r.text)
             self.assertIn("'custom-header2': 'some-val2'", r.text)
             self.assertIn("'user-agent': 'Mozilla'", r.text)
@@ -99,20 +99,20 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": "foo",
         })
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
     def test_bad_headers_list(self):
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("foo", ), ("bar", {"hello": "world"})],
         })
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("bar", {"hello": "world"})],
         })
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
 
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
@@ -120,7 +120,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": headers,
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
@@ -132,7 +132,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": headers
         })
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
 
         # this is not a proxy request - don't remove headers
         self.assertIn("'user-agent': 'Mozilla123'", r.text)

@@ -4,6 +4,7 @@ import os
 import gc
 import sys
 import json
+import base64
 import inspect
 import resource
 from collections import defaultdict
@@ -17,39 +18,17 @@ class BadRequest(Exception):
     pass
 
 
-def getarg(request, name, default=_REQUIRED, type=str, range=None):
-    """
-    Return the value of argument named `name` from twisted.web.http.Request
-    `request`. Argument can be GET argument, POST argument sent as form data
-    or a value from a JSON dict if the request is a POST request with
-    ``content-type: application/json``.
-    """
-    value = _getvalue(request, name)
-    if value is not None:
-        if type is not None:
-            value = type(value)
-        if range is not None and not (range[0] <= value <= range[1]):
-            raise BadRequest("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
-        return value
-    elif default is _REQUIRED:
-        raise BadRequest("Missing argument: %s" % name)
-    else:
-        return default
+class BinaryCapsule(object):
+    """ A wrapper for passing binary data. """
+    def __init__(self, data):
+        self.data = data
 
 
-def getarg_bool(request, name, default=_REQUIRED):
-    return getarg(request, name, default, type=int, range=(0, 1))
-
-
-def _getvalue(request, name):
-    value = request.args.get(name, [None])[0]
-    if request.method == 'POST':
-        content_type = request.getHeader('content-type')
-        if content_type and 'application/json' in content_type:
-            if not hasattr(request, '_json_data'):
-                request._json_data = json.load(request.content, encoding='utf8') or {}
-            return request._json_data.get(name, value)
-    return value
+class SplashJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, BinaryCapsule):
+            return base64.b64encode(o.data)
+        return super(SplashJSONEncoder, self).default(o)
 
 
 PID = os.getpid()
@@ -60,10 +39,14 @@ def get_num_fds():
 
 def get_leaks():
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
-        'QWebView', 'HtmlRender', 'PngRender', 'JsonRender', 'HarRender',
-        'QNetworkRequest', 'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl',
+        'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
+        'QWebView', 'QWebPage', 'QWebFrame', 'QNetworkRequest', 'QNetworkReply',
+        'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
         'JavascriptConsole', 'ProfilesSplashProxyFactory',
-        'SplashProxyRequest', 'Request', 'Deferred'))
+        'SplashProxyRequest', 'Request', 'Deferred',
+        'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
+        '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
+    ))
     leaks = defaultdict(int)
     gc.collect()
     for o in gc.get_objects():
@@ -81,3 +64,18 @@ def get_ru_maxrss():
         # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
         size *= 1024
     return size
+
+
+def truncated(text, max_length=100, msg='...'):
+    """
+    >>> truncated("hello world!", 5)
+    'hello...'
+    >>> truncated("hello world!", 25)
+    'hello world!'
+    >>> truncated("hello world!", 5, " [truncated]")
+    'hello [truncated]'
+    """
+    if len(text) < max_length:
+        return text
+    else:
+        return text[:max_length] + msg

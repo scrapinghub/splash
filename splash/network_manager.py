@@ -275,8 +275,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             total = '?'
         self.log("Uploaded %d/%s of {url}" % (sent, total), self.sender(), min_level=4)
 
-    def _getSplashRequest(self, request):
-        return self._getWebPageAttribute(request, 'splash_request')
+    def _getRenderOptions(self, request):
+        return self._getWebPageAttribute(request, 'render_options')
 
     def log(self, msg, reply=None, min_level=2):
         if self.verbosity < min_level:
@@ -302,6 +302,8 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     * additional logging.
 
     """
+    adblock_rules = None
+
     def __init__(self, filters_path, allowed_schemes, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
 
@@ -321,19 +323,10 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
             self.request_middlewares.append(
                 AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
             )
-        else:
-            self.adblock_rules = None
 
     def createRequest(self, operation, request, outgoingData=None):
-        splash_request = self._getSplashRequest(request)
-        if splash_request:
+        render_options = self._getRenderOptions(request)
+        if render_options:
             for filter in self.request_middlewares:
-                request = filter.process(request, splash_request, operation, outgoingData)
+                request = filter.process(request, render_options, operation, outgoingData)
         return super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
-
-    def unknownFilters(self, filter_names):
-        names = [f for f in filter_names.split(',') if f]
-        if self.adblock_rules is None:
-            return names
-        return [name for name in names
-                if not (self.adblock_rules.filter_is_known(name) or name=='none')]

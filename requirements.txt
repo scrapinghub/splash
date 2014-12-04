@@ -6,6 +6,9 @@ adblockparser >= 0.2
 -e git+https://github.com/axiak/pyre2.git#egg=re2
 xvfbwrapper
 
+# for scripting support
+lupa >= 1.1
+
 # the following libraries are only required by tests
 pytest
 pyOpenSSL

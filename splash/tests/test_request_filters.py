@@ -51,13 +51,13 @@ class FiltersTestHTML(BaseFiltersTest):
 
     def test_invalid_filters(self):
         r = self.request(self.params(filters='foo,noscript2'))
-        self.assertEqual(r.status_code, 400)
+        self.assertStatusCode(r, 400)
         self.assertIn('foo', r.text)
 
 
 class DefaultFiltersTest(BaseFiltersTest):
-    def ts_request(self, ts2, query=None, render_format='html'):
-        url = "http://localhost:%s/render.%s" % (ts2.splashserver.portnum, render_format)
+    def ts_request(self, ts2, query=None, endpoint='render.html'):
+        url = "http://localhost:%s/%s" % (ts2.splashserver.portnum, endpoint)
         return requests.get(url, params=self.params(**(query or {})))
 
     def create_default_txt(self, ts2, copy_from):
@@ -77,7 +77,7 @@ class DefaultFiltersTest(BaseFiltersTest):
 
             # default.txt does not exist yet
             r = self.ts_request(ts2, {'filters': 'default'})
-            self.assertEqual(r.status_code, 400)
+            self.assertStatusCode(r, 400)
             self.assertIn('default', r.text)
 
     def test_default_works(self):
@@ -124,7 +124,7 @@ class AllowedSchemesTest(BaseRenderTest):
     def test_file_scheme_disabled_by_default(self):
         assert os.path.isfile(self.FILE_PATH)
         r = self.request({'url': self.FILE_URL})
-        self.assertEqual(r.status_code, 502)
+        self.assertStatusCode(r, 502)
         self.assertNotIn('script.js', r.text)
 
     def test_file_scheme_can_be_enabled(self):
@@ -134,5 +134,5 @@ class AllowedSchemesTest(BaseRenderTest):
             url = splash.url('render.html')
             r = requests.get(url, params={'url': self.FILE_URL})
 
-        self.assertEqual(r.status_code, 200)
+        self.assertStatusCode(r, 200)
         self.assertIn('script.js', r.text)
