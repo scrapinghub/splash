@@ -70,13 +70,20 @@ IPv4 addresses. To change the port use ``--port`` option::
 
     python -m splash.server --port=5000
 
-
 Requirements
 ~~~~~~~~~~~~
 
 .. literalinclude:: ../requirements.txt
 
 .. _splash and docker:
+
+Splash Versions
+---------------
+
+``docker pull scrapinghub/splash`` will give you the latest stable Splash
+release. To obtain the latest development version use
+``docker pull scrapinghub/splash:master``. Specific Splash versions
+are also available, e.g. ``docker pull scrapinghub/splash:1.2.1``.
 
 Customizing Dockerized Splash
 -----------------------------
