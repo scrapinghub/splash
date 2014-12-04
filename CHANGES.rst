@@ -1,6 +1,21 @@
 Changes
 =======
 
+1.3 (2014-12-04)
+----------------
+
+This release introduces an experimental
+:ref:`scripting support <scripting-tutorial>`.
+
+Other changes:
+
+* manhole is disabled by default in Debian package;
+* more objects are tracked in /debug endpoint;
+* "history" in render.json now includes "queryString" keys; it makes the
+  output compatible with HAR entry format;
+* logging improvements;
+* improved timer cancellation.
+
 1.2.1 (2014-10-16)
 ------------------
 
