@@ -11,8 +11,10 @@ Splash Scripts Tutorial
 Intro
 -----
 
-Splash can execute custom rendering scripts written in Lua_ programming language.
-This allows to use Splash as a browser automation tool similar to PhantomJS_.
+Splash can execute custom rendering scripts written in Lua_
+programming language. This allows to use Splash as a browser automation
+tool similar to PhantomJS_.
+
 To execute a script and get the result back send it to :ref:`execute`
 endpoint in a :ref:`lua_source <arg-lua-source>` argument.
 
