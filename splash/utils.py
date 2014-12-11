@@ -9,6 +9,7 @@ import inspect
 import resource
 from collections import defaultdict
 import psutil
+from splash import defaults
 
 
 _REQUIRED = object()
@@ -79,3 +80,15 @@ def truncated(text, max_length=100, msg='...'):
         return text
     else:
         return text[:max_length] + msg
+
+
+def parse_viewport(size):
+    """
+    Takes size as in 'WidthXHeight' format and returns in (int, int) tuple.
+    """
+    return map(int, size.split('x'))
+
+
+def display_profile_to_dimension(profile):
+    p = profile.replace('-', '_').upper() + '_VIEWPORT'
+    return getattr(defaults, p, defaults.VIEWPORT)
