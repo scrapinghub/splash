@@ -48,6 +48,7 @@ setup_args = {
 
         'scripts/example.lua',
         'scripts/splash.lua',
+        'scripts/sandbox.lua',
     ]},
     'classifiers': [
         'Programming Language :: Python',
