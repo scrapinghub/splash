@@ -1,6 +1,11 @@
 Changes
 =======
 
+1.3.1 (2014-12-13)
+------------------
+
+This release fixes packaging issues with Splash 1.3.
+
 1.3 (2014-12-04)
 ----------------
 
