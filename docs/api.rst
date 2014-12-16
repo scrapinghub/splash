@@ -66,7 +66,6 @@ js : string : optional
 .. _arg-js-source:
 
 js_source : string : optional
-
     JavaScript code to be executed in page context.
     See :ref:`execute javascript`.
 
@@ -112,7 +111,6 @@ images : integer : optional
 .. _arg-headers:
 
 headers : JSON array or object : optional
-
     HTTP headers to set for the first outgoing request. This option is only
     supported for ``application/json`` POST requests. Value could be either a
     JSON array with ``(header_name, header_value)`` pairs or a JSON object
