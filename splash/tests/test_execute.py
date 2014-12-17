@@ -915,6 +915,38 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("No Such Resource", data["html_1"])
         self.assertIn("http://non-existing", data["html_2"])
 
+    def test_go_headers_cookie(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Cookie"] = "foo=bar; egg=spam"
+            }})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("get-cookie?key=egg")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("spam", resp.text)
+
+    def test_go_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Custom-Header"] = "Header Value",
+            }})
+            local res1 = splash:html()
+
+            -- second request is without any custom headers
+            assert(splash:go(splash.args.url))
+            local res2 = splash:html()
+
+            return {res1=res1, res2=res2}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn("'Header Value'", data["res1"])
+        self.assertNotIn("'Header Value'", data["res2"])
+
     def test_set_user_agent(self):
         resp = self.request_lua("""
         function main(splash)

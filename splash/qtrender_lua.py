@@ -231,7 +231,7 @@ class Splash(object):
         ))
 
     @command(async=True)
-    def go(self, url, baseurl=None):
+    def go(self, url, baseurl=None, headers=None):
         cmd_id = next(self._command_ids)
 
         def success():
@@ -249,7 +249,8 @@ class Splash(object):
             url=url,
             baseurl=baseurl,
             callback=success,
-            errback=error
+            errback=error,
+            headers=self.lua2python(headers, max_depth=2),
         ))
 
     @command()
@@ -362,8 +363,10 @@ class Splash(object):
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
 
-    def lua2python(self, obj):
-        return lua2python(self.lua, obj, binary=True, strict=True)
+    def lua2python(self, obj, **kwargs):
+        kwargs.setdefault("binary", True)
+        kwargs.setdefault("strict", True)
+        return lua2python(self.lua, obj, **kwargs)
 
     def _create_runtime(self):
         """

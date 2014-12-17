@@ -156,7 +156,8 @@ class BrowserTab(object):
         """ Current URL """
         return unicode(self.web_page.mainFrame().url().toString())
 
-    def go(self, url, callback, errback, baseurl=None, http_method='GET', body=None):
+    def go(self, url, callback, errback, baseurl=None, http_method='GET',
+           body=None, headers=None):
         """
         Go to an URL. This is similar to entering an URL in
         address tab and pressing Enter.
@@ -170,7 +171,7 @@ class BrowserTab(object):
             if http_method != 'GET':
                 raise NotImplementedError()
 
-            request = self._create_request(url)
+            request = self._create_request(url, headers=headers)
             request.setOriginatingObject(self.web_page.mainFrame())
 
             # TODO / FIXME: add support for multiple replies
@@ -198,7 +199,7 @@ class BrowserTab(object):
                 errback=errback,
             )
             self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
-            self._load_url_to_mainframe(url, http_method, body)
+            self._load_url_to_mainframe(url, http_method, body, headers=headers)
 
     def stop_loading(self):
         """
@@ -258,18 +259,19 @@ class BrowserTab(object):
         self._reply.close()
         self._reply.deleteLater()
 
-    def _load_url_to_mainframe(self, url, http_method, body=None):
-        request = self._create_request(url)
+    def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
+        request = self._create_request(url, headers=headers)
         meth = OPERATION_QT_CONSTANTS[http_method]
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
         else:
             self.web_page.mainFrame().load(request, meth, body)
 
-    def _create_request(self, url):
+    def _create_request(self, url, headers=None):
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
-        self._set_request_headers(request, self._default_headers)
+        if headers is not None:
+            self._set_request_headers(request, headers)
         return request
 
     @skip_if_closing

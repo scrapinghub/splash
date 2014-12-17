@@ -92,7 +92,6 @@ class DefaultRenderScript(RenderScript):
         if images is not None:
             self.tab.set_images_enabled(images)
 
-        self.tab.set_default_headers(headers)
         if self.viewport != 'full':
             self.tab.set_viewport(self.viewport)
 
@@ -103,6 +102,7 @@ class DefaultRenderScript(RenderScript):
             baseurl=baseurl,
             http_method=http_method,
             body=body,
+            headers=headers,
         )
 
     @abc.abstractmethod

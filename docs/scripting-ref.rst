@@ -20,7 +20,7 @@ splash:go
 Go to an URL. This is similar to entering an URL in a browser
 address bar, pressing Enter and waiting until page loads.
 
-**Signature:** ``ok, reason = splash.go{url, baseurl=nil}``
+**Signature:** ``ok, reason = splash.go{url, baseurl=nil, headers=nil}``
 
 **Parameters:**
 
@@ -29,7 +29,9 @@ address bar, pressing Enter and waiting until page loads.
   the page is still loaded from ``url``, but it is rendered as if it was
   loaded from ``baseurl``: relative resource paths will be relative
   to ``baseurl``, and the browser will think ``baseurl`` is in address bar.
-
+* headers - a Lua table with HTTP headers to add/replace. These headers are
+  only sent for the initial request, not for requests to related resources
+  (this doesn't apply to user-agent and cookie headers though).
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
@@ -69,6 +71,16 @@ but it doesn't follow HTML ``<meta http-equiv="refresh" ...>`` redirects or
 redirects initiated by JavaScript code. To give the webpage time to follow
 those redirects use :ref:`splash-wait`.
 
+Custom headers example:
+
+.. code-block:: lua
+
+    local ok, reason = splash:go{"http://example.com", headers={
+        ["Custom-Header"] = "Header Value",
+    }})
+
+To set User-Agent header it is recommended to use
+:ref:`splash:set_user_agent <splash-set-user-agent>` method.
 
 .. _splash-wait:
 
@@ -572,7 +584,7 @@ Example:
 splash:set_user_agent
 ---------------------
 
-Set the User-Agent header for all future requests.
+Overwrite the User-Agent header for all future requests.
 
 **Signature:** ``splash:set_user_agent(value)``
 

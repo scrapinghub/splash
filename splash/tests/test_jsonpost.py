@@ -150,3 +150,21 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         self.assertStatusCode(r, 200)
         self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
+    def test_cookie(self):
+        r = self.request({
+            "url": self.mockurl("get-cookie?key=foo"),
+            "headers": {'Cookie': 'foo=bar'},
+        })
+        self.assertStatusCode(r, 200)
+        self.assertIn("bar", r.text)
+
+    def test_cookie_after_redirect(self):
+        headers = {'Cookie': 'foo=bar'}
+        query = urllib.urlencode({"url": self.mockurl("get-cookie?key=foo")})
+        r = self.request({
+            "url": self.mockurl("jsredirect-to?%s" % query),
+            "headers": headers,
+            "wait": 0.1,
+        })
+        self.assertStatusCode(r, 200)
+        self.assertIn("bar", r.text)
