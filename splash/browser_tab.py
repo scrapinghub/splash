@@ -14,6 +14,7 @@ from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
+from splash.utils import parse_viewport
 from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py, WrappedSignal
 from splash.har.utils import without_private
 
@@ -67,6 +68,8 @@ class BrowserTab(object):
         self._setup_webpage_events()
 
         self.web_view = QWebView()
+        geometry = render_options.get_geometry()
+        self.web_view.setGeometry(0, 0, *parse_viewport(geometry))
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
 
