@@ -295,7 +295,7 @@ class Splash(object):
     @command()
     def set_user_agent(self, value):
         if not isinstance(value, basestring):
-            raise ScriptError("splash:set_result_content_type() argument must be a string")
+            raise ScriptError("splash:set_user_agent() argument must be a string")
         self.tab.set_user_agent(value)
 
     @command()
