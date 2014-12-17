@@ -90,9 +90,10 @@ class SplashServer(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.print_output()
         self.proc.kill()
         self.proc.wait()
-        time.sleep(0.2)
+        self.print_output()
         shutil.rmtree(self.tempdir)
 
     def url(self, path):
@@ -128,9 +129,10 @@ class MockServer(object):
         self.print_output()
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.print_output()
         self.proc.kill()
         self.proc.wait()
-        time.sleep(0.2)
+        self.print_output()
 
     def url(self, path, gzip=True, host='localhost'):
         gzip_path = '' if not gzip else '/gzip'
