@@ -178,7 +178,6 @@ class GetCookie(Resource):
     """ Return a cookie with key=key """
     isLeaf = False
     def render_GET(self, request):
-        print(request.getAllHeaders())
         value = request.getCookie(getarg(request, "key")) or ""
         return value
 
@@ -498,6 +497,20 @@ class HttpRedirectResource(Resource):
         return NOT_DONE_YET
 
 
+class JsRedirectTo(Resource):
+    """ Do a JS redirect to an URL passed in "url" GET argument. """
+    isLeaf = True
+
+    def render_GET(self, request):
+        next_url = urllib.unquote(getarg(request, "url"))
+        return """
+        <html><body>
+        Redirecting now..
+        <script> window.location = '%s'; </script>
+        </body></html>
+        """ % next_url
+
+
 class CP1251Resource(Resource):
     def render_GET(self, request):
         request.setHeader("Content-Type", "text/html; charset=windows-1251")
@@ -581,6 +594,7 @@ class Root(Resource):
         self.putChild("get-cookie", GetCookie()),
 
         self.putChild("jsredirect", JsRedirect())
+        self.putChild("jsredirect-to", JsRedirectTo())
         self.putChild("jsredirect-slowimage", JsRedirectSlowImage())
         self.putChild("jsredirect-onload", JsRedirectOnload())
         self.putChild("jsredirect-timer", JsRedirectTimer())

@@ -145,6 +145,10 @@ class BrowserTab(object):
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
         return w, h
 
+    def set_user_agent(self, value):
+        """ Set User-Agent header for future requests """
+        self.web_page.custom_user_agent = value
+
     @property
     def url(self):
         """ Current URL """
@@ -300,7 +304,7 @@ class BrowserTab(object):
         for name, value in headers or []:
             request.setRawHeader(name, value)
             if name.lower() == 'user-agent':
-                self.web_page.custom_user_agent = value
+                self.set_user_agent(value)
 
     def wait(self, time_ms, callback, onredirect=None, onerror=None):
         """

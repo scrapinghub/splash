@@ -915,6 +915,33 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("No Such Resource", data["html_1"])
         self.assertIn("http://non-existing", data["html_2"])
 
+    def test_set_user_agent(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            local res1 = splash:html()
+
+            splash:set_user_agent("Foozilla")
+            splash:go(splash.args.url)
+            local res2 = splash:html()
+
+            splash:go(splash.args.url)
+            local res3 = splash:html()
+
+            return {res1=res1, res2=res2, res3=res3}
+        end
+        """, {"url": self.mockurl("getrequest")})
+
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn("Mozilla", data["res1"])
+        self.assertNotIn("Mozilla", data["res2"])
+        self.assertNotIn("Mozilla", data["res3"])
+
+        self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
+        self.assertIn("'user-agent': 'Foozilla'", data["res2"])
+        self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+
 
 class DisableScriptsTest(BaseLuaRenderTest):
 

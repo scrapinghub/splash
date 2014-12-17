@@ -567,6 +567,19 @@ Example:
          return {png=splash:png()}
      end
 
+.. _splash-set-user-agent:
+
+splash:set_user_agent
+---------------------
+
+Set the User-Agent header for all future requests.
+
+**Signature:** ``splash:set_user_agent(value)``
+
+**Parameters:**
+
+* value - string, a value of User-Agent HTTP header.
+
 .. _splash-args:
 
 splash.args

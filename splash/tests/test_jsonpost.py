@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import json
+import urllib
 import requests
 from . import test_render, test_har, test_request_filters, test_runjs
 
@@ -137,3 +138,15 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         # this is not a proxy request - don't remove headers
         self.assertIn("'user-agent': 'Mozilla123'", r.text)
         self.assertIn("mozilla123", r.text.lower())
+
+    def test_user_agent_after_redirect(self):
+        headers = {'User-Agent': 'Mozilla123'}
+        query = urllib.urlencode({"url": self.mockurl("getrequest")})
+        r = self.request({
+            "url": self.mockurl("jsredirect-to?%s" % query),
+            "headers": headers,
+            "wait": 0.1,
+        })
+        self.assertStatusCode(r, 200)
+        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+

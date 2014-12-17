@@ -293,6 +293,12 @@ class Splash(object):
         self._result_content_type = content_type
 
     @command()
+    def set_user_agent(self, value):
+        if not isinstance(value, basestring):
+            raise ScriptError("splash:set_result_content_type() argument must be a string")
+        self.tab.set_user_agent(value)
+
+    @command()
     def set_viewport(self, size):
         if size is None:
             return
