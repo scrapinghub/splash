@@ -37,6 +37,8 @@ class BrowserTab(object):
     It is created by splash.pool.Pool. Pool attaches to tab's deferred
     and waits until either a callback or an errback is called, then destroys
     a BrowserTab.
+
+    XXX: currently cookies are not shared between "browser tabs".
     """
 
     def __init__(self, network_manager, splash_proxy_factory, verbosity, render_options):
