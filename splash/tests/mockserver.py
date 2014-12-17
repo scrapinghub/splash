@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import os
 import optparse
+import urllib
 import base64
 import random
 from twisted.web.server import Site, NOT_DONE_YET
@@ -150,8 +151,40 @@ class BaseUrl(Resource):
             return 'document.getElementById("p1").innerHTML="After";'
 
 
-class Delay(Resource):
+class SetCookie(Resource):
+    """
+    Set a cookie with key=key and value=value.
+    If "next" GET argument is passed, do a JS redirect to this "next" URL.
+    """
+    isLeaf = True
 
+    def render_GET(self, request):
+        key = getarg(request, "key")
+        value = getarg(request, "value")
+        next_url = urllib.unquote(getarg(request, "next", ""))
+        request.addCookie(key, value)
+        if next_url:
+            return """
+            <html><body>
+            Redirecting now..
+            <script> window.location = '%s'; </script>
+            </body></html>
+            """ % next_url
+        else:
+            return "ok"
+
+
+class GetCookie(Resource):
+    """ Return a cookie with key=key """
+    isLeaf = False
+    def render_GET(self, request):
+        print(request.getAllHeaders())
+        value = request.getCookie(getarg(request, "key")) or ""
+        return value
+
+
+class Delay(Resource):
+    """ Accept the connection; write the response after ``n`` seconds. """
     isLeaf = True
 
     def render_GET(self, request):
@@ -283,6 +316,7 @@ window.onload = function(){
 
 
 class PostResource(Resource):
+    """ Return a HTML file with all HTTP headers and the POST data """
 
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
@@ -305,6 +339,7 @@ class PostResource(Resource):
 
 
 class GetResource(Resource):
+    """ Return a HTML file with all HTTP headers and all GET arguments """
 
     def render_GET(self, request):
         code = request.args.get('code', [200])[0]
@@ -542,6 +577,8 @@ class Root(Resource):
         self.putChild("cp1251", CP1251Resource())
         self.putChild("cp1251-invalid", InvalidContentTypeResource())
         self.putChild("bad-related", BadRelatedResource())
+        self.putChild("set-cookie", SetCookie()),
+        self.putChild("get-cookie", GetCookie()),
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-slowimage", JsRedirectSlowImage())

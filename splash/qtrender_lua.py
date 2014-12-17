@@ -482,4 +482,3 @@ class LuaRender(RenderScript):
     def _print_instructions_used(self):
         if self.sandboxed:
             self.log("[lua] instructions used: %d" % self.splash.instruction_count())
-

@@ -175,7 +175,7 @@ render.har
 
 Return information about Splash interaction with a website in HAR_ format.
 It includes information about requests made, responses received, timings,
-headers, cookies, etc.
+headers, etc.
 
 You can use online `HAR viewer`_ to visualize information returned from
 this endpoint; it will be very similar to "Network" tabs in Firefox and Chrome
@@ -242,7 +242,7 @@ history : integer : optional
     frame. Possible values are ``1`` (include) and ``0`` (exclude).
     Default is 0.
 
-    Use it to get HTTP status codes, cookies and headers.
+    Use it to get HTTP status codes and headers.
     Only information about "main" requests/responses is returned
     (i.e. information about related resources like images and AJAX queries
     is not returned). To get information about all requests and responses

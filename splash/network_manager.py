@@ -91,6 +91,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         start_time = datetime.utcnow()
 
         request = self._wrapRequest(request)
+        self._handle_request_cookies(request)
+
         har_entry = self._harEntry(request, create=True)
         if har_entry is not None:
             if outgoingData is None:
@@ -172,6 +174,17 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._next_id += 1
         return request
 
+    def _handle_request_cookies(self, request):
+        self.setCookieJar(None)
+        cookiejar = self._getWebPageAttribute(request, "cookiejar")
+        if cookiejar is not None:
+            cookiejar.process_request(request)
+
+    def _handle_reply_cookies(self, reply):
+        cookiejar = self._getWebPageAttribute(reply.request(), "cookiejar")
+        if cookiejar is not None:
+            cookiejar.process_reply(reply)
+
     def _getRequestId(self, request=None):
         if request is None:
             request = self.sender().request()
@@ -227,6 +240,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleMetaData(self):
         reply = self.sender()
+        self._handle_reply_cookies(reply)
+
         har_entry = self._harEntry()
         if har_entry is not None:
             if har_entry["_tmp"]["state"] == self.REQUEST_FINISHED:

@@ -233,6 +233,23 @@ class RenderHtmlTest(Base.RenderTest):
     def test_503_get(self):
         self.assertResponse200Get(503)
 
+    def test_cookies_perserved_after_js_redirect(self):
+        get_cookie_url = self.mockurl("get-cookie?key=foo")
+        q = urllib.urlencode({"key": "foo", "value": "bar", "next": get_cookie_url})
+        url = self.mockurl("set-cookie?%s" % q)
+        resp = self.request({"url": url, "wait": 0.2})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("bar", resp.text)
+
+    def test_cookies_are_not_shared(self):
+        resp = self.request({"url": self.mockurl("set-cookie?key=egg&value=spam")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("ok", resp.text)
+
+        resp2 = self.request({"url": self.mockurl("get-cookie?key=egg")})
+        self.assertStatusCode(resp2, 200)
+        self.assertNotIn("spam", resp2.text)
+
     def assertResponse200Get(self, code):
         url = self.mockurl('getrequest') + '?code=%d' % code
         r = self.request({'url': url})
