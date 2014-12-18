@@ -993,6 +993,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertNotIn("'Value 3'", data["res3"])
 
 
+class SetUserAgentTest(BaseLuaRenderTest):
     def test_set_user_agent(self):
         resp = self.request_lua("""
         function main(splash)
