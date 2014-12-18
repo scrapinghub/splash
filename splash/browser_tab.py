@@ -159,6 +159,10 @@ class BrowserTab(object):
         """ Return a list of all cookies in the current cookiejar """
         return cookies2har(self.web_page.cookiejar.allCookies())
 
+    def clear_cookies(self):
+        """ Delete all cookies """
+        self.web_page.cookiejar.clear()
+
     @property
     def url(self):
         """ Current URL """

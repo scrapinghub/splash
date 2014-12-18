@@ -26,6 +26,9 @@ class SplashCookieJar(QNetworkCookieJar):
             return
         self.setCookiesFromUrl(cookies, reply.url())
 
+    def clear(self):
+        self.setAllCookies([])
+
 
 def _should_send_cookies(request):
     """ Return True if cookies should be sent for a request """

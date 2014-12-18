@@ -1023,18 +1023,25 @@ class SetUserAgentTest(BaseLuaRenderTest):
 
 
 class CookiesTest(BaseLuaRenderTest):
-    def test_get_cookies(self):
+    def test_cookies(self):
         resp = self.request_lua("""
+
         function main(splash)
-            local cookies_initial = splash:get_cookies()
+            local function cookies_after(url)
+                splash:go(url)
+                return splash:get_cookies()
+            end
 
-            splash:go(splash.args.url_1)
-            local cookies_1 = splash:get_cookies()
+            local initial = splash:get_cookies()
+            local c1 = cookies_after(splash.args.url_1)
+            local c2 = cookies_after(splash.args.url_2)
 
-            splash:go(splash.args.url_2)
-            local cookies_2 = splash:get_cookies()
+            splash:clear_cookies()
+            local c3 = splash:get_cookies()
 
-            return {initial=cookies_initial, c1=cookies_1, c2=cookies_2}
+            local c4 = cookies_after(splash.args.url_2)
+
+            return {initial=initial, c1=c1, c2=c2, c3=c3, c4=c4}
         end
         """, {
             "url_1": self.mockurl("set-cookie?key=foo&value=bar"),
@@ -1043,8 +1050,6 @@ class CookiesTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         data = resp.json()
-
-        self.assertEqual(data["initial"], [])
 
         cookie1 = {
             'name': 'foo',
@@ -1062,8 +1067,12 @@ class CookiesTest(BaseLuaRenderTest):
             'httpOnly': False,
             'secure': False
         }
+
+        self.assertEqual(data["initial"], [])
         self.assertEqual(data["c1"], [cookie1])
         self.assertEqual(data["c2"], [cookie1, cookie2])
+        self.assertEqual(data["c3"], [])
+        self.assertEqual(data["c4"], [cookie2])
 
 
 class DisableScriptsTest(BaseLuaRenderTest):

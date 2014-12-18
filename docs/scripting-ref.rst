@@ -437,13 +437,22 @@ Example result::
             "name": "TestCookie",
             "value": "Cookie Value",
             "path": "/",
-            "domain": "www.janodvarko.cz",
-            "expires": "2009-07-24T19:20:30.123+02:00",
+            "domain": "www.example.com",
+            "expires": "2016-07-24T19:20:30.123+02:00",
             "httpOnly": false,
             "secure": false,
         }
     ]
 
+
+.. _splash-clear-cookies:
+
+splash:clear_cookies
+--------------------
+
+**Signature:** ``splash:clear_cookies()``
+
+Clear all cookies.
 
 .. _splash-har:
 
