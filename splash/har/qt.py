@@ -5,7 +5,7 @@ See http://www.softwareishard.com/blog/har-12-spec/.
 """
 from __future__ import absolute_import
 
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QVariant
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
 
 
@@ -53,29 +53,36 @@ def headers_size(request_or_reply):
 def request_cookies2har(request):
     """ Return HAR-encoded cookies of QNetworkRequest """
     cookies = request.header(QNetworkRequest.CookieHeader)
-    return _cookies2har(cookies)
+    return cookies2har(cookies)
 
 
 def reply_cookies2har(reply):
     """ Return HAR-encoded cookies of QNetworkReply """
     cookies = reply.header(QNetworkRequest.SetCookieHeader)
-    return _cookies2har(cookies)
+    return cookies2har(cookies)
 
 
-def _cookies2har(cookies):
-    cookies = cookies.toPyObject() or []
-    return [
-        {
-            "name": bytes(cookie.name()),
-            "value": bytes(cookie.value()),
-            "path": unicode(cookie.path()),
-            "domain": unicode(cookie.domain()),
-            "expires": unicode(cookie.expirationDate().toString(Qt.ISODate)),
-            "httpOnly": cookie.isHttpOnly(),
-            "secure": cookie.isSecure(),
-        }
-        for cookie in cookies
-    ]
+def cookies2har(cookies):
+    """ Convert QList<QNetworkCookie> to HAR format """
+    if isinstance(cookies, QVariant):
+        cookies = cookies.toPyObject()
+    return [cookie2har(cookie) for cookie in (cookies or [])]
+
+
+def cookie2har(cookie):
+    """ Convert QNetworkCookie to a Python dict (in HAR format) """
+    cookie = {
+        "name": bytes(cookie.name()),
+        "value": bytes(cookie.value()),
+        "path": unicode(cookie.path()),
+        "domain": unicode(cookie.domain()),
+        "expires": unicode(cookie.expirationDate().toString(Qt.ISODate)),
+        "httpOnly": cookie.isHttpOnly(),
+        "secure": cookie.isSecure(),
+    }
+    if not cookie["expires"]:
+        del cookie["expires"]
+    return cookie
 
 
 def querystring2har(url):

@@ -15,6 +15,7 @@ from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
 from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py, WrappedSignal
+from splash.har.qt import cookies2har
 from splash.har.utils import without_private
 
 from .qwebpage import SplashQWebPage
@@ -153,6 +154,10 @@ class BrowserTab(object):
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
         self.web_page.custom_user_agent = value
+
+    def get_cookies(self):
+        """ Return a list of all cookies in the current cookiejar """
+        return cookies2har(self.web_page.cookiejar.allCookies())
 
     @property
     def url(self):

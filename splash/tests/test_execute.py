@@ -1022,6 +1022,50 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertIn("'user-agent': 'Foozilla'", data["res3"])
 
 
+class CookiesTest(BaseLuaRenderTest):
+    def test_get_cookies(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local cookies_initial = splash:get_cookies()
+
+            splash:go(splash.args.url_1)
+            local cookies_1 = splash:get_cookies()
+
+            splash:go(splash.args.url_2)
+            local cookies_2 = splash:get_cookies()
+
+            return {initial=cookies_initial, c1=cookies_1, c2=cookies_2}
+        end
+        """, {
+            "url_1": self.mockurl("set-cookie?key=foo&value=bar"),
+            "url_2": self.mockurl("set-cookie?key=egg&value=spam"),
+        })
+
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+
+        self.assertEqual(data["initial"], [])
+
+        cookie1 = {
+            'name': 'foo',
+            'value': 'bar',
+            'domain': 'localhost',
+            'path': '/',
+            'httpOnly': False,
+            'secure': False
+        }
+        cookie2 = {
+            'name': 'egg',
+            'value': 'spam',
+            'domain': 'localhost',
+            'path': '/',
+            'httpOnly': False,
+            'secure': False
+        }
+        self.assertEqual(data["c1"], [cookie1])
+        self.assertEqual(data["c2"], [cookie1, cookie2])
+
+
 class DisableScriptsTest(BaseLuaRenderTest):
 
     def test_nolua(self):

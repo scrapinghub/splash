@@ -5,7 +5,7 @@ from PyQt4.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
 
 class SplashCookieJar(QNetworkCookieJar):
 
-    def process_request(self, request):
+    def update_cookie_header(self, request):
         """ Use this cookiejar to set Cookie: request header """
         if not _should_send_cookies(request):
             return
@@ -16,7 +16,7 @@ class SplashCookieJar(QNetworkCookieJar):
 
         request.setRawHeader(b"Cookie", _cookies_to_raw(cookies))
 
-    def process_reply(self, reply):
+    def fill_from_reply(self, reply):
         """ Add cookies from the reply to the cookiejar """
         # based on QNetworkReplyImplPrivate::metaDataChanged C++ code
         if not _should_save_cookies(reply.request()):
@@ -54,3 +54,5 @@ def _cookies_to_raw(cookies):
         bytes(cookie.toRawForm(QNetworkCookie.NameAndValueOnly))
         for cookie in cookies
     )
+
+

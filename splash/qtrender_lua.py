@@ -291,6 +291,10 @@ class Splash(object):
         return _WrappedJavascriptFunction(self, func)
 
     @command()
+    def get_cookies(self):
+        return self.tab.get_cookies()
+
+    @command()
     def set_result_content_type(self, content_type):
         if not isinstance(content_type, basestring):
             raise ScriptError("splash:set_result_content_type() argument must be a string")

@@ -418,6 +418,33 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
+.. _splash-get-cookies:
+
+splash:get_cookies
+------------------
+
+**Signature:** ``cookies = splash:get_cookies()``
+
+**Returns:** CookieJar contents - an array with all cookies available
+for the script. The result is returned in `HAR cookies`_ format.
+
+.. _HAR cookies: http://www.softwareishard.com/blog/har-12-spec/#cookies
+
+Example result::
+
+    [
+        {
+            "name": "TestCookie",
+            "value": "Cookie Value",
+            "path": "/",
+            "domain": "www.janodvarko.cz",
+            "expires": "2009-07-24T19:20:30.123+02:00",
+            "httpOnly": false,
+            "secure": false,
+        }
+    ]
+
+
 .. _splash-har:
 
 splash:har

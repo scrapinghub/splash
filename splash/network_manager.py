@@ -90,8 +90,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         """
         start_time = datetime.utcnow()
 
-        self._handle_custom_headers(request)
         request = self._wrapRequest(request)
+        self._handle_custom_headers(request)
         self._handle_request_cookies(request)
 
         har_entry = self._harEntry(request, create=True)
@@ -197,12 +197,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.setCookieJar(None)
         cookiejar = self._getWebPageAttribute(request, "cookiejar")
         if cookiejar is not None:
-            cookiejar.process_request(request)
+            cookiejar.update_cookie_header(request)
 
     def _handle_reply_cookies(self, reply):
         cookiejar = self._getWebPageAttribute(reply.request(), "cookiejar")
         if cookiejar is not None:
-            cookiejar.process_reply(reply)
+            cookiejar.fill_from_reply(reply)
 
     def _getRequestId(self, request=None):
         if request is None:
