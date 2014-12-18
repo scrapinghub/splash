@@ -418,6 +418,61 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
+.. _splash-har:
+
+splash:har
+----------
+
+**Signature:** ``har = splash:har()``
+
+**Returns:** information about pages loaded, events happened,
+network requests sent and responses received in HAR_ format.
+
+If your script returns the result of ``splash:har()`` in a top-level
+``"har"`` key then Splash UI will give you a nice diagram with network
+information (similar to "Network" tabs in Firefox or Chrome developer tools):
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         return {har=splash:har()}
+     end
+
+.. _HAR: http://www.softwareishard.com/blog/har-12-spec/
+
+
+.. _splash-history:
+
+splash:history
+--------------
+
+**Signature:** ``entries = splash:history()``
+
+**Returns:** information about requests/responses for the pages loaded, in
+`HAR entries`_ format.
+
+``splash:history`` doesn't return information about related resources
+like images, scripts, stylesheets or AJAX requests. If you need this
+information use :ref:`splash-har`.
+
+Let's get a JSON array with HTTP headers of the response we're displaying:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         local entries = splash:history()
+         -- #entries means "entries length"; arrays in Lua start from 1
+         local last_entry = entries[#entries]
+         return {
+            headers = last_entry.response.headers
+         }
+     end
+
+.. _HAR entries: http://www.softwareishard.com/blog/har-12-spec/#entries
+
+
 .. _splash-get-cookies:
 
 splash:get_cookies
@@ -478,60 +533,6 @@ Delete matching cookies.
 
 This function does nothing when both *name* and *url* are nil.
 To remove all cookies use :ref:`splash-clear-cookies` method.
-
-.. _splash-har:
-
-splash:har
-----------
-
-**Signature:** ``har = splash:har()``
-
-**Returns:** information about pages loaded, events happened,
-network requests sent and responses received in HAR_ format.
-
-If your script returns the result of ``splash:har()`` in a top-level
-``"har"`` key then Splash UI will give you a nice diagram with network
-information (similar to "Network" tabs in Firefox or Chrome developer tools):
-
-.. code-block:: lua
-
-     function main(splash)
-         assert(splash:go(splash.args.url))
-         return {har=splash:har()}
-     end
-
-.. _HAR: http://www.softwareishard.com/blog/har-12-spec/
-
-
-.. _splash-history:
-
-splash:history
---------------
-
-**Signature:** ``entries = splash:history()``
-
-**Returns:** information about requests/responses for the pages loaded, in
-`HAR entries`_ format.
-
-``splash:history`` doesn't return information about related resources
-like images, scripts, stylesheets or AJAX requests. If you need this
-information use :ref:`splash-har`.
-
-Let's get a JSON array with HTTP headers of the response we're displaying:
-
-.. code-block:: lua
-
-     function main(splash)
-         assert(splash:go(splash.args.url))
-         local entries = splash:history()
-         -- #entries means "entries length"; arrays in Lua start from 1
-         local last_entry = entries[#entries]
-         return {
-            headers = last_entry.response.headers
-         }
-     end
-
-.. _HAR entries: http://www.softwareishard.com/blog/har-12-spec/#entries
 
 
 .. _splash-set-result-content-type:
