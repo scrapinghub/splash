@@ -57,6 +57,48 @@ class SplashCookieJar(QNetworkCookieJar):
         self.setAllCookies([])
         return old_size
 
+    def init(self, cookies):
+        """
+        Replace current cookies with ``cookies``. The argument should
+        be a list of Python dicts with cookie data in HAR format.
+        """
+        print("init")
+        qt_cookies = [self.har_cookie2qt(c) for c in cookies]
+        self.setAllCookies(qt_cookies)
+
+    def add(self, cookie):
+        """
+        Add a cookie. Cookie should be a Python dict with cookie
+        data in HAR format.
+        """
+        cookies = list(self.allCookies())
+        cookies.append(self.har_cookie2qt(cookie))
+        self.setAllCookies(cookies)
+
+    @classmethod
+    def har_cookie2qt(cls, cookie):
+        qcookie = QNetworkCookie()
+        qcookie.setName(cookie["name"])
+        qcookie.setValue(cookie["value"])
+
+        if 'domain' in cookie:
+            qcookie.setDomain(cookie["domain"])
+
+        if 'httpOnly' in cookie:
+            qcookie.setHttpOnly(cookie["httpOnly"])
+
+        if 'secure' in cookie:
+            qcookie.setSecure(cookie["secure"])
+
+        if 'path' in cookie:
+            qcookie.setPath(cookie["path"])
+
+        if cookie.get('expires'):
+            expires = QDateTime.fromString(cookie["expires"], Qt.ISODate)
+            qcookie.setExpirationDate(expires)
+
+        return qcookie
+
 
 def _should_send_cookies(request):
     """ Return True if cookies should be sent for a request """

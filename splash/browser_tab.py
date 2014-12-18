@@ -159,6 +159,10 @@ class BrowserTab(object):
         """ Return a list of all cookies in the current cookiejar """
         return cookies2har(self.web_page.cookiejar.allCookies())
 
+    def init_cookies(self, cookies):
+        """ Replace all current cookies with ``cookies`` """
+        self.web_page.cookiejar.init(cookies)
+
     def clear_cookies(self):
         """ Remove all cookies. Return a number of cookies deleted. """
         return self.web_page.cookiejar.clear()
@@ -173,6 +177,9 @@ class BrowserTab(object):
         Return a number of cookies deleted.
         """
         return self.web_page.cookiejar.delete(name, url)
+
+    def add_cookie(self, cookie):
+        return self.web_page.cookiejar.add(cookie)
 
     @property
     def url(self):

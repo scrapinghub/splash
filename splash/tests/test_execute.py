@@ -1025,7 +1025,6 @@ class SetUserAgentTest(BaseLuaRenderTest):
 class CookiesTest(BaseLuaRenderTest):
     def test_cookies(self):
         resp = self.request_lua("""
-
         function main(splash)
             local function cookies_after(url)
                 splash:go(url)
@@ -1051,7 +1050,10 @@ class CookiesTest(BaseLuaRenderTest):
             splash:delete_cookies{url="http://localhost"}
             local c8 = splash:get_cookies()
 
-            return {c0=c0, c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8}
+            splash:init_cookies(c2)
+            local c9 = splash:get_cookies()
+
+            return {c0=c0, c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9}
         end
         """, {
             "url_1": self.mockurl("set-cookie?key=foo&value=bar"),
@@ -1087,6 +1089,64 @@ class CookiesTest(BaseLuaRenderTest):
         self.assertEqual(data["c6"], [cookie2])
         self.assertEqual(data["c7"], [cookie2])
         self.assertEqual(data["c8"], [])
+        self.assertEqual(data["c9"], data["c2"])
+
+    def test_add_cookie(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:add_cookie("baz", "egg")
+            splash:add_cookie{"spam", "egg", domain="example.com"}
+            splash:add_cookie{
+                name="foo",
+                value="bar",
+                path="/",
+                domain="localhost",
+                expires="2016-07-24T19:20:30+02:00",
+                secure=true,
+                httpOnly=true,
+            }
+            return splash:get_cookies()
+        end""")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [
+            {"name": "baz", "value": "egg", "path": "",
+             "domain": "", "httpOnly": False, "secure": False},
+            {"name": "spam", "value": "egg", "path": "",
+             "domain": "example.com", "httpOnly": False, "secure": False},
+            {"name": "foo", "value": "bar", "path": "/",
+             "domain": "localhost", "httpOnly": True, "secure": True,
+             "expires": "2016-07-24T19:20:30+02:00"},
+        ])
+
+    def test_init_cookies(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:init_cookies({
+                {name="baz", value="egg"},
+                {name="spam", value="egg", domain="example.com"},
+                {
+                    name="foo",
+                    value="bar",
+                    path="/",
+                    domain="localhost",
+                    expires="2016-07-24T19:20:30+02:00",
+                    secure=true,
+                    httpOnly=true,
+                }
+            })
+            return splash:get_cookies()
+        end""")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [
+            {"name": "baz", "value": "egg", "path": "",
+             "domain": "", "httpOnly": False, "secure": False},
+            {"name": "spam", "value": "egg", "path": "",
+             "domain": "example.com", "httpOnly": False, "secure": False},
+            {"name": "foo", "value": "bar", "path": "/",
+             "domain": "localhost", "httpOnly": True, "secure": True,
+             "expires": "2016-07-24T19:20:30+02:00"},
+        ])
+
 
 
 class DisableScriptsTest(BaseLuaRenderTest):

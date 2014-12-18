@@ -493,11 +493,74 @@ Example result::
             "value": "Cookie Value",
             "path": "/",
             "domain": "www.example.com",
-            "expires": "2016-07-24T19:20:30.123+02:00",
+            "expires": "2016-07-24T19:20:30+02:00",
             "httpOnly": false,
             "secure": false,
         }
     ]
+
+
+.. _splash-add-cookie:
+
+splash:add_cookie
+-----------------
+
+Add a cookie.
+
+**Signature:** ``cookies = splash:add_cookie{name, value, path=nil, domain=nil, expires=nil, httpOnly=nil, secure=nil}``
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash:add_cookie{"sessionid", "237465ghgfsd", "/", domain="http://example.com"}
+         splash:go("http://example.com/")
+         return splash:html()
+     end
+
+.. _splash-init-cookies:
+
+splash:init_cookies
+-------------------
+
+Replace all current cookies with the passed ``cookies``.
+
+**Signature:** ``splash:init_cookies(cookies)``
+
+**Parameters:**
+
+* cookies - a Lua table with all cookies to set, in the same format as
+:ref:`slash-get-cookies` returns.
+
+Example 1 - save and restore cookies:
+
+.. code-block:: lua
+
+     local cookies = splash:get_cookies()
+     -- ... do something ...
+     splash:init_cookies(cookies)  -- restore cookies
+
+Example 2 - initialize cookies manually:
+
+.. code-block:: lua
+
+     splash:init_cookies({
+         {name="baz", value="egg"},
+         {name="spam", value="egg", domain="example.com"},
+         {
+             name="foo",
+             value="bar",
+             path="/",
+             domain="localhost",
+             expires="2016-07-24T19:20:30+02:00",
+             secure=true,
+             httpOnly=true,
+         }
+     })
+
+     -- do something
+     assert(splash:go("http://example.com"))
 
 
 .. _splash-clear-cookies:

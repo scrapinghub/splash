@@ -253,7 +253,7 @@ class Splash(object):
             baseurl=baseurl,
             callback=success,
             errback=error,
-            headers=self.lua2python(headers, max_depth=2),
+            headers=self.lua2python(headers, max_depth=3),
         ))
 
     @command()
@@ -298,9 +298,33 @@ class Splash(object):
     def clear_cookies(self):
         return self.tab.clear_cookies()
 
+    @command(table_argument=True)
+    def init_cookies(self, cookies):
+        cookies = self.lua2python(cookies, max_depth=3)
+        if isinstance(cookies, dict):
+            keys = sorted(cookies.keys())
+            cookies = [cookies[k] for k in keys]
+        return self.tab.init_cookies(cookies)
+
     @command()
     def delete_cookies(self, name=None, url=None):
         return self.tab.delete_cookies(name=name, url=url)
+
+    @command()
+    def add_cookie(self, name, value, path=None, domain=None, expires=None,
+                   httpOnly=None, secure=None):
+        cookie = dict(name=name, value=value)
+        if path is not None:
+            cookie["path"] = path
+        if domain is not None:
+            cookie["domain"] = domain
+        if expires is not None:
+            cookie["expires"] = expires
+        if httpOnly is not None:
+            cookie["httpOnly"] = httpOnly
+        if secure is not None:
+            cookie["secure"] = secure
+        return self.tab.add_cookie(cookie)
 
     @command()
     def set_result_content_type(self, content_type):
@@ -316,7 +340,7 @@ class Splash(object):
 
     @command(table_argument=True)
     def set_custom_headers(self, headers):
-        self.tab.set_custom_headers(self.lua2python(headers, max_depth=2))
+        self.tab.set_custom_headers(self.lua2python(headers, max_depth=3))
 
     @command()
     def set_viewport(self, size):
