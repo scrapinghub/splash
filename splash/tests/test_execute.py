@@ -868,6 +868,14 @@ class GoTest(BaseLuaRenderTest):
     def test_go_503(self):
         self.assertGoStatusCodeError(503)
 
+    def test_nourl(self):
+        resp = self.request_lua("function main(splash) splash:go() end")
+        self.assertStatusCode(resp, 400)
+
+    def test_nourl_args(self):
+        resp = self.request_lua("function main(splash) splash:go(splash.args.url) end")
+        self.assertStatusCode(resp, 400)
+
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_go_error(self):
         data = self.go_status("non-existing")

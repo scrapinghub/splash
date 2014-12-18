@@ -232,6 +232,9 @@ class Splash(object):
 
     @command(async=True)
     def go(self, url, baseurl=None, headers=None):
+        if url is None:
+            raise ScriptError("'url' is required for splash:go")
+
         cmd_id = next(self._command_ids)
 
         def success():
