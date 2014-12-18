@@ -90,6 +90,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         """
         start_time = datetime.utcnow()
 
+        self._handle_custom_headers(request)
         request = self._wrapRequest(request)
         self._handle_request_cookies(request)
 
@@ -174,6 +175,24 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._next_id += 1
         return request
 
+    def _handle_custom_headers(self, request):
+        if self._getWebPageAttribute(request, "skip_custom_headers"):
+            # XXX: this hack assumes that new requests between
+            # BrowserTab._create_request and this function are not possible,
+            # i.e. we don't give control to the event loop in between.
+            # Unfortunately we can't store this flag on a request itself
+            # because a new QNetworkRequest instance is created by QWebKit.
+            self._setWebPageAttribute(request, "skip_custom_headers", False)
+            return
+
+        headers = self._getWebPageAttribute(request, "custom_headers")
+
+        if isinstance(headers, dict):
+            headers = headers.items()
+
+        for name, value in headers or []:
+            request.setRawHeader(name, value)
+
     def _handle_request_cookies(self, request):
         self.setCookieJar(None)
         cookiejar = self._getWebPageAttribute(request, "cookiejar")
@@ -207,6 +226,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         web_frame = request.originatingObject()
         if isinstance(web_frame, QWebFrame):
             return getattr(web_frame.page(), attribute, None)
+
+    def _setWebPageAttribute(self, request, attribute, value):
+        web_frame = request.originatingObject()
+        if isinstance(web_frame, QWebFrame):
+            return setattr(web_frame.page(), attribute, value)
 
     def _handleError(self, error_id):
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')

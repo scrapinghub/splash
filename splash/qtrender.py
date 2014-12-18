@@ -77,7 +77,6 @@ class DefaultRenderScript(RenderScript):
     This class is not used directly; its subclasses are used.
     Subclasses choose how to return the result (as html, json, png).
     """
-
     def start(self, url, baseurl=None, wait=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False,
                   headers=None, http_method='GET', body=None):

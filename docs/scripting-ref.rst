@@ -28,10 +28,8 @@ address bar, pressing Enter and waiting until page loads.
 * baseurl - base URL to use, optional. When ``baseurl`` argument is passed
   the page is still loaded from ``url``, but it is rendered as if it was
   loaded from ``baseurl``: relative resource paths will be relative
-  to ``baseurl``, and the browser will think ``baseurl`` is in address bar.
-* headers - a Lua table with HTTP headers to add/replace. These headers are
-  only sent for the initial request, not for requests to related resources
-  (this doesn't apply to user-agent and cookie headers though).
+  to ``baseurl``, and the browser will think ``baseurl`` is in address bar;
+* headers - a Lua table with HTTP headers to add/replace in the initial request.
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
@@ -71,6 +69,11 @@ but it doesn't follow HTML ``<meta http-equiv="refresh" ...>`` redirects or
 redirects initiated by JavaScript code. To give the webpage time to follow
 those redirects use :ref:`splash-wait`.
 
+``headers`` argument allows to add or replace default HTTP headers for the
+initial request. To set custom headers for all further requests
+(including requests to related resources) use
+:ref:`splash-set-custom-headers`.
+
 Custom headers example:
 
 .. code-block:: lua
@@ -79,8 +82,10 @@ Custom headers example:
         ["Custom-Header"] = "Header Value",
     }})
 
-To set User-Agent header it is recommended to use
-:ref:`splash:set_user_agent <splash-set-user-agent>` method.
+User-Agent header is special: once used, it is kept for further requests.
+This is an implementation detail and it could change in future releases;
+to set User-Agent header it is recommended to use
+:ref:`splash-set-user-agent` method.
 
 .. _splash-wait:
 
@@ -584,13 +589,45 @@ Example:
 splash:set_user_agent
 ---------------------
 
-Overwrite the User-Agent header for all future requests.
+Overwrite the User-Agent header for all further requests.
 
 **Signature:** ``splash:set_user_agent(value)``
 
 **Parameters:**
 
 * value - string, a value of User-Agent HTTP header.
+
+.. _splash-set-custom-headers:
+
+splash:set_custom_headers
+-------------------------
+
+Set custom HTTP headers to send with each request.
+
+**Signature:** ``splash:set_custom_headers(headers)``
+
+**Parameters:**
+
+* headers - a Lua table with HTTP headers.
+
+Headers are merged with WebKit default headers, overwriting WebKit values
+in case of conflicts.
+
+When ``headers`` argument of :ref:`splash-go` is used headers set with
+``splash:set_custom_headers`` are not applied to the initial request:
+values are not merged, ``headers`` argument of :ref:`splash-go` has
+higher priority.
+
+Example:
+
+.. code-block:: lua
+
+     splash:set_custom_headers({
+        ["Header-1"] = "Value 1",
+        ["Header-2"] = "Value 2",
+     })
+
+Named arguments are not supported for this function.
 
 .. _splash-args:
 

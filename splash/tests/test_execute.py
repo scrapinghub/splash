@@ -947,6 +947,44 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Header Value'", data["res1"])
         self.assertNotIn("'Header Value'", data["res2"])
 
+    def test_set_custom_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = "Value 2",
+            })
+
+            assert(splash:go(splash.args.url))
+            local res1 = splash:html()
+
+            assert(splash:go{splash.args.url, headers={
+                ["Header-3"] = "Value 3",
+            }})
+            local res2 = splash:html()
+
+            assert(splash:go(splash.args.url))
+            local res3 = splash:html()
+
+            return {res1=res1, res2=res2, res3=res3}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+
+        self.assertIn("'Value 1'", data["res1"])
+        self.assertIn("'Value 2'", data["res1"])
+        self.assertNotIn("'Value 3'", data["res1"])
+
+        self.assertNotIn("'Value 1'", data["res2"])
+        self.assertNotIn("'Value 2'", data["res2"])
+        self.assertIn("'Value 3'", data["res2"])
+
+        self.assertIn("'Value 1'", data["res3"])
+        self.assertIn("'Value 2'", data["res3"])
+        self.assertNotIn("'Value 3'", data["res3"])
+
+
     def test_set_user_agent(self):
         resp = self.request_lua("""
         function main(splash)

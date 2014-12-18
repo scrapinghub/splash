@@ -49,14 +49,14 @@ class _AsyncBrowserCommand(object):
         return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
 
 
-def command(async=False):
+def command(async=False, unpacks=True):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
+        if unpacks:
+            meth = lupa.unpacks_lua_table_method(meth)
         meth = exceptions_as_return_values(
             can_raise(
-                emits_lua_objects(
-                    lupa.unpacks_lua_table_method(meth)
-                )
+                emits_lua_objects(meth)
             )
         )
         meth._is_command = True
@@ -298,6 +298,10 @@ class Splash(object):
         if not isinstance(value, basestring):
             raise ScriptError("splash:set_user_agent() argument must be a string")
         self.tab.set_user_agent(value)
+
+    @command(unpacks=False)
+    def set_custom_headers(self, headers):
+        self.tab.set_custom_headers(self.lua2python(headers, max_depth=2))
 
     @command()
     def set_viewport(self, size):

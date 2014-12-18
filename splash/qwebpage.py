@@ -25,6 +25,8 @@ class SplashQWebPage(QWebPage):
     """
     error_info = None
     custom_user_agent = None
+    custom_headers = None
+    skip_custom_headers = False
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()

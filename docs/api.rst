@@ -111,10 +111,15 @@ images : integer : optional
 .. _arg-headers:
 
 headers : JSON array or object : optional
-    HTTP headers to set for the first outgoing request. This option is only
-    supported for ``application/json`` POST requests. Value could be either a
-    JSON array with ``(header_name, header_value)`` pairs or a JSON object
-    with header names as keys and header values as values.
+    HTTP headers to set for the first outgoing request.
+
+    This option is only supported for ``application/json`` POST requests.
+    Value could be either a JSON array with ``(header_name, header_value)``
+    pairs or a JSON object with header names as keys and header values
+    as values.
+
+    "User-Agent" header is special: is is used for all outgoing requests,
+    unlike other headers.
 
 
 Examples

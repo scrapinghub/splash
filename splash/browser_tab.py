@@ -48,7 +48,6 @@ class BrowserTab(object):
         self.verbosity = verbosity
         self._uid = render_options.get_uid()
         self._closing = False
-        self._default_headers = None
         self._active_timers = set()
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
@@ -119,9 +118,13 @@ class BrowserTab(object):
         """ Return True if an error or a result is already returned to Pool """
         return self.deferred.called
 
-    def set_default_headers(self, headers):
-        """ Set default HTTP headers """
-        self._default_headers = headers
+    def set_custom_headers(self, headers):
+        """
+        Set custom HTTP headers to be sent with each request. Passed headers
+        are merged with QWebKit default headers, overwriting QWebKit values
+        in case of conflicts.
+        """
+        self.web_page.custom_headers = headers
 
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, enabled)
@@ -270,7 +273,9 @@ class BrowserTab(object):
     def _create_request(self, url, headers=None):
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
+
         if headers is not None:
+            self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
         return request
 
