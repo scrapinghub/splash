@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from PyQt4.QtCore import QDateTime, Qt, QUrl
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
 
 
@@ -26,8 +27,35 @@ class SplashCookieJar(QNetworkCookieJar):
             return
         self.setCookiesFromUrl(cookies, reply.url())
 
+    def delete(self, name=None, url=None):
+        """
+        Remove all cookies with a passed name for the passed url.
+        Return a number of cookies deleted.
+        """
+        all_cookies = self.allCookies()
+        if url is None:
+            new_cookies = [c for c in all_cookies if bytes(c.name()) != name]
+        else:
+            remove_cookies = self.cookiesForUrl(QUrl(url))
+            if name is not None:
+                remove_cookies = [c for c in remove_cookies if bytes(c.name()) == name]
+            to_remove = {self._cookie_fp(c) for c in remove_cookies}
+            new_cookies = [
+                c for c in all_cookies if self._cookie_fp(c) not in to_remove
+            ]
+
+        self.setAllCookies(new_cookies)
+        return len(all_cookies) - len(new_cookies)
+
+    @classmethod
+    def _cookie_fp(cls, cookie):
+        return bytes(cookie.toRawForm(QNetworkCookie.Full))
+
     def clear(self):
+        """ Remove all cookies. Return a number of cookies deleted. """
+        old_size = len(self.allCookies())
         self.setAllCookies([])
+        return old_size
 
 
 def _should_send_cookies(request):

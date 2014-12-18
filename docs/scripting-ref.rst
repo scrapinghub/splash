@@ -450,9 +450,34 @@ Example result::
 splash:clear_cookies
 --------------------
 
-**Signature:** ``splash:clear_cookies()``
-
 Clear all cookies.
+
+**Signature:** ``n_removed = splash:clear_cookies()``
+
+**Returns** a number of cookies deleted.
+
+To delete only specific cookies
+use :ref:`splash-delete-cookies`.
+
+.. _splash-delete-cookies:
+
+splash:delete_cookies
+---------------------
+
+Delete matching cookies.
+
+**Signature:** ``n_removed = splash:delete_cookies{name=nil, url=nil}``
+
+**Parameters:**
+
+* name - a string, optional. All cookies with this name will be deleted.
+* url - a string, optional. Only cookies that should be sent to this url
+  will be deleted.
+
+**Returns** a number of cookies deleted.
+
+This function does nothing when both *name* and *url* are nil.
+To remove all cookies use :ref:`splash-clear-cookies` method.
 
 .. _splash-har:
 

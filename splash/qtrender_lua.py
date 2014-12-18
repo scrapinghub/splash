@@ -299,6 +299,10 @@ class Splash(object):
         return self.tab.clear_cookies()
 
     @command()
+    def delete_cookies(self, name=None, url=None):
+        return self.tab.delete_cookies(name=name, url=url)
+
+    @command()
     def set_result_content_type(self, content_type):
         if not isinstance(content_type, basestring):
             raise ScriptError("splash:set_result_content_type() argument must be a string")

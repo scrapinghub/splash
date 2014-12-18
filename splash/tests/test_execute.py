@@ -1032,7 +1032,7 @@ class CookiesTest(BaseLuaRenderTest):
                 return splash:get_cookies()
             end
 
-            local initial = splash:get_cookies()
+            local c0 = splash:get_cookies()
             local c1 = cookies_after(splash.args.url_1)
             local c2 = cookies_after(splash.args.url_2)
 
@@ -1040,8 +1040,18 @@ class CookiesTest(BaseLuaRenderTest):
             local c3 = splash:get_cookies()
 
             local c4 = cookies_after(splash.args.url_2)
+            local c5 = cookies_after(splash.args.url_1)
 
-            return {initial=initial, c1=c1, c2=c2, c3=c3, c4=c4}
+            splash:delete_cookies("foo")
+            local c6 = splash:get_cookies()
+
+            splash:delete_cookies{url="http://example.com"}
+            local c7 = splash:get_cookies()
+
+            splash:delete_cookies{url="http://localhost"}
+            local c8 = splash:get_cookies()
+
+            return {c0=c0, c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8}
         end
         """, {
             "url_1": self.mockurl("set-cookie?key=foo&value=bar"),
@@ -1068,11 +1078,15 @@ class CookiesTest(BaseLuaRenderTest):
             'secure': False
         }
 
-        self.assertEqual(data["initial"], [])
+        self.assertEqual(data["c0"], [])
         self.assertEqual(data["c1"], [cookie1])
         self.assertEqual(data["c2"], [cookie1, cookie2])
         self.assertEqual(data["c3"], [])
         self.assertEqual(data["c4"], [cookie2])
+        self.assertEqual(data["c5"], [cookie2, cookie1])
+        self.assertEqual(data["c6"], [cookie2])
+        self.assertEqual(data["c7"], [cookie2])
+        self.assertEqual(data["c8"], [])
 
 
 class DisableScriptsTest(BaseLuaRenderTest):

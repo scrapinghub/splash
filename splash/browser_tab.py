@@ -160,8 +160,19 @@ class BrowserTab(object):
         return cookies2har(self.web_page.cookiejar.allCookies())
 
     def clear_cookies(self):
-        """ Delete all cookies """
-        self.web_page.cookiejar.clear()
+        """ Remove all cookies. Return a number of cookies deleted. """
+        return self.web_page.cookiejar.clear()
+
+    def delete_cookies(self, name=None, url=None):
+        """
+        Delete cookies with name == ``name``.
+
+        If ``url`` is not None then only those cookies are deleted wihch
+        are to be added when a request is sent to ``url``.
+
+        Return a number of cookies deleted.
+        """
+        return self.web_page.cookiejar.delete(name, url)
 
     @property
     def url(self):
