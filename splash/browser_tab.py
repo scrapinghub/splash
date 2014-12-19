@@ -15,6 +15,7 @@ from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
 from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py, WrappedSignal
+from splash.har.qt import cookies2har
 from splash.har.utils import without_private
 
 from .qwebpage import SplashQWebPage
@@ -37,6 +38,8 @@ class BrowserTab(object):
     It is created by splash.pool.Pool. Pool attaches to tab's deferred
     and waits until either a callback or an errback is called, then destroys
     a BrowserTab.
+
+    XXX: currently cookies are not shared between "browser tabs".
     """
 
     def __init__(self, network_manager, splash_proxy_factory, verbosity, render_options):
@@ -46,7 +49,6 @@ class BrowserTab(object):
         self.verbosity = verbosity
         self._uid = render_options.get_uid()
         self._closing = False
-        self._default_headers = None
         self._active_timers = set()
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
@@ -117,9 +119,13 @@ class BrowserTab(object):
         """ Return True if an error or a result is already returned to Pool """
         return self.deferred.called
 
-    def set_default_headers(self, headers):
-        """ Set default HTTP headers """
-        self._default_headers = headers
+    def set_custom_headers(self, headers):
+        """
+        Set custom HTTP headers to be sent with each request. Passed headers
+        are merged with QWebKit default headers, overwriting QWebKit values
+        in case of conflicts.
+        """
+        self.web_page.custom_headers = headers
 
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, enabled)
@@ -145,12 +151,43 @@ class BrowserTab(object):
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
         return w, h
 
+    def set_user_agent(self, value):
+        """ Set User-Agent header for future requests """
+        self.web_page.custom_user_agent = value
+
+    def get_cookies(self):
+        """ Return a list of all cookies in the current cookiejar """
+        return cookies2har(self.web_page.cookiejar.allCookies())
+
+    def init_cookies(self, cookies):
+        """ Replace all current cookies with ``cookies`` """
+        self.web_page.cookiejar.init(cookies)
+
+    def clear_cookies(self):
+        """ Remove all cookies. Return a number of cookies deleted. """
+        return self.web_page.cookiejar.clear()
+
+    def delete_cookies(self, name=None, url=None):
+        """
+        Delete cookies with name == ``name``.
+
+        If ``url`` is not None then only those cookies are deleted wihch
+        are to be added when a request is sent to ``url``.
+
+        Return a number of cookies deleted.
+        """
+        return self.web_page.cookiejar.delete(name, url)
+
+    def add_cookie(self, cookie):
+        return self.web_page.cookiejar.add(cookie)
+
     @property
     def url(self):
         """ Current URL """
         return unicode(self.web_page.mainFrame().url().toString())
 
-    def go(self, url, callback, errback, baseurl=None, http_method='GET', body=None):
+    def go(self, url, callback, errback, baseurl=None, http_method='GET',
+           body=None, headers=None):
         """
         Go to an URL. This is similar to entering an URL in
         address tab and pressing Enter.
@@ -164,7 +201,7 @@ class BrowserTab(object):
             if http_method != 'GET':
                 raise NotImplementedError()
 
-            request = self._create_request(url)
+            request = self._create_request(url, headers=headers)
             request.setOriginatingObject(self.web_page.mainFrame())
 
             # TODO / FIXME: add support for multiple replies
@@ -192,7 +229,7 @@ class BrowserTab(object):
                 errback=errback,
             )
             self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
-            self._load_url_to_mainframe(url, http_method, body)
+            self._load_url_to_mainframe(url, http_method, body, headers=headers)
 
     def stop_loading(self):
         """
@@ -252,18 +289,21 @@ class BrowserTab(object):
         self._reply.close()
         self._reply.deleteLater()
 
-    def _load_url_to_mainframe(self, url, http_method, body=None):
-        request = self._create_request(url)
+    def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
+        request = self._create_request(url, headers=headers)
         meth = OPERATION_QT_CONSTANTS[http_method]
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
         else:
             self.web_page.mainFrame().load(request, meth, body)
 
-    def _create_request(self, url):
+    def _create_request(self, url, headers=None):
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
-        self._set_request_headers(request, self._default_headers)
+
+        if headers is not None:
+            self.web_page.skip_custom_headers = True
+            self._set_request_headers(request, headers)
         return request
 
     @skip_if_closing
@@ -300,7 +340,7 @@ class BrowserTab(object):
         for name, value in headers or []:
             request.setRawHeader(name, value)
             if name.lower() == 'user-agent':
-                self.web_page.custom_user_agent = value
+                self.set_user_agent(value)
 
     def wait(self, time_ms, callback, onredirect=None, onerror=None):
         """

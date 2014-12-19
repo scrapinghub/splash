@@ -868,6 +868,14 @@ class GoTest(BaseLuaRenderTest):
     def test_go_503(self):
         self.assertGoStatusCodeError(503)
 
+    def test_nourl(self):
+        resp = self.request_lua("function main(splash) splash:go() end")
+        self.assertStatusCode(resp, 400)
+
+    def test_nourl_args(self):
+        resp = self.request_lua("function main(splash) splash:go(splash.args.url) end")
+        self.assertStatusCode(resp, 400)
+
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_go_error(self):
         data = self.go_status("non-existing")
@@ -914,6 +922,268 @@ class GoTest(BaseLuaRenderTest):
 
         self.assertIn("No Such Resource", data["html_1"])
         self.assertIn("http://non-existing", data["html_2"])
+
+    def test_go_headers_cookie(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Cookie"] = "foo=bar; egg=spam"
+            }})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("get-cookie?key=egg")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("spam", resp.text)
+
+    def test_go_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Custom-Header"] = "Header Value",
+            }})
+            local res1 = splash:html()
+
+            -- second request is without any custom headers
+            assert(splash:go(splash.args.url))
+            local res2 = splash:html()
+
+            return {res1=res1, res2=res2}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn("'Header Value'", data["res1"])
+        self.assertNotIn("'Header Value'", data["res2"])
+
+    def test_set_custom_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = "Value 2",
+            })
+
+            assert(splash:go(splash.args.url))
+            local res1 = splash:html()
+
+            assert(splash:go{splash.args.url, headers={
+                ["Header-3"] = "Value 3",
+            }})
+            local res2 = splash:html()
+
+            assert(splash:go(splash.args.url))
+            local res3 = splash:html()
+
+            return {res1=res1, res2=res2, res3=res3}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+
+        self.assertIn("'Value 1'", data["res1"])
+        self.assertIn("'Value 2'", data["res1"])
+        self.assertNotIn("'Value 3'", data["res1"])
+
+        self.assertNotIn("'Value 1'", data["res2"])
+        self.assertNotIn("'Value 2'", data["res2"])
+        self.assertIn("'Value 3'", data["res2"])
+
+        self.assertIn("'Value 1'", data["res3"])
+        self.assertIn("'Value 2'", data["res3"])
+        self.assertNotIn("'Value 3'", data["res3"])
+
+
+class SetUserAgentTest(BaseLuaRenderTest):
+    def test_set_user_agent(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            local res1 = splash:html()
+
+            splash:set_user_agent("Foozilla")
+            splash:go(splash.args.url)
+            local res2 = splash:html()
+
+            splash:go(splash.args.url)
+            local res3 = splash:html()
+
+            return {res1=res1, res2=res2, res3=res3}
+        end
+        """, {"url": self.mockurl("getrequest")})
+
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn("Mozilla", data["res1"])
+        self.assertNotIn("Mozilla", data["res2"])
+        self.assertNotIn("Mozilla", data["res3"])
+
+        self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
+        self.assertIn("'user-agent': 'Foozilla'", data["res2"])
+        self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+
+
+class CookiesTest(BaseLuaRenderTest):
+    def test_cookies(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local function cookies_after(url)
+                splash:go(url)
+                return splash:get_cookies()
+            end
+
+            local c0 = splash:get_cookies()
+            local c1 = cookies_after(splash.args.url_1)
+            local c2 = cookies_after(splash.args.url_2)
+
+            splash:clear_cookies()
+            local c3 = splash:get_cookies()
+
+            local c4 = cookies_after(splash.args.url_2)
+            local c5 = cookies_after(splash.args.url_1)
+
+            splash:delete_cookies("foo")
+            local c6 = splash:get_cookies()
+
+            splash:delete_cookies{url="http://example.com"}
+            local c7 = splash:get_cookies()
+
+            splash:delete_cookies{url="http://localhost"}
+            local c8 = splash:get_cookies()
+
+            splash:init_cookies(c2)
+            local c9 = splash:get_cookies()
+
+            return {c0=c0, c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9}
+        end
+        """, {
+            "url_1": self.mockurl("set-cookie?key=foo&value=bar"),
+            "url_2": self.mockurl("set-cookie?key=egg&value=spam"),
+        })
+
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+
+        cookie1 = {
+            'name': 'foo',
+            'value': 'bar',
+            'domain': 'localhost',
+            'path': '/',
+            'httpOnly': False,
+            'secure': False
+        }
+        cookie2 = {
+            'name': 'egg',
+            'value': 'spam',
+            'domain': 'localhost',
+            'path': '/',
+            'httpOnly': False,
+            'secure': False
+        }
+
+        self.assertEqual(data["c0"], [])
+        self.assertEqual(data["c1"], [cookie1])
+        self.assertEqual(data["c2"], [cookie1, cookie2])
+        self.assertEqual(data["c3"], [])
+        self.assertEqual(data["c4"], [cookie2])
+        self.assertEqual(data["c5"], [cookie2, cookie1])
+        self.assertEqual(data["c6"], [cookie2])
+        self.assertEqual(data["c7"], [cookie2])
+        self.assertEqual(data["c8"], [])
+        self.assertEqual(data["c9"], data["c2"])
+
+    def test_add_cookie(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:add_cookie("baz", "egg")
+            splash:add_cookie{"spam", "egg", domain="example.com"}
+            splash:add_cookie{
+                name="foo",
+                value="bar",
+                path="/",
+                domain="localhost",
+                expires="2016-07-24T19:20:30+02:00",
+                secure=true,
+                httpOnly=true,
+            }
+            return splash:get_cookies()
+        end""")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [
+            {"name": "baz", "value": "egg", "path": "",
+             "domain": "", "httpOnly": False, "secure": False},
+            {"name": "spam", "value": "egg", "path": "",
+             "domain": "example.com", "httpOnly": False, "secure": False},
+            {"name": "foo", "value": "bar", "path": "/",
+             "domain": "localhost", "httpOnly": True, "secure": True,
+             "expires": "2016-07-24T19:20:30+02:00"},
+        ])
+
+    def test_init_cookies(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:init_cookies({
+                {name="baz", value="egg"},
+                {name="spam", value="egg", domain="example.com"},
+                {
+                    name="foo",
+                    value="bar",
+                    path="/",
+                    domain="localhost",
+                    expires="2016-07-24T19:20:30+02:00",
+                    secure=true,
+                    httpOnly=true,
+                }
+            })
+            return splash:get_cookies()
+        end""")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [
+            {"name": "baz", "value": "egg", "path": "",
+             "domain": "", "httpOnly": False, "secure": False},
+            {"name": "spam", "value": "egg", "path": "",
+             "domain": "example.com", "httpOnly": False, "secure": False},
+            {"name": "foo", "value": "bar", "path": "/",
+             "domain": "localhost", "httpOnly": True, "secure": True,
+             "expires": "2016-07-24T19:20:30+02:00"},
+        ])
+
+
+class CurrentUrlTest(BaseLuaRenderTest):
+
+    def request_url(self, url, wait=0.0):
+        return self.request_lua("""
+        function main(splash)
+            local ok, res = splash:go(splash.args.url)
+            splash:wait(splash.args.wait)
+            return {ok=ok, res=res, url=splash:url()}
+        end
+        """, {"url": url, "wait": wait})
+
+    def assertCurrentUrl(self, go_url, url=None, wait=0.0):
+        if url is None:
+            url = go_url
+        resp = self.request_url(go_url, wait)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json()["url"], url)
+
+    def test_start(self):
+        resp = self.request_lua("function main(splash) return splash:url() end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "")
+
+    def test_blank(self):
+        self.assertCurrentUrl("about:blank")
+
+    def test_not_redirect(self):
+        self.assertCurrentUrl(self.mockurl("getrequest"))
+
+    def test_jsredirect(self):
+        self.assertCurrentUrl(self.mockurl("jsredirect"))
+        self.assertCurrentUrl(
+            self.mockurl("jsredirect"),
+            self.mockurl("jsredirect-target"),
+            wait=0.5,
+        )
 
 
 class DisableScriptsTest(BaseLuaRenderTest):

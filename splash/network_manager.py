@@ -91,6 +91,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         start_time = datetime.utcnow()
 
         request = self._wrapRequest(request)
+        self._handle_custom_headers(request)
+        self._handle_request_cookies(request)
+
         har_entry = self._harEntry(request, create=True)
         if har_entry is not None:
             if outgoingData is None:
@@ -172,6 +175,35 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._next_id += 1
         return request
 
+    def _handle_custom_headers(self, request):
+        if self._getWebPageAttribute(request, "skip_custom_headers"):
+            # XXX: this hack assumes that new requests between
+            # BrowserTab._create_request and this function are not possible,
+            # i.e. we don't give control to the event loop in between.
+            # Unfortunately we can't store this flag on a request itself
+            # because a new QNetworkRequest instance is created by QWebKit.
+            self._setWebPageAttribute(request, "skip_custom_headers", False)
+            return
+
+        headers = self._getWebPageAttribute(request, "custom_headers")
+
+        if isinstance(headers, dict):
+            headers = headers.items()
+
+        for name, value in headers or []:
+            request.setRawHeader(name, value)
+
+    def _handle_request_cookies(self, request):
+        self.setCookieJar(None)
+        cookiejar = self._getWebPageAttribute(request, "cookiejar")
+        if cookiejar is not None:
+            cookiejar.update_cookie_header(request)
+
+    def _handle_reply_cookies(self, reply):
+        cookiejar = self._getWebPageAttribute(reply.request(), "cookiejar")
+        if cookiejar is not None:
+            cookiejar.fill_from_reply(reply)
+
     def _getRequestId(self, request=None):
         if request is None:
             request = self.sender().request()
@@ -194,6 +226,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         web_frame = request.originatingObject()
         if isinstance(web_frame, QWebFrame):
             return getattr(web_frame.page(), attribute, None)
+
+    def _setWebPageAttribute(self, request, attribute, value):
+        web_frame = request.originatingObject()
+        if isinstance(web_frame, QWebFrame):
+            return setattr(web_frame.page(), attribute, value)
 
     def _handleError(self, error_id):
         error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
@@ -227,6 +264,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleMetaData(self):
         reply = self.sender()
+        self._handle_reply_cookies(reply)
+
         har_entry = self._harEntry()
         if har_entry is not None:
             if har_entry["_tmp"]["state"] == self.REQUEST_FINISHED:

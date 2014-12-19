@@ -6,6 +6,7 @@ import sip
 from PyQt4.QtWebKit import QWebPage
 from PyQt4.QtCore import QByteArray
 from twisted.python import log
+from splash.cookies import SplashCookieJar
 from splash.har.log import HarLog
 
 
@@ -24,11 +25,14 @@ class SplashQWebPage(QWebPage):
     """
     error_info = None
     custom_user_agent = None
+    custom_headers = None
+    skip_custom_headers = False
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
         self.har_log = HarLog()
+        self.cookiejar = SplashCookieJar(self)
 
         self.mainFrame().urlChanged.connect(self.onUrlChanged)
         self.mainFrame().titleChanged.connect(self.onTitleChanged)

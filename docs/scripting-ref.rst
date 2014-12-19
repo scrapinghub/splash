@@ -20,7 +20,7 @@ splash:go
 Go to an URL. This is similar to entering an URL in a browser
 address bar, pressing Enter and waiting until page loads.
 
-**Signature:** ``ok, reason = splash.go{url, baseurl=nil}``
+**Signature:** ``ok, reason = splash.go{url, baseurl=nil, headers=nil}``
 
 **Parameters:**
 
@@ -28,8 +28,8 @@ address bar, pressing Enter and waiting until page loads.
 * baseurl - base URL to use, optional. When ``baseurl`` argument is passed
   the page is still loaded from ``url``, but it is rendered as if it was
   loaded from ``baseurl``: relative resource paths will be relative
-  to ``baseurl``, and the browser will think ``baseurl`` is in address bar.
-
+  to ``baseurl``, and the browser will think ``baseurl`` is in address bar;
+* headers - a Lua table with HTTP headers to add/replace in the initial request.
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
@@ -69,6 +69,23 @@ but it doesn't follow HTML ``<meta http-equiv="refresh" ...>`` redirects or
 redirects initiated by JavaScript code. To give the webpage time to follow
 those redirects use :ref:`splash-wait`.
 
+``headers`` argument allows to add or replace default HTTP headers for the
+initial request. To set custom headers for all further requests
+(including requests to related resources) use
+:ref:`splash-set-custom-headers`.
+
+Custom headers example:
+
+.. code-block:: lua
+
+    local ok, reason = splash:go{"http://example.com", headers={
+        ["Custom-Header"] = "Header Value",
+    }})
+
+User-Agent header is special: once used, it is kept for further requests.
+This is an implementation detail and it could change in future releases;
+to set User-Agent header it is recommended to use
+:ref:`splash-set-user-agent` method.
 
 .. _splash-wait:
 
@@ -456,6 +473,140 @@ Let's get a JSON array with HTTP headers of the response we're displaying:
 .. _HAR entries: http://www.softwareishard.com/blog/har-12-spec/#entries
 
 
+.. _splash-url:
+
+splash:url
+----------
+
+**Signature:** ``url = splash:url()``
+
+**Returns:** the current URL.
+
+.. _splash-get-cookies:
+
+splash:get_cookies
+------------------
+
+**Signature:** ``cookies = splash:get_cookies()``
+
+**Returns:** CookieJar contents - an array with all cookies available
+for the script. The result is returned in `HAR cookies`_ format.
+
+.. _HAR cookies: http://www.softwareishard.com/blog/har-12-spec/#cookies
+
+Example result::
+
+    [
+        {
+            "name": "TestCookie",
+            "value": "Cookie Value",
+            "path": "/",
+            "domain": "www.example.com",
+            "expires": "2016-07-24T19:20:30+02:00",
+            "httpOnly": false,
+            "secure": false,
+        }
+    ]
+
+
+.. _splash-add-cookie:
+
+splash:add_cookie
+-----------------
+
+Add a cookie.
+
+**Signature:** ``cookies = splash:add_cookie{name, value, path=nil, domain=nil, expires=nil, httpOnly=nil, secure=nil}``
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash:add_cookie{"sessionid", "237465ghgfsd", "/", domain="http://example.com"}
+         splash:go("http://example.com/")
+         return splash:html()
+     end
+
+.. _splash-init-cookies:
+
+splash:init_cookies
+-------------------
+
+Replace all current cookies with the passed ``cookies``.
+
+**Signature:** ``splash:init_cookies(cookies)``
+
+**Parameters:**
+
+* cookies - a Lua table with all cookies to set, in the same format as
+  :ref:`splash-get-cookies` returns.
+
+Example 1 - save and restore cookies:
+
+.. code-block:: lua
+
+     local cookies = splash:get_cookies()
+     -- ... do something ...
+     splash:init_cookies(cookies)  -- restore cookies
+
+Example 2 - initialize cookies manually:
+
+.. code-block:: lua
+
+     splash:init_cookies({
+         {name="baz", value="egg"},
+         {name="spam", value="egg", domain="example.com"},
+         {
+             name="foo",
+             value="bar",
+             path="/",
+             domain="localhost",
+             expires="2016-07-24T19:20:30+02:00",
+             secure=true,
+             httpOnly=true,
+         }
+     })
+
+     -- do something
+     assert(splash:go("http://example.com"))
+
+
+.. _splash-clear-cookies:
+
+splash:clear_cookies
+--------------------
+
+Clear all cookies.
+
+**Signature:** ``n_removed = splash:clear_cookies()``
+
+**Returns** a number of cookies deleted.
+
+To delete only specific cookies
+use :ref:`splash-delete-cookies`.
+
+.. _splash-delete-cookies:
+
+splash:delete_cookies
+---------------------
+
+Delete matching cookies.
+
+**Signature:** ``n_removed = splash:delete_cookies{name=nil, url=nil}``
+
+**Parameters:**
+
+* name - a string, optional. All cookies with this name will be deleted.
+* url - a string, optional. Only cookies that should be sent to this url
+  will be deleted.
+
+**Returns** a number of cookies deleted.
+
+This function does nothing when both *name* and *url* are nil.
+To remove all cookies use :ref:`splash-clear-cookies` method.
+
+
 .. _splash-set-result-content-type:
 
 splash:set_result_content_type
@@ -566,6 +717,51 @@ Example:
          splash:set_viewport("full")
          return {png=splash:png()}
      end
+
+.. _splash-set-user-agent:
+
+splash:set_user_agent
+---------------------
+
+Overwrite the User-Agent header for all further requests.
+
+**Signature:** ``splash:set_user_agent(value)``
+
+**Parameters:**
+
+* value - string, a value of User-Agent HTTP header.
+
+.. _splash-set-custom-headers:
+
+splash:set_custom_headers
+-------------------------
+
+Set custom HTTP headers to send with each request.
+
+**Signature:** ``splash:set_custom_headers(headers)``
+
+**Parameters:**
+
+* headers - a Lua table with HTTP headers.
+
+Headers are merged with WebKit default headers, overwriting WebKit values
+in case of conflicts.
+
+When ``headers`` argument of :ref:`splash-go` is used headers set with
+``splash:set_custom_headers`` are not applied to the initial request:
+values are not merged, ``headers`` argument of :ref:`splash-go` has
+higher priority.
+
+Example:
+
+.. code-block:: lua
+
+     splash:set_custom_headers({
+        ["Header-1"] = "Value 1",
+        ["Header-2"] = "Value 2",
+     })
+
+Named arguments are not supported for this function.
 
 .. _splash-args:
 

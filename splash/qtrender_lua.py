@@ -49,14 +49,14 @@ class _AsyncBrowserCommand(object):
         return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
 
 
-def command(async=False):
+def command(async=False, table_argument=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
+        if not table_argument:
+            meth = lupa.unpacks_lua_table_method(meth)
         meth = exceptions_as_return_values(
             can_raise(
-                emits_lua_objects(
-                    lupa.unpacks_lua_table_method(meth)
-                )
+                emits_lua_objects(meth)
             )
         )
         meth._is_command = True
@@ -231,7 +231,10 @@ class Splash(object):
         ))
 
     @command(async=True)
-    def go(self, url, baseurl=None):
+    def go(self, url, baseurl=None, headers=None):
+        if url is None:
+            raise ScriptError("'url' is required for splash:go")
+
         cmd_id = next(self._command_ids)
 
         def success():
@@ -249,7 +252,8 @@ class Splash(object):
             url=url,
             baseurl=baseurl,
             callback=success,
-            errback=error
+            errback=error,
+            headers=self.lua2python(headers, max_depth=3),
         ))
 
     @command()
@@ -287,10 +291,56 @@ class Splash(object):
         return _WrappedJavascriptFunction(self, func)
 
     @command()
+    def get_cookies(self):
+        return self.tab.get_cookies()
+
+    @command()
+    def clear_cookies(self):
+        return self.tab.clear_cookies()
+
+    @command(table_argument=True)
+    def init_cookies(self, cookies):
+        cookies = self.lua2python(cookies, max_depth=3)
+        if isinstance(cookies, dict):
+            keys = sorted(cookies.keys())
+            cookies = [cookies[k] for k in keys]
+        return self.tab.init_cookies(cookies)
+
+    @command()
+    def delete_cookies(self, name=None, url=None):
+        return self.tab.delete_cookies(name=name, url=url)
+
+    @command()
+    def add_cookie(self, name, value, path=None, domain=None, expires=None,
+                   httpOnly=None, secure=None):
+        cookie = dict(name=name, value=value)
+        if path is not None:
+            cookie["path"] = path
+        if domain is not None:
+            cookie["domain"] = domain
+        if expires is not None:
+            cookie["expires"] = expires
+        if httpOnly is not None:
+            cookie["httpOnly"] = httpOnly
+        if secure is not None:
+            cookie["secure"] = secure
+        return self.tab.add_cookie(cookie)
+
+    @command()
     def set_result_content_type(self, content_type):
         if not isinstance(content_type, basestring):
             raise ScriptError("splash:set_result_content_type() argument must be a string")
         self._result_content_type = content_type
+
+    @command()
+    def set_user_agent(self, value):
+        if not isinstance(value, basestring):
+            raise ScriptError("splash:set_user_agent() argument must be a string")
+        self.tab.set_user_agent(value)
+
+    @command(table_argument=True)
+    def set_custom_headers(self, headers):
+        self.tab.set_custom_headers(self.lua2python(headers, max_depth=3))
 
     @command()
     def set_viewport(self, size):
@@ -306,6 +356,10 @@ class Splash(object):
     @command()
     def status_code(self):
         return self.tab.last_http_status()
+
+    @command()
+    def url(self):
+        return self.tab.url
 
     def get_real_exception(self):
         if self._exceptions:
@@ -356,8 +410,10 @@ class Splash(object):
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
 
-    def lua2python(self, obj):
-        return lua2python(self.lua, obj, binary=True, strict=True)
+    def lua2python(self, obj, **kwargs):
+        kwargs.setdefault("binary", True)
+        kwargs.setdefault("strict", True)
+        return lua2python(self.lua, obj, **kwargs)
 
     def _create_runtime(self):
         """
@@ -482,4 +538,3 @@ class LuaRender(RenderScript):
     def _print_instructions_used(self):
         if self.sandboxed:
             self.log("[lua] instructions used: %d" % self.splash.instruction_count())
-

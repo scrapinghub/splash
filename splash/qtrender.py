@@ -77,7 +77,6 @@ class DefaultRenderScript(RenderScript):
     This class is not used directly; its subclasses are used.
     Subclasses choose how to return the result (as html, json, png).
     """
-
     def start(self, url, baseurl=None, wait=None, viewport=None,
                   js_source=None, js_profile=None, images=None, console=False,
                   headers=None, http_method='GET', body=None):
@@ -92,7 +91,6 @@ class DefaultRenderScript(RenderScript):
         if images is not None:
             self.tab.set_images_enabled(images)
 
-        self.tab.set_default_headers(headers)
         if self.viewport != 'full':
             self.tab.set_viewport(self.viewport)
 
@@ -103,6 +101,7 @@ class DefaultRenderScript(RenderScript):
             baseurl=baseurl,
             http_method=http_method,
             body=body,
+            headers=headers,
         )
 
     @abc.abstractmethod

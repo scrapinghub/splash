@@ -11,7 +11,7 @@ from twisted.python import log
 from PyQt4.QtGui import QApplication
 from PyQt4.QtCore import (
     QAbstractEventDispatcher, QVariant, QString, QObject,
-    QDateTime, QRegExp
+    QDateTime, QRegExp,
 )
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager

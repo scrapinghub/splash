@@ -111,10 +111,15 @@ images : integer : optional
 .. _arg-headers:
 
 headers : JSON array or object : optional
-    HTTP headers to set for the first outgoing request. This option is only
-    supported for ``application/json`` POST requests. Value could be either a
-    JSON array with ``(header_name, header_value)`` pairs or a JSON object
-    with header names as keys and header values as values.
+    HTTP headers to set for the first outgoing request.
+
+    This option is only supported for ``application/json`` POST requests.
+    Value could be either a JSON array with ``(header_name, header_value)``
+    pairs or a JSON object with header names as keys and header values
+    as values.
+
+    "User-Agent" header is special: is is used for all outgoing requests,
+    unlike other headers.
 
 
 Examples
@@ -175,7 +180,7 @@ render.har
 
 Return information about Splash interaction with a website in HAR_ format.
 It includes information about requests made, responses received, timings,
-headers, cookies, etc.
+headers, etc.
 
 You can use online `HAR viewer`_ to visualize information returned from
 this endpoint; it will be very similar to "Network" tabs in Firefox and Chrome
@@ -242,7 +247,7 @@ history : integer : optional
     frame. Possible values are ``1`` (include) and ``0`` (exclude).
     Default is 0.
 
-    Use it to get HTTP status codes, cookies and headers.
+    Use it to get HTTP status codes and headers.
     Only information about "main" requests/responses is returned
     (i.e. information about related resources like images and AJAX queries
     is not returned). To get information about all requests and responses
