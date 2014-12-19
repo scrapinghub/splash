@@ -531,7 +531,7 @@ Replace all current cookies with the passed ``cookies``.
 **Parameters:**
 
 * cookies - a Lua table with all cookies to set, in the same format as
-:ref:`slash-get-cookies` returns.
+  :ref:`splash-get-cookies` returns.
 
 Example 1 - save and restore cookies:
 
