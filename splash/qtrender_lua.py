@@ -357,6 +357,10 @@ class Splash(object):
     def status_code(self):
         return self.tab.last_http_status()
 
+    @command()
+    def url(self):
+        return self.tab.url
+
     def get_real_exception(self):
         if self._exceptions:
             return self._exceptions[-1]

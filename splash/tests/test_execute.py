@@ -1148,6 +1148,43 @@ class CookiesTest(BaseLuaRenderTest):
         ])
 
 
+class CurrentUrlTest(BaseLuaRenderTest):
+
+    def request_url(self, url, wait=0.0):
+        return self.request_lua("""
+        function main(splash)
+            local ok, res = splash:go(splash.args.url)
+            splash:wait(splash.args.wait)
+            return {ok=ok, res=res, url=splash:url()}
+        end
+        """, {"url": url, "wait": wait})
+
+    def assertCurrentUrl(self, go_url, url=None, wait=0.0):
+        if url is None:
+            url = go_url
+        resp = self.request_url(go_url, wait)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json()["url"], url)
+
+    def test_start(self):
+        resp = self.request_lua("function main(splash) return splash:url() end")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "")
+
+    def test_blank(self):
+        self.assertCurrentUrl("about:blank")
+
+    def test_not_redirect(self):
+        self.assertCurrentUrl(self.mockurl("getrequest"))
+
+    def test_jsredirect(self):
+        self.assertCurrentUrl(self.mockurl("jsredirect"))
+        self.assertCurrentUrl(
+            self.mockurl("jsredirect"),
+            self.mockurl("jsredirect-target"),
+            wait=0.5,
+        )
+
 
 class DisableScriptsTest(BaseLuaRenderTest):
 

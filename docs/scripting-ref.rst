@@ -473,6 +473,15 @@ Let's get a JSON array with HTTP headers of the response we're displaying:
 .. _HAR entries: http://www.softwareishard.com/blog/har-12-spec/#entries
 
 
+.. _splash-url:
+
+splash:url
+----------
+
+**Signature:** ``url = splash:url()``
+
+**Returns:** the current URL.
+
 .. _splash-get-cookies:
 
 splash:get_cookies
