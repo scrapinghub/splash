@@ -385,10 +385,12 @@ class BrowserTab(object):
         if timer in self._active_timers:
             self._active_timers.remove(timer)
         timer.stop()
-        if callable(errback):
-            self.logger.log("calling timer errback", min_level=2)
-            errback()
-        timer.deleteLater()
+        try:
+            if callable(errback):
+                self.logger.log("calling timer errback", min_level=2)
+                errback()
+        finally:
+            timer.deleteLater()
 
     def _cancel_timers(self, timers):
         for timer, oncancel in list(timers.items()):
