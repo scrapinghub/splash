@@ -493,8 +493,7 @@ class HttpRedirectResource(Resource):
         url = '/getrequest?http_code=%s' % code
         request.setResponseCode(int(code))
         request.setHeader(b"location", url)
-        request.finish()
-        return NOT_DONE_YET
+        return "%s redirect to %s" % (code, url)
 
 
 class JsRedirectTo(Resource):
