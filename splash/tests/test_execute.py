@@ -1343,3 +1343,14 @@ class SandboxTest(BaseLuaRenderTest):
             self.assertStatusCode(resp, 200)
             self.assertEqual(resp.json(), {"s": False})
 
+
+class HarTest(BaseLuaRenderTest):
+    def test_har_empty(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return splash:har()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        har = resp.json()["log"]
+        self.assertEqual(har["entries"], [])
