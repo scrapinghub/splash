@@ -61,7 +61,7 @@ class RenderScript(object):
         This method is called by a Pool after the rendering is done and
         the RenderScript object is no longer needed.
         """
-        self.tab._close()
+        self.tab.close()
 
 
 class DefaultRenderScript(RenderScript):

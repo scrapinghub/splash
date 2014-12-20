@@ -240,7 +240,7 @@ class BrowserTab(object):
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
 
-    def _close(self):
+    def close(self):
         """ Destroy this tab """
         self._closing = True
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
