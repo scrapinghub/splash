@@ -102,7 +102,7 @@ class BrowserTab(object):
 
     def return_result(self, result):
         """ Return a result to the Pool. """
-        if self.result_already_returned():
+        if self._result_already_returned():
             self.logger.log("error: result is already returned", min_level=1)
 
         self.deferred.callback(result)
@@ -110,12 +110,12 @@ class BrowserTab(object):
 
     def return_error(self, error=None):
         """ Return an error to the Pool. """
-        if self.result_already_returned():
+        if self._result_already_returned():
             self.logger.log("error: result is already returned", min_level=1)
         self.deferred.errback(error)
         # self.deferred = None
 
-    def result_already_returned(self):
+    def _result_already_returned(self):
         """ Return True if an error or a result is already returned to Pool """
         return self.deferred.called
 
