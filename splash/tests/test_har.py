@@ -222,20 +222,26 @@ class HarRenderTest(BaseHarRenderTest):
 
 class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):
 
-    def assertHttpRedirectWorks(self, code):
-        url = self.mockurl("http-redirect?code=%s" % code)
-        r = self.request({"url": url})
-        self.assertStatusCode(r, 200)
-        data = r.json()
-
+    def assertHarRedirectedResponse(self, resp, code, url):
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
         self.assertValidHarData(data, url)
         self.assertRequestedUrlsStatuses(data, [
             (url, code),
             (self.mockurl('getrequest?http_code=%s' % code), 200)
         ])
-
         redir_url = data["log"]["entries"][0]["response"]["redirectURL"]
         self.assertEqual(redir_url, "/getrequest?http_code=%s" % code)
+
+    def assertBaseurlHttpRedirectWorks(self, code):
+        url = self.mockurl("http-redirect?code=%s" % code)
+        resp = self.request({"url": url, "baseurl": url})
+        self.assertHarRedirectedResponse(resp, code, url)
+
+    def assertHttpRedirectWorks(self, code):
+        url = self.mockurl("http-redirect?code=%s" % code)
+        resp = self.request({"url": url})
+        self.assertHarRedirectedResponse(resp, code, url)
 
 
 class RenderJsonHarTest(HarRenderTest):

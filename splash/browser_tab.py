@@ -31,7 +31,7 @@ def skip_if_closing(meth):
     return wrapped
 
 
-class BrowserTab(object):
+class BrowserTab(QObject):
     """
     An object for controlling a single browser tab (QWebView).
 
@@ -42,8 +42,10 @@ class BrowserTab(object):
     XXX: currently cookies are not shared between "browser tabs".
     """
 
-    def __init__(self, network_manager, splash_proxy_factory, verbosity, render_options):
+    def __init__(self, network_manager, splash_proxy_factory, verbosity,
+                 render_options):
         """ Create a new browser tab. """
+        QObject.__init__(self)
         self.deferred = defer.Deferred()
         self.network_manager = network_manager
         self.verbosity = verbosity
@@ -54,9 +56,10 @@ class BrowserTab(object):
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
         self._history = []
-
-        self._init_webpage(verbosity, network_manager, splash_proxy_factory, render_options)
+        self._init_webpage(verbosity, network_manager, splash_proxy_factory,
+                           render_options)
         self._setup_logging(verbosity)
+        self.http_client = _SplashHttpClient(self.web_page)
 
     def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
         """ Create and initialize QWebPage and QWebView """
@@ -153,7 +156,7 @@ class BrowserTab(object):
 
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
-        self.web_page.custom_user_agent = value
+        self.http_client.set_user_agent(value)
 
     def get_cookies(self):
         """ Return a list of all cookies in the current cookiejar """
@@ -198,16 +201,6 @@ class BrowserTab(object):
             # If baseurl is used, we download the page manually,
             # then set its contents to the QWebPage and let it
             # download related resources and render the result.
-            if http_method != 'GET':
-                raise NotImplementedError()
-
-            request = self._create_request(url, headers=headers)
-            request.setOriginatingObject(self.web_page.mainFrame())
-
-            # TODO / FIXME: add support for multiple replies
-            # or discard/cancel previous replies
-            self._reply = self.network_manager.get(request)
-
             cb = functools.partial(
                 self._on_baseurl_request_finished,
                 callback=callback,
@@ -215,7 +208,13 @@ class BrowserTab(object):
                 baseurl=baseurl,
                 url=url,
             )
-            self._reply.finished.connect(cb)
+            self.http_client.request(url,
+                callback=cb,
+                method=http_method,
+                body=body,
+                headers=headers,
+                follow_redirects=True,
+            )
         else:
             # if not self._goto_callbacks.isempty():
             #     self.logger.log("Only a single concurrent 'go' request is supported. "
@@ -272,39 +271,31 @@ class BrowserTab(object):
         reply for the first request is received.
         """
         self.logger.log("baseurl_request_finished", min_level=2)
+        reply = self.sender()
+        try:
+            callback_id = self._load_finished.connect(
+                self._on_goto_load_finished,
+                callback=callback,
+                errback=errback,
+            )
+            self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
 
-        callback_id = self._load_finished.connect(
-            self._on_goto_load_finished,
-            callback=callback,
-            errback=errback,
-        )
-        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
-
-        baseurl = QUrl(baseurl)
-        mimeType = self._reply.header(QNetworkRequest.ContentTypeHeader).toString()
-        data = self._reply.readAll()
-        self.web_page.mainFrame().setContent(data, mimeType, baseurl)
-        if self._reply.error():
-            self.logger.log("Error loading %s: %s" % (url, self._reply.errorString()), min_level=1)
-        self._reply.close()
-        self._reply.deleteLater()
+            baseurl = QUrl(baseurl)
+            mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
+            data = reply.readAll()
+            self.web_page.mainFrame().setContent(data, mimeType, baseurl)
+            if reply.error():
+                self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
+        finally:
+            self.http_client.delete_reply(reply)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
-        request = self._create_request(url, headers=headers)
+        request = self.http_client.request_obj(url, headers=headers)
         meth = OPERATION_QT_CONSTANTS[http_method]
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
         else:
             self.web_page.mainFrame().load(request, meth, body)
-
-    def _create_request(self, url, headers=None):
-        request = QNetworkRequest()
-        request.setUrl(QUrl(url))
-
-        if headers is not None:
-            self.web_page.skip_custom_headers = True
-            self._set_request_headers(request, headers)
-        return request
 
     @skip_if_closing
     def _on_goto_load_finished(self, ok, callback, errback, callback_id):
@@ -331,16 +322,6 @@ class BrowserTab(object):
         else:
             errback()
             # errback(RenderError())
-
-    def _set_request_headers(self, request, headers):
-        """ Set HTTP headers for the request. """
-        if isinstance(headers, dict):
-            headers = headers.items()
-
-        for name, value in headers or []:
-            request.setRawHeader(name, value)
-            if name.lower() == 'user-agent':
-                self.set_user_agent(value)
 
     def wait(self, time_ms, callback, onredirect=None, onerror=None):
         """
@@ -536,6 +517,122 @@ class BrowserTab(object):
             res["frameName"] = unicode(frame.frameName())
 
         return res
+
+
+class _SplashHttpClient(QObject):
+    """ Wrapper class for making HTTP requests on behalf of a SplashQWebPage """
+    def __init__(self, web_page):
+        super(_SplashHttpClient, self).__init__()
+        self._replies = set()
+        self.web_page = web_page
+        self.network_manager = web_page.networkAccessManager()
+
+    def set_user_agent(self, value):
+        """ Set User-Agent header for future requests """
+        self.web_page.custom_user_agent = value
+
+    def request_obj(self, url, headers=None):
+        """ Return a QNetworkRequest object """
+        request = QNetworkRequest()
+        request.setUrl(QUrl(url))
+        request.setOriginatingObject(self.web_page.mainFrame())
+
+        if headers is not None:
+            self.web_page.skip_custom_headers = True
+            self._set_request_headers(request, headers)
+
+        return request
+
+    def request(self, url, callback, method='GET', body=None,
+                headers=None, follow_redirects=True, max_redirects=5):
+        """
+        Create a request and return a QNetworkReply object with callback
+        connected. The caller must ensure self.delete_reply is called
+        in a callback.
+        """
+        cb = functools.partial(
+            self._on_request_finished,
+            callback=callback,
+            method=method,
+            body=body,
+            headers=headers,
+            follow_redirects=follow_redirects,
+            redirects_remaining=max_redirects,
+        )
+        return self._send_request(url, cb, method=method, body=body, headers=headers)
+
+    def _send_request(self, url, callback, method='GET', body=None,
+                      headers=None):
+        if method != 'GET':
+            raise NotImplementedError()
+        request = self.request_obj(url, headers=headers)
+        reply = self.network_manager.get(request)
+        reply.finished.connect(callback)
+        self._replies.add(reply)
+        return reply
+
+    def get(self, url, callback, headers=None, follow_redirects=True):
+        """ Send a GET HTTP request; call the callback with the reply. """
+        cb = functools.partial(
+            self._on_get_finished,
+            callback=callback,
+            url=url,
+        )
+        self.request(url, cb, follow_redirects=follow_redirects)
+
+    def _on_get_finished(self, callback, url):
+        self.logger.log("httpget_finished", min_level=2)
+        reply = self.sender()
+        try:
+            callback(reply)
+        finally:
+            self.delete_reply(reply)
+
+    def _on_request_finished(self, callback, method, body, headers,
+                             follow_redirects, redirects_remaining):
+        """ Handle redirects and call the callback. """
+        reply = self.sender()
+        try:
+            if not follow_redirects:
+                callback()
+                return
+            if not redirects_remaining:
+                callback()  # XXX: should it be an error?
+                return
+
+            redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute).toPyObject()
+            if redirect_url is None:  # no redirect
+                callback()
+                return
+
+            redirect_url = reply.url().resolved(redirect_url)
+            self.request(
+                url=redirect_url,
+                callback=callback,
+                method=method,
+                body=body,
+                headers=headers,
+                follow_redirects=follow_redirects,
+                max_redirects=redirects_remaining-1,
+            )
+        finally:
+            self.delete_reply(reply)
+
+    def _set_request_headers(self, request, headers):
+        """ Set HTTP headers for the request. """
+        if isinstance(headers, dict):
+            headers = headers.items()
+
+        for name, value in headers or []:
+            request.setRawHeader(name, value)
+            if name.lower() == 'user-agent':
+                self.set_user_agent(value)
+
+    def delete_reply(self, reply):
+        if reply in self._replies:
+            self._replies.remove(reply)
+        reply.close()
+        reply.deleteLater()
 
 
 class _JavascriptConsole(QObject):
