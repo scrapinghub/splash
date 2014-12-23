@@ -35,7 +35,6 @@ class RenderHtmlJsonPostTest(test_render.RenderHtmlTest):
         self.assertTrue("After" in resp.text)
 
 
-
 class RenderJsonJsonPostTest(test_render.RenderJsonTest):
     request_handler = JsonPostRequestHandler
 
@@ -168,3 +167,14 @@ class HttpHeadersTest(test_render.BaseRenderTest):
     #     })
     #     self.assertStatusCode(r, 200)
     #     self.assertIn("bar", r.text)
+
+
+class RenderInvalidJsonJsonPostTest(test_render.BaseRenderTest):
+    request_handler = test_render.DirectRequestHandler
+
+    def test_invalid_json_returns_400(self):
+        invalid_json = "\'{"
+        headers = {"content-type": "application/json; charset=UTF-8"}
+        resp = self.post({}, payload=invalid_json, headers=headers)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("Invalid JSON", resp.text)
