@@ -5,7 +5,8 @@ from contextlib import contextmanager
 
 from PyQt4.QtNetwork import (
     QNetworkAccessManager, QNetworkProxyQuery,
-    QNetworkReply, QNetworkRequest
+    QNetworkReply, QNetworkRequest,
+    QNetworkCookieJar
 )
 from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
@@ -194,7 +195,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             request.setRawHeader(name, value)
 
     def _handle_request_cookies(self, request):
-        self.setCookieJar(None)
+        jar = QNetworkCookieJar()
+        self.setCookieJar(jar)
         cookiejar = self._getWebPageAttribute(request, "cookiejar")
         if cookiejar is not None:
             cookiejar.update_cookie_header(request)
