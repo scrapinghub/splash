@@ -35,7 +35,10 @@ class RenderOptions(object):
 
                 # 2. application/json POST data
                 if 'application/json' in content_type:
-                    data.update(json.load(request.content, encoding='utf8') or {})
+                    try:
+                        data.update(json.load(request.content, encoding='utf8'))
+                    except ValueError as e:
+                        raise BadOption("Invalid JSON: '{}'".format(e.message))
 
                 # 3. js_source from application/javascript POST requests
                 if 'application/javascript' in content_type:
