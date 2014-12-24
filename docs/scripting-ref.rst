@@ -315,21 +315,24 @@ splash:autoload
 
 Set JavaScript to load automatically on each page load.
 
-**Signature:** ``ok, reason = splash:autoload(source)``
+**Signature:** ``ok, reason = splash:autoload{source_or_url, source=nil, url=nil}``
 
 **Parameters:**
 
-* source - a string with JavaScript source code to execute before the page load.
+* source_or_url - either a string with JavaScript source code or an URL
+  to load the JavaScript code from;
+* source - a string with JavaScript source code;
+* url - an URL to load JavaScript source code from.
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil, error happened and
 ``reason`` contains an error description.
 
-``splash:autoload`` itself doesn't execute the passed JavaScript code;
-the code is executed each time a new page starts to load. To execute some
-code once, after page is loaded use :ref:`splash-runjs` or
-:ref:`splash-jsfunc`.
+:ref:`splash-autoload` allows to execute JavaScript code at each page load.
+:ref:`splash-autoload` doesn't doesn't execute the passed
+JavaScript code itself. To execute some code once, after page is loaded
+use :ref:`splash-runjs` or :ref:`splash-jsfunc`.
 
-``splash:autoload`` can be used to preload utility JavaScript libraries
+:ref:`splash-autoload` can be used to preload utility JavaScript libraries
 or replace JavaScript objects before a webpage has a chance to do it.
 
 Example:
@@ -346,6 +349,30 @@ Example:
         return splash:runjs("get_document_title()")
     end
 
+For the convenience, when a first :ref:`splash-autoload` argument starts
+with "http://" or "https://" a script from the passed URL is loaded.
+Example 2 - make sure a remote library is available:
+
+.. code-block:: lua
+
+    function main(splash)
+        assert(splash:autoload("https://code.jquery.com/jquery-2.1.3.min.js"))
+        assert(splash:go(splash.args.url))
+        return splash:runjs("$.fn.jquery")  -- return jQuery version
+    end
+
+To disable URL auto-detection use 'source' and 'url' arguments:
+
+.. code-block:: lua
+
+    splash:autoload{url="https://code.jquery.com/jquery-2.1.3.min.js"}
+    splash:autoload{source="window.foo = 'bar';"}
+
+It is a good practice not to rely on auto-detection when the argument
+is not a constant.
+
+If :ref:`splash-autoload` is called multiple times then all its scripts
+are executed on page load, in order they were added.
 
 .. _splash-http-get:
 

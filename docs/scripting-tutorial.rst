@@ -250,9 +250,10 @@ rendered can change. Often that's the point of calling a method,
 e.g. ``splash:wait(time)`` or ``splash:go(url)`` only make sense because
 webpage changes after calling them, but still - keep it in mind.
 
-Currently the only async methods are :ref:`splash-go` and :ref:`splash-wait`.
-Most splash methods are currently **not** async, but thinking of them as
-of async will allow your scripts to work if we ever change that.
+Currently async methods are :ref:`splash-go`, :ref:`splash-wait`
+and :ref:`splash-http-get`; :ref:`splash-autoload` becomes async when an URL
+is passed. Most splash methods are currently **not** async, but thinking
+of them as of async will allow your scripts to work if we ever change that.
 
 .. note::
 

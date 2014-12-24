@@ -1389,6 +1389,32 @@ class AutoloadTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertEqual(data, {"foo1": "bar", "foo2": "spam", "foo3": "bar"})
 
+    def test_autoload_remote(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:autoload(splash.args.eggspam_url))
+            assert(splash:go(splash.args.url))
+            local egg = splash:jsfunc("egg")
+            return egg()
+        end
+        """, {
+            "url": self.mockurl("getrequest"),
+            "eggspam_url": self.mockurl("eggspam.js"),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "spam")
+
+    def test_autoload_bad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local ok, reason = splash:autoload(splash.args.bad_url)
+            return {ok=ok, reason=reason}
+        end
+        """, {"bad_url": self.mockurl("--non-existing--")})
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn("ok", resp.json())
+        self.assertIn("404", resp.json()["reason"])
+        
     def test_noargs(self):
         resp = self.request_lua("""
         function main(splash)

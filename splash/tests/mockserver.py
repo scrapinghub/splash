@@ -125,6 +125,9 @@ BadRelatedResource = _html_resource("""
 """)
 
 
+EggSpamScript = _html_resource("function egg(){return 'spam';}")
+
+
 class BaseUrl(Resource):
 
     def render_GET(self, request):
@@ -592,6 +595,7 @@ class Root(Resource):
         self.putChild("bad-related", BadRelatedResource())
         self.putChild("set-cookie", SetCookie()),
         self.putChild("get-cookie", GetCookie()),
+        self.putChild("eggspam.js", EggSpamScript()),
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-to", JsRedirectTo())

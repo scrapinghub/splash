@@ -18,6 +18,7 @@ from splash.lua import (
 from splash.har.qt import reply2har
 from splash.render_options import BadOption
 from splash.utils import truncated, BinaryCapsule
+from splash.qtutils import REQUEST_ERRORS_SHORT
 
 
 class ScriptError(BadOption):
@@ -309,23 +310,38 @@ class Splash(object):
             follow_redirects=follow_redirects,
         ))
 
-    @command()
+    @command(async=True)
     def autoload(self, source_or_url=None, source=None, url=None):
         if len([a for a in [source_or_url, source, url] if a is not None]) != 1:
             raise ScriptError("splash:autoload requires a single argument")
 
         if source_or_url is not None:
+            source_or_url = source_or_url.strip()
             if source_or_url.startswith(("http://", "https://")):
                 source, url = None, source_or_url
             else:
                 source, url = source_or_url, None
 
         if source is not None:
+            # load source directly
             self.tab.autoload(source)
+            return True
         else:
-            raise NotImplementedError()
+            # load JS from a remote resource
+            cmd_id = next(self._command_ids)
+            def callback(reply):
+                if reply.error():
+                    reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
+                    self._return(cmd_id, None, reason)
+                else:
+                    source = bytes(reply.readAll())
+                    self.tab.autoload(source)
+                    self._return(cmd_id, True)
 
-        return True
+            return _AsyncBrowserCommand(cmd_id, "http_get", dict(
+                url=url,
+                callback=callback
+            ))
 
     @command()
     def get_cookies(self):
