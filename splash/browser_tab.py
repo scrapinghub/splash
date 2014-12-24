@@ -272,22 +272,19 @@ class BrowserTab(QObject):
         """
         self.logger.log("baseurl_request_finished", min_level=2)
         reply = self.sender()
-        try:
-            callback_id = self._load_finished.connect(
-                self._on_goto_load_finished,
-                callback=callback,
-                errback=errback,
-            )
-            self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
+        callback_id = self._load_finished.connect(
+            self._on_goto_load_finished,
+            callback=callback,
+            errback=errback,
+        )
+        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
 
-            baseurl = QUrl(baseurl)
-            mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
-            data = reply.readAll()
-            self.web_page.mainFrame().setContent(data, mimeType, baseurl)
-            if reply.error():
-                self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
-        finally:
-            self.http_client.delete_reply(reply)
+        baseurl = QUrl(baseurl)
+        mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
+        data = reply.readAll()
+        self.web_page.mainFrame().setContent(data, mimeType, baseurl)
+        if reply.error():
+            self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
         request = self.http_client.request_obj(url, headers=headers)
@@ -547,8 +544,7 @@ class _SplashHttpClient(QObject):
                 headers=None, follow_redirects=True, max_redirects=5):
         """
         Create a request and return a QNetworkReply object with callback
-        connected. The caller must ensure self.delete_reply is called
-        in a callback.
+        connected.
         """
         cb = functools.partial(
             self._on_request_finished,
@@ -563,6 +559,7 @@ class _SplashHttpClient(QObject):
 
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
+        # XXX: The caller must ensure self._delete_reply is called in a callback.
         if method != 'GET':
             raise NotImplementedError()
         request = self.request_obj(url, headers=headers)
@@ -583,10 +580,7 @@ class _SplashHttpClient(QObject):
     def _on_get_finished(self, callback, url):
         self.logger.log("httpget_finished", min_level=2)
         reply = self.sender()
-        try:
-            callback(reply)
-        finally:
-            self.delete_reply(reply)
+        callback(reply)
 
     def _on_request_finished(self, callback, method, body, headers,
                              follow_redirects, redirects_remaining):
@@ -616,7 +610,7 @@ class _SplashHttpClient(QObject):
                 max_redirects=redirects_remaining-1,
             )
         finally:
-            self.delete_reply(reply)
+            self._delete_reply(reply)
 
     def _set_request_headers(self, request, headers):
         """ Set HTTP headers for the request. """
@@ -628,9 +622,8 @@ class _SplashHttpClient(QObject):
             if name.lower() == 'user-agent':
                 self.set_user_agent(value)
 
-    def delete_reply(self, reply):
-        if reply in self._replies:
-            self._replies.remove(reply)
+    def _delete_reply(self, reply):
+        self._replies.remove(reply)
         reply.close()
         reply.deleteLater()
 
