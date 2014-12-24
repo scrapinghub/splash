@@ -149,7 +149,8 @@ class DefaultRenderScript(RenderScript):
                 self.tab._jsconsole_enable()
 
             if js_profile:
-                self.tab.inject_js_libs(js_profile)
+                # XXX: shouldn't we keep injecting scripts after redirects?
+                self.tab.run_js_files(js_profile)
 
             js_output = self.tab.runjs(js_source)  #.encode('utf8')
             if self.console:

@@ -392,25 +392,22 @@ class BrowserTab(QObject):
 
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
-    def inject_js(self, filename):
+    def run_js_file(self, filename):
         """
         Load JS library from file ``filename`` to the current frame.
         """
-
-        # TODO: shouldn't it keep injected scripts after redirects/reloads?
         with open(filename, 'rb') as f:
             script = f.read().decode('utf-8')
             return self.runjs(script)
 
-    def inject_js_libs(self, folder):
+    def run_js_files(self, folder):
         """
         Load all JS libraries from ``folder`` folder to the current frame.
         """
-        # TODO: shouldn't it keep injected scripts after redirects/reloads?
         for jsfile in os.listdir(folder):
             if jsfile.endswith('.js'):
                 filename = os.path.join(folder, jsfile)
-                self.inject_js(filename)
+                self.run_js_file(filename)
 
     def autoload(self, js_source):
         """ Execute JS code before each page load """
