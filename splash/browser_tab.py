@@ -421,6 +421,14 @@ class BrowserTab(QObject):
         for script in self._autoload_scripts:
             self.web_page.mainFrame().evaluateJavaScript(script)
 
+    def http_get(self, url, callback, headers=None, follow_redirects=True):
+        """ Send a GET request; call a callback with the reply as an argument. """
+        self.http_client.get(url,
+            callback=callback,
+            headers=headers,
+            follow_redirects=follow_redirects
+        )
+
     def runjs(self, js_source):
         """
         Run JS code in page context and return the result.

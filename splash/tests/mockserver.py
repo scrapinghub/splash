@@ -30,6 +30,7 @@ def _html_resource(html):
 
     class HtmlResource(Resource):
         isLeaf = True
+        template = html
 
         def __init__(self, http_port=None, https_port=None):
             Resource.__init__(self)
@@ -37,7 +38,7 @@ def _html_resource(html):
             self.https_port = https_port
 
         def render(self, request):
-            return html % dict(
+            return self.template % dict(
                 http_port=self.http_port,
                 https_port=self.https_port
             )

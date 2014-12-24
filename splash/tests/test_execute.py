@@ -7,6 +7,7 @@ import requests
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
+from .mockserver import JsRender
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
@@ -1367,7 +1368,6 @@ class HarTest(BaseLuaRenderTest):
         self.assertEqual(har["entries"], [])
 
 
-
 class AutoloadTest(BaseLuaRenderTest):
     def test_autoload(self):
         resp = self.request_lua("""
@@ -1393,6 +1393,76 @@ class AutoloadTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
             splash:autoload()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+
+
+class HttpGetTest(BaseLuaRenderTest):
+    def test_get(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local reply = splash:http_get(splash.args.url)
+            splash:wait(0.1)
+            return reply.content.text
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(JsRender.template, resp.text)
+
+    def test_bad_url(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return splash:http_get(splash.args.url)
+        end
+        """, {"url": self.mockurl("--bad-url--")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json()["status"], 404)
+
+    def test_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return splash:http_get{
+                splash.args.url,
+                headers={
+                    ["Custom-Header"] = "Header Value",
+                }
+            }
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], 200)
+        self.assertIn("Header Value", data["content"]["text"])
+
+    def test_redirects_follow(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return splash:http_get(splash.args.url)
+        end
+        """, {"url": self.mockurl("http-redirect?code=302")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], 200)
+        self.assertNotIn("redirect to", data["content"]["text"])
+        self.assertIn("GET request", data["content"]["text"])
+
+    def test_redirects_nofollow(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return splash:http_get{url=splash.args.url, follow_redirects=false}
+        end
+        """, {"url": self.mockurl("http-redirect?code=302")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], 302)
+        self.assertEqual(data["redirectURL"], "/getrequest?http_code=302")
+        self.assertIn("302 redirect to", data["content"]["text"])
+
+    def test_noargs(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:http_get()
         end
         """)
         self.assertStatusCode(resp, 400)

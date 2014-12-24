@@ -15,6 +15,7 @@ from splash.lua import (
     lua2python,
     python2lua,
 )
+from splash.har.qt import reply2har
 from splash.render_options import BadOption
 from splash.utils import truncated, BinaryCapsule
 
@@ -290,7 +291,23 @@ class Splash(object):
     def jsfunc_private(self, func):
         return _WrappedJavascriptFunction(self, func)
 
-    @command()
+    @command(async=True)
+    def http_get(self, url, headers=None, follow_redirects=True):
+        if url is None:
+            raise ScriptError("'url' is required for splash:http_get")
+
+        cmd_id = next(self._command_ids)
+
+        def callback(reply):
+            reply_har = reply2har(reply, include_content=True, binary_content=True)
+            self._return(cmd_id, self.python2lua(reply_har))
+
+        return _AsyncBrowserCommand(cmd_id, "http_get", dict(
+            url=url,
+            callback=callback,
+            headers=self.lua2python(headers, max_depth=3),
+            follow_redirects=follow_redirects,
+        ))
     def autoload(self, source_or_url=None, source=None, url=None):
         if len([a for a in [source_or_url, source, url] if a is not None]) != 1:
             raise ScriptError("splash:autoload requires a single argument")
@@ -432,6 +449,9 @@ class Splash(object):
         kwargs.setdefault("binary", True)
         kwargs.setdefault("strict", True)
         return lua2python(self.lua, obj, **kwargs)
+
+    def python2lua(self, obj, **kwargs):
+        return python2lua(self.lua, obj, **kwargs)
 
     def _create_runtime(self):
         """

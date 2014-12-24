@@ -4,6 +4,7 @@ Module with helper utilities to serialize QWebkit objects to HAR.
 See http://www.softwareishard.com/blog/har-12-spec/.
 """
 from __future__ import absolute_import
+import base64
 
 from PyQt4.QtCore import Qt, QVariant
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
@@ -92,7 +93,7 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply):
+def reply2har(reply, include_content=False, binary_content=False):
     """ Serialize QNetworkReply to HAR. """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
@@ -103,6 +104,7 @@ def reply2har(reply):
             "mimeType": "",
         },
         "headersSize" : headers_size(reply),
+        "ok": not reply.error(),  # non-standard but useful
     }
 
     content_type = reply.header(QNetworkRequest.ContentTypeHeader)
@@ -133,8 +135,15 @@ def reply2har(reply):
     else:
         res["redirectURL"] = ""
 
-    # res2 = res.copy()
-    # del res2["headers"]
-    # print(res2)
+    if include_content:
+        data = bytes(reply.readAll())
+        if binary_content:
+            res["content"]["encoding"] = "binary"
+            res["content"]["text"] = data
+            res["content"]["size"] = len(data)
+        else:
+            res["content"]["encoding"] = "base64"
+            res["content"]["text"] = base64.b64encode(data)
+            res["content"]["size"] = len(data)
 
     return res

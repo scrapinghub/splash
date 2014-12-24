@@ -346,6 +346,47 @@ Example:
         return splash:runjs("get_document_title()")
     end
 
+
+.. _splash-http-get:
+
+splash:http_get
+---------------
+
+Send an HTTP request and return a response without loading
+the result to the browser window.
+
+**Signature:** ``response = splash:http_get{url, headers=nil, follow_redirects=true}``
+
+**Parameters:**
+
+* url - URL to load;
+* headers - a Lua table with HTTP headers to add/replace in the initial request;
+* follow_redirects - whether to follow HTTP redirects.
+
+**Returns:** a Lua table with the response in `HAR response`_ format.
+
+Example:
+
+.. code-block:: lua
+
+    local reply = splash:http_get("http://example.com")
+    -- reply.content.text contains raw HTML data
+    -- reply.status contains HTTP status code, as a number
+    -- see HAR docs for more info
+
+In addition to all HAR fields the response contains "ok" flag which is true
+for successful responses and false when error happened:
+
+.. code-block:: lua
+
+    local reply = splash:http_get("some-bad-url")
+    -- reply.ok == false
+
+This method doesn't change the current page contents and URL.
+To load a webpage to the browser use :ref:`splash-go`.
+
+.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
+
 .. _splash-html:
 
 splash:html
