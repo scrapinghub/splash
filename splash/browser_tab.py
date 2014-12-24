@@ -557,6 +557,15 @@ class _SplashHttpClient(QObject):
         )
         return self._send_request(url, cb, method=method, body=body, headers=headers)
 
+    def get(self, url, callback, headers=None, follow_redirects=True):
+        """ Send a GET HTTP request; call the callback with the reply. """
+        cb = functools.partial(
+            self._on_get_finished,
+            callback=callback,
+            url=url,
+        )
+        self.request(url, cb, headers=headers, follow_redirects=follow_redirects)
+
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
         # XXX: The caller must ensure self._delete_reply is called in a callback.
@@ -567,20 +576,6 @@ class _SplashHttpClient(QObject):
         reply.finished.connect(callback)
         self._replies.add(reply)
         return reply
-
-    def get(self, url, callback, headers=None, follow_redirects=True):
-        """ Send a GET HTTP request; call the callback with the reply. """
-        cb = functools.partial(
-            self._on_get_finished,
-            callback=callback,
-            url=url,
-        )
-        self.request(url, cb, follow_redirects=follow_redirects)
-
-    def _on_get_finished(self, callback, url):
-        self.logger.log("httpget_finished", min_level=2)
-        reply = self.sender()
-        callback(reply)
 
     def _on_request_finished(self, callback, method, body, headers,
                              follow_redirects, redirects_remaining):
@@ -611,6 +606,11 @@ class _SplashHttpClient(QObject):
             )
         finally:
             self._delete_reply(reply)
+
+    def _on_get_finished(self, callback, url):
+        self.logger.log("httpget_finished", min_level=2)
+        reply = self.sender()
+        callback(reply)
 
     def _set_request_headers(self, request, headers):
         """ Set HTTP headers for the request. """
