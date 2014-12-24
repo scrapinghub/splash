@@ -308,6 +308,8 @@ class Splash(object):
             headers=self.lua2python(headers, max_depth=3),
             follow_redirects=follow_redirects,
         ))
+
+    @command()
     def autoload(self, source_or_url=None, source=None, url=None):
         if len([a for a in [source_or_url, source, url] if a is not None]) != 1:
             raise ScriptError("splash:autoload requires a single argument")
