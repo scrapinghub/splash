@@ -1354,3 +1354,33 @@ class HarTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         har = resp.json()["log"]
         self.assertEqual(har["entries"], [])
+
+
+class AutoloadTest(BaseLuaRenderTest):
+    def test_autoload(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:autoload("window.FOO = 'bar'")
+
+            splash:go(splash.args.url)
+            local foo1 = splash:runjs("FOO")
+
+            splash:runjs("window.FOO = 'spam'")
+            local foo2 = splash:runjs("FOO")
+
+            splash:go(splash.args.url)
+            local foo3 = splash:runjs("FOO")
+            return {foo1=foo1, foo2=foo2, foo3=foo3}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data, {"foo1": "bar", "foo2": "spam", "foo3": "bar"})
+
+    def test_noargs(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:autoload()
+        end
+        """)
+        self.assertStatusCode(resp, 400)

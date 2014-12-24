@@ -291,6 +291,24 @@ class Splash(object):
         return _WrappedJavascriptFunction(self, func)
 
     @command()
+    def autoload(self, source_or_url=None, source=None, url=None):
+        if len([a for a in [source_or_url, source, url] if a is not None]) != 1:
+            raise ScriptError("splash:autoload requires a single argument")
+
+        if source_or_url is not None:
+            if source_or_url.startswith(("http://", "https://")):
+                source, url = None, source_or_url
+            else:
+                source, url = source_or_url, None
+
+        if source is not None:
+            self.tab.autoload(source)
+        else:
+            raise NotImplementedError()
+
+        return True
+
+    @command()
     def get_cookies(self):
         return self.tab.get_cookies()
 

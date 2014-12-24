@@ -255,7 +255,6 @@ If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
-
 .. _splash-runjs:
 
 splash:runjs
@@ -307,6 +306,45 @@ must be used. Compare:
         return window_scroll(x, y)
     end
 
+To execute JavaScript code before page is loaded use :ref:`splash-autoload`.
+
+.. _splash-autoload:
+
+splash:autoload
+---------------
+
+Set JavaScript to load automatically on each page load.
+
+**Signature:** ``ok, reason = splash:autoload(source)``
+
+**Parameters:**
+
+* source - a string with JavaScript source code to execute before the page load.
+
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil, error happened and
+``reason`` contains an error description.
+
+``splash:autoload`` itself doesn't execute the passed JavaScript code;
+the code is executed each time a new page starts to load. To execute some
+code once, after page is loaded use :ref:`splash-runjs` or
+:ref:`splash-jsfunc`.
+
+``splash:autoload`` can be used to preload utility JavaScript libraries
+or replace JavaScript objects before a webpage has a chance to do it.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+        splash:autoload([[
+            function get_document_title(){
+               return document.title;
+            }
+        ]])
+        assert(splash:go(splash.args.url))
+        return splash:runjs("get_document_title()")
+    end
 
 .. _splash-html:
 

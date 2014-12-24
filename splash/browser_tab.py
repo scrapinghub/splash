@@ -56,6 +56,8 @@ class BrowserTab(QObject):
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
         self._history = []
+        self._autoload_scripts = []
+
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
                            render_options)
         self._setup_logging(verbosity)
@@ -102,6 +104,7 @@ class BrowserTab(QObject):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
         self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
         self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
+        self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._on_javascript_window_object_cleared)
 
     def return_result(self, result):
         """ Return a result to the Pool. """
@@ -408,6 +411,18 @@ class BrowserTab(QObject):
             if jsfile.endswith('.js'):
                 filename = os.path.join(folder, jsfile)
                 self.inject_js(filename)
+
+    def autoload(self, js_source):
+        """ Execute JS code before each page load """
+        self._autoload_scripts.append(js_source)
+
+    def no_autoload(self):
+        """ Remove all scripts scheduled for auto-loading """
+        self._autoload_scripts = []
+
+    def _on_javascript_window_object_cleared(self):
+        for script in self._autoload_scripts:
+            self.web_page.mainFrame().evaluateJavaScript(script)
 
     def runjs(self, js_source):
         """
