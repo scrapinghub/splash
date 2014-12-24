@@ -628,7 +628,6 @@ class _SplashHttpClient(QObject):
             self._delete_reply(reply)
 
     def _on_get_finished(self, callback, url):
-        self.logger.log("httpget_finished", min_level=2)
         reply = self.sender()
         callback(reply)
 
