@@ -128,10 +128,15 @@ class HarLog(object):
                 else:
                     # Start a new page.
                     page_id += 1
-                    started_dt = cause_ev.data['_tmp']['start_time']
+                    if cause_ev is None:
+                        started_dt = self.created_at  # XXX: is it a right thing to do?
+                    else:
+                        started_dt = cause_ev.data['_tmp']['start_time']
                     current_page = self._empty_page(page_id, started_dt)
                     self.pages.append(current_page)
-                cause_ev.data["pageref"] = str(page_id)
+
+                if cause_ev is not None:
+                    cause_ev.data["pageref"] = str(page_id)
 
     def _prev_entry(self, url, last_idx):
         for ev in reversed(self.events[:last_idx]):

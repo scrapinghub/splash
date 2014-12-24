@@ -1355,6 +1355,18 @@ class HarTest(BaseLuaRenderTest):
         har = resp.json()["log"]
         self.assertEqual(har["entries"], [])
 
+    def test_har_about_blank(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go("about:blank")
+            return splash:har()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        har = resp.json()["log"]
+        self.assertEqual(har["entries"], [])
+
+
 
 class AutoloadTest(BaseLuaRenderTest):
     def test_autoload(self):
