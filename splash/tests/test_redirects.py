@@ -7,11 +7,19 @@ from splash.tests.utils import NON_EXISTING_RESOLVABLE
 
 class HttpRedirectTest(BaseRenderTest):
 
+    def assertRedirectedResponse(self, resp, code):
+        self.assertStatusCode(resp, 200)
+        self.assertIn("GET request", resp.text)
+        self.assertIn("{'http_code': ['%s']}" % code, resp.text)
+
     def assertHttpRedirectWorks(self, code):
-        r = self.request({"url": self.mockurl("http-redirect?code=%s" % code)})
-        self.assertStatusCode(r, 200)
-        self.assertIn("GET request", r.text)
-        self.assertIn("{'http_code': ['%s']}" % code, r.text)
+        resp = self.request({"url": self.mockurl("http-redirect?code=%s" % code)})
+        self.assertRedirectedResponse(resp, code)
+
+    def assertBaseurlHttpRedirectWorks(self, code):
+        url = self.mockurl("http-redirect?code=%s" % code)
+        resp = self.request({"url": url, "baseurl": url})
+        self.assertRedirectedResponse(resp, code)
 
     def test_301(self):
         self.assertHttpRedirectWorks(301)
@@ -24,6 +32,18 @@ class HttpRedirectTest(BaseRenderTest):
 
     def test_307(self):
         self.assertHttpRedirectWorks(307)
+
+    def test_301_baseurl(self):
+        self.assertBaseurlHttpRedirectWorks(301)
+
+    def test_302_baseurl(self):
+        self.assertBaseurlHttpRedirectWorks(302)
+
+    def test_303_baseurl(self):
+        self.assertBaseurlHttpRedirectWorks(303)
+
+    def test_307_baseurl(self):
+        self.assertBaseurlHttpRedirectWorks(307)
 
 
 class MetaRedirectTest(BaseRenderTest):

@@ -127,5 +127,3 @@ def _cookies_to_raw(cookies):
         bytes(cookie.toRawForm(QNetworkCookie.NameAndValueOnly))
         for cookie in cookies
     )
-
-

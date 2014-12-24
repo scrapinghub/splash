@@ -43,7 +43,7 @@ def get_leaks():
         'QWebView', 'QWebPage', 'QWebFrame', 'QNetworkRequest', 'QNetworkReply',
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
         'SplashCookieJar',
-        'BrowserTab',
+        'BrowserTab', '_SplashHttpClient',
         'JavascriptConsole', 'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
