@@ -490,14 +490,15 @@ class LuaRender(RenderScript):
     @stop_on_error
     def dispatch(self, cmd_id, *args):
         """ Execute the script """
-        self.log("[lua] dispatch cmd_id={}, args={!s}".format(cmd_id, args))
+        args_repr = truncated("{!r}".format(args), max_length=400, msg="...[long arguments truncated]")
+        self.log("[lua] dispatch cmd_id={}, args={}".format(cmd_id, args_repr))
 
         self.log(
             "[lua] arguments are for command %s, waiting for result of %s" % (cmd_id, self._waiting_for_result_id),
             min_level=3,
         )
         if cmd_id != self._waiting_for_result_id:
-            self.log("[lua] skipping an out-of-order result {!r}".format(args), min_level=1)
+            self.log("[lua] skipping an out-of-order result {}".format(args_repr), min_level=1)
             return
 
         while True:
@@ -506,7 +507,7 @@ class LuaRender(RenderScript):
 
                 # Got arguments from an async command; send them to coroutine
                 # and wait for the next async command.
-                self.log("[lua] send %s" % (args,))
+                self.log("[lua] send %s" % args_repr)
                 cmd = self.coro.send(args)  # cmd is a next async command
 
                 args = None  # don't re-send the same value
