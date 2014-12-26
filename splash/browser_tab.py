@@ -157,6 +157,12 @@ class BrowserTab(QObject):
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
         return w, h
 
+    def lock_navigation(self):
+        self.web_page.navigation_locked = True
+
+    def unlock_navigation(self):
+        self.web_page.navigation_locked = False
+
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
         self.http_client.set_user_agent(value)

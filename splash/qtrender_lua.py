@@ -344,6 +344,14 @@ class Splash(object):
             ))
 
     @command()
+    def lock_navigation(self):
+        self.tab.lock_navigation()
+
+    @command()
+    def unlock_navigation(self):
+        self.tab.unlock_navigation()
+
+    @command()
     def get_cookies(self):
         return self.tab.get_cookies()
 

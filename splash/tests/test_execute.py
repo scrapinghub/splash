@@ -1414,7 +1414,7 @@ class AutoloadTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertNotIn("ok", resp.json())
         self.assertIn("404", resp.json()["reason"])
-        
+
     def test_noargs(self):
         resp = self.request_lua("""
         function main(splash)
@@ -1492,3 +1492,31 @@ class HttpGetTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
+
+
+class NavigationLockingTest(BaseLuaRenderTest):
+    def test_lock_navigation(self):
+        url = self.mockurl("jsredirect")
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:lock_navigation()
+            splash:wait(0.3)
+            return splash.url()
+        end
+        """, {"url": url})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, url)
+
+    def test_unlock_navigation(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:lock_navigation()
+            splash:unlock_navigation()
+            splash:wait(0.3)
+            return splash.url()
+        end
+        """, {"url": self.mockurl("jsredirect")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, self.mockurl("jsredirect-target"))

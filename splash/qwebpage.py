@@ -27,6 +27,7 @@ class SplashQWebPage(QWebPage):
     custom_user_agent = None
     custom_headers = None
     skip_custom_headers = False
+    navigation_locked = False
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
@@ -50,6 +51,11 @@ class SplashQWebPage(QWebPage):
 
     def onLayoutCompleted(self):
         self.har_log.store_timing("onContentLoad")
+
+    def acceptNavigationRequest(self, webFrame, networkRequest, navigationType):
+        if self.navigation_locked:
+            return False
+        return super(SplashQWebPage, self).acceptNavigationRequest(webFrame, networkRequest, navigationType)
 
     def javaScriptAlert(self, frame, msg):
         return

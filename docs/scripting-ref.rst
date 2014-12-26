@@ -712,6 +712,30 @@ Delete matching cookies.
 This function does nothing when both *name* and *url* are nil.
 To remove all cookies use :ref:`splash-clear-cookies` method.
 
+.. _splash-lock-navigation:
+
+splash:lock_navigation
+----------------------
+
+Lock navigation.
+
+**Signature:** ``splash:lock_navigation()``
+
+After calling this method the navigation away from the current page is no
+longer permitted - the page is locked to the current URL.
+
+.. _splash-unlock-navigation:
+
+splash:unlock_navigation
+------------------------
+
+Unlock navigation.
+
+**Signature:** ``splash:unlock_navigation()``
+
+After calling this method the navigation away from the page becomes
+permitted. Note that the pending navigation requests suppressed
+by :ref:`splash-lock-navigation` won't be reissued.
 
 .. _splash-set-result-content-type:
 
