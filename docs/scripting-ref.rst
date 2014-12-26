@@ -414,6 +414,36 @@ To load a webpage to the browser use :ref:`splash-go`.
 
 .. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
 
+
+.. _splash-set-content:
+
+splash:set_content
+------------------
+
+Set the content of the current page and wait until the page loads.
+
+**Signature:** ``ok, reason = splash:set_content{data, mime_type="text/html; charset=utf-8", baseurl=""}``
+
+**Parameters:**
+
+* data - new page content;
+* mime_type - MIME type of the content;
+* baseurl - external objects referenced in the content are located
+  relative to baseurl.
+
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+page load; ``reason`` provides an information about error type.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+        assert(splash:set_content("<html><body><h1>hello</h1></body></html>"))
+        return splash:png()
+    end
+
+
 .. _splash-html:
 
 splash:html

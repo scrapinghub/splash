@@ -2,8 +2,12 @@
 from __future__ import absolute_import
 import json
 import unittest
-import pytest
+from cStringIO import StringIO
+
+from PIL import Image
 import requests
+import pytest
+
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
@@ -1502,7 +1506,7 @@ class NavigationLockingTest(BaseLuaRenderTest):
             splash:go(splash.args.url)
             splash:lock_navigation()
             splash:wait(0.3)
-            return splash.url()
+            return splash:url()
         end
         """, {"url": url})
         self.assertStatusCode(resp, 200)
@@ -1515,8 +1519,71 @@ class NavigationLockingTest(BaseLuaRenderTest):
             splash:lock_navigation()
             splash:unlock_navigation()
             splash:wait(0.3)
-            return splash.url()
+            return splash:url()
         end
         """, {"url": self.mockurl("jsredirect")})
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, self.mockurl("jsredirect-target"))
+
+
+class SetContentTest(BaseLuaRenderTest):
+    def test_set_content(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:set_content("<html><head></head><body><h1>Hello</h1></body></html>"))
+            return {
+                html = splash:html(),
+                url = splash:url(),
+            }
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "html": "<html><head></head><body><h1>Hello</h1></body></html>",
+            "url": "about:blank",
+        })
+
+    def test_unicode(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:set_content("проверка"))
+            return splash:html()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertIn(u'проверка', resp.text)
+
+    def test_related_resources(self):
+        script = """
+        function main(splash)
+            splash:set_content{
+                data = [[
+                    <html><body>
+                        <img width=50 heigth=50 src="/slow.gif?n=0.2">
+                    </body></html>
+                ]],
+                baseurl = splash.args.base,
+            }
+            return splash:png()
+        end
+        """
+        resp = self.request_lua(script, {"base": self.mockurl("")})
+        self.assertStatusCode(resp, 200)
+        img = Image.open(StringIO(resp.content))
+        self.assertEqual((0,0,0,255), img.getpixel((10, 10)))
+
+        # the same, but with a bad base URL
+        resp = self.request_lua(script, {"base": ""})
+        self.assertStatusCode(resp, 200)
+        img = Image.open(StringIO(resp.content))
+        self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
+
+    def test_url(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_content{"hey", baseurl="http://example.com/foo"}
+            return splash:url()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "http://example.com/foo")

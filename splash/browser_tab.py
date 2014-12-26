@@ -9,7 +9,7 @@ import functools
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from PyQt4.QtCore import (Qt, QUrl, QBuffer, QSize, QTimer, QObject,
                           pyqtSlot)
-from PyQt4.QtGui import QPainter, QImage
+from PyQt4.QtGui import QPainter, QImage, QMouseEvent, QKeyEvent
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 from twisted.python import log
@@ -163,6 +163,25 @@ class BrowserTab(QObject):
     def unlock_navigation(self):
         self.web_page.navigation_locked = False
 
+    def set_content(self, data, callback, errback, mime_type=None, baseurl=None):
+        """
+        Set page contents to ``data``, then wait until page loads.
+        Invoke a callback if load was successful or errback if it wasn't.
+        """
+        if mime_type is None:
+            mime_type = "text/html; charset=utf-8"
+        if baseurl is None:
+            baseurl = ''
+        if isinstance(data, unicode):
+            data = data.encode('utf8')
+        callback_id = self._load_finished.connect(
+            self._on_content_ready,
+            callback=callback,
+            errback=errback,
+        )
+        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
+        self.web_page.mainFrame().setContent(data, mime_type, QUrl(baseurl))
+
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
         self.http_client.set_user_agent(value)
@@ -232,7 +251,7 @@ class BrowserTab(QObject):
             #     # be called, so we're not cancelling this callback manually.
 
             callback_id = self._load_finished.connect(
-                self._on_goto_load_finished,
+                self._on_content_ready,
                 callback=callback,
                 errback=errback,
             )
@@ -281,17 +300,15 @@ class BrowserTab(QObject):
         """
         self.logger.log("baseurl_request_finished", min_level=2)
         reply = self.sender()
-        callback_id = self._load_finished.connect(
-            self._on_goto_load_finished,
+        mime_type = reply.header(QNetworkRequest.ContentTypeHeader).toString()
+        data = reply.readAll()
+        self.set_content(
+            data=data,
             callback=callback,
             errback=errback,
+            mime_type=mime_type,
+            baseurl=baseurl,
         )
-        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
-
-        baseurl = QUrl(baseurl)
-        mimeType = reply.header(QNetworkRequest.ContentTypeHeader).toString()
-        data = reply.readAll()
-        self.web_page.mainFrame().setContent(data, mimeType, baseurl)
         if reply.error():
             self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
 
@@ -304,7 +321,7 @@ class BrowserTab(QObject):
             self.web_page.mainFrame().load(request, meth, body)
 
     @skip_if_closing
-    def _on_goto_load_finished(self, ok, callback, errback, callback_id):
+    def _on_content_ready(self, ok, callback, errback, callback_id):
         """
         This method is called when a QWebPage finishes loading its contents.
         """

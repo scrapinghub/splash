@@ -343,6 +343,24 @@ class Splash(object):
                 callback=callback
             ))
 
+    @command(async=True)
+    def set_content(self, data, mime_type=None, baseurl=None):
+        cmd_id = next(self._command_ids)
+
+        def success():
+            self._return(cmd_id, True)
+
+        def error():
+            self._return(cmd_id, None, "error")
+
+        return _AsyncBrowserCommand(cmd_id, "set_content", dict(
+            data=data,
+            baseurl=baseurl,
+            mime_type=mime_type,
+            callback=success,
+            errback=error,
+        ))
+
     @command()
     def lock_navigation(self):
         self.tab.lock_navigation()
