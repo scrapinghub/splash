@@ -35,7 +35,6 @@ class ScriptError(BadOption):
 
 
 class _AsyncBrowserCommand(object):
-
     def __init__(self, id, name, kwargs):
         self.id = id
         self.name = name
@@ -49,6 +48,11 @@ class _AsyncBrowserCommand(object):
             kwargs['errback'] = '<an errback>'
         kwargs_repr = truncated(repr(kwargs), 400, "...[long kwargs truncated]")
         return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
+
+
+class _ImmediateResult(object):
+    def __init__(self, value):
+        self.value = value
 
 
 def command(async=False, table_argument=False):
@@ -325,7 +329,7 @@ class Splash(object):
         if source is not None:
             # load source directly
             self.tab.autoload(source)
-            return True
+            return _ImmediateResult(True)
         else:
             # load JS from a remote resource
             cmd_id = next(self._command_ids)
@@ -610,6 +614,10 @@ class LuaRender(RenderScript):
                 self._waiting_for_result_id = cmd.id
                 self.splash.run_async_command(cmd)
                 return
+            elif isinstance(cmd, _ImmediateResult):
+                self.log("[lua] got result {!r}".format(cmd))
+                args = cmd.value
+                continue
             else:
                 self.log("[lua] got non-command")
 

@@ -1376,7 +1376,7 @@ class AutoloadTest(BaseLuaRenderTest):
     def test_autoload(self):
         resp = self.request_lua("""
         function main(splash)
-            splash:autoload("window.FOO = 'bar'")
+            assert(splash:autoload("window.FOO = 'bar'"))
 
             splash:go(splash.args.url)
             local foo1 = splash:runjs("FOO")
