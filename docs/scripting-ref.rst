@@ -34,13 +34,15 @@ address bar, pressing Enter and waiting until page loads.
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
 
-Two types of errors are reported (``ok`` can be ``nil`` in two cases):
+Three types of errors are reported (``ok`` can be ``nil`` in 3 cases):
 
 1. There is nothing to render. This can happen if a host doesn't exist,
    server dropped connection, etc. In this case ``reason`` is ``"error"``.
 2. Server returned a response with 4xx or 5xx HTTP status code.
    ``reason`` is ``"http<code>"`` in this case, i.e. for
    HTTP 404 Not Found ``reason`` is ``"http404"``.
+3. Navigation is locked (see :ref:`lock-navigation`); ``reason``
+   is ``"navigation_locked"``.
 
 Error handling example:
 

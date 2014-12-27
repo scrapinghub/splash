@@ -241,6 +241,9 @@ class Splash(object):
         if url is None:
             raise ScriptError("'url' is required for splash:go")
 
+        if self.tab.web_page.navigation_locked:
+            return _ImmediateResult((None, "navigation_locked"))
+
         cmd_id = next(self._command_ids)
 
         def success():

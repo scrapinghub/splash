@@ -1525,6 +1525,18 @@ class NavigationLockingTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, self.mockurl("jsredirect-target"))
 
+    def test_go_navigation_locked(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:lock_navigation()
+            local ok, reason = splash:go(splash.args.url)
+            return {ok=ok, reason=reason}
+        end
+        """, {"url": self.mockurl("jsredirect"), "timeout": 1.0})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"reason": "navigation_locked"})
+
+
 
 class SetContentTest(BaseLuaRenderTest):
     def test_set_content(self):
