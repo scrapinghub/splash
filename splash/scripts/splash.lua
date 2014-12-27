@@ -35,14 +35,16 @@ Splash = function (py_splash)
   end
 
   --
-  -- This decorator makes function yields the result instead of returning it
+  -- This decorator makes function yield the result instead of returning it
   --
   local function yields_result(func)
     return function(...)
       -- XXX: can Lua code access func(...) result
       -- from here? It should be prevented.
 
-      -- errors are catched and reraised to preserve the original line number
+      -- The code below could be just "return coroutine.yield(func(...))";
+      -- it is more complex because of error handling: errors are catched
+      -- and reraised to preserve the original line number.
       local f = function (...)
         return table.pack(coroutine.yield(func(...)))
       end
