@@ -5,8 +5,8 @@
 -- wraps async methods to `coroutine.yield` and fixes Lua <-> Python
 -- error handling.
 --
-Splash = function (splash)
-  local self = {args=splash.args}
+Splash = function (py_splash)
+  local self = {args=py_splash.args}
 
   --
   -- Python Splash commands return `ok, result` pairs; this decorator
@@ -58,8 +58,8 @@ Splash = function (splash)
   --
   -- Create Lua splash:<...> methods from Python Splash object.
   --
-  for key, opts in pairs(splash.commands) do
-    local command = drops_self_argument(splash[key])
+  for key, opts in pairs(py_splash.commands) do
+    local command = drops_self_argument(py_splash[key])
 
     if opts.returns_error_flag then
       command = unwraps_errors(command)
