@@ -1,8 +1,9 @@
 -------------------
 ----- Sandbox -----
 -------------------
+Sandbox = {}
 
-env = {
+Sandbox.env = {
   --
   -- 6.1 Basic Functions
   -- http://www.lua.org/manual/5.2/manual.html#6.1
@@ -130,17 +131,19 @@ env = {
 
 -------------------------------------------------------------
 --
--- Fix metatables.
+-- Fix metatables. Some of the functions are available
+-- via metatables of primitive types; disable them all.
 --
+Sandbox.fix_metatables = function()
+  -- 1. TODO: change string metatable to the sandboxed version
+  --    (it is now just disabled)
+  debug.setmetatable('', nil)
 
--- 1. TODO: change string metatable to the sandboxed version
---    (it is now just disabled)
-debug.setmetatable('', nil)
-
--- 2. Make sure there are no other metatables:
-debug.setmetatable(1, nil)
-debug.setmetatable(function() end, nil)
-debug.setmetatable(true, nil)
+  -- 2. Make sure there are no other metatables:
+  debug.setmetatable(1, nil)
+  debug.setmetatable(function() end, nil)
+  debug.setmetatable(true, nil)
+end
 
 
 -------------------------------------------------------------
@@ -151,45 +154,45 @@ debug.setmetatable(true, nil)
 --
 
 -- maximum memory (in KB) that can be used by Lua script
-local mem_limit = 10000
+Sandbox.mem_limit = 10000
 
--- Maximum number of instructions that can be executed.
--- XXX: the slowdown only becomes percievable at ~5m instructions.
-local instruction_limit = 1e6
-
-
-do
-  -- track memory use
+function Sandbox.enable_memory_limit()
+  if Sandbox._memory_tracking_enabled then
+    return
+  end
   local mt = {__gc = function (u)
-    if collectgarbage("count") > mem_limit then
+    if collectgarbage("count") > Sandbox.mem_limit then
       error("script uses too much memory")
     else
       setmetatable({}, getmetatable(u))
     end
   end}
   setmetatable({}, mt)
+  Sandbox._memory_tracking_enabled = true
 end
 
 
-instruction_count = 0
-local function step(event, line)
-  instruction_count = instruction_count + 1
-  if instruction_count > instruction_limit then
-    error("script uses too much CPU", 2)
+-- Maximum number of instructions that can be executed.
+-- XXX: the slowdown only becomes percievable at ~5m instructions.
+Sandbox.instruction_limit = 1e6
+Sandbox.instruction_count = 0
+
+function Sandbox.enable_instruction_limit()
+  local function _debug_step(event, line)
+    Sandbox.instruction_count = Sandbox.instruction_count + 1
+    if Sandbox.instruction_count > Sandbox.instruction_limit then
+      error("script uses too much CPU", 2)
+    end
   end
-end
-
--- enable sandbox hooks
-local enable_debug_hooks = function()
-  debug.sethook(step, '', 1)
+  debug.sethook(_debug_step, '', 1)
 end
 
 
 -- debug hooks are per-coroutine; use this function
 -- as a replacement for `coroutine.create`
-function create_sandboxed_coroutine(f, ...)
+function Sandbox.create_coroutine(f, ...)
   return coroutine.create(function(...)
-    enable_debug_hooks()
+    Sandbox.enable_instruction_limit()
     return f(...)
   end, ...)
 end
@@ -199,9 +202,11 @@ end
 --
 -- Lua 5.2 sandbox
 --
-function run(untrusted_code)
-  enable_debug_hooks()
-  local untrusted_function, message = load(untrusted_code, nil, 't', env)
+function Sandbox.run(untrusted_code)
+  Sandbox.fix_metatables()
+  Sandbox.enable_instruction_limit()
+  Sandbox.enable_memory_limit()
+  local untrusted_function, message = load(untrusted_code, nil, 't', Sandbox.env)
   if not untrusted_function then return nil, message end
   return pcall(untrusted_function)
 end

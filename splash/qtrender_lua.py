@@ -460,9 +460,9 @@ class Splash(object):
         """
         Return a Lua wrapper for this object.
         """
-        # FIXME: cache file contents
-        splash_lua_code = get_script_source("splash.lua")
-        self.lua.execute(splash_lua_code)
+        # FIXME/TODO: cache file contents?
+        self.lua.execute(get_script_source("sandbox.lua"))
+        self.lua.execute(get_script_source("splash.lua"))
         wrapper = self.lua.globals()["Splash"]
         return wrapper.create(self)
 
@@ -473,23 +473,24 @@ class Splash(object):
         splash_obj = self.get_wrapper()
         if self.sandboxed:
             main, env = get_main_sandboxed(self.lua, lua_source)
-            # self.script_globals = env  # XXX: does it work well with GC?
-            create_coroutine = self.lua.globals()["create_sandboxed_coroutine"]
-            coro = create_coroutine(main)
-            return coro(splash_obj)
+            main_coro = self._Sandbox.create_coroutine(main)
+            return main_coro(splash_obj)
         else:
             main, env = get_main(self.lua, lua_source)
-            # self.script_globals = env  # XXX: does it work well with GC?
             return main.coroutine(splash_obj)
 
     def instruction_count(self):
         if not self.sandboxed:
             return -1
         try:
-            return self.lua.eval("instruction_count")
+            return self._Sandbox.instruction_count
         except Exception as e:
             print(e)
             return -1
+
+    @property
+    def _Sandbox(self):
+        return self.lua.globals()["Sandbox"]
 
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
