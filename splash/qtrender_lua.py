@@ -552,7 +552,7 @@ class LuaRender(RenderScript):
             sandboxed=sandboxed
         )
         try:
-            self.coro = self.splash.start_main(lua_source)
+            self.main_coro = self.splash.start_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + repr(e))
 
@@ -579,7 +579,7 @@ class LuaRender(RenderScript):
                 # Got arguments from an async command; send them to coroutine
                 # and wait for the next async command.
                 self.log("[lua] send %s" % args_repr)
-                cmd = self.coro.send(args)  # cmd is a next async command
+                cmd = self.main_coro.send(args)  # cmd is a next async command
 
                 args = None  # don't re-send the same value
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
