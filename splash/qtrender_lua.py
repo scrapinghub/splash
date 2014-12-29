@@ -464,7 +464,7 @@ class Splash(object):
         splash_lua_code = get_script_source("splash.lua")
         self.lua.execute(splash_lua_code)
         wrapper = self.lua.globals()["Splash"]
-        return wrapper(self)
+        return wrapper.create(self)
 
     def start_main(self, lua_source):
         """
