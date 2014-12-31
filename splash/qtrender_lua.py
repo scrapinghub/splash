@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import os
 import json
 import functools
 import itertools
@@ -456,24 +457,14 @@ class Splash(object):
             return None
         return str(self._result_content_type)
 
-    def get_wrapper(self):
-        """
-        Return a Lua wrapper for this object.
-        """
-        # FIXME/TODO: cache file contents?
-        self.lua.execute(get_script_source("sandbox.lua"))
-        self.lua.execute(get_script_source("splash.lua"))
-        wrapper = self.lua.globals()["Splash"]
-        return wrapper.create(self)
-
     def start_main(self, lua_source):
         """
         Start "main" function and return it as a coroutine.
         """
-        splash_obj = self.get_wrapper()
+        splash_obj = self._get_wrapper()
         if self.sandboxed:
             main, env = get_main_sandboxed(self.lua, lua_source)
-            main_coro = self._Sandbox.create_coroutine(main)
+            main_coro = self._sandbox.create_coroutine(main)
             return main_coro(splash_obj)
         else:
             main, env = get_main(self.lua, lua_source)
@@ -483,14 +474,19 @@ class Splash(object):
         if not self.sandboxed:
             return -1
         try:
-            return self._Sandbox.instruction_count
+            return self._sandbox.instruction_count
         except Exception as e:
             print(e)
             return -1
 
+    def _get_wrapper(self):
+        """ Return a Lua wrapper for this object. """
+        wrapper = self.lua.eval("require('splash')")
+        return wrapper.create(self)
+
     @property
-    def _Sandbox(self):
-        return self.lua.globals()["Sandbox"]
+    def _sandbox(self):
+        return self.lua.eval("require('sandbox')")
 
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
@@ -510,9 +506,22 @@ class Splash(object):
         Return a restricted Lua runtime.
         Currently it only allows accessing attributes of this object.
         """
-        return get_new_runtime(
+        runtime = get_new_runtime(
             attribute_handlers=(self._attr_getter, self._attr_setter)
         )
+        self._setup_lua_paths(runtime)
+        return runtime
+
+    def _setup_lua_paths(self, lua):
+        packages_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                'lua_modules'
+            )
+        )
+        lua.execute("""
+        package.path = "{packages_path}/?.lua;" .. package.path
+        """.format(packages_path=packages_path))
 
     def _attr_getter(self, obj, attr_name):
 

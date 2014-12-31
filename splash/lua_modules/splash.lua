@@ -57,7 +57,7 @@ end
 -- wraps async methods to `coroutine.yield` and fixes Lua <-> Python
 -- error handling.
 --
-Splash = {}
+local Splash = {}
 Splash.__index = Splash
 
 function Splash.create(py_splash)
@@ -82,7 +82,6 @@ function Splash.create(py_splash)
   return self
 end
 
-
 --
 -- Create jsfunc method from jsfunc_private.
 -- It is required to handle errors properly.
@@ -91,25 +90,6 @@ function Splash:jsfunc(...)
   local func = self:jsfunc_private(...)
   return unwraps_errors(func)
 end
-
-
--- a helper function
-function Splash:_wait_restart_on_redirects(time, max_redirects)
-  if not time then
-    return true
-  end
-
-  local redirects_remaining = max_redirects
-  while redirects_remaining do
-    local ok, reason = self:wait{time, cancel_on_redirect=true}
-    if reason ~= 'redirect' then
-      return ok, reason
-    end
-    redirects_remaining = redirects_remaining - 1
-  end
-  error("Maximum number of redirects happen")
-end
-
 
 --
 -- Default rendering script which implements
@@ -156,3 +136,22 @@ function Splash:go_and_wait(args)
     self:set_viewport(args.viewport)
   end
 end
+
+
+function Splash:_wait_restart_on_redirects(time, max_redirects)
+  if not time then
+    return true
+  end
+
+  local redirects_remaining = max_redirects
+  while redirects_remaining do
+    local ok, reason = self:wait{time, cancel_on_redirect=true}
+    if reason ~= 'redirect' then
+      return ok, reason
+    end
+    redirects_remaining = redirects_remaining - 1
+  end
+  error("Maximum number of redirects happen")
+end
+
+return Splash

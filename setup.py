@@ -46,6 +46,8 @@ setup_args = {
         'vendor/harviewer/webapp/scripts/tabs/*.*',
         'vendor/harviewer/webapp/har.js',
 
+        'lua_modules/*.lua',
+
         'scripts/example.lua',
         'scripts/splash.lua',
         'scripts/sandbox.lua',

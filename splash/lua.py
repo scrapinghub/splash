@@ -85,16 +85,17 @@ def _execute_in_sandbox(lua, script):
     Execute ``script`` in ``lua`` runtime using ``sandbox``.
     Return a (sandboxed) global environment for the executed script.
 
-    "Sandbox" table should be present in the environment. It should provide
-    ``Sandbox.run(untrusted_code)`` method and ``Sandbox.env`` table with a
-    global environment. See ``splash/scripts/sandbox.lua``.
+    "sandbox" module should be importable in the environment.
+    It should provide ``sandbox.run(untrusted_code)`` method and
+    ``sandbox.env`` table with a global environment.
+    See ``splash/lua_modules/sandbox.lua``.
     """
-    Sandbox = lua.globals()["Sandbox"]
-    result = Sandbox.run(script)
+    sandbox = lua.eval("require('sandbox')")
+    result = sandbox.run(script)
     if result is not True:
         ok, res = result
         raise lupa.LuaError(res)
-    return Sandbox.env
+    return sandbox.env
 
 
 def _get_entrypoint(lua, script):
