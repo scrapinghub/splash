@@ -69,6 +69,10 @@ def parse_opts():
         help="disable Lua scripting")
     op.add_option("--disable-lua-sandbox", action="store_true", default=False,
         help="disable Lua sandbox")
+    op.add_option("--lua-package-path", default="",
+        help="semicolon-separated paths to add to Lua package.path")
+    op.add_option("--lua-sandbox-allowed-modules", default="",
+        help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5")
     op.add_option("--version", action="store_true",
@@ -151,7 +155,10 @@ def manhole_server(portnum=None, username=None, password=None):
 def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
                   ui_enabled=True,
-                  lua_enabled=True, lua_sandbox_enabled=True,
+                  lua_enabled=True,
+                  lua_sandbox_enabled=True,
+                  lua_package_path="",
+                  lua_sandbox_allowed_modules=(),
                   verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
@@ -189,6 +196,9 @@ def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None
         ui_enabled=ui_enabled,
         lua_enabled=lua_enabled,
         lua_sandbox_enabled=lua_sandbox_enabled,
+        lua_package_path=lua_package_path,
+        lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
+
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
@@ -230,6 +240,8 @@ def default_splash_server(portnum, slots=None,
                           ui_enabled=True,
                           lua_enabled=True,
                           lua_sandbox_enabled=True,
+                          lua_package_path="",
+                          lua_sandbox_allowed_modules=(),
                           verbosity=None):
     from splash import network_manager
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
@@ -258,6 +270,8 @@ def default_splash_server(portnum, slots=None,
         ui_enabled=ui_enabled,
         lua_enabled=lua_enabled,
         lua_sandbox_enabled=lua_sandbox_enabled,
+        lua_package_path=lua_package_path,
+        lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
         verbosity=verbosity
     )
 
@@ -333,22 +347,26 @@ def main():
         if opts.manhole:
             manhole_server()
 
-        default_splash_server(portnum=opts.port,
-                      slots=opts.slots,
-                      cache_enabled=opts.cache_enabled,
-                      cache_path=opts.cache_path,
-                      cache_size=opts.cache_size,
-                      proxy_profiles_path=opts.proxy_profiles_path,
-                      js_profiles_path=opts.js_profiles_path,
-                      js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
-                      disable_proxy=opts.disable_proxy,
-                      proxy_portnum=opts.proxy_portnum,
-                      filters_path=opts.filters_path,
-                      allowed_schemes=opts.allowed_schemes,
-                      ui_enabled=not opts.disable_ui,
-                      lua_enabled=not opts.disable_lua,
-                      lua_sandbox_enabled=not opts.disable_lua_sandbox,
-                      verbosity=opts.verbosity)
+        default_splash_server(
+            portnum=opts.port,
+            slots=opts.slots,
+            cache_enabled=opts.cache_enabled,
+            cache_path=opts.cache_path,
+            cache_size=opts.cache_size,
+            proxy_profiles_path=opts.proxy_profiles_path,
+            js_profiles_path=opts.js_profiles_path,
+            js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
+            disable_proxy=opts.disable_proxy,
+            proxy_portnum=opts.proxy_portnum,
+            filters_path=opts.filters_path,
+            allowed_schemes=opts.allowed_schemes,
+            ui_enabled=not opts.disable_ui,
+            lua_enabled=not opts.disable_lua,
+            lua_sandbox_enabled=not opts.disable_lua_sandbox,
+            lua_package_path=opts.lua_package_path,
+            lua_sandbox_allowed_modules=opts.lua_sandbox_allowed_modules.split(";"),
+            verbosity=opts.verbosity
+        )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
         from twisted.internet import reactor

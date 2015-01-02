@@ -174,15 +174,21 @@ class RenderHtml(RenderBase):
 class ExecuteLuaScript(RenderBase):
     content_type = "text/plain; charset=utf-8"
 
-    def __init__(self, pool, is_proxy_request=False, sandboxed=True):
+    def __init__(self, pool, is_proxy_request, sandboxed,
+                 lua_package_path,
+                 lua_sandbox_allowed_modules):
         RenderBase.__init__(self, pool, is_proxy_request)
         self.sandboxed = sandboxed
+        self.lua_package_path = lua_package_path
+        self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
 
     def _getRender(self, request, options):
         params = dict(
             proxy = options.get_proxy(),
             lua_source = options.get_lua_source(),
             sandboxed = self.sandboxed,
+            lua_package_path = self.lua_package_path,
+            lua_sandbox_allowed_modules = self.lua_sandbox_allowed_modules,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -536,7 +542,9 @@ class Root(Resource):
         'webapp',
     )
 
-    def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled):
+    def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
+                 lua_package_path,
+                 lua_sandbox_allowed_modules):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
@@ -549,7 +557,10 @@ class Root(Resource):
         if self.lua_enabled and ExecuteLuaScript is not None:
             self.putChild("execute", ExecuteLuaScript(
                 pool=pool,
-                sandboxed=lua_sandbox_enabled
+                is_proxy_request=False,
+                sandboxed=lua_sandbox_enabled,
+                lua_package_path=lua_package_path,
+                lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
             ))
 
         if self.ui_enabled:

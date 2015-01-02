@@ -3,6 +3,18 @@
 -------------------
 local sandbox = {}
 
+local require_sandboxed = function(name)
+  if sandbox.allowed_require_names[name] then
+    local ok, res = pcall(function() require(name) end)
+    if ok then
+      return res
+    end
+  end
+  error("module '" .. name .. "' not found", 2)
+end
+
+sandbox.allowed_require_names = {}
+
 sandbox.env = {
   --
   -- 6.1 Basic Functions
@@ -32,7 +44,7 @@ sandbox.env = {
   -- 6.3 Modules
   -- http://www.lua.org/manual/5.2/manual.html#6.3
   --
-  -- Disabled: this needs more research.
+  require = require_sandboxed,
 
   --
   -- 6.4 String Manipulation
