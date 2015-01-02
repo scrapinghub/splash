@@ -12,7 +12,6 @@ from splash.lua import (
     get_new_runtime,
     get_main,
     get_main_sandboxed,
-    get_script_source,
     lua2python,
     python2lua,
 )
