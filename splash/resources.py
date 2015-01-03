@@ -19,7 +19,7 @@ import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
-from splash.lua import get_script_source, is_supported as lua_is_supported
+from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
@@ -573,7 +573,36 @@ class Root(Resource):
         return Resource.getChild(self, name, request)
 
     def get_example_script(self):
-        return get_script_source("example.lua")
+        return """
+-- Hey, this is a Splash rendering script.
+-- It is written in Lua. Hope you like it.
+
+function main(splash)
+
+  local url = splash.args.url
+
+  local ok, msg = splash:go(url) -- this is async!
+  if not ok then
+    return {status="error", msg=msg}
+  end
+
+  splash:wait(0.5)
+  splash:stop()
+
+  local prefixed_title = splash:jsfunc([[
+    function(prefix){
+      return prefix + " " + document.title;
+    }
+  ]])
+
+  return {
+    greeting = prefixed_title("Hello, "),
+    html = splash:html(),
+    png = splash:png{width=640},
+    har = splash:har(),
+  }
+end
+""".strip()
 
     def render_GET(self, request):
         LUA_EDITOR = """
