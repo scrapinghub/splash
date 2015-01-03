@@ -5,7 +5,7 @@ local sandbox = {}
 
 local require_sandboxed = function(name)
   if sandbox.allowed_require_names[name] then
-    local ok, res = pcall(function() require(name) end)
+    local ok, res = pcall(function() return require(name) end)
     if ok then
       return res
     end
