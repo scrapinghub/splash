@@ -70,7 +70,8 @@ def parse_opts():
     op.add_option("--disable-lua-sandbox", action="store_true", default=False,
         help="disable Lua sandbox")
     op.add_option("--lua-package-path", default="",
-        help="semicolon-separated paths to add to Lua package.path")
+        help="semicolon-separated places to add to Lua package.path. "
+             "Each place can have a ? in it that's replaced with the module name.")
     op.add_option("--lua-sandbox-allowed-modules", default="",
         help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
