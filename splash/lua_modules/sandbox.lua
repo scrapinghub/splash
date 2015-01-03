@@ -3,16 +3,6 @@
 -------------------
 local sandbox = {}
 
-local require_sandboxed = function(name)
-  if sandbox.allowed_require_names[name] then
-    local ok, res = pcall(function() return require(name) end)
-    if ok then
-      return res
-    end
-  end
-  error("module '" .. name .. "' not found", 2)
-end
-
 sandbox.allowed_require_names = {}
 
 sandbox.env = {
@@ -44,7 +34,15 @@ sandbox.env = {
   -- 6.3 Modules
   -- http://www.lua.org/manual/5.2/manual.html#6.3
   --
-  require = require_sandboxed,
+  require = function(name)
+    if sandbox.allowed_require_names[name] then
+      local ok, res = pcall(function() return require(name) end)
+      if ok then
+        return res
+      end
+    end
+    error("module '" .. name .. "' not found", 2)
+  end,
 
   --
   -- 6.4 String Manipulation
@@ -116,7 +114,7 @@ sandbox.env = {
   -- 6.7 Bitwise Operations
   -- http://www.lua.org/manual/5.2/manual.html#6.7
   --
-  -- Disabled: don't care.
+  -- Disabled: if anyone cares we may add them.
 
   --
   -- 6.8 Input and Output Facilities
@@ -200,8 +198,9 @@ function sandbox.enable_instruction_limit()
 end
 
 
--- debug hooks are per-coroutine; use this function
--- as a replacement for `coroutine.create`
+-- In Lua (but not in LuaJIT) debug hooks are per-coroutine.
+-- Use this function as a replacement for `coroutine.create` to ensure
+-- instruction limit is enforced in coroutines.
 function sandbox.create_coroutine(f, ...)
   return coroutine.create(function(...)
     sandbox.enable_instruction_limit()
@@ -212,7 +211,11 @@ end
 
 -------------------------------------------------------------
 --
--- Lua 5.2 sandbox
+-- Lua 5.2 sandbox.
+--
+-- Note that it changes the global state: after the first `sandbox.run`
+-- call the runtime becomes restricted in CPU and memory, and
+-- "string":methods() like "foo":upper() stop working.
 --
 function sandbox.run(untrusted_code)
   sandbox.fix_metatables()
