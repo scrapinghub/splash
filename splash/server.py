@@ -364,7 +364,7 @@ def main():
             ui_enabled=not opts.disable_ui,
             lua_enabled=not opts.disable_lua,
             lua_sandbox_enabled=not opts.disable_lua_sandbox,
-            lua_package_path=opts.lua_package_path,
+            lua_package_path=opts.lua_package_path.strip(";"),
             lua_sandbox_allowed_modules=opts.lua_sandbox_allowed_modules.split(";"),
             verbosity=opts.verbosity
         )
