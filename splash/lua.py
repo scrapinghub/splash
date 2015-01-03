@@ -118,13 +118,6 @@ def _check_main(main):
         raise ValueError("'main' is not a function")
 
 
-def get_script_source(name):
-    """ Return contents of a file from /scripts folder """
-    filename = os.path.join(os.path.dirname(__file__), "scripts", name)
-    with open(filename, 'rb') as f:
-        return f.read().decode('utf8')
-
-
 def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=10):
     """ Recursively convert Lua data to Python objects """
 

@@ -4,7 +4,6 @@ import unittest
 
 import pytest
 
-from splash.lua import get_script_source
 from . import test_render, test_redirects, test_har
 from .utils import NON_EXISTING_RESOLVABLE
 
@@ -34,15 +33,15 @@ class Base:
 
 
 class EmulatedRenderHtmlTest(Base.EmulationMixin, test_render.RenderHtmlTest):
-    script = get_script_source("render_html.lua")
+    script = 'main = require("emulation").render_html'
 
 
 class EmulatedHttpRedirectTest(Base.EmulationMixin, test_redirects.HttpRedirectTest):
-    script = get_script_source("render_html.lua")
+    script = 'main = require("emulation").render_html'
 
 
 class EmulatedJsRedirectTest(Base.EmulationMixin, test_redirects.JsRedirectTest):
-    script = get_script_source("render_html.lua")
+    script = 'main = require("emulation").render_html'
 
     # Overridden to return 400.
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
@@ -55,11 +54,11 @@ class EmulatedJsRedirectTest(Base.EmulationMixin, test_redirects.JsRedirectTest)
 
 
 class EmulatedMetaRedirectTest(Base.EmulationMixin, test_redirects.MetaRedirectTest):
-    script = get_script_source("render_html.lua")
+    script = 'main = require("emulation").render_html'
 
 
 class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
-    script = get_script_source("render_png.lua")
+    script = 'main = require("emulation").render_png'
 
     # TODO: default width and height are not applied
     @pytest.mark.xfail
@@ -85,4 +84,4 @@ class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
 
 
 class EmulatedRenderHarTest(Base.EmulationMixin, test_har.HarRenderTest):
-    script = get_script_source("render_har.lua")
+    script = 'main = require("emulation").render_har'
