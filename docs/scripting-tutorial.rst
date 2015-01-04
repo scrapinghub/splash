@@ -396,7 +396,14 @@ Example::
 
 .. note::
 
-    ``--lua-package-path`` value is added to Lua package.path.
+    If you use Splash installed using Docker see
+    :ref:`docker-folder-sharing` for more info on how to setup
+    paths.
+
+.. note::
+
+    For the curious: ``--lua-package-path`` value is added to Lua
+    ``package.path``.
 
 When you use a :ref:`Lua sandbox <lua-sandbox>` (default) Lua ``require``
 function is restricted when used in scripts: it only allows to load
@@ -416,6 +423,7 @@ After that it becomes possible to load these modules from Lua scripts using
     function main(splash)
         return {result=foo.myfunc()}
     end
+
 
 Writing Modules
 ~~~~~~~~~~~~~~~

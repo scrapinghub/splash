@@ -100,6 +100,8 @@ To see all possible options pass ``--help``. Not all options will work the
 same inside Docker: changing ports doesn't make sense (use docker run options
 instead), and paths are paths in the container.
 
+.. _docker-folder-sharing:
+
 Folders Sharing
 ~~~~~~~~~~~~~~~
 
