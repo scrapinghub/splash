@@ -549,7 +549,7 @@ module:
 
     function evil.touch(filename)
         -- another bad idea
-        os.execute("touch " ... filename)
+        os.execute("touch " .. filename)
     end
 
     -- todo: rm -rf /
