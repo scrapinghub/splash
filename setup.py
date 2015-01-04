@@ -46,9 +46,7 @@ setup_args = {
         'vendor/harviewer/webapp/scripts/tabs/*.*',
         'vendor/harviewer/webapp/har.js',
 
-        'scripts/example.lua',
-        'scripts/splash.lua',
-        'scripts/sandbox.lua',
+        'lua_modules/*.lua',
     ]},
     'classifiers': [
         'Programming Language :: Python',

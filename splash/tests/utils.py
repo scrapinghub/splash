@@ -156,6 +156,9 @@ class TestServers(object):
         self.js_profiles_path = self._copy_test_folder('js_profiles')
         self.filters_path = self._copy_test_folder('filters')
 
+        self.lua_modules = self._copy_test_folder('lua_modules')
+        self.lua_sandbox_allowed_modules = ['emulation', 'utils', 'utils_patch', 'non_existing']
+
         self.mock_http_port = get_ephemeral_port()
         self.mock_https_port = get_ephemeral_port()
         self.mock_proxy_port = get_ephemeral_port()
@@ -166,7 +169,7 @@ class TestServers(object):
         self._fix_testproxy_port()
 
     def _copy_test_folder(self, src, dst=None):
-        src_path = _path(src)
+        src_path = test_path(src)
         dst_path = os.path.join(self.tmp_folder, dst or src)
         shutil.copytree(src_path, dst_path)
         return dst_path
@@ -192,6 +195,10 @@ class TestServers(object):
             proxy_profiles_path=self.proxy_profiles_path,
             js_profiles_path=self.js_profiles_path,
             filters_path=self.filters_path,
+            extra_args = [
+                '--lua-package-path', '%s/?.lua' % self.lua_modules.rstrip('/'),
+                '--lua-sandbox-allowed-modules', ';'.join(self.lua_sandbox_allowed_modules),
+            ]
         )
         self.splashserver.__enter__()
         return self
@@ -206,5 +213,5 @@ class TestServers(object):
         self.mockserver.print_output()
 
 
-def _path(*args):
+def test_path(*args):
     return os.path.join(os.path.dirname(__file__), *args)

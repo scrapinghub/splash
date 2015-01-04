@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import os
 import json
 import functools
 import itertools
@@ -11,7 +12,6 @@ from splash.lua import (
     get_new_runtime,
     get_main,
     get_main_sandboxed,
-    get_script_source,
     lua2python,
     python2lua,
 )
@@ -186,17 +186,24 @@ class Splash(object):
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args']
 
-    def __init__(self, tab, return_func, render_options, sandboxed):
+    def __init__(self, tab, return_func, render_options, sandboxed,
+                 lua_package_path,
+                 lua_sandbox_allowed_modules):
         """
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable return_func: function that continues the script
         :param splash.render_options.RenderOptions render_options: arguments
         :param bool sandboxed: whether the script should be sandboxed
+        :param str lua_package_path: paths to add to Lua package.path
+        :param iterable lua_sandbox_allowed_modules: a list of modules allowed
+            to be required from a sandbox
         """
-        self.lua = self._create_runtime()
         self.tab = tab
         self.sandboxed = sandboxed
+        self.lua = self._create_runtime(lua_package_path)
+        self._setup_lua_sandbox(lua_sandbox_allowed_modules)
         self._return = return_func
+
         self._exceptions = []
         self._command_ids = itertools.count()
 
@@ -456,40 +463,36 @@ class Splash(object):
             return None
         return str(self._result_content_type)
 
-    def get_wrapper(self):
-        """
-        Return a Lua wrapper for this object.
-        """
-        # FIXME: cache file contents
-        splash_lua_code = get_script_source("splash.lua")
-        self.lua.execute(splash_lua_code)
-        wrapper = self.lua.globals()["Splash"]
-        return wrapper(self)
-
     def start_main(self, lua_source):
         """
         Start "main" function and return it as a coroutine.
         """
-        splash_obj = self.get_wrapper()
+        splash_obj = self._get_wrapper()
         if self.sandboxed:
             main, env = get_main_sandboxed(self.lua, lua_source)
-            # self.script_globals = env  # XXX: does it work well with GC?
-            create_coroutine = self.lua.globals()["create_sandboxed_coroutine"]
-            coro = create_coroutine(main)
-            return coro(splash_obj)
+            main_coro = self._sandbox.create_coroutine(main)
+            return main_coro(splash_obj)
         else:
             main, env = get_main(self.lua, lua_source)
-            # self.script_globals = env  # XXX: does it work well with GC?
             return main.coroutine(splash_obj)
 
     def instruction_count(self):
         if not self.sandboxed:
             return -1
         try:
-            return self.lua.eval("instruction_count")
+            return self._sandbox.instruction_count
         except Exception as e:
             print(e)
             return -1
+
+    def _get_wrapper(self):
+        """ Return a Lua wrapper for this object. """
+        wrapper = self.lua.eval("require('splash')")
+        return wrapper.create(self)
+
+    @property
+    def _sandbox(self):
+        return self.lua.eval("require('sandbox')")
 
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
@@ -504,13 +507,35 @@ class Splash(object):
     def python2lua(self, obj, **kwargs):
         return python2lua(self.lua, obj, **kwargs)
 
-    def _create_runtime(self):
+    def _create_runtime(self, lua_package_path):
         """
         Return a restricted Lua runtime.
         Currently it only allows accessing attributes of this object.
         """
-        return get_new_runtime(
-            attribute_handlers=(self._attr_getter, self._attr_setter)
+        attribute_handlers=(self._attr_getter, self._attr_setter)
+        runtime = get_new_runtime(attribute_handlers=attribute_handlers)
+        self._setup_lua_paths(runtime, lua_package_path)
+        return runtime
+
+    def _setup_lua_paths(self, lua, lua_package_path):
+        default_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                'lua_modules'
+            )
+        ) + "/?.lua"
+        if lua_package_path:
+            packages_path = ";".join([default_path, lua_package_path])
+        else:
+            packages_path = default_path
+
+        lua.execute("""
+        package.path = "{packages_path};" .. package.path
+        """.format(packages_path=packages_path))
+
+    def _setup_lua_sandbox(self, allowed_modules):
+        self._sandbox["allowed_require_names"] = self.python2lua(
+            {name: True for name in allowed_modules}
         )
 
     def _attr_getter(self, obj, attr_name):
@@ -542,14 +567,17 @@ class LuaRender(RenderScript):
     _waiting_for_result_id = _START_CMD
 
     @stop_on_error
-    def start(self, lua_source, sandboxed):
+    def start(self, lua_source, sandboxed, lua_package_path,
+              lua_sandbox_allowed_modules):
         self.log(lua_source)
         self.sandboxed = sandboxed
         self.splash = Splash(
             tab=self.tab,
             return_func=self.dispatch,
             render_options=self.render_options,
-            sandboxed=sandboxed
+            sandboxed=sandboxed,
+            lua_package_path=lua_package_path,
+            lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
         )
         try:
             self.main_coro = self.splash.start_main(lua_source)

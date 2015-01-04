@@ -28,7 +28,7 @@ RUN pip install \
 ADD . /app
 RUN pip install /app
 
-VOLUME ["/etc/splash/proxy-profiles", "/etc/splash/js-profiles", "/etc/splash/filters"]
+VOLUME ["/etc/splash/proxy-profiles", "/etc/splash/js-profiles", "/etc/splash/filters", "/etc/splash/lua_modules"]
 
 EXPOSE 8050 8051 5023
 ENTRYPOINT [ \
@@ -36,4 +36,5 @@ ENTRYPOINT [ \
     "--proxy-profiles-path",  "/etc/splash/proxy-profiles", \
     "--js-profiles-path", "/etc/splash/js-profiles", \
     "--filters-path", "/etc/splash/filters" \
+    "--lua-package-path", "/etc/splash/lua_modules/?.lua" \
 ]

@@ -6,6 +6,6 @@ include docs/conf.py
 include requirements.txt
 
 recursive-include docs *.rst
-recursive-include splash/scripts *.lua
-recursive-include splash/tests *.txt *.js *.ini
+recursive-include splash/lua_modules *.lua
+recursive-include splash/tests *.txt *.js *.ini *.lua
 recursive-include splash/vendor/harviewer/webapp *.js *.html *.css *.gif *.png *.swf *.html

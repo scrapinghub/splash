@@ -69,35 +69,33 @@ def get_main(lua, script):
     return main, lua.eval("_G")
 
 
-def get_main_sandboxed(lua, script, sandbox=None):
+def get_main_sandboxed(lua, script):
     """
     Get "main" function and its (sandboxed) global environment
     from a ``script``.
     """
-    env = execute_in_sandbox(lua, script, sandbox)
+    env = _execute_in_sandbox(lua, script)
     main = env["main"]
     _check_main(main)
     return main, env
 
 
-def execute_in_sandbox(lua, script, sandbox=None):
+def _execute_in_sandbox(lua, script):
     """
     Execute ``script`` in ``lua`` runtime using ``sandbox``.
     Return a (sandboxed) global environment for the executed script.
 
-    ``sandbox`` script should provide a ``run(untrusted_code)`` Lua function
-    and ``env`` table with a global environment. By default, a sandbox
-    from ``splash/scripts/sandbox.lua`` is used.
+    "sandbox" module should be importable in the environment.
+    It should provide ``sandbox.run(untrusted_code)`` method and
+    ``sandbox.env`` table with a global environment.
+    See ``splash/lua_modules/sandbox.lua``.
     """
-    if sandbox is None:
-        sandbox = get_script_source("sandbox.lua")
-    lua.execute(sandbox)
-    run = lua.globals()["run"]
-    result = run(script)
+    sandbox = lua.eval("require('sandbox')")
+    result = sandbox.run(script)
     if result is not True:
         ok, res = result
         raise lupa.LuaError(res)
-    return lua.globals()["env"]
+    return sandbox.env
 
 
 def _get_entrypoint(lua, script):
@@ -118,13 +116,6 @@ def _check_main(main):
         raise ValueError("'main' function is not found")
     if lupa.lua_type(main) != 'function':
         raise ValueError("'main' is not a function")
-
-
-def get_script_source(name):
-    """ Return contents of a file from /scripts folder """
-    filename = os.path.join(os.path.dirname(__file__), "scripts", name)
-    with open(filename, 'rb') as f:
-        return f.read().decode('utf8')
 
 
 def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=10):

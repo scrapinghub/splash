@@ -100,6 +100,8 @@ To see all possible options pass ``--help``. Not all options will work the
 same inside Docker: changing ports doesn't make sense (use docker run options
 instead), and paths are paths in the container.
 
+.. _docker-folder-sharing:
+
 Folders Sharing
 ~~~~~~~~~~~~~~~
 
@@ -107,16 +109,30 @@ To set custom :ref:`request filters` use -v Docker option. First, create
 a folder with request filters on your local filesystem, then make it available
 to the container::
 
-   $ docker run -p 8050:8050 -v <filters-dir>:/etc/splash/filters scrapinghub/splash
+   $ docker run -p 8050:8050 -v <my-filters-dir>:/etc/splash/filters scrapinghub/splash
+
+Replace ``<my-filters-dir>`` with a path of your local folder with request
+filters.
 
 Docker Data Volume Containers can also be used. Check
 https://docs.docker.com/userguide/dockervolumes/ for more info.
 
-:ref:`proxy profiles` and :ref:`javascript profiles` can be added the same way::
+:ref:`proxy profiles` and :ref:`javascript profiles` can be added
+in a similar way::
 
    $ docker run -p 8050:8050 \
-         -v <proxy-profiles-dir>:/etc/splash/proxy-profiles \
-         -v <js-profiles-dir>:/etc/splash/js-profiles \
+         -v <my-proxy-profiles-dir>:/etc/splash/proxy-profiles \
+         -v <my-js-profiles-dir>:/etc/splash/js-profiles \
+         scrapinghub/splash
+
+To setup :ref:`custom-lua-modules` mount a folder to
+``/etc/splash/lua_modules``. If you use a :ref:`Lua sandbox <lua-sandbox>`
+(default) don't forget to list safe modules using
+``--lua-sandbox-allowed-modules`` option::
+
+   $ docker run -p 8050:8050 \
+         -v <my-lua-modules-dir>:/etc/splash/lua_modules \
+         --lua-sandbox-allowed-modules 'module1;module2' \
          scrapinghub/splash
 
 .. warning::

@@ -19,7 +19,7 @@ import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
-from splash.lua import get_script_source, is_supported as lua_is_supported
+from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
@@ -174,15 +174,21 @@ class RenderHtml(RenderBase):
 class ExecuteLuaScript(RenderBase):
     content_type = "text/plain; charset=utf-8"
 
-    def __init__(self, pool, is_proxy_request=False, sandboxed=True):
+    def __init__(self, pool, is_proxy_request, sandboxed,
+                 lua_package_path,
+                 lua_sandbox_allowed_modules):
         RenderBase.__init__(self, pool, is_proxy_request)
         self.sandboxed = sandboxed
+        self.lua_package_path = lua_package_path
+        self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
 
     def _getRender(self, request, options):
         params = dict(
             proxy = options.get_proxy(),
             lua_source = options.get_lua_source(),
             sandboxed = self.sandboxed,
+            lua_package_path = self.lua_package_path,
+            lua_sandbox_allowed_modules = self.lua_sandbox_allowed_modules,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -536,7 +542,9 @@ class Root(Resource):
         'webapp',
     )
 
-    def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled):
+    def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
+                 lua_package_path,
+                 lua_sandbox_allowed_modules):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
@@ -549,7 +557,10 @@ class Root(Resource):
         if self.lua_enabled and ExecuteLuaScript is not None:
             self.putChild("execute", ExecuteLuaScript(
                 pool=pool,
-                sandboxed=lua_sandbox_enabled
+                is_proxy_request=False,
+                sandboxed=lua_sandbox_enabled,
+                lua_package_path=lua_package_path,
+                lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
             ))
 
         if self.ui_enabled:
@@ -562,7 +573,36 @@ class Root(Resource):
         return Resource.getChild(self, name, request)
 
     def get_example_script(self):
-        return get_script_source("example.lua")
+        return """
+-- Hey, this is a Splash rendering script.
+-- It is written in Lua. Hope you like it.
+
+function main(splash)
+
+  local url = splash.args.url
+
+  local ok, msg = splash:go(url) -- this is async!
+  if not ok then
+    return {status="error", msg=msg}
+  end
+
+  splash:wait(0.5)
+  splash:stop()
+
+  local prefixed_title = splash:jsfunc([[
+    function(prefix){
+      return prefix + " " + document.title;
+    }
+  ]])
+
+  return {
+    greeting = prefixed_title("Hello, "),
+    html = splash:html(),
+    png = splash:png{width=640},
+    har = splash:har(),
+  }
+end
+""".strip()
 
     def render_GET(self, request):
         LUA_EDITOR = """
