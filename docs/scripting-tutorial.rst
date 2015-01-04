@@ -436,7 +436,7 @@ A basic module could look like the following:
     local mymodule = {}
 
     function mymodule.hello(name)
-        return "Hello, " ... name
+        return "Hello, " .. name
     end
 
     return mymodule
