@@ -1349,6 +1349,100 @@ class SandboxTest(BaseLuaRenderTest):
             self.assertEqual(resp.json(), {"s": False})
 
 
+class RequireTest(BaseLuaRenderTest):
+    def _set_title(self, title):
+        return """
+        splash:set_content([[
+        <html>
+          <head>
+            <title>%s</title>
+          </head>
+        </html>
+        ]])
+        """ % title
+
+    def assertNoRequirePathsLeaked(self, resp):
+        self.assertNotIn("/lua", resp.text)
+        self.assertNotIn("init.lua", resp.text)
+
+    def test_splash_patching(self):
+        title = "TEST"
+        resp = self.request_lua("""
+        require "utils_patch"
+        function main(splash)
+            %(set_title)s
+            return splash:get_document_title()
+        end
+        """ % dict(set_title=self._set_title(title)))
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, title)
+
+    def test_splash_patching_no_require(self):
+        resp = self.request_lua("""
+        function main(splash)
+            %(set_title)s
+            return splash:get_document_title()
+        end
+        """ % dict(set_title=self._set_title("TEST")))
+        self.assertStatusCode(resp, 400)
+        self.assertIn("get_document_title", resp.text)
+        self.assertNoRequirePathsLeaked(resp)
+
+    def test_require_unsafe(self):
+        resp = self.request_lua("""
+        local Splash = require("splash")
+        function main(splash) return "hello" end
+        """)
+        self.assertErrorLineNumber(resp, 2)
+        self.assertNoRequirePathsLeaked(resp)
+
+    def test_require_not_whitelisted(self):
+        resp = self.request_lua("""
+        local utils = require("utils")
+        local secret = require("secret")
+        function main(splash) return "hello" end
+        """)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertNoRequirePathsLeaked(resp)
+
+    def test_require_non_existing(self):
+        resp = self.request_lua("""
+        local foobar = require("foobar")
+        function main(splash) return "hello" end
+        """)
+        self.assertNoRequirePathsLeaked(resp)
+        self.assertErrorLineNumber(resp, 2)
+
+    def test_require_non_existing_whitelisted(self):
+        resp = self.request_lua("""
+        local non_existing = require("non_existing")
+        function main(splash) return "hello" end
+        """)
+        self.assertNoRequirePathsLeaked(resp)
+        self.assertErrorLineNumber(resp, 2)
+
+    def test_module(self):
+        title = "TEST"
+        resp = self.request_lua("""
+        local utils = require "utils"
+        function main(splash)
+            %(set_title)s
+            return utils.get_document_title(splash)
+        end
+        """ % dict(set_title=self._set_title(title)))
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, title)
+
+    def test_module_require_unsafe_from_safe(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return require("utils").hello
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "world")
+
+
 class HarTest(BaseLuaRenderTest):
     def test_har_empty(self):
         resp = self.request_lua("""

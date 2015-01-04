@@ -157,7 +157,7 @@ class TestServers(object):
         self.filters_path = self._copy_test_folder('filters')
 
         self.lua_modules = self._copy_test_folder('lua_modules')
-        self.lua_sandbox_allowed_modules = ['emulation']
+        self.lua_sandbox_allowed_modules = ['emulation', 'utils', 'utils_patch', 'non_existing']
 
         self.mock_http_port = get_ephemeral_port()
         self.mock_https_port = get_ephemeral_port()
