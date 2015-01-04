@@ -480,7 +480,7 @@ Usage:
 
         -- wait until <h1> element is loaded
         utils.wait_for(splash, function()
-           return splash.runjs("document.querySelector('h1') != null")
+           return splash:runjs("document.querySelector('h1') != null")
         end)
 
         return splash:html()
@@ -518,7 +518,7 @@ Usage:
 
         -- wait until <h1> element is loaded
         splash:wait_for(function()
-           return splash.runjs("document.querySelector('h1') != null")
+           return splash:runjs("document.querySelector('h1') != null")
         end)
 
         return splash:html()
