@@ -41,7 +41,7 @@ Three types of errors are reported (``ok`` can be ``nil`` in 3 cases):
 2. Server returned a response with 4xx or 5xx HTTP status code.
    ``reason`` is ``"http<code>"`` in this case, i.e. for
    HTTP 404 Not Found ``reason`` is ``"http404"``.
-3. Navigation is locked (see :ref:`lock-navigation`); ``reason``
+3. Navigation is locked (see :ref:`splash-lock-navigation`); ``reason``
    is ``"navigation_locked"``.
 
 Error handling example:
