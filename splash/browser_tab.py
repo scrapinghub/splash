@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from cStringIO import StringIO
 import os
 import base64
 import copy
 import pprint
 import weakref
 import functools
+from PIL import Image
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import (Qt, QUrl, QBuffer, QSize, QTimer, QObject,
-                          pyqtSlot)
-from PyQt4.QtGui import QPainter, QImage, QMouseEvent, QKeyEvent
+from PyQt4.QtCore import Qt, QUrl, QSize, QTimer, QObject, pyqtSlot
+from PyQt4.QtGui import QMouseEvent, QKeyEvent
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
 from twisted.python import log
 from splash import defaults
-from splash.qtutils import qurl2ascii, OPERATION_QT_CONSTANTS, qt2py, WrappedSignal
+from splash.qtutils import (qurl2ascii, OPERATION_QT_CONSTANTS, qt2py,
+                            WrappedSignal, render_qwebpage)
 from splash.har.qt import cookies2har
 from splash.har.utils import without_private
 
@@ -489,20 +491,25 @@ class BrowserTab(QObject):
     def png(self, width=None, height=None, b64=False):
         """ Return screenshot in PNG format """
         self.logger.log("getting PNG", min_level=2)
-
-        image = QImage(self.web_page.viewportSize(), QImage.Format_ARGB32)
-        painter = QPainter(image)
-        self.web_page.mainFrame().render(painter)
-        painter.end()
+        image = render_qwebpage(self.web_page, self.logger)
         self.store_har_timing("_onScreenshotPrepared")
 
         if width:
-            image = image.scaledToWidth(width, Qt.SmoothTransformation)
+            assert width > 0
+            old_width, old_height = image.size
+            if old_width > 0:
+                new_height = int(old_height * width / float(old_width))
+                image = image.resize((width, new_height),
+                                     resample=Image.BILINEAR)
+            else:
+                image = image.crop((0, 0, width, old_height))
+        else:
+            width = image.size[0]
         if height:
-            image = image.copy(0, 0, width, height)
-        b = QBuffer()
+            image = image.crop((0, 0, width, height))
+        b = StringIO()
         image.save(b, "png")
-        result = bytes(b.data())
+        result = bytes(b.getvalue())
         if b64:
             result = base64.b64encode(result)
         self.store_har_timing("_onPngRendered")

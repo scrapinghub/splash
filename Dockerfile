@@ -12,7 +12,7 @@ RUN sed 's/main$/main universe/' -i /etc/apt/sources.list && \
     apt-get install -y netbase ca-certificates python \
         python-dev build-essential \
         xvfb libqt4-webkit python-qt4 libre2-dev \
-        git-core python-pip libicu48 liblua5.2-dev
+        git-core python-pip libicu48 liblua5.2-dev zlib1g-dev
 
 RUN pip install -U pip
 
@@ -23,7 +23,8 @@ RUN pip install \
             adblockparser==0.3 \
             git+https://github.com/axiak/pyre2.git@382bb743f16722b582cc2bac8fc08ff121dec20e#egg=re2 \
             xvfbwrapper==0.2.4 \
-            lupa==1.1
+            lupa==1.1 \
+            Pillow==2.7.0
 
 ADD . /app
 RUN pip install /app

@@ -6,16 +6,20 @@ import sys
 import time
 import itertools
 import functools
+import struct
+import array
 
 from twisted.python import log
-from PyQt4.QtGui import QApplication
+from PIL import Image
+from PyQt4.QtGui import QApplication, QImage, QPainter
 from PyQt4.QtCore import (
     QAbstractEventDispatcher, QVariant, QString, QObject,
-    QDateTime, QRegExp,
+    QDateTime, QRegExp, QSize, QRect
 )
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply
 
+from splash import defaults
 from splash.utils import truncated
 
 
@@ -217,3 +221,107 @@ class WrappedSignal(object):
     def disconnect(self, callback_id):
         cb = self.callbacks.pop(callback_id)
         self.signal.disconnect(cb)
+
+
+# Brain-dead simple endianness detection needed because QImage stores
+# bytes in host-native order.
+#
+# XXX: do we care about big endian hosts?
+# XXX: is there a better way?
+_is_little_endian = struct.pack('<i', 0x1122) == struct.pack('=i', 0x1122)
+
+
+def qimage_to_pil_image(qimage):
+    """Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode)."""
+    # In our case QImage uses 0xAARRGGBB format stored in host endian order,
+    # we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences used by pillow.
+    buf = qimage.bits().asstring(qimage.numBytes())
+    if not _is_little_endian:
+        buf = swap_byte_order_i32(buf)
+    # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
+    # hence the 'BGRA' decoder argument.
+    return Image.frombytes(
+        'RGBA', (qimage.size().width(), qimage.size().height()), buf,
+        'raw', 'BGRA')
+
+
+def swap_byte_order_i32(buf):
+    """Swap order of bytes in each 32-bit word of given byte sequence."""
+    arr = array.array('I')
+    arr.fromstring(buf)
+    arr.byteswap()
+    return arr.tostring()
+
+
+def render_qwebpage(web_page, logger=None):
+    """
+    Render QWebPage into PIL.Image.
+
+    This function works around bugs in QPaintEngine that occur when the
+    resulting image is larger than 32k pixels in either dimension.
+
+    :type web_page: PyQt4.QtWebKit.QWebPage
+    :type logger: splash.browser_tab._BrowserTabLogger
+    :rtype: PIL.Image.Image
+
+    """
+    size = web_page.viewportSize()
+
+    tile_maxsize = defaults.TILE_MAXSIZE
+    if size.width() < tile_maxsize and size.height() < tile_maxsize:
+        image = QImage(size, QImage.Format_ARGB32)
+        painter = QPainter(image)
+        web_page.mainFrame().render(painter)
+        # It is important to end painter explicitly in python code, because
+        # Python finalizer invocation order, unlike C++ destructors, is not
+        # deterministic and there is a possibility of image's finalizer running
+        # before painter's which may break tests and kill your cat.
+        painter.end()
+        return qimage_to_pil_image(image)
+
+    if logger:
+        logger.log("png renderer: viewport too large (%s),"
+                   " using tiled rendering" % size, min_level=2)
+    # One bug is worked around by rendering the page one tile at a time onto a
+    # small-ish temporary image.  The magic happens in viewport-window
+    # transformation:
+    #
+    # - Sizes of tile painter viewport and tile painter window match
+    #   webpage viewport size to avoid rescaling.
+    # - Tile painter window is moved appropriately so that tile region is
+    #   overlayed onto the temporary image.
+    tile_hsize = min(tile_maxsize, size.width())
+    tile_vsize = min(tile_maxsize, size.height())
+    htiles = 1 + (size.width() - 1) // tile_hsize
+    vtiles = 1 + (size.height() - 1) // tile_vsize
+    tile_image = QImage(QSize(tile_hsize, tile_vsize), QImage.Format_ARGB32)
+    tile_painter = QPainter(tile_image)
+    viewport = QRect(0, 0, size.width(), size.height())
+    tile_painter.setViewport(viewport)
+
+    # The other bug manifests itself when you do painter.drawImage trying to
+    # concatenate tiles onto a single image and once you reach 32'768 along
+    # either dimension all of a sudden drawImage simply stops drawing anything.
+    # The simplest workaround that comes to mind is to use pillow for pasting
+    # images.
+    pil_image = Image.new(mode='RGBA',
+                          size=(size.width(), size.height()))
+    for i in xrange(htiles):
+        for j in xrange(vtiles):
+            left, top = i * tile_hsize, j * tile_vsize
+            tile_painter.setWindow(viewport.translated(left, top))
+            if logger:
+                logger.log("Rendering with window=%s" % tile_painter.window(),
+                           min_level=2)
+            web_page.mainFrame().render(tile_painter)
+            pil_tile_image = qimage_to_pil_image(tile_image)
+
+            if logger:
+                logger.log("Pasting rendered tile to coords: %s" %
+                           ((left, top),),
+                           min_level=2)
+            pil_image.paste(pil_tile_image, (left, top))
+    # Make sure that tile_painter.end() is invoked before destroying the
+    # underlying image is being destroyed.
+    tile_painter.end()
+    return pil_image

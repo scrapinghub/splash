@@ -18,6 +18,18 @@ MAX_HEIGTH = 1080
 
 AUTOLOAD_IMAGES = 1
 
+# There's a bug in Qt that manifests itself when width or height of rendering
+# surface (aka the png image) is more than 32768.  Usually, this is solved by
+# rendering the image in tiled manner and obviously, TILE_MAXSIZE must not
+# exceed that value.
+#
+# Other than that, the setting is a tradeoff between performance and memory
+# usage, because QImage that acts as a rendering surface is quite a resource
+# hog.  So, if you increase tile size you may end up using a lot more memory,
+# but there is less image pasting and the rendering is faster.  As of now, 2048
+# size is chosen to fit commonly used 1080p resolution in one tile.
+TILE_MAXSIZE = 2048
+
 # defaults for render.json endpoint
 DO_HTML = 0
 DO_IFRAMES = 0
