@@ -55,10 +55,10 @@ class RenderPool(object):
 
         return render.deferred
 
-    def _error(self, _, render, slot):
+    def _error(self, failure, render, slot):
         uid = render.render_options.get_uid()
-        self.log("[%s] SLOT %d finished with an error %s" % (uid, slot, render))
-        return _
+        self.log("[%s] SLOT %d finished with an error %s: %s" % (uid, slot, render, failure))
+        return failure
 
     def _close_render(self, _, render, slot):
         uid = render.render_options.get_uid()
