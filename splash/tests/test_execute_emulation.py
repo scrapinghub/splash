@@ -78,7 +78,13 @@ class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
     def test_viewport_invalid(self):
         super(EmulatedRenderPngTest, self).test_viewport_invalid()
 
-    @pytest.mark.xfail
+    @pytest.mark.xfail(
+        run=False,
+        reason="""
+Range validation in lua renderer is not implemented and out of range values of
+width/height will consume huge amount of memory either bringing down the test
+server because of OOM killer or grinding user system to a halt because of swap.
+""")
     def test_range_checks(self):
         super(EmulatedRenderPngTest, self).test_range_checks()
 
