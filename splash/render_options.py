@@ -173,6 +173,9 @@ class RenderOptions(object):
         except ValueError:
             raise BadOption("Invalid viewport format: %s" % viewport)
 
+    def get_geometry(self):
+        return self.get("geometry", self.get_viewport())
+
     def get_filters(self, pool=None, adblock_rules=None):
         filter_names = self.get('filters', '')
         filter_names = [f for f in filter_names.split(',') if f]

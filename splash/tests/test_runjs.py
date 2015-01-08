@@ -13,8 +13,19 @@ function getContents(){
 getContents();"""
 
 
-class RunJsTest(BaseRenderTest):
+class BaseJsTest(BaseRenderTest):
     endpoint = 'render.json'
+
+    def _runjs_request(self, js_source, endpoint=None, params=None, headers=None):
+        query = {'url': self.mockurl("jsrender"), 'script': 1}
+        query.update(params or {})
+        req_headers = {'content-type': 'application/javascript'}
+        req_headers.update(headers or {})
+        return self.post(query, endpoint=endpoint,
+                         payload=js_source, headers=req_headers)
+
+
+class RunJsTest(BaseRenderTest):
 
     def test_simple_js(self):
         js_source = "function test(x){ return x; } test('abc');"
@@ -88,14 +99,6 @@ test('Changed');"""
         r = self._runjs_request(js_source, params=params)
         self.assertStatusCode(r, 400)
 
-
-    def _runjs_request(self, js_source, endpoint=None, params=None, headers=None):
-        query = {'url': self.mockurl("jsrender"), 'script': 1}
-        query.update(params or {})
-        req_headers = {'content-type': 'application/javascript'}
-        req_headers.update(headers or {})
-        return self.post(query, endpoint=endpoint,
-                         payload=js_source, headers=req_headers)
 
 
 class RunJsCrossDomainTest(BaseRenderTest):
