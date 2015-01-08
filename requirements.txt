@@ -5,6 +5,7 @@ psutil
 adblockparser >= 0.2
 -e git+https://github.com/axiak/pyre2.git#egg=re2
 xvfbwrapper
+Pillow
 
 # for scripting support
 lupa >= 1.1
@@ -13,6 +14,5 @@ lupa >= 1.1
 pytest
 pyOpenSSL
 requests >= 1.0
-Pillow
 jsonschema >= 2.0
 strict-rfc3339

@@ -316,6 +316,12 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255,255,255,255))
 
+    def test_very_long_green_page(self):
+        r = self.request({'url': self.mockurl("very-long-green-page"),
+                          'viewport': 'full', 'wait': '0.01'})
+        self.assertPng(r, height=60000)  # hardcoded in the html
+        self.assertPixelColor(r, 0, 59999, (0x00, 0xFF, 0x77, 0xFF))
+
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")

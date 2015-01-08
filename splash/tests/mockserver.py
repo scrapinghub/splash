@@ -491,6 +491,15 @@ MetaRedirectTarget = _html_resource("""
 """)
 
 
+VeryLongGreenPage = _html_resource("""
+<html>
+<body
+ style="height:60000px; padding:0px; margin:0px; background-color:#00FF77">
+Hello, I am a loooooong green page
+</body></html>
+""")
+
+
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
         code = request.args['code'][0]
@@ -596,6 +605,7 @@ class Root(Resource):
         self.putChild("set-cookie", SetCookie()),
         self.putChild("get-cookie", GetCookie()),
         self.putChild("eggspam.js", EggSpamScript()),
+        self.putChild("very-long-green-page", VeryLongGreenPage())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-to", JsRedirectTo())
