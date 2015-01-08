@@ -464,6 +464,7 @@ class BrowserTab(QObject):
         return qt2py(res)
 
     def store_har_timing(self, name):
+        self.logger.log("HAR event: %s" % name, min_level=3)
         self.web_page.har_log.store_timing(name)
 
     def _jsconsole_enable(self):
