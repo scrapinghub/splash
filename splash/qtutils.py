@@ -11,7 +11,7 @@ import array
 
 from twisted.python import log
 from PIL import Image
-from PyQt4.QtGui import QApplication, QImage, QPainter
+from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
 from PyQt4.QtCore import (
     QAbstractEventDispatcher, QVariant, QString, QObject,
     QDateTime, QRegExp, QSize, QRect
@@ -313,7 +313,8 @@ def render_qwebpage(web_page, logger=None):
             if logger:
                 logger.log("Rendering with window=%s" % tile_painter.window(),
                            min_level=2)
-            web_page.mainFrame().render(tile_painter)
+            web_page.mainFrame().render(
+                tile_painter,  QRegion(left, top, tile_hsize, tile_vsize))
             pil_tile_image = qimage_to_pil_image(tile_image)
 
             if logger:
