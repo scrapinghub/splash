@@ -9,15 +9,16 @@ from __future__ import absolute_import
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod
 from twisted.python import log, failure
-from splash.resources import RenderHtml, RenderPng, RenderJson
+from splash.resources import (RenderHtmlResource, RenderPngResource,
+                              RenderJsonResource)
 
 
 NOT_DONE_YET = 1
 SPLASH_HEADER_PREFIX = 'x-splash-'
 SPLASH_RESOURCES = {
-    'html': RenderHtml,
-    'png': RenderPng,
-    'json': RenderJson,
+    'html': RenderHtmlResource,
+    'png': RenderPngResource,
+    'json': RenderJsonResource,
 }
 
 # Note the http header use '-' instead of '_' for the parameter names
