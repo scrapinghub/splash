@@ -491,7 +491,8 @@ class BrowserTab(QObject):
 
     def png(self, width=None, height=None, b64=False):
         """ Return screenshot in PNG format """
-        self.logger.log("getting PNG", min_level=2)
+        self.logger.log("Getting PNG: width=%s, height=%s" %
+                        (width, height), min_level=2)
         image = render_qwebpage(self.web_page, self.logger)
         self.store_har_timing("_onScreenshotPrepared")
 

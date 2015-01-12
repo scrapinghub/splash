@@ -266,6 +266,8 @@ def render_qwebpage(web_page, logger=None):
 
     """
     size = web_page.viewportSize()
+    logger.log("QWebPage viewport: (%s, %s)" % (size.width(), size.height()),
+               min_level=2)
 
     tile_maxsize = defaults.TILE_MAXSIZE
     if size.width() < tile_maxsize and size.height() < tile_maxsize:
