@@ -493,22 +493,10 @@ class BrowserTab(QObject):
         """ Return screenshot in PNG format """
         self.logger.log("Getting PNG: width=%s, height=%s" %
                         (width, height), min_level=2)
-        image = render_qwebpage(self.web_page, self.logger)
+        image = render_qwebpage(self.web_page, self.logger,
+                                width=width, height=height)
         self.store_har_timing("_onScreenshotPrepared")
 
-        if width:
-            assert width > 0
-            old_width, old_height = image.size
-            if old_width > 0:
-                new_height = int(old_height * width / float(old_width))
-                image = image.resize((width, new_height),
-                                     resample=Image.BILINEAR)
-            else:
-                image = image.crop((0, 0, width, old_height))
-        else:
-            width = image.size[0]
-        if height:
-            image = image.crop((0, 0, width, height))
         b = StringIO()
         image.save(b, "png")
         result = bytes(b.getvalue())
