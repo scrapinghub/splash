@@ -75,25 +75,18 @@ class SplashServer(object):
 
         args.extend(self.extra_args)
 
-        self.proc = Popen(args, stderr=PIPE, env=get_testenv())
+        self.proc = Popen(args, env=get_testenv())
         self.proc.poll()
-        if self.proc.returncode:
-            msg = "unable to start splash server. error code: %d - stderr follows: \n%s" % \
-                (self.proc.returncode, self.proc.stderr.read())
+        if self.proc.returncode is not None:
+            msg = ("unable to start splash server. return code: %d" %
+                   self.proc.returncode)
             raise RuntimeError(msg)
-
-        try:
-            _wait_for_port(self.portnum)
-        finally:
-            self.print_output()
-
+        _wait_for_port(self.portnum)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.print_output()
         self.proc.kill()
         self.proc.wait()
-        self.print_output()
         shutil.rmtree(self.tempdir)
 
     def url(self, path):
@@ -101,9 +94,6 @@ class SplashServer(object):
 
     def proxy_url(self):
         return "http://localhost:%s" % self.proxy_portnum
-
-    def print_output(self):
-        print(_non_block_read(self.proc.stderr))
 
 
 class MockServer(object):
@@ -121,18 +111,14 @@ class MockServer(object):
                 '--https-port', str(self.https_port),
                 '--proxy-port', str(self.proxy_port),
             ],
-            stdout=PIPE,
             env=get_testenv()
         )
         for port in (self.http_port, self.https_port, self.proxy_port):
             _wait_for_port(port)
-        self.print_output()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.print_output()
         self.proc.kill()
         self.proc.wait()
-        self.print_output()
 
     def url(self, path, gzip=True, host='localhost'):
         gzip_path = '' if not gzip else '/gzip'
@@ -142,9 +128,6 @@ class MockServer(object):
 
     def https_url(self, path):
         return "https://localhost:%s/%s" % (self.https_port, path.lstrip('/'))
-
-    def print_output(self):
-        print(_non_block_read(self.proc.stdout))
 
 
 class TestServers(object):
@@ -207,10 +190,6 @@ class TestServers(object):
         self.splashserver.__exit__(None, None, None)
         self.mockserver.__exit__(None, None, None)
         shutil.rmtree(self.tmp_folder)
-
-    def print_output(self):
-        self.splashserver.print_output()
-        self.mockserver.print_output()
 
 
 def test_path(*args):

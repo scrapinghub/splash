@@ -66,7 +66,6 @@ class DirectRequestHandler(object):
 
 
 @pytest.mark.usefixtures("class_ts")
-@pytest.mark.usefixtures("print_ts_output")
 class BaseRenderTest(unittest.TestCase):
 
     endpoint = "render.html"
@@ -619,9 +618,7 @@ class IframesRenderTest(BaseRenderTest):
         return self.request(query).json()
 
 
-
 @pytest.mark.usefixtures("class_ts")
-@pytest.mark.usefixtures("print_ts_output")
 class TestTestSetup(unittest.TestCase):
 
     def test_mockserver_works(self):
