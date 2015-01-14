@@ -641,7 +641,7 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertNotIn("str()", resp.text)
-        self.assertIn("AttributeError", resp.text)
+        self.assertIn("error reading Python attribute/item", resp.text)
 
 
 class WaitTest(BaseLuaRenderTest):
