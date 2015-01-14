@@ -48,7 +48,7 @@ Let's start with a basic example:
      function main(splash)
          splash:go("http://example.com")
          splash:wait(0.5)
-         local title = splash:runjs("document.title")
+         local title = splash:evaljs("document.title")
          return {title=title}
      end
 
@@ -116,7 +116,7 @@ Here is a part of the first example:
 
     splash:go("http://example.com")
     splash:wait(0.5)
-    local title = splash:runjs("document.title")
+    local title = splash:evaljs("document.title")
 
 The code looks like a standard procedural code; there are no callbacks
 or fancy control flow structures. It doesn't mean Splash works in a synchronous
@@ -175,7 +175,7 @@ A similar Splash script:
         if not ok then
             return "?"
         end
-        return splash:runjs([[
+        return splash:evaljs([[
             document.querySelector('div.profile td.stat.stat-last div.statnum').innerText;
         ]]);
     end
@@ -282,12 +282,12 @@ named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
     -- Examples of positional arguments:
     splash:go("http://example.com")
     splash:wait(0.5, false)
-    local title = splash:runjs("document.title")
+    local title = splash:evaljs("document.title")
 
     -- The same using keyword arguments:
     splash:go{url="http://example.com"}
     splash:wait{time=0.5, cancel_on_redirect=false}
-    local title = splash:runjs{source="document.title"}
+    local title = splash:evaljs{source="document.title"}
 
     -- Mixed arguments example:
     splash:wait{0.5, cancel_on_redirect=false}
@@ -480,7 +480,7 @@ Usage:
 
         -- wait until <h1> element is loaded
         utils.wait_for(splash, function()
-           return splash:runjs("document.querySelector('h1') != null")
+           return splash:evaljs("document.querySelector('h1') != null")
         end)
 
         return splash:html()
@@ -518,7 +518,7 @@ Usage:
 
         -- wait until <h1> element is loaded
         splash:wait_for(function()
-           return splash:runjs("document.querySelector('h1') != null")
+           return splash:evaljs("document.querySelector('h1') != null")
         end)
 
         return splash:html()

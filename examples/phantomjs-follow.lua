@@ -17,7 +17,7 @@ function follow(splash, user)
   if not ok then
     return "Can't get followers of " .. user .. ': ' .. msg
   end
-  return splash:runjs([[
+  return splash:evaljs([[
     document.querySelector('div.profile td.stat.stat-last div.statnum').innerText;
   ]]);
 end

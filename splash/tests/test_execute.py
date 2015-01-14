@@ -328,12 +328,12 @@ class ErrorsTest(BaseLuaRenderTest):
 
 
 
-class RunjsTest(BaseLuaRenderTest):
+class EvaljsTest(BaseLuaRenderTest):
 
-    def assertRunjsResult(self, js, result, type):
+    def assertEvaljsResult(self, js, result, type):
         resp = self.request_lua("""
         function main(splash)
-            local res = splash:runjs([[%s]])
+            local res = splash:evaljs([[%s]])
             return {res=res, tp=type(res)}
         end
         """ % js)
@@ -344,54 +344,54 @@ class RunjsTest(BaseLuaRenderTest):
             self.assertEqual(resp.json(), {'res': result, 'tp': type})
 
     def test_numbers(self):
-        self.assertRunjsResult("1.0", 1.0, "number")
-        self.assertRunjsResult("1", 1, "number")
-        self.assertRunjsResult("1+2", 3, "number")
+        self.assertEvaljsResult("1.0", 1.0, "number")
+        self.assertEvaljsResult("1", 1, "number")
+        self.assertEvaljsResult("1+2", 3, "number")
 
     def test_inf(self):
-        self.assertRunjsResult("1/0", float('inf'), "number")
-        self.assertRunjsResult("-1/0", float('-inf'), "number")
+        self.assertEvaljsResult("1/0", float('inf'), "number")
+        self.assertEvaljsResult("-1/0", float('-inf'), "number")
 
     def test_string(self):
-        self.assertRunjsResult("'foo'", u'foo', 'string')
+        self.assertEvaljsResult("'foo'", u'foo', 'string')
 
     def test_bool(self):
-        self.assertRunjsResult("true", True, 'boolean')
+        self.assertEvaljsResult("true", True, 'boolean')
 
     def test_undefined(self):
-        self.assertRunjsResult("undefined", None, 'nil')
+        self.assertEvaljsResult("undefined", None, 'nil')
 
     def test_null(self):
         # XXX: null is converted to an empty string by QT,
         # we can't distinguish it from a "real" empty string.
-        self.assertRunjsResult("null", "", 'string')
+        self.assertEvaljsResult("null", "", 'string')
 
     def test_unicode_string(self):
-        self.assertRunjsResult("'привет'", u'привет', 'string')
+        self.assertEvaljsResult("'привет'", u'привет', 'string')
 
     def test_unicode_string_in_object(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'var o={}; o["ключ"] = "значение"; o',
             {u'ключ': u'значение'},
             'table'
         )
 
     def test_nested_object(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'var o={}; o["x"] = {}; o["x"]["y"] = 5; o["z"] = "foo"; o',
             {"x": {"y": 5}, "z": "foo"},
             'table'
         )
 
     def test_array(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'x = [3, 2, 1, "foo", ["foo", [], "bar"], {}]; x',
             [3, 2, 1, "foo", ["foo", [], "bar"], {}],
             'table',
         )
 
     def test_self_referencing(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'var o={}; o["x"] = "5"; o["y"] = o; o',
             {"x": "5"},  # self reference is discarded
             'table'
@@ -399,13 +399,13 @@ class RunjsTest(BaseLuaRenderTest):
 
     def test_function(self):
         # XXX: functions are not returned by QT
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             "x = function(){return 5}; x",
             {},
             "table"
         )
 
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             "function(){return 5}",
             None,
             "nil"
@@ -413,14 +413,14 @@ class RunjsTest(BaseLuaRenderTest):
 
     def test_object_with_function(self):
         # XXX: complex objects are unsupported
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             '{"x":2, "y": function(){}}',
             None,
             "nil",
         )
 
     def test_function_call(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             "function x(){return 5}; x();",
             5,
             "number"
@@ -430,14 +430,14 @@ class RunjsTest(BaseLuaRenderTest):
         # XXX: Date objects are converted to ISO8061 strings.
         # Does it make sense to do anything else with them?
         # E.g. make them available to Lua as tables?
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'x = new Date("21 May 1958 10:12 UTC"); x',
             "1958-05-21T10:12:00Z",
             "string"
         )
 
     def test_regexp(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             '/my-regexp/i',
             {
                 u'_jstype': u'RegExp',
@@ -447,7 +447,7 @@ class RunjsTest(BaseLuaRenderTest):
             'table'
         )
 
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             '/my-regexp/',
             {
                 u'_jstype': u'RegExp',
@@ -1473,13 +1473,13 @@ class AutoloadTest(BaseLuaRenderTest):
             assert(splash:autoload("window.FOO = 'bar'"))
 
             splash:go(splash.args.url)
-            local foo1 = splash:runjs("FOO")
+            local foo1 = splash:evaljs("FOO")
 
-            splash:runjs("window.FOO = 'spam'")
-            local foo2 = splash:runjs("FOO")
+            splash:evaljs("window.FOO = 'spam'")
+            local foo2 = splash:evaljs("FOO")
 
             splash:go(splash.args.url)
-            local foo3 = splash:runjs("FOO")
+            local foo3 = splash:evaljs("FOO")
             return {foo1=foo1, foo2=foo2, foo3=foo3}
         end
         """, {"url": self.mockurl("getrequest")})

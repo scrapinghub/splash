@@ -257,15 +257,15 @@ If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
-.. _splash-runjs:
+.. _splash-evaljs:
 
-splash:runjs
-------------
+splash:evaljs
+-------------
 
 Execute a JavaScript snippet in page context and return the result of the
 last statement.
 
-**Signature:** ``result = splash:runjs(snippet)``
+**Signature:** ``result = splash:evaljs(snippet)``
 
 **Parameters:**
 
@@ -277,17 +277,17 @@ converted from JavaScript to Lua data types.
 JavaScript → Lua conversion rules are the same as for
 :ref:`splash:jsfunc <js-lua-conversion-rules>`.
 
-``splash:runjs`` is useful to evaluate short snippets of code or to
+``splash:evaljs`` is useful to evaluate short snippets of code or to
 execute some code without defining a wrapper function.
 
 Example:
 
 .. code-block:: lua
 
-    local title = splash:runjs("document.title")
+    local title = splash:evaljs("document.title")
 
 :ref:`splash:jsfunc() <splash-jsfunc>` is more versatile because it allows to pass arguments
-to JavaScript functions; to do that with ``splash:runjs`` string formatting
+to JavaScript functions; to do that with ``splash:evaljs`` string formatting
 must be used. Compare:
 
 .. code-block:: lua
@@ -299,7 +299,7 @@ must be used. Compare:
             tonumber(x),
             tonumber(y)
         )
-        return splash:runjs(js)
+        return splash:evaljs(js)
     end
 
     -- a simpler version using splash:jsfunc
@@ -332,7 +332,7 @@ Set JavaScript to load automatically on each page load.
 :ref:`splash-autoload` allows to execute JavaScript code at each page load.
 :ref:`splash-autoload` doesn't doesn't execute the passed
 JavaScript code itself. To execute some code once, after page is loaded
-use :ref:`splash-runjs` or :ref:`splash-jsfunc`.
+use :ref:`splash-evaljs` or :ref:`splash-jsfunc`.
 
 :ref:`splash-autoload` can be used to preload utility JavaScript libraries
 or replace JavaScript objects before a webpage has a chance to do it.
@@ -348,7 +348,7 @@ Example:
             }
         ]])
         assert(splash:go(splash.args.url))
-        return splash:runjs("get_document_title()")
+        return splash:evaljs("get_document_title()")
     end
 
 For the convenience, when a first :ref:`splash-autoload` argument starts
@@ -360,7 +360,7 @@ Example 2 - make sure a remote library is available:
     function main(splash)
         assert(splash:autoload("https://code.jquery.com/jquery-2.1.3.min.js"))
         assert(splash:go(splash.args.url))
-        return splash:runjs("$.fn.jquery")  -- return jQuery version
+        return splash:evaljs("$.fn.jquery")  -- return jQuery version
     end
 
 To disable URL auto-detection use 'source' and 'url' arguments:

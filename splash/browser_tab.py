@@ -423,7 +423,7 @@ class BrowserTab(QObject):
         """
         with open(filename, 'rb') as f:
             script = f.read().decode('utf-8')
-            return self.runjs(script)
+            return self.evaljs(script)
 
     def run_js_files(self, folder):
         """
@@ -454,11 +454,8 @@ class BrowserTab(QObject):
             follow_redirects=follow_redirects
         )
 
-    def runjs(self, js_source):
-        """
-        Run JS code in page context and return the result.
-        Only string results are supported.
-        """
+    def evaljs(self, js_source):
+        """ Run JS code in page context and return the result"""
         frame = self.web_page.mainFrame()
         res = frame.evaluateJavaScript(js_source)
         return qt2py(res)

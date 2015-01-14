@@ -167,7 +167,7 @@ class _WrappedJavascriptFunction(object):
         """ % {"func_text": func_text, "args": args_text}
 
         # print(wrapper_script)
-        res = self.tab.runjs(wrapper_script)
+        res = self.tab.evaljs(wrapper_script)
 
         if not isinstance(res, dict):
             raise ScriptError("[lua] unknown error during JS function call: %r; %r" % (res, wrapper_script))
@@ -298,8 +298,8 @@ class Splash(object):
         self.tab.stop_loading()
 
     @command()
-    def runjs(self, snippet):
-        res = self.tab.runjs(snippet)
+    def evaljs(self, snippet):
+        res = self.tab.evaljs(snippet)
         return res
 
     @command()
