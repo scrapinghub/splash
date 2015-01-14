@@ -272,7 +272,8 @@ last statement.
 * snippet - a string with JavaScript source code to execute.
 
 **Returns:** the result of the last statement in ``snippet``,
-converted from JavaScript to Lua data types.
+converted from JavaScript to Lua data types. In case of syntax errors or
+JavaScript exceptions an error is raised.
 
 JavaScript → Lua conversion rules are the same as for
 :ref:`splash:jsfunc <js-lua-conversion-rules>`.
@@ -286,9 +287,9 @@ Example:
 
     local title = splash:evaljs("document.title")
 
-:ref:`splash:jsfunc() <splash-jsfunc>` is more versatile because it allows to pass arguments
-to JavaScript functions; to do that with ``splash:evaljs`` string formatting
-must be used. Compare:
+:ref:`splash:jsfunc() <splash-jsfunc>` is more versatile because it allows
+to pass arguments to JavaScript functions; to do that with ``splash:evaljs``
+string formatting must be used. Compare:
 
 .. code-block:: lua
 

@@ -330,18 +330,29 @@ class ErrorsTest(BaseLuaRenderTest):
 
 class EvaljsTest(BaseLuaRenderTest):
 
-    def assertEvaljsResult(self, js, result, type):
-        resp = self.request_lua("""
+    def _evaljs_request(self, js):
+        return self.request_lua("""
         function main(splash)
             local res = splash:evaljs([[%s]])
             return {res=res, tp=type(res)}
         end
         """ % js)
+
+    def assertEvaljsResult(self, js, result, type):
+        resp = self._evaljs_request(js)
         self.assertStatusCode(resp, 200)
-        if result is None:
-            self.assertEqual(resp.json(), {'tp': type})
-        else:
-            self.assertEqual(resp.json(), {'res': result, 'tp': type})
+        expected = {'tp': type}
+        if result is not None:
+            expected['res'] = result
+        self.assertEqual(resp.json(), expected)
+
+    def assertEvaljsError(self, js, error_parts="JsError"):
+        resp = self._evaljs_request(js)
+        self.assertStatusCode(resp, 400)
+        if isinstance(error_parts, (bytes, unicode)):
+            error_parts = [error_parts]
+        for part in error_parts:
+            self.assertIn(part, resp.text)
 
     def test_numbers(self):
         self.assertEvaljsResult("1.0", 1.0, "number")
@@ -405,19 +416,13 @@ class EvaljsTest(BaseLuaRenderTest):
             "table"
         )
 
-        self.assertEvaljsResult(
-            "function(){return 5}",
-            None,
-            "nil"
-        )
+    def test_function_direct(self):
+        # XXX: functions are not returned by QT
+        self.assertEvaljsError("function(){return 5}")
 
     def test_object_with_function(self):
         # XXX: complex objects are unsupported
-        self.assertEvaljsResult(
-            '{"x":2, "y": function(){}}',
-            None,
-            "nil",
-        )
+        self.assertEvaljsError('{"x":2, "y": function(){}}')
 
     def test_function_call(self):
         self.assertEvaljsResult(
@@ -457,6 +462,22 @@ class EvaljsTest(BaseLuaRenderTest):
             'table'
         )
 
+    def test_syntax_error(self):
+        self.assertEvaljsError("x--4", ["JsError", "SyntaxError"])
+
+    def test_throw_string(self):
+        self.assertEvaljsError(
+            "(function(){throw 'ABC'})();",
+            ["JsError", "ABC"],
+        )
+        self.assertEvaljsError("throw 'ABC'", ["JsError", "ABC"])
+
+    def test_throw_error(self):
+        self.assertEvaljsError(
+            "(function(){throw new Error('ABC')})();",
+            ["JsError", "ABC"],
+        )
+        self.assertEvaljsError("throw new Error('ABC')", ["JsError", "Error: ABC"])
 
 class JsfuncTest(BaseLuaRenderTest):
     def assertJsfuncResult(self, source, arguments, result):
@@ -569,6 +590,17 @@ class JsfuncTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
             local func = splash:jsfunc("function(){")
+            return func()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("error during JS function call", resp.text)
+        self.assertIn("SyntaxError", resp.text)
+
+    def test_js_syntax_error_brace(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc('); window.alert("hello")')
             return func()
         end
         """)
