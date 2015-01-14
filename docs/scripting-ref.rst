@@ -925,6 +925,23 @@ Example:
 
 Named arguments are not supported for this function.
 
+.. _splash-get-perf-stats:
+
+splash:get_perf_stats
+---------------------
+
+Return performance-related statistics.
+
+**Signature:** ``splash:get_perf_stats()``
+
+This function returns a table that can be useful for performance analysis.  As
+of now, it provides:
+
+* ``walltime`` - (float) number of seconds since epoch, analog of ``os.clock``
+* ``cputime`` - (float) number of cpu seconds consumed by splash process
+* ``maxrss`` - (int) high water mark number of bytes of RAM consumed by splash
+  process
+
 .. _splash-args:
 
 splash.args

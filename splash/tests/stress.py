@@ -157,13 +157,19 @@ function main(splash)
     assert(splash:wait(%(wait)f))
     assert(splash:set_viewport(%(viewport)s))
 
+    susage = splash:getrusage()
     stime = os.clock()
     for i = 1, %(nrepeats)d do
         png, err = splash:png{width=%(width)s, height=%(height)s}
         assert(png, err)
     end
     etime = os.clock()
-    return {wallclock_secs=(etime - stime) / %(nrepeats)d}
+    eusage = splash:getrusage()
+    return {
+        wallclock_secs=(etime - stime) / %(nrepeats)d,
+        maxrss=eusage.maxrss,
+        cpu_secs=(eusage.cputime - susage.cputime) / %(nrepeats)d
+    }
 end
     """ % {'url': repr(url), 'width': width, 'height': height,
            'nrepeats': nrepeats, 'wait': float(wait),

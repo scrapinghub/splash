@@ -4,6 +4,9 @@ import os
 import json
 import functools
 import itertools
+import resource
+import time
+import sys
 
 import lupa
 
@@ -453,6 +456,16 @@ class Splash(object):
     @command()
     def url(self):
         return self.tab.url
+
+    @command()
+    def get_perf_stats(self):
+        """Return performance-related statistics."""
+        rusage = resource.getrusage(resource.RUSAGE_SELF)
+        # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
+        rss_mul = 1 if sys.platform == 'darwin' else 1024
+        return {'maxrss': rusage.ru_maxrss * rss_mul,
+                'cputime': rusage.ru_utime + rusage.ru_stime,
+                'walltime': time.time()}
 
     def get_real_exception(self):
         if self._exceptions:
