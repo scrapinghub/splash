@@ -18,6 +18,15 @@ MAX_HEIGTH = 1080
 
 AUTOLOAD_IMAGES = 1
 
+# This value has the same meaning as "level" kwarg of :func:`zlib.compress`:
+# - 0 means no compression at all
+# - 1 means best speed, lowest compression ratio
+# - 9 means best compression, lowest speed
+#
+# The default is 1, because it is twice as fast as 9 and produces only 15%
+# larger files.
+PNG_COMPRESSION_LEVEL = 1
+
 # There's a bug in Qt that manifests itself when width or height of rendering
 # surface (aka the png image) is more than 32768.  Usually, this is solved by
 # rendering the image in tiled manner and obviously, TILE_MAXSIZE must not

@@ -39,7 +39,7 @@ class _ValidatingResource(Resource):
             return str(e) + "\n"
 
 
-class RenderBase(_ValidatingResource):
+class BaseRenderResource(_ValidatingResource):
 
     isLeaf = True
     content_type = "text/html; charset=utf-8"
@@ -163,7 +163,7 @@ class RenderBase(_ValidatingResource):
         raise NotImplementedError()
 
 
-class RenderHtml(RenderBase):
+class RenderHtmlResource(BaseRenderResource):
     content_type = "text/html; charset=utf-8"
 
     def _getRender(self, request, options):
@@ -171,13 +171,13 @@ class RenderHtml(RenderBase):
         return self.pool.render(HtmlRender, options, **params)
 
 
-class ExecuteLuaScript(RenderBase):
+class ExecuteLuaScriptResource(BaseRenderResource):
     content_type = "text/plain; charset=utf-8"
 
     def __init__(self, pool, is_proxy_request, sandboxed,
                  lua_package_path,
                  lua_sandbox_allowed_modules):
-        RenderBase.__init__(self, pool, is_proxy_request)
+        BaseRenderResource.__init__(self, pool, is_proxy_request)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
@@ -193,7 +193,7 @@ class ExecuteLuaScript(RenderBase):
         return self.pool.render(LuaRender, options, **params)
 
 
-class RenderPng(RenderBase):
+class RenderPngResource(BaseRenderResource):
 
     content_type = "image/png"
 
@@ -203,7 +203,7 @@ class RenderPng(RenderBase):
         return self.pool.render(PngRender, options, **params)
 
 
-class RenderJson(RenderBase):
+class RenderJsonResource(BaseRenderResource):
 
     content_type = "application/json"
 
@@ -214,7 +214,7 @@ class RenderJson(RenderBase):
         return self.pool.render(JsonRender, options, **params)
 
 
-class RenderHar(RenderBase):
+class RenderHarResource(BaseRenderResource):
 
     content_type = "application/json"
 
@@ -223,7 +223,7 @@ class RenderHar(RenderBase):
         return self.pool.render(HarRender, options, **params)
 
 
-class Debug(Resource):
+class DebugResource(Resource):
 
     isLeaf = True
 
@@ -548,14 +548,14 @@ class Root(Resource):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
-        self.putChild("render.html", RenderHtml(pool))
-        self.putChild("render.png", RenderPng(pool))
-        self.putChild("render.json", RenderJson(pool))
-        self.putChild("render.har", RenderHar(pool))
-        self.putChild("debug", Debug(pool))
+        self.putChild("render.html", RenderHtmlResource(pool))
+        self.putChild("render.png", RenderPngResource(pool))
+        self.putChild("render.json", RenderJsonResource(pool))
+        self.putChild("render.har", RenderHarResource(pool))
+        self.putChild("debug", DebugResource(pool))
 
-        if self.lua_enabled and ExecuteLuaScript is not None:
-            self.putChild("execute", ExecuteLuaScript(
+        if self.lua_enabled and ExecuteLuaScriptResource is not None:
+            self.putChild("execute", ExecuteLuaScriptResource(
                 pool=pool,
                 is_proxy_request=False,
                 sandboxed=lua_sandbox_enabled,

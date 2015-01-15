@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import json
 import unittest
 from cStringIO import StringIO
+import numbers
+import time
 
 from PIL import Image
 import requests
@@ -1631,7 +1633,6 @@ class NavigationLockingTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {"reason": "navigation_locked"})
 
 
-
 class SetContentTest(BaseLuaRenderTest):
     def test_set_content(self):
         resp = self.request_lua("""
@@ -1693,3 +1694,28 @@ class SetContentTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "http://example.com/foo")
+
+
+class GetPerfStatsTest(BaseLuaRenderTest):
+    def test_get_perf_stats(self):
+        func = """
+        function main(splash)
+            return splash:get_perf_stats()
+        end
+        """
+        out = self.request_lua(func).json()
+        self.assertItemsEqual(out.keys(),
+                              ['walltime', 'cputime', 'maxrss'])
+        self.assertIsInstance(out['cputime'], numbers.Real)
+        self.assertIsInstance(out['walltime'], numbers.Real)
+        self.assertIsInstance(out['maxrss'], numbers.Integral)
+        self.assertLess(out['cputime'], 1000.)
+        self.assertLess(0., out['cputime'])
+        # Should be safe to assume that splash process consumes between 1Mb
+        # and 1Gb of RAM, right?
+        self.assertLess(1E6, out['maxrss'])
+        self.assertLess(out['maxrss'], 1E9)
+        # I wonder if we could break this test...
+        now = time.time()
+        self.assertLess(now - 120, out['walltime'])
+        self.assertLess(out['walltime'], now)

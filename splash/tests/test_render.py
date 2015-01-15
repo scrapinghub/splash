@@ -66,7 +66,6 @@ class DirectRequestHandler(object):
 
 
 @pytest.mark.usefixtures("class_ts")
-@pytest.mark.usefixtures("print_ts_output")
 class BaseRenderTest(unittest.TestCase):
 
     endpoint = "render.html"
@@ -322,6 +321,15 @@ class RenderPngTest(Base.RenderTest):
         self.assertPng(r, height=60000)  # hardcoded in the html
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFF, 0x77, 0xFF))
 
+    def test_extra_height_doesnt_leave_garbage_when_using_full_render(self):
+        r = self.request({'url': self.mockurl('tall'), 'viewport': '100x100',
+                          'height': 1000})
+        png = self.assertPng(r, height=1000)
+        # Ensure that the extra pixels at the bottom are transparent.
+        alpha_channel = png.crop((0, 100, 100, 1000)).getdata(3)
+        self.assertEqual(alpha_channel.size, (100, 900))
+        self.assertEqual(alpha_channel.getextrema(), (0, 0))
+
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
@@ -331,7 +339,7 @@ class RenderPngTest(Base.RenderTest):
             self.assertEqual(img.size[0], width)
         if height is not None:
             self.assertEqual(img.size[1], height)
-        return img.size
+        return img
 
     def assertPixelColor(self, response, x, y, color):
         img = Image.open(StringIO(response.content))
@@ -619,9 +627,7 @@ class IframesRenderTest(BaseRenderTest):
         return self.request(query).json()
 
 
-
 @pytest.mark.usefixtures("class_ts")
-@pytest.mark.usefixtures("print_ts_output")
 class TestTestSetup(unittest.TestCase):
 
     def test_mockserver_works(self):

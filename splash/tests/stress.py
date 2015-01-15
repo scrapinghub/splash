@@ -3,7 +3,9 @@ from itertools import islice
 from Queue import Queue
 from threading import Thread
 from collections import Counter
+import requests
 
+from .utils import SplashServer
 
 class StressTest():
 
@@ -119,6 +121,60 @@ class ArgsFromLogfile(object):
             if "[stats]" in l:
                 d = json.loads(l[33:].rstrip())
                 yield d['args']
+
+
+def lua_runonce(script, timeout=60.):
+    """ Start splash server, execute lua script in it and return the output.
+
+    :type script: str
+    :param script: Script to be executed.
+    :type timeout: float
+    :param timeout: Timeout value for the execution request.
+
+    """
+    with SplashServer() as s:
+        resp = requests.get(s.url('execute'),
+                            params={'lua_source': script},
+                            timeout=timeout)
+        if resp.ok:
+            return resp.content
+        else:
+            raise RuntimeError(resp.text)
+
+
+def benchmark_png(url, viewport='full', wait=0.5,
+                  width=None, height=None, nrepeats=3):
+    if width is None:
+        width = 'nil'
+    if height is None:
+        height = 'nil'
+
+    f = """
+function main(splash)
+    resp, err = splash:go(%(url)s)
+    assert(resp, err)
+
+    assert(splash:wait(%(wait)f))
+    assert(splash:set_viewport(%(viewport)s))
+
+    susage = splash:getrusage()
+    stime = os.clock()
+    for i = 1, %(nrepeats)d do
+        png, err = splash:png{width=%(width)s, height=%(height)s}
+        assert(png, err)
+    end
+    etime = os.clock()
+    eusage = splash:getrusage()
+    return {
+        wallclock_secs=(etime - stime) / %(nrepeats)d,
+        maxrss=eusage.maxrss,
+        cpu_secs=(eusage.cputime - susage.cputime) / %(nrepeats)d
+    }
+end
+    """ % {'url': repr(url), 'width': width, 'height': height,
+           'nrepeats': nrepeats, 'wait': float(wait),
+           'viewport': repr(viewport)}
+    return json.loads(lua_runonce(f))
 
 
 def parse_opts():

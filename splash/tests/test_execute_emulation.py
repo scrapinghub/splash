@@ -88,6 +88,19 @@ server because of OOM killer or grinding user system to a halt because of swap.
     def test_range_checks(self):
         super(EmulatedRenderPngTest, self).test_range_checks()
 
+    def test_extra_height_doesnt_leave_garbage_when_using_tiled_render(self):
+        # XXX: this function belongs to test_render, BUT height < 1000 is fixed
+        # in defaults and so is tile max size, so in order to force rendering
+        # that may produce extra pixels at the bottom we go the way that avoids
+        # parameter validation.
+        r = self.request({'url': self.mockurl('tall'), 'viewport': '100x100',
+                          'height': 3000})
+        png = self.assertPng(r, height=3000)
+        # Ensure that the extra pixels at the bottom are transparent.
+        alpha_channel = png.crop((0, 100, 100, 3000)).getdata(3)
+        self.assertEqual(alpha_channel.size, (100, 2900))
+        self.assertEqual(alpha_channel.getextrema(), (0, 0))
+
 
 class EmulatedRenderHarTest(Base.EmulationMixin, test_har.HarRenderTest):
     script = 'main = require("emulation").render_har'
