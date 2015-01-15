@@ -20,14 +20,15 @@ class RenderOptions(object):
         self.data = data
 
     @classmethod
-    def fromrequest(cls, request):
+    def fromrequest(cls, request, max_timeout=defaults.MAX_TIMEOUT):
         """
         Initialize options from a Twisted Request.
         """
 
-        # 1. GET / POST data
         data = {key: values[0] for key, values in request.args.items()}
+        data.setdefault('max-timeout', max_timeout)
 
+        # 1. GET / POST data
         if request.method == 'POST':
             content_type = request.getHeader('content-type')
             if content_type:
@@ -97,7 +98,7 @@ class RenderOptions(object):
         return self.get("wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
-        return self.get("timeout", defaults.TIMEOUT, type=float, range=(0, defaults.MAX_TIMEOUT))
+        return self.get("timeout", defaults.TIMEOUT, type=float, range=(0, self.get("max-timeout", defaults.MAX_TIMEOUT, type=float)))
 
     def get_images(self):
         return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
