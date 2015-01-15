@@ -934,8 +934,9 @@ Return performance-related statistics.
 
 **Signature:** ``splash:get_perf_stats()``
 
-This function returns a table that can be useful for performance analysis.  As
-of now, it provides:
+**Returns:** a table that can be useful for performance analysis.
+
+As of now, this table contains:
 
 * ``walltime`` - (float) number of seconds since epoch, analog of ``os.clock``
 * ``cputime`` - (float) number of cpu seconds consumed by splash process
