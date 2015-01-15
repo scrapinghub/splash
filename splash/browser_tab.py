@@ -498,7 +498,7 @@ class BrowserTab(QObject):
         self.store_har_timing("_onScreenshotPrepared")
 
         b = StringIO()
-        image.save(b, "png")
+        image.save(b, "png", compress_level=defaults.PNG_COMPRESSION_LEVEL)
         result = bytes(b.getvalue())
         if b64:
             result = base64.b64encode(result)
