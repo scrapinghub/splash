@@ -44,17 +44,18 @@ class RenderBase(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    def __init__(self, pool, is_proxy_request=False):
+    def __init__(self, pool, max_timeout, is_proxy_request=False):
         Resource.__init__(self)
         self.pool = pool
         self.js_profiles_path = self.pool.js_profiles_path
         self.is_proxy_request = is_proxy_request
+        self.max_timeout = max_timeout
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
 
         request.starttime = time.time()
-        render_options = RenderOptions.fromrequest(request)
+        render_options = RenderOptions.fromrequest(request, self.max_timeout)
         render_options.get_filters(self.pool)  # check filters earlier
 
         pool_d = self._getRender(request, render_options)
@@ -176,8 +177,9 @@ class ExecuteLuaScript(RenderBase):
 
     def __init__(self, pool, is_proxy_request, sandboxed,
                  lua_package_path,
-                 lua_sandbox_allowed_modules):
-        RenderBase.__init__(self, pool, is_proxy_request)
+                 lua_sandbox_allowed_modules,
+                 max_timeout):
+        RenderBase.__init__(self, pool, max_timeout, is_proxy_request)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
@@ -544,14 +546,15 @@ class Root(Resource):
 
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
                  lua_package_path,
-                 lua_sandbox_allowed_modules):
+                 lua_sandbox_allowed_modules,
+                 max_timeout):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
-        self.putChild("render.html", RenderHtml(pool))
-        self.putChild("render.png", RenderPng(pool))
-        self.putChild("render.json", RenderJson(pool))
-        self.putChild("render.har", RenderHar(pool))
+        self.putChild("render.html", RenderHtml(pool, max_timeout))
+        self.putChild("render.png", RenderPng(pool, max_timeout))
+        self.putChild("render.json", RenderJson(pool, max_timeout))
+        self.putChild("render.har", RenderHar(pool, max_timeout))
         self.putChild("debug", Debug(pool))
 
         if self.lua_enabled and ExecuteLuaScript is not None:
@@ -561,6 +564,7 @@ class Root(Resource):
                 sandboxed=lua_sandbox_enabled,
                 lua_package_path=lua_package_path,
                 lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
+                max_timeout=max_timeout
             ))
 
         if self.ui_enabled:
