@@ -297,7 +297,7 @@ For example, the following innocent-looking code (using jQuery) may fail:
 
     splash:evaljs("$(console.log('foo'));")
 
-A gotcha is that to allow chaining jQuery $ returns a huge object,
+A gotcha is that to allow chaining jQuery ``$`` function returns a huge object,
 :ref:`splash-evaljs` tries to serialize it and convert to Lua. It is a waste
 of resources, and it could trigger internal protection measures;
 :ref:`splash-runjs` doesn't have this problem.
