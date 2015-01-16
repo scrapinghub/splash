@@ -51,6 +51,19 @@ end
 
 
 --
+-- This decorator expects function return value to be a Python list
+-- and unpacks it to Lua multiple return values.
+--
+local function unpacks_multiple_return_values(func)
+  return function(...)
+    -- Max allowed list size is 10; it is more than enough for
+    -- functions which return multiple values. This trick is needed
+    -- to handle `nil` as a first value correctly.
+    return table.unpack(func(...), 1, 10)
+  end
+end
+
+--
 -- Lua wrapper for Splash Python object.
 --
 -- It hides attributes that should not be exposed,
@@ -74,6 +87,10 @@ function Splash.create(py_splash)
 
     if opts.is_async then
       command = yields_result(command)
+    end
+
+    if opts.multiple_return_values then
+      command = unpacks_multiple_return_values(command)
     end
 
     self[key] = command

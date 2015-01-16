@@ -479,6 +479,64 @@ class EvaljsTest(BaseLuaRenderTest):
         )
         self.assertEvaljsError("throw new Error('ABC')", ["JsError", "Error: ABC"])
 
+
+class RunjsTest(BaseLuaRenderTest):
+    def test_define_variable(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("x=5"))
+            return {x=splash:evaljs("x")}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"x": 5})
+
+    def test_runjs_undefined(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("undefined"))
+            return {ok=true}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    def test_define_function(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("egg = function(){return 'spam'};"))
+            local egg = splash:jsfunc("window.egg")
+            return {egg=egg()}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"egg": "spam"})
+
+    def test_runjs_syntax_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res, err = splash:runjs("function()")
+            return {res=res, err=err}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "err": "SyntaxError: Parse error",
+        })
+
+    def test_runjs_exception(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res, err = splash:runjs("var x = y;")
+            return {res=res, err=err}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "err": "ReferenceError: Can't find variable: y",
+        })
+
+
 class JsfuncTest(BaseLuaRenderTest):
     def assertJsfuncResult(self, source, arguments, result):
         resp = self.request_lua("""

@@ -257,6 +257,8 @@ If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
+See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-autoload`.
+
 .. _splash-evaljs:
 
 splash:evaljs
@@ -278,8 +280,8 @@ JavaScript exceptions an error is raised.
 JavaScript → Lua conversion rules are the same as for
 :ref:`splash:jsfunc <js-lua-conversion-rules>`.
 
-``splash:evaljs`` is useful to evaluate short snippets of code or to
-execute some code without defining a wrapper function.
+``splash:evaljs`` is useful for evaluation of short JavaScript snippets
+without defining a wrapper function.
 
 Example:
 
@@ -287,29 +289,111 @@ Example:
 
     local title = splash:evaljs("document.title")
 
-:ref:`splash:jsfunc() <splash-jsfunc>` is more versatile because it allows
-to pass arguments to JavaScript functions; to do that with ``splash:evaljs``
-string formatting must be used. Compare:
+Don't use :ref:`splash-evaljs` when the result is not needed - it is
+inefficient and could lead to problems; use :ref:`splash-runjs` instead.
+For example, the following innocent-looking code (using jQuery) may fail:
 
 .. code-block:: lua
 
-    -- Lua function to scroll window to (x, y) position.
-    function scroll_to(splash, x, y)
-        local js = string.format(
-            "window.scrollTo(%s, %s);",
-            tonumber(x),
-            tonumber(y)
-        )
-        return splash:evaljs(js)
+    splash:evaljs("$(console.log('foo'));")
+
+A gotcha is that to allow chaining jQuery $ returns a huge object,
+:ref:`splash-evaljs` tries to serialize it and convert to Lua. It is a waste
+of resources, and it could trigger internal protection measures;
+:ref:`splash-runjs` doesn't have this problem.
+
+If the code you're evaluating needs arguments it is better to use
+:ref:`splash-jsfunc` instead of :ref:`splash-evaljs` and string formatting.
+Compare:
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local font_size = splash:jsfunc([[
+            function(sel) {
+                var el = document.querySelector(sel);
+                return getComputedStyle(el)["font-size"];
+            }
+        ]])
+
+        local font_size2 = function(sel)
+            -- FIXME: escaping of `sel` parameter!
+            local js = string.format([[
+                var el = document.querySelector("%s");
+                getComputedStyle(el)["font-size"]
+            ]], sel)
+            return splash:evaljs(js)
+        end
+
+        -- ...
     end
 
-    -- a simpler version using splash:jsfunc
-    function scroll_to2(splash, x, y)
-        local window_scroll = splash:jsfunc("window.scrollTo")
-        return window_scroll(x, y)
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`.
+
+.. _splash-runjs:
+
+splash:runjs
+------------
+
+Run JavaScript code in page context.
+
+**Signature:** ``ok, error = splash:runjs(snippet)``
+
+**Parameters:**
+
+* snippet - a string with JavaScript source code to execute.
+
+**Returns:** ``ok, error`` pair. When the execution is successful
+``ok`` is True. In case of JavaScript errors ``ok`` is ``nil``,
+and ``error`` contains the error string.
+
+Example:
+
+.. code-block:: lua
+
+    assert(splash:runjs("document.title = 'hello';"))
+
+Note that JavaScript functions defined using ``function foo(){}`` syntax
+**won't** be added to the global scope:
+
+.. code-block:: lua
+
+    assert(splash:runjs("function foo(){return 'bar'}"))
+    local res = splash:evaljs("foo()")  -- this raises an error
+
+It is an implementation detail: the code passed to :ref:`splash:runjs`
+is executed in a closure. To define functions use global variables, e.g.:
+
+.. code-block:: lua
+
+    assert(splash:runjs("foo = function (){return 'bar'}"))
+    local res = splash:evaljs("foo()")  -- this returns 'bar'
+
+If the code needs arguments it is better to use :ref:`splash-jsfunc`.
+Compare:
+
+.. code-block:: lua
+
+    function main(splash)
+
+        -- Lua function to scroll window to (x, y) position.
+        function scroll_to(x, y)
+            local js = string.format(
+                "window.scrollTo(%s, %s);",
+                tonumber(x),
+                tonumber(y)
+            )
+            assert(splash:runjs(js))
+        end
+
+        -- a simpler version using splash:jsfunc
+        local scroll_to2 = splash:jsfunc("window.scrollTo")
+
+        -- ...
     end
 
-To execute JavaScript code before page is loaded use :ref:`splash-autoload`.
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`.
 
 .. _splash-autoload:
 
@@ -376,6 +460,8 @@ is not a constant.
 
 If :ref:`splash-autoload` is called multiple times then all its scripts
 are executed on page load, in order they were added.
+
+See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`.
 
 .. _splash-http-get:
 

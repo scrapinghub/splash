@@ -429,7 +429,7 @@ class BrowserTab(QObject):
         """
         with open(filename, 'rb') as f:
             script = f.read().decode('utf-8')
-            return self.evaljs(script, handle_errors=handle_errors)
+            self.runjs(script, handle_errors=handle_errors)
 
     def run_js_files(self, folder, handle_errors=True):
         """
@@ -450,7 +450,12 @@ class BrowserTab(QObject):
 
     def _on_javascript_window_object_cleared(self):
         for script in self._autoload_scripts:
-            self.web_page.mainFrame().evaluateJavaScript(script)
+            # XXX: handle_errors=False is used to execute autoload scripts
+            # in a global context (not inside a closure).
+            # One difference is how are `function foo(){}` statements handled:
+            # if executed globally, `foo` becomes an attribute of window;
+            # if executed in a closure, `foo` is a name local to this closure.
+            self.runjs(script, handle_errors=False)
 
     def http_get(self, url, callback, headers=None, follow_redirects=True):
         """ Send a GET request; call a callback with the reply as an argument. """
@@ -487,6 +492,16 @@ class BrowserTab(QObject):
         if res.get("error", False):
             raise JsError(res.get("error_repr", "unknown JS error"))
         return res.get("result", None)
+
+    def runjs(self, js_source, handle_errors=True):
+        """ Run JS code in page context and discard the result. """
+
+        # If JS code returns something, and we just discard
+        # the result of frame.evaluateJavaScript, then Qt still needs to build
+        # a result - it could be costly. So the original JS code
+        # is adjusted to make sure it doesn't return anything.
+        js_source = "%s;undefined" % js_source
+        self.evaljs(js_source, handle_errors=handle_errors)
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)

@@ -7,6 +7,7 @@ import itertools
 
 import lupa
 
+from splash.browser_tab import JsError
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (
     get_new_runtime,
@@ -55,7 +56,7 @@ class _ImmediateResult(object):
         self.value = value
 
 
-def command(async=False, table_argument=False):
+def command(async=False, table_argument=False, multiple_return_values=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
         if not table_argument:
@@ -67,6 +68,7 @@ def command(async=False, table_argument=False):
         )
         meth._is_command = True
         meth._is_async = async
+        meth._multiple_return_values = multiple_return_values
         return meth
     return decorator
 
@@ -113,7 +115,7 @@ def exceptions_as_return_values(meth):
     It makes wrapped methods return ``True, result`` and ``False, repr(exception)``
     pairs instead of raising an exception; Lua script should handle it itself
     and raise an error when needed. In Splash this is done by
-    splash/scripts/splash.lua wrap_errors decorator.
+    splash/lua_modules/splash.lua unwraps_errors decorator.
     """
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
@@ -216,6 +218,7 @@ class Splash(object):
                 commands[name] = self.lua.table_from({
                     'is_async': getattr(value, '_is_async'),
                     'returns_error_flag': getattr(value, '_returns_error_flag', False),
+                    'multiple_return_values': getattr(value, '_multiple_return_values', False),
                 })
         self.commands = python2lua(self.lua, commands)
 
@@ -299,8 +302,15 @@ class Splash(object):
 
     @command()
     def evaljs(self, snippet):
-        res = self.tab.evaljs(snippet)
-        return res
+        return self.tab.evaljs(snippet)
+
+    @command(multiple_return_values=True)
+    def runjs(self, snippet):
+        try:
+            self.tab.runjs(snippet)
+            return [True]
+        except JsError as e:
+            return [None, e.args[0]]
 
     @command()
     def jsfunc_private(self, func):
