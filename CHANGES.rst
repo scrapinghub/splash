@@ -1,6 +1,73 @@
 Changes
 =======
 
+dev (unreleased)
+----------------
+
+This release provides many improvements in Splash scripting engine,
+as well as other improvements like better cookie handling and better
+image rendering.
+
+From version 1.4 Splash requires Pillow (built with PNG support) to work.
+
+There are backwards-incompatible changes in Splash scripts:
+
+* old splash:runjs() method is renamed to splash:evaljs();
+* new splash:runjs() method just runs JavaScript code
+  without returning the result of the last JS statement.
+
+To upgrade check all splash:runjs() usages: if the returned result is used
+then replace splash:runjs() with splash:evaljs().
+
+New scripting features:
+
+* it is now possible to write custom Lua plugins stored server-side;
+* a restricted version of Lua ``require`` is enabled in sandbox;
+* splash:autoload() method for setting JS to load on each request;
+* splash:lock_navigation() and splash:unlock_navigation() methods;
+* splash:http_get() method for sending HTTP GET requests without loading result
+  to the browser;
+* splash:set_content() method for setting page content from a string;
+* splash:get_cookies(), splash:add_cookie(), splash:clear_cookies(),
+  splash:delete_cookies() and splash:init_cookies() methods for working
+  with cookies;
+* splash:set_user_agent() method for setting User-Agent header;
+* splash:set_custom_headers() method for setting other HTTP headers;
+* splash:url() method for getting current URL;
+* splash:go() now accepts ``headers`` argument;
+* splash:evaljs() method, which is a splash:runjs() from Splash v1.3.1
+  with improved error handling (it raises an error in case of JavaScript
+  exceptions);
+* splash:runjs() method no longer returns the result of last computation;
+* splash:runjs() method handles JavaScript errors by returning ``ok, error``
+  pair;
+* splash:get_perf_stats() command for getting Splash resource usage.
+
+Other improvements:
+
+* cookies are no longer shared between requests;
+* PNG rendering becomes more efficient, especially for large webpages:
+  images are resized while painting to avoid pixel-based resize step;
+  less CPU is spent on compression. The downside is that the returned
+  PNG images become 10-15% larger;
+* /debug endpoint tracks more objects;
+* testing setup improvements;
+* application/json POST requests handle invalid JSON better;
+* undocumented splash:go_and_wait() and splash:_wait_restart_on_redirects()
+  methods are removed (they are moved to tests);
+* Lua sandbox is cleaned up;
+* long log messages from Lua are truncated in logs;
+* more detailed error info is logged;
+* stress tests now include PNG rendering benchmark.
+
+Bug fixes:
+
+* PNG rendering is fixed for huge viewports;
+* splash:go() argument validation is improved;
+* timer is properly deleted when an exception is raised in an errback;
+* redirects handling for baseurl requests is fixed;
+* reply is deleted only once when baseurl is used.
+
 1.3.1 (2014-12-13)
 ------------------
 
