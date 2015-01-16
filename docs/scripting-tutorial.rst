@@ -201,7 +201,7 @@ Observations:
 * in Splash variant ``followers`` function can return a result
   (a number of twitter followers); also, it doesn't need a "callback" argument;
 * instead of a ``page.open`` callback which receives "status" argument
-  there is a "blocking" ``splash:go`` call which returns "ok" flag;
+  there is a "blocking" :ref:`splash-go` call which returns "ok" flag;
 * error handling is different: in case of an HTTP 4xx or 5xx error
   PhantomJS doesn't return an error code to ``page.open`` callback - example
   script will try to get the followers nevertheless because "status" won't
@@ -236,6 +236,14 @@ handling?). Splash scripts are standard Lua code.
 Living Without Callbacks
 ------------------------
 
+.. note::
+
+    For the curious, Splash uses Lua coroutines under the hood.
+
+    Internally, "main" function is executed as a coroutine by Splash,
+    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
+    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
+
 In Splash scripts it is not explicit which calls are async and which calls
 are blocking. It is a common criticism of coroutines/greenlets; check e.g.
 `this <https://glyph.twistedmatrix.com/2014/02/unyielding.html>`__ article
@@ -255,15 +263,6 @@ Currently async methods are :ref:`splash-go`, :ref:`splash-wait`,
 :ref:`splash-autoload` becomes async when an URL is passed.
 Most splash methods are currently **not** async, but thinking
 of them as of async will allow your scripts to work if we ever change that.
-
-.. note::
-
-    For the curious, Splash uses Lua coroutines under the hood.
-
-    Internally, "main" function is executed as a coroutine by Splash,
-    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
-    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
-
 
 Calling Splash Methods
 ----------------------

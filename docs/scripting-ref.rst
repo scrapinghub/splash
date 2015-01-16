@@ -332,8 +332,8 @@ Set JavaScript to load automatically on each page load.
 
 :ref:`splash-autoload` allows to execute JavaScript code at each page load.
 :ref:`splash-autoload` doesn't doesn't execute the passed
-JavaScript code itself. To execute some code once, after page is loaded
-use :ref:`splash-evaljs` or :ref:`splash-jsfunc`.
+JavaScript code itself. To execute some code once, *after* page is loaded
+use :ref:`splash-runjs` or :ref:`splash-jsfunc`.
 
 :ref:`splash-autoload` can be used to preload utility JavaScript libraries
 or replace JavaScript objects before a webpage has a chance to do it.
