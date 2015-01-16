@@ -281,9 +281,7 @@ JavaScript → Lua conversion rules are the same as for
 :ref:`splash:jsfunc <js-lua-conversion-rules>`.
 
 ``splash:evaljs`` is useful for evaluation of short JavaScript snippets
-without defining a wrapper function.
-
-Example:
+without defining a wrapper function. Example:
 
 .. code-block:: lua
 
@@ -362,7 +360,7 @@ Note that JavaScript functions defined using ``function foo(){}`` syntax
     assert(splash:runjs("function foo(){return 'bar'}"))
     local res = splash:evaljs("foo()")  -- this raises an error
 
-It is an implementation detail: the code passed to :ref:`splash:runjs`
+It is an implementation detail: the code passed to :ref:`splash-runjs`
 is executed in a closure. To define functions use global variables, e.g.:
 
 .. code-block:: lua
@@ -1019,7 +1017,7 @@ splash:get_perf_stats
 
 Return performance-related statistics.
 
-**Signature:** ``splash:get_perf_stats()``
+**Signature:** ``stats = splash:get_perf_stats()``
 
 **Returns:** a table that can be useful for performance analysis.
 
