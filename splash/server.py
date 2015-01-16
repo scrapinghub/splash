@@ -30,7 +30,7 @@ def parse_opts():
     op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
         help="number of render slots (default: %default)")
     op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
-        help="maximum request processing time (default: %default)")
+        help="maximum allowed value for timeout (default: %default)")
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
     op.add_option("--js-profiles-path",
