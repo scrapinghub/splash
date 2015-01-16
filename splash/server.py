@@ -29,6 +29,8 @@ def parse_opts():
         help="port to listen to (default: %default)")
     op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
         help="number of render slots (default: %default)")
+    op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
+        help="maximum allowed value for timeout (default: %default)")
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
     op.add_option("--js-profiles-path",
@@ -153,7 +155,8 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None,
+def splash_server(portnum, slots, network_manager, max_timeout,
+                  splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
                   ui_enabled=True,
                   lua_enabled=True,
@@ -199,7 +202,7 @@ def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None
         lua_sandbox_enabled=lua_sandbox_enabled,
         lua_package_path=lua_package_path,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
-
+        max_timeout=max_timeout
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
@@ -207,7 +210,7 @@ def splash_server(portnum, slots, network_manager, splash_proxy_factory_cls=None
     # HTTP Proxy
     if not disable_proxy:
         from splash.proxy_server import SplashProxyServerFactory
-        proxy_server_factory = SplashProxyServerFactory(pool)
+        proxy_server_factory = SplashProxyServerFactory(pool, max_timeout=max_timeout)
         proxy_portnum = defaults.PROXY_PORT if proxy_portnum is None else proxy_portnum
         reactor.listenTCP(proxy_portnum, proxy_server_factory)
 
@@ -232,7 +235,7 @@ def monitor_maxrss(maxrss):
         t.start(60, now=False)
 
 
-def default_splash_server(portnum, slots=None,
+def default_splash_server(portnum, max_timeout, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
@@ -273,7 +276,8 @@ def default_splash_server(portnum, slots=None,
         lua_sandbox_enabled=lua_sandbox_enabled,
         lua_package_path=lua_package_path,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
-        verbosity=verbosity
+        verbosity=verbosity,
+        max_timeout=max_timeout
     )
 
 
@@ -366,7 +370,8 @@ def main():
             lua_sandbox_enabled=not opts.disable_lua_sandbox,
             lua_package_path=opts.lua_package_path.strip(";"),
             lua_sandbox_allowed_modules=opts.lua_sandbox_allowed_modules.split(";"),
-            verbosity=opts.verbosity
+            verbosity=opts.verbosity,
+            max_timeout=opts.max_timeout
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 

@@ -10,8 +10,7 @@ import pytest
 import requests
 from PIL import Image
 from splash.utils import truncated
-from splash.tests.utils import NON_EXISTING_RESOLVABLE
-
+from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 
 def https_only(func):
     @wraps(func)
@@ -625,6 +624,45 @@ class IframesRenderTest(BaseRenderTest):
                  'iframes': 1, 'html': 1}
         query.update(params or {})
         return self.request(query).json()
+
+
+class CommandLineOptionsTest(BaseRenderTest):
+
+    def test_max_timeout(self):
+        with SplashServer(extra_args=['--max-timeout=0.1']) as splash:
+            r1 = requests.get(
+                url=splash.url("render.html"),
+                params={
+                    'url': self.mockurl("delay?n=1"),
+                    'timeout': '0.2',
+                },
+            )
+            self.assertStatusCode(r1, 400)
+
+            r2 = requests.get(
+                url=splash.url("render.html"),
+                params={
+                    'url': self.mockurl("delay?n=1"),
+                    'timeout': '0.1',
+                },
+            )
+            self.assertStatusCode(r2, 504)
+
+            r3 = requests.get(
+                url=splash.url("render.html"),
+                params={
+                    'url': self.mockurl("delay?n=1")
+                },
+            )
+            self.assertStatusCode(r3, 504)
+
+            r4 = requests.get(
+                url=splash.url("render.html"),
+                params={
+                    'url': self.mockurl("")
+                },
+            )
+            self.assertStatusCode(r4, 200)
 
 
 @pytest.mark.usefixtures("class_ts")

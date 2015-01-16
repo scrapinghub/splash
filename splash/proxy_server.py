@@ -12,7 +12,6 @@ from twisted.python import log, failure
 from splash.resources import (RenderHtmlResource, RenderPngResource,
                               RenderJsonResource)
 
-
 NOT_DONE_YET = 1
 SPLASH_HEADER_PREFIX = 'x-splash-'
 SPLASH_RESOURCES = {
@@ -45,6 +44,7 @@ class SplashProxyRequest(http.Request):
     def __init__(self, channel, queued):
         http.Request.__init__(self, channel, queued)
         self.pool = channel.pool
+        self.max_timeout = channel.max_timeout
 
     def _get_header(self, name):
         return self.getHeader(SPLASH_HEADER_PREFIX + name)
@@ -128,7 +128,7 @@ class SplashProxyRequest(http.Request):
             self._remove_hop_by_hop_headers()
             self._remove_accept_encoding_header()
 
-            resource = resource_cls(self.pool, is_proxy_request=True)
+            resource = resource_cls(self.pool, max_timeout=self.max_timeout, is_proxy_request=True)
             self.render(resource)
 
         except Exception as e:
@@ -174,11 +174,13 @@ class SplashProxy(http.HTTPChannel):
 class SplashProxyServerFactory(http.HTTPFactory):
     protocol = SplashProxy
 
-    def __init__(self, pool, logPath=None, timeout=60 * 60 * 12):
+    def __init__(self, pool, max_timeout, logPath=None, timeout=60 * 60 * 12):
         http.HTTPFactory.__init__(self, logPath=logPath, timeout=timeout)
         self.pool = pool
+        self.max_timeout = max_timeout
 
     def buildProtocol(self, addr):
         p = http.HTTPFactory.buildProtocol(self, addr)
         p.pool = self.pool
+        p.max_timeout = self.max_timeout
         return p
