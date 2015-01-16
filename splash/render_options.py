@@ -97,7 +97,8 @@ class RenderOptions(object):
         return self.get("wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
-        return self.get("timeout", defaults.TIMEOUT, type=float, range=(0, self.max_timeout))
+        default = min(self.max_timeout, defaults.TIMEOUT)
+        return self.get("timeout", default, type=float, range=(0, self.max_timeout))
 
     def get_images(self):
         return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
