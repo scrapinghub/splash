@@ -48,7 +48,7 @@ Let's start with a basic example:
      function main(splash)
          splash:go("http://example.com")
          splash:wait(0.5)
-         local title = splash:runjs("document.title")
+         local title = splash:evaljs("document.title")
          return {title=title}
      end
 
@@ -116,7 +116,7 @@ Here is a part of the first example:
 
     splash:go("http://example.com")
     splash:wait(0.5)
-    local title = splash:runjs("document.title")
+    local title = splash:evaljs("document.title")
 
 The code looks like a standard procedural code; there are no callbacks
 or fancy control flow structures. It doesn't mean Splash works in a synchronous
@@ -175,7 +175,7 @@ A similar Splash script:
         if not ok then
             return "?"
         end
-        return splash:runjs([[
+        return splash:evaljs([[
             document.querySelector('div.profile td.stat.stat-last div.statnum').innerText;
         ]]);
     end
@@ -201,7 +201,7 @@ Observations:
 * in Splash variant ``followers`` function can return a result
   (a number of twitter followers); also, it doesn't need a "callback" argument;
 * instead of a ``page.open`` callback which receives "status" argument
-  there is a "blocking" ``splash:go`` call which returns "ok" flag;
+  there is a "blocking" :ref:`splash-go` call which returns "ok" flag;
 * error handling is different: in case of an HTTP 4xx or 5xx error
   PhantomJS doesn't return an error code to ``page.open`` callback - example
   script will try to get the followers nevertheless because "status" won't
@@ -236,6 +236,14 @@ handling?). Splash scripts are standard Lua code.
 Living Without Callbacks
 ------------------------
 
+.. note::
+
+    For the curious, Splash uses Lua coroutines under the hood.
+
+    Internally, "main" function is executed as a coroutine by Splash,
+    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
+    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
+
 In Splash scripts it is not explicit which calls are async and which calls
 are blocking. It is a common criticism of coroutines/greenlets; check e.g.
 `this <https://glyph.twistedmatrix.com/2014/02/unyielding.html>`__ article
@@ -256,15 +264,6 @@ Currently async methods are :ref:`splash-go`, :ref:`splash-wait`,
 Most splash methods are currently **not** async, but thinking
 of them as of async will allow your scripts to work if we ever change that.
 
-.. note::
-
-    For the curious, Splash uses Lua coroutines under the hood.
-
-    Internally, "main" function is executed as a coroutine by Splash,
-    and some of the ``splash:foo()`` methods use ``coroutine.yield``.
-    See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
-
-
 Calling Splash Methods
 ----------------------
 
@@ -282,12 +281,12 @@ named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
     -- Examples of positional arguments:
     splash:go("http://example.com")
     splash:wait(0.5, false)
-    local title = splash:runjs("document.title")
+    local title = splash:evaljs("document.title")
 
     -- The same using keyword arguments:
     splash:go{url="http://example.com"}
     splash:wait{time=0.5, cancel_on_redirect=false}
-    local title = splash:runjs{source="document.title"}
+    local title = splash:evaljs{source="document.title"}
 
     -- Mixed arguments example:
     splash:wait{0.5, cancel_on_redirect=false}
@@ -480,7 +479,7 @@ Usage:
 
         -- wait until <h1> element is loaded
         utils.wait_for(splash, function()
-           return splash:runjs("document.querySelector('h1') != null")
+           return splash:evaljs("document.querySelector('h1') != null")
         end)
 
         return splash:html()
@@ -518,7 +517,7 @@ Usage:
 
         -- wait until <h1> element is loaded
         splash:wait_for(function()
-           return splash:runjs("document.querySelector('h1') != null")
+           return splash:evaljs("document.querySelector('h1') != null")
         end)
 
         return splash:html()

@@ -330,70 +330,81 @@ class ErrorsTest(BaseLuaRenderTest):
 
 
 
-class RunjsTest(BaseLuaRenderTest):
+class EvaljsTest(BaseLuaRenderTest):
 
-    def assertRunjsResult(self, js, result, type):
-        resp = self.request_lua("""
+    def _evaljs_request(self, js):
+        return self.request_lua("""
         function main(splash)
-            local res = splash:runjs([[%s]])
+            local res = splash:evaljs([[%s]])
             return {res=res, tp=type(res)}
         end
         """ % js)
+
+    def assertEvaljsResult(self, js, result, type):
+        resp = self._evaljs_request(js)
         self.assertStatusCode(resp, 200)
-        if result is None:
-            self.assertEqual(resp.json(), {'tp': type})
-        else:
-            self.assertEqual(resp.json(), {'res': result, 'tp': type})
+        expected = {'tp': type}
+        if result is not None:
+            expected['res'] = result
+        self.assertEqual(resp.json(), expected)
+
+    def assertEvaljsError(self, js, error_parts="JsError"):
+        resp = self._evaljs_request(js)
+        self.assertStatusCode(resp, 400)
+        if isinstance(error_parts, (bytes, unicode)):
+            error_parts = [error_parts]
+        for part in error_parts:
+            self.assertIn(part, resp.text)
 
     def test_numbers(self):
-        self.assertRunjsResult("1.0", 1.0, "number")
-        self.assertRunjsResult("1", 1, "number")
-        self.assertRunjsResult("1+2", 3, "number")
+        self.assertEvaljsResult("1.0", 1.0, "number")
+        self.assertEvaljsResult("1", 1, "number")
+        self.assertEvaljsResult("1+2", 3, "number")
 
     def test_inf(self):
-        self.assertRunjsResult("1/0", float('inf'), "number")
-        self.assertRunjsResult("-1/0", float('-inf'), "number")
+        self.assertEvaljsResult("1/0", float('inf'), "number")
+        self.assertEvaljsResult("-1/0", float('-inf'), "number")
 
     def test_string(self):
-        self.assertRunjsResult("'foo'", u'foo', 'string')
+        self.assertEvaljsResult("'foo'", u'foo', 'string')
 
     def test_bool(self):
-        self.assertRunjsResult("true", True, 'boolean')
+        self.assertEvaljsResult("true", True, 'boolean')
 
     def test_undefined(self):
-        self.assertRunjsResult("undefined", None, 'nil')
+        self.assertEvaljsResult("undefined", None, 'nil')
 
     def test_null(self):
         # XXX: null is converted to an empty string by QT,
         # we can't distinguish it from a "real" empty string.
-        self.assertRunjsResult("null", "", 'string')
+        self.assertEvaljsResult("null", "", 'string')
 
     def test_unicode_string(self):
-        self.assertRunjsResult("'привет'", u'привет', 'string')
+        self.assertEvaljsResult("'привет'", u'привет', 'string')
 
     def test_unicode_string_in_object(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'var o={}; o["ключ"] = "значение"; o',
             {u'ключ': u'значение'},
             'table'
         )
 
     def test_nested_object(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'var o={}; o["x"] = {}; o["x"]["y"] = 5; o["z"] = "foo"; o',
             {"x": {"y": 5}, "z": "foo"},
             'table'
         )
 
     def test_array(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'x = [3, 2, 1, "foo", ["foo", [], "bar"], {}]; x',
             [3, 2, 1, "foo", ["foo", [], "bar"], {}],
             'table',
         )
 
     def test_self_referencing(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'var o={}; o["x"] = "5"; o["y"] = o; o',
             {"x": "5"},  # self reference is discarded
             'table'
@@ -401,28 +412,22 @@ class RunjsTest(BaseLuaRenderTest):
 
     def test_function(self):
         # XXX: functions are not returned by QT
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             "x = function(){return 5}; x",
             {},
             "table"
         )
 
-        self.assertRunjsResult(
-            "function(){return 5}",
-            None,
-            "nil"
-        )
+    def test_function_direct(self):
+        # XXX: functions are not returned by QT
+        self.assertEvaljsError("function(){return 5}")
 
     def test_object_with_function(self):
         # XXX: complex objects are unsupported
-        self.assertRunjsResult(
-            '{"x":2, "y": function(){}}',
-            None,
-            "nil",
-        )
+        self.assertEvaljsError('{"x":2, "y": function(){}}')
 
     def test_function_call(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             "function x(){return 5}; x();",
             5,
             "number"
@@ -432,14 +437,14 @@ class RunjsTest(BaseLuaRenderTest):
         # XXX: Date objects are converted to ISO8061 strings.
         # Does it make sense to do anything else with them?
         # E.g. make them available to Lua as tables?
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             'x = new Date("21 May 1958 10:12 UTC"); x',
             "1958-05-21T10:12:00Z",
             "string"
         )
 
     def test_regexp(self):
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             '/my-regexp/i',
             {
                 u'_jstype': u'RegExp',
@@ -449,7 +454,7 @@ class RunjsTest(BaseLuaRenderTest):
             'table'
         )
 
-        self.assertRunjsResult(
+        self.assertEvaljsResult(
             '/my-regexp/',
             {
                 u'_jstype': u'RegExp',
@@ -458,6 +463,80 @@ class RunjsTest(BaseLuaRenderTest):
             },
             'table'
         )
+
+    def test_syntax_error(self):
+        self.assertEvaljsError("x--4", ["JsError", "SyntaxError"])
+
+    def test_throw_string(self):
+        self.assertEvaljsError(
+            "(function(){throw 'ABC'})();",
+            ["JsError", "ABC"],
+        )
+        self.assertEvaljsError("throw 'ABC'", ["JsError", "ABC"])
+
+    def test_throw_error(self):
+        self.assertEvaljsError(
+            "(function(){throw new Error('ABC')})();",
+            ["JsError", "ABC"],
+        )
+        self.assertEvaljsError("throw new Error('ABC')", ["JsError", "Error: ABC"])
+
+
+class RunjsTest(BaseLuaRenderTest):
+    def test_define_variable(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("x=5"))
+            return {x=splash:evaljs("x")}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"x": 5})
+
+    def test_runjs_undefined(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("undefined"))
+            return {ok=true}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    def test_define_function(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("egg = function(){return 'spam'};"))
+            local egg = splash:jsfunc("window.egg")
+            return {egg=egg()}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"egg": "spam"})
+
+    def test_runjs_syntax_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res, err = splash:runjs("function()")
+            return {res=res, err=err}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "err": "SyntaxError: Parse error",
+        })
+
+    def test_runjs_exception(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res, err = splash:runjs("var x = y;")
+            return {res=res, err=err}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "err": "ReferenceError: Can't find variable: y",
+        })
 
 
 class JsfuncTest(BaseLuaRenderTest):
@@ -578,6 +657,17 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertIn("error during JS function call", resp.text)
         self.assertIn("SyntaxError", resp.text)
 
+    def test_js_syntax_error_brace(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc('); window.alert("hello")')
+            return func()
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn("error during JS function call", resp.text)
+        self.assertIn("SyntaxError", resp.text)
+
     def test_array_result(self):
         self.assertJsfuncResult(
             "function(){return [1, 2, 'foo']}",
@@ -643,7 +733,7 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertNotIn("str()", resp.text)
-        self.assertIn("AttributeError", resp.text)
+        self.assertIn("error reading Python attribute/item", resp.text)
 
 
 class WaitTest(BaseLuaRenderTest):
@@ -1475,13 +1565,13 @@ class AutoloadTest(BaseLuaRenderTest):
             assert(splash:autoload("window.FOO = 'bar'"))
 
             splash:go(splash.args.url)
-            local foo1 = splash:runjs("FOO")
+            local foo1 = splash:evaljs("FOO")
 
-            splash:runjs("window.FOO = 'spam'")
-            local foo2 = splash:runjs("FOO")
+            splash:evaljs("window.FOO = 'spam'")
+            local foo2 = splash:evaljs("FOO")
 
             splash:go(splash.args.url)
-            local foo3 = splash:runjs("FOO")
+            local foo3 = splash:evaljs("FOO")
             return {foo1=foo1, foo2=foo2, foo3=foo3}
         end
         """, {"url": self.mockurl("getrequest")})

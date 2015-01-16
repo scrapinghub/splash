@@ -4,6 +4,7 @@ from cStringIO import StringIO
 import os
 import base64
 import copy
+import json
 import pprint
 import weakref
 import functools
@@ -31,6 +32,11 @@ def skip_if_closing(meth):
             return
         return meth(self, *args, **kwargs)
     return wrapped
+
+
+class JsError(Exception):
+    """ JavaScript error, raised as a Python exception """
+    pass
 
 
 class BrowserTab(QObject):
@@ -417,22 +423,22 @@ class BrowserTab(QObject):
 
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
-    def run_js_file(self, filename):
+    def run_js_file(self, filename, handle_errors=True):
         """
         Load JS library from file ``filename`` to the current frame.
         """
         with open(filename, 'rb') as f:
             script = f.read().decode('utf-8')
-            return self.runjs(script)
+            self.runjs(script, handle_errors=handle_errors)
 
-    def run_js_files(self, folder):
+    def run_js_files(self, folder, handle_errors=True):
         """
         Load all JS libraries from ``folder`` folder to the current frame.
         """
         for jsfile in os.listdir(folder):
             if jsfile.endswith('.js'):
                 filename = os.path.join(folder, jsfile)
-                self.run_js_file(filename)
+                self.run_js_file(filename, handle_errors=handle_errors)
 
     def autoload(self, js_source):
         """ Execute JS code before each page load """
@@ -444,7 +450,12 @@ class BrowserTab(QObject):
 
     def _on_javascript_window_object_cleared(self):
         for script in self._autoload_scripts:
-            self.web_page.mainFrame().evaluateJavaScript(script)
+            # XXX: handle_errors=False is used to execute autoload scripts
+            # in a global context (not inside a closure).
+            # One difference is how are `function foo(){}` statements handled:
+            # if executed globally, `foo` becomes an attribute of window;
+            # if executed in a closure, `foo` is a name local to this closure.
+            self.runjs(script, handle_errors=False)
 
     def http_get(self, url, callback, headers=None, follow_redirects=True):
         """ Send a GET request; call a callback with the reply as an argument. """
@@ -454,14 +465,43 @@ class BrowserTab(QObject):
             follow_redirects=follow_redirects
         )
 
-    def runjs(self, js_source):
+    def evaljs(self, js_source, handle_errors=True):
         """
         Run JS code in page context and return the result.
-        Only string results are supported.
+
+        If JavaScript exception or an syntax error happens
+        and :param:`handle_errors` is True then Python JsError
+        exception is raised.
         """
         frame = self.web_page.mainFrame()
-        res = frame.evaluateJavaScript(js_source)
-        return qt2py(res)
+        if not handle_errors:
+            return qt2py(frame.evaluateJavaScript(js_source))
+
+        escaped = json.dumps([js_source], ensure_ascii=False, encoding='utf8')[1:-1]
+        wrapped = """
+        (function(script_text){
+            try{
+                return {error: false, result: eval(script_text)}
+            }
+            catch(e){
+                return {error: true, error_repr: e.toString()}
+            }
+        })(%(script_text)s)
+        """ % dict(script_text=escaped)
+        res = qt2py(frame.evaluateJavaScript(wrapped))
+        if res.get("error", False):
+            raise JsError(res.get("error_repr", "unknown JS error"))
+        return res.get("result", None)
+
+    def runjs(self, js_source, handle_errors=True):
+        """ Run JS code in page context and discard the result. """
+
+        # If JS code returns something, and we just discard
+        # the result of frame.evaluateJavaScript, then Qt still needs to build
+        # a result - it could be costly. So the original JS code
+        # is adjusted to make sure it doesn't return anything.
+        js_source = "%s;undefined" % js_source
+        self.evaljs(js_source, handle_errors=handle_errors)
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
