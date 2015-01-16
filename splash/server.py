@@ -210,7 +210,7 @@ def splash_server(portnum, slots, network_manager, max_timeout,
     # HTTP Proxy
     if not disable_proxy:
         from splash.proxy_server import SplashProxyServerFactory
-        proxy_server_factory = SplashProxyServerFactory(pool)
+        proxy_server_factory = SplashProxyServerFactory(pool, max_timeout=max_timeout)
         proxy_portnum = defaults.PROXY_PORT if proxy_portnum is None else proxy_portnum
         reactor.listenTCP(proxy_portnum, proxy_server_factory)
 
