@@ -5,6 +5,7 @@ import unittest
 from cStringIO import StringIO
 import numbers
 import time
+from textwrap import dedent
 
 from PIL import Image
 import requests
@@ -14,6 +15,7 @@ from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
+from .. import defaults
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
@@ -1809,3 +1811,160 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         now = time.time()
         self.assertLess(now - 120, out['walltime'])
         self.assertLess(out['walltime'], now)
+
+
+class WindowSizeTest(BaseLuaRenderTest):
+    """This is a test for window & viewport size interaction in Lua scripts."""
+
+    BASIC_SCRIPT = """
+function get_dims(splash)
+    return {
+        inner = splash:evaljs("window.innerWidth") .. "x" .. splash:evaljs("window.innerHeight"),
+        outer = splash:evaljs("window.outerWidth") .. "x" .. splash:evaljs("window.outerHeight"),
+        client = (splash:evaljs("document.documentElement.clientWidth") .. "x"
+                  .. splash:evaljs("document.documentElement.clientHeight"))
+    }
+end
+
+function main(splash)
+    alter_state(splash)
+    return get_dims(splash)
+end
+
+"""
+
+    def run_dims_test(self, alter_fn, **kwargs):
+        script = dedent(self.BASIC_SCRIPT) + "\n" + dedent(alter_fn)
+        resp = self.request_lua(script, kwargs)
+        if resp.ok:
+            return json.loads(resp.content)
+        else:
+            raise RuntimeError(resp.content)
+
+    def test_default_dimensions(self):
+        out = self.run_dims_test("function alter_state(_) end")
+        self.assertEqual(out,
+                         {'inner': defaults.WINDOW_SIZE,
+                          'outer': defaults.WINDOW_SIZE,
+                          'client': defaults.WINDOW_SIZE})
+
+    def test_window_size(self):
+        out = self.run_dims_test("""
+        function alter_state(splash)
+            splash:set_window_size("2000x2000")
+        end
+        """)
+        self.assertEqual(out,
+                         {'inner': '2000x2000',
+                          'outer': '2000x2000',
+                          'client': '2000x2000'})
+
+    def test_viewport_size(self):
+        out = self.run_dims_test("""
+        function alter_state(splash)
+            splash:set_viewport("2000x2000")
+        end
+        """)
+        self.assertEqual(out,
+                         {'inner': '2000x2000',
+                          'outer': defaults.WINDOW_SIZE,
+                          'client': '2000x2000'})
+
+    def test_viewport_overwrites_client_size(self):
+        out = self.run_dims_test("""
+        function alter_state(splash)
+            splash:set_window_size("1000x1000")
+            splash:set_viewport("2000x2000")
+        end
+        """)
+        self.assertEqual(out,
+                         {'inner': '2000x2000',
+                          'outer': '1000x1000',
+                          'client': '2000x2000'})
+
+    def test_window_size_overwrites_client_size(self):
+        out = self.run_dims_test("""
+        function alter_state(splash)
+            splash:set_viewport("2000x2000")
+            splash:set_window_size("1000x1000")
+        end
+        """)
+        self.assertEqual(out['inner'], '1000x1000')
+        self.assertEqual(out['outer'], '1000x1000')
+        self.assertEqual(out['client'], '1000x1000')
+
+    def test_window_size_validation(self):
+        cases = [
+            ('', 'Invalid window size format: '),
+            ('foobar', 'Invalid window size format: foobar'),
+            ('full', 'Invalid window size format: full'),
+            ('123', 'Invalid window size format: 123'),
+            ('123x', 'Invalid window size format: 123x'),
+            ('x', 'Invalid window size format: x'),
+            ('x123', 'Invalid window size format: x123'),
+            ('0x123', 'Window size is out of range'),
+            ('-1x123', 'Window size is out of range'),
+            ('99999x123', 'Window size is out of range'),
+            ('123x0', 'Window size is out of range'),
+            ('123x-1', 'Window size is out of range'),
+            ('123x99999', 'Window size is out of range'), ]
+
+        def run_test(size_str):
+            self.run_dims_test("""
+            function alter_state(splash)
+                splash:set_window_size(%s)
+            end
+            """ % (repr(size_str), ))
+
+        for size_str, errmsg in cases:
+            self.assertRaisesRegexp(RuntimeError, errmsg,
+                                    run_test, size_str)
+
+    def test_viewport_validation(self):
+        cases = [
+            ('', 'Invalid viewport format: '),
+            ('foobar', 'Invalid viewport format: foobar'),
+            ('123', 'Invalid viewport format: 123'),
+            ('123x', 'Invalid viewport format: 123x'),
+            ('x', 'Invalid viewport format: x'),
+            ('x123', 'Invalid viewport format: x123'),
+            ('0x123', 'Viewport is out of range'),
+            ('-1x123', 'Viewport is out of range'),
+            ('99999x123', 'Viewport is out of range'),
+            ('123x0', 'Viewport is out of range'),
+            ('123x-1', 'Viewport is out of range'),
+            ('123x99999', 'Viewport is out of range'), ]
+
+        def run_test(size_str):
+            self.run_dims_test("""
+            function alter_state(splash)
+                splash:set_viewport(%s)
+            end
+            """ % (repr(size_str), ))
+
+        for size_str, errmsg in cases:
+            self.assertRaisesRegexp(RuntimeError, errmsg,
+                                    run_test, size_str)
+
+    def test_viewport_full(self):
+        out = self.run_dims_test("""
+        function alter_state(splash)
+            splash:set_viewport('full')
+        end
+        """)
+        self.assertEqual(out, {'inner': '1024x768',
+                               'outer': '1024x768',
+                               'client': '1024x768'})
+
+    @pytest.mark.xfail
+    def test_viewport_full_raises_error_if_fails_in_script(self):
+        # XXX: for local resources loadFinished event generally arrives after
+        # initialLayoutCompleted, so the error doesn't manifest itself.
+        self.assertRaisesRegexp(RuntimeError, "zyzzy",
+                                self.run_dims_test,
+                                """
+                                function alter_state(splash)
+                                    splash:go(splash.args.url)
+                                    splash:set_viewport('full')
+                                end
+                                """, url=self.mockurl('delay'))

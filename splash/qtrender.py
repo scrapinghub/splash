@@ -78,19 +78,24 @@ class DefaultRenderScript(RenderScript):
     Subclasses choose how to return the result (as html, json, png).
     """
     def start(self, url, baseurl=None, wait=None, viewport=None,
-                  js_source=None, js_profile=None, images=None, console=False,
-                  headers=None, http_method='GET', body=None):
-
+              js_source=None, js_profile=None, images=None, console=False,
+              headers=None, http_method='GET', body=None, window_size=None):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
-        self.viewport = defaults.VIEWPORT if viewport is None else viewport
+        self.viewport = defaults.WINDOW_SIZE if viewport is None else viewport
+        self.window_size = defaults.WINDOW_SIZE if window_size is None else window_size
 
         if images is not None:
             self.tab.set_images_enabled(images)
 
+        # XXX: window/viewport size initialization is duplicated in
+        # BrowserTab._init_webpage.  If self.render_options specifies the same
+        # values as passed into this function, this section can be dropped.
+        # Now, are they always the same?
+        self.tab.set_window_size(self.window_size)
         if self.viewport != 'full':
             self.tab.set_viewport(self.viewport)
 

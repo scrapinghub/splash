@@ -156,23 +156,25 @@ class RenderOptions(object):
         return headers
 
     def get_viewport(self, wait=None):
-        viewport = self.get("viewport", defaults.VIEWPORT)
+        viewport = self.get("viewport", self.get_window_size())
 
         if viewport == 'full':
             if wait == 0:
                 raise BadOption("Pass non-zero 'wait' to render full webpage")
-            return viewport
+        else:
+            try:
+                validate_size_str(viewport, 'viewport')
+            except ValueError as e:
+                raise BadOption(str(e))
+        return viewport
 
-        max_width = defaults.VIEWPORT_MAX_WIDTH
-        max_heigth = defaults.VIEWPORT_MAX_HEIGTH
-        max_area = defaults.VIEWPORT_MAX_AREA
+    def get_window_size(self):
+        window = self.get('window_size', defaults.WINDOW_SIZE)
         try:
-            w, h = map(int, viewport.split('x'))
-            if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
-                return viewport
-            raise BadOption("Viewport is out of range (%dx%d, area=%d)" % (max_width, max_heigth, max_area))
-        except ValueError:
-            raise BadOption("Invalid viewport format: %s" % viewport)
+            validate_size_str(window, 'window size')
+        except ValueError as e:
+            raise BadOption(str(e))
+        return window
 
     def get_filters(self, pool=None, adblock_rules=None):
         filter_names = self.get('filters', '')
@@ -211,6 +213,7 @@ class RenderOptions(object):
             'baseurl': self.get_baseurl(),
             'wait': wait,
             'viewport': self.get_viewport(wait),
+            'window_size': self.get_window_size(),
             'images': self.get_images(),
             'headers': self.get_headers(),
             'proxy': self.get_proxy(),
@@ -234,3 +237,30 @@ class RenderOptions(object):
             history = self._get_bool("history", defaults.SHOW_HISTORY),
             har = self._get_bool("har", defaults.SHOW_HAR),
         )
+
+
+def validate_size_str(size_str, kind):
+    """
+    Validate size string in WxH format.
+
+    Can be used to validate both viewport and window size strings.  Does not
+    special-case ``'full'`` viewport.  Raises ``ValueError`` if anything goes
+    wrong.
+
+    :param size_str: string to validate
+    :param kind: 'viewport' or 'window size'
+
+    """
+    max_width = defaults.WINDOW_MAX_WIDTH
+    max_heigth = defaults.WINDOW_MAX_HEIGTH
+    max_area = defaults.WINDOW_MAX_AREA
+    try:
+        w, h = map(int, size_str.split('x'))
+    except ValueError:
+        raise ValueError("Invalid %s format: %s" % (kind, size_str))
+    else:
+        if not ((0 < w <= max_width) and (0 < h <= max_heigth) and
+                (w*h < max_area)):
+            raise ValueError("%s is out of range (%dx%d, area=%d)" %
+                             (kind.capitalize(), max_width, max_heigth,
+                              max_area))

@@ -193,6 +193,18 @@ class RenderHtmlTest(Base.RenderTest):
         self.assertStatusCode(r, 200)
         self.assertIn('300x400', r.text)
 
+    def test_window_size(self):
+        r = self.request({'url': self.mockurl('jsviewport'),
+                          'window_size': '300x400'})
+        self.assertStatusCode(r, 200)
+        self.assertIn('300x400', r.text)
+
+    def test_window_size_and_viewport(self):
+        r = self.request({'url': self.mockurl('jsviewport'),
+                          'window_size': '1000x1000', 'viewport': '300x400'})
+        self.assertStatusCode(r, 200)
+        self.assertIn('300x400', r.text)
+
     def test_nonascii_url(self):
         nonascii_value =  u'тест'.encode('utf8')
         url = self.mockurl('getrequest') + '?param=' + nonascii_value
@@ -295,6 +307,16 @@ class RenderPngTest(Base.RenderTest):
     def test_viewport_invalid(self):
         for viewport in ['foo', '1xfoo', 'axe', '-1x300']:
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
+            self.assertStatusCode(r, 400)
+
+    def test_window_size_invalid(self):
+        for window_size in ['foo', '1xfoo', 'axe', '-1x300']:
+            r = self.request({'url': self.mockurl("jsrender"), 'window_size': window_size})
+            self.assertStatusCode(r, 400)
+
+    def test_window_size_out_of_bounds(self):
+        for window_size in ['99999x1', '1x99999', '9000x9000']:
+            r = self.request({'url': self.mockurl("jsrender"), 'window_size': window_size})
             self.assertStatusCode(r, 400)
 
     def test_viewport_out_of_bounds(self):

@@ -20,6 +20,7 @@ from splash.qtutils import (qurl2ascii, OPERATION_QT_CONSTANTS, qt2py,
                             WrappedSignal, render_qwebpage)
 from splash.har.qt import cookies2har
 from splash.har.utils import without_private
+from splash.render_options import validate_size_str
 
 from .qwebpage import SplashQWebPage
 
@@ -86,6 +87,10 @@ class BrowserTab(QObject):
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
 
+        self.set_window_size(render_options.get_window_size())
+        if render_options.get_viewport() != 'full':
+            self.set_viewport(render_options.get_viewport())
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.
@@ -137,7 +142,32 @@ class BrowserTab(QObject):
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, enabled)
 
-    def set_viewport(self, size):
+    def set_window_size(self, size):
+        """
+        Set size of browser window.
+
+        This will also change the size of the viewport, if for some reason you
+        want a viewport that is different from window size (e.g. ``full``), use
+        `set_viewport` afterwards.
+
+        """
+        if not isinstance(size, QSize):
+            validate_size_str(size, 'window size')
+            w, h = map(int, size.split('x'))
+            size = QSize(w, h)
+        self.web_view.resize(size)
+        self.logger.log("window size is set to %sx%s" %
+                        (size.width(), size.height()), min_level=2)
+        # As self.web_page is attached to self.web_view, normally one would
+        # expect page's viewport to resize automatically.  This indeed happens
+        # as a reaction to QResizeEvent generated when doing resize().
+        #
+        # However, Qt only guarantees delivery of that event before the widget
+        # is next shown on the screen which means it won't happen as long as
+        # splash is running headless.  So, fall back to manual mode.
+        self.set_viewport(size)
+
+    def set_viewport(self, size, raise_if_empty=False):
         """
         Set viewport size.
         If size is "full" viewport size is detected automatically.
@@ -145,14 +175,19 @@ class BrowserTab(QObject):
         """
         if size == 'full':
             size = self.web_page.mainFrame().contentsSize()
+            self.logger.log("Contents size: %s" % size, min_level=2)
             if size.isEmpty():
-                self.logger.log("contentsSize method doesn't work %s", min_level=1)
-                size = defaults.VIEWPORT_FALLBACK
+                if raise_if_empty:
+                    raise RuntimeError("Cannot detect viewport size")
+                else:
+                    size = defaults.WINDOW_SIZE
+                    self.logger.log("Viewport is empty, falling back to: %s" %
+                                    size)
 
         if not isinstance(size, QSize):
+            validate_size_str(size, 'viewport')
             w, h = map(int, size.split('x'))
             size = QSize(w, h)
-
         self.web_page.setViewportSize(size)
         w, h = int(size.width()), int(size.height())
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
