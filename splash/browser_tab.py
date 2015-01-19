@@ -739,8 +739,9 @@ class _BrowserTabLogger(object):
     def on_frame_load_started(self):
         self.log("mainFrame().loadStarted")
 
-    def on_contents_size_changed(self):
-        self.log("mainFrame().contentsSizeChanged")
+    @pyqtSlot('QSize')
+    def on_contents_size_changed(self, sz):
+        self.log("mainFrame().contentsSizeChanged: %s" % sz)
 
     def on_javascript_window_object_cleared(self):
         self.log("mainFrame().javaScriptWindowObjectCleared")
