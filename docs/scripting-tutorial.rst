@@ -107,6 +107,11 @@ argument is called "splash", but you are not required to follow this convention:
         return "ok"
     end
 
+.. note:: maximum timeout setting
+    The timeout value for any Splash request is limited by maximum timeout setting, which is by default 60.0 seconds.
+    Because it's quite typical for scripts to work longer than this time, it is recommended to explicitly set the
+    maximum possible timeout by --max-timeout command line option to the server.
+
 Where Are My Callbacks?
 -----------------------
 
