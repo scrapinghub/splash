@@ -41,7 +41,9 @@ baseurl : string : optional
 .. _arg-timeout:
 
 timeout : float : optional
-  A timeout (in seconds) for the render (defaults to 30)
+  A timeout (in seconds) for the render (defaults to 30). Value of less than
+  supplied to --max-timeout command line option, or default maximum timeout
+  will be rejected with 400 status code and error message.
 
 .. _arg-wait:
 
