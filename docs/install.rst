@@ -88,6 +88,8 @@ are also available, e.g. ``docker pull scrapinghub/splash:1.2.1``.
 Customizing Dockerized Splash
 -----------------------------
 
+.. _docker-custom-options:
+
 Passing Custom Options
 ~~~~~~~~~~~~~~~~~~~~~~
 

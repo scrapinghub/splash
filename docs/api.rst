@@ -41,9 +41,13 @@ baseurl : string : optional
 .. _arg-timeout:
 
 timeout : float : optional
-  A timeout (in seconds) for the render (defaults to 30). Value of less than
-  supplied to --max-timeout command line option, or default maximum timeout
-  will be rejected with 400 status code and error message.
+  A timeout (in seconds) for the render (defaults to 30).
+
+  By default, maximum allowed value for the timeout is 60 seconds.
+  To override it start Splash with ``--max-timeout`` command line option.
+  For example, here Splash is configured to allow timeouts up to 2 minutes::
+
+      $ python -m splash.server --max-timeout 120
 
 .. _arg-wait:
 
@@ -415,6 +419,8 @@ Arguments:
 
 lua_source : string : required
   Browser automation script. See :ref:`scripting-tutorial` for more info.
+
+.. _arg-execute-timeout:
 
 timeout : float : optional
   Same as :ref:`'timeout' <arg-timeout>` argument for `render.html`_.

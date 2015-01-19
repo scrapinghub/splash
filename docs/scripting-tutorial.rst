@@ -107,11 +107,6 @@ argument is called "splash", but you are not required to follow this convention:
         return "ok"
     end
 
-.. note:: maximum timeout setting
-    The timeout value for any Splash request is limited by maximum timeout setting, which is by default 60.0 seconds.
-    Because it's quite typical for scripts to work longer than this time, it is recommended to explicitly set the
-    maximum possible timeout by --max-timeout command line option to the server.
-
 Where Are My Callbacks?
 -----------------------
 
@@ -559,3 +554,24 @@ module:
     -- todo: rm -rf /
 
     return evil
+
+Timeouts
+--------
+
+By default Splash aborts script execution after the timeout
+(30s by default). To override the timeout value use
+:ref:`'timeout' <arg-execute-timeout>` argument of the ``/execute`` endpoint.
+
+Note that the maximum allowed ``timeout`` value is limited by the maximum
+timeout setting, which is by default 60 seconds. In other words,
+by default you can't pass ``?timeout=300`` to run a long script - an
+error will be returned. It is quite typical for scripts to work longer
+than 60s, so if you use Splash scripts it is recommended to explicitly
+set the maximum possible timeout by starting Splash with
+``--max-timeout`` command line option::
+
+    $ python -m splash.server --max-timeout 3600
+
+.. note::
+
+    See :ref:`docker-custom-options` if you use Docker to run Splash.
