@@ -66,12 +66,13 @@ class BrowserTab(QObject):
         self._history = []
         self._autoload_scripts = []
 
+        self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
                            render_options)
-        self._setup_logging(verbosity)
         self.http_client = _SplashHttpClient(self.web_page)
 
-    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
+    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory,
+                      render_options):
         """ Create and initialize QWebPage and QWebView """
         self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(network_manager)
@@ -99,20 +100,12 @@ class BrowserTab(QObject):
         web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 
-    def _setup_logging(self, verbosity):
-        """ Setup logging of various events """
-        self.logger = _BrowserTabLogger(
-            uid=self._uid,
-            web_page=self.web_page,
-            verbosity=verbosity,
-        )
-        self.logger.enable()
-
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
         self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
         self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
         self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._on_javascript_window_object_cleared)
+        self.logger.add_web_page(self.web_page)
 
     def return_result(self, result):
         """ Return a result to the Pool. """
@@ -719,24 +712,23 @@ class _JavascriptConsole(QObject):
 
 class _BrowserTabLogger(object):
     """ This class logs various events that happen with QWebPage """
-    def __init__(self, uid, web_page, verbosity):
+    def __init__(self, uid, verbosity):
         self.uid = uid
-        self.web_page = web_page
         self.verbosity = verbosity
 
-    def enable(self):
+    def add_web_page(self, web_page):
         # setup logging
         if self.verbosity >= 4:
-            self.web_page.loadStarted.connect(self.on_load_started)
-            self.web_page.mainFrame().loadFinished.connect(self.on_frame_load_finished)
-            self.web_page.mainFrame().loadStarted.connect(self.on_frame_load_started)
-            self.web_page.mainFrame().contentsSizeChanged.connect(self.on_contents_size_changed)
+            web_page.loadStarted.connect(self.on_load_started)
+            web_page.mainFrame().loadFinished.connect(self.on_frame_load_finished)
+            web_page.mainFrame().loadStarted.connect(self.on_frame_load_started)
+            web_page.mainFrame().contentsSizeChanged.connect(self.on_contents_size_changed)
             # TODO: on_repaint
 
         if self.verbosity >= 3:
-            self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
-            self.web_page.mainFrame().initialLayoutCompleted.connect(self.on_initial_layout_completed)
-            self.web_page.mainFrame().urlChanged.connect(self.on_url_changed)
+            web_page.mainFrame().javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
+            web_page.mainFrame().initialLayoutCompleted.connect(self.on_initial_layout_completed)
+            web_page.mainFrame().urlChanged.connect(self.on_url_changed)
 
     def on_load_started(self):
         self.log("loadStarted")
