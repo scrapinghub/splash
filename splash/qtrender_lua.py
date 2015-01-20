@@ -315,6 +315,23 @@ class Splash(object):
         except JsError as e:
             return [None, e.args[0]]
 
+    @command(async=True)
+    def runjs_async(self, snippet, timeout=0):
+        cmd_id = next(self._command_ids)
+
+        def callback(result):
+            self._return(cmd_id, self.python2lua(result))
+
+        def errback(msg):
+            self._return(cmd_id, None, "error: %s" % msg)
+
+        return _AsyncBrowserCommand(cmd_id, "runjs_async", dict(
+            js_source=snippet,
+            callback=callback,
+            errback=errback,
+            timeout=int(timeout*1000),
+        ))
+
     @command()
     def jsfunc_private(self, func):
         return _WrappedJavascriptFunction(self, func)

@@ -6,6 +6,8 @@ import base64
 import copy
 import json
 import pprint
+import random
+import string
 import weakref
 import functools
 from PIL import Image
@@ -503,6 +505,29 @@ class BrowserTab(QObject):
         js_source = "%s;undefined" % js_source
         self.evaljs(js_source, handle_errors=handle_errors)
 
+    def runjs_async(self, js_source, callback, errback, timeout=0):
+        """
+        An async variant of runjs.
+
+        It injects a callback function named <lua_resume> into the scope of
+        the user's script. When lua_resume() is called, the corresponding
+        Lua coroutine will resume.
+        """
+
+        frame = self.web_page.mainFrame()
+        lua_resume = _LuaResume(self, callback, errback, timeout)
+        frame.addToJavaScriptWindowObject(lua_resume.name, lua_resume)
+
+        wrapped = """
+        (function (lua_resume, lua_error) {
+            %(script_text)s
+        })(window.%(callback_name)s.lua_resume, window.%(callback_name)s.lua_error);
+        undefined
+        """ % dict(script_text=js_source, callback_name=lua_resume.name)
+
+        self.logger.log("runjs_async wrapped script:\n%s" % wrapped, min_level=2)
+        frame.evaluateJavaScript(wrapped)
+
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
         self.web_page.har_log.store_timing(name)
@@ -768,3 +793,63 @@ class _BrowserTabLogger(object):
 
         message = "[%s] %s" % (self.uid, message)
         log.msg(message, system='render')
+
+
+class _LuaResume(QObject):
+    """ Allows us to resume a Lua coroutine from a Javascript context. """
+
+    def __init__(self, parent, callback, errback, timeout=0):
+        self.name = _LuaResume.generate_name()
+        self.used_up = False
+        self.callback = callback
+        self.errback = errback
+
+        if timeout == 0:
+            self.timer = None
+        else:
+            self.timer = QTimer()
+            self.timer.setSingleShot(True)
+
+            timer_callback = functools.partial(
+                self.lua_error,
+                message="Timed out while waiting for runjs_async()",
+            )
+
+            self.timer.timeout.connect(timer_callback)
+            self.timer.start()
+
+        super(_LuaResume, self).__init__(parent)
+
+    @classmethod
+    def generate_name(cls):
+        """
+        Generates a random name with ~64 bits of entropy.
+
+        This prevents possible conflicts with other objects in the JavaScript
+        root context (i.e. "window").
+        """
+        name_length = 16
+        letters = [random.choice(string.ascii_lowercase) for _ in range(name_length)]
+        return ''.join(letters)
+
+    @pyqtSlot(str)
+    def lua_resume(self, message):
+        if not self.used_up:
+            self.used_up = True
+            self.cancel_timer()
+            self.callback(message)
+        else:
+            raise JsError("Lua resume cannot be invoked more than once.")
+
+    @pyqtSlot(str)
+    def lua_error(self, message):
+        if not self.used_up:
+            self.used_up = True
+            self.cancel_timer()
+            self.errback(message)
+        else:
+            raise JsError("Lua resume cannot be invoked more than once.")
+
+    def cancel_timer(self):
+        if self.timer is not None:
+            self.timer.stop()
