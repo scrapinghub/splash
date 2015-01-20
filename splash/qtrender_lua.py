@@ -186,7 +186,7 @@ class _WrappedJavascriptFunction(object):
 class Splash(object):
     """
     This object is passed to Lua script as an argument to 'main' function
-    (wrapped in 'Splash' Lua object; see :file:`scripts/splash.lua`).
+    (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args']
