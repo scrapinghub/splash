@@ -645,7 +645,7 @@ To enable proxy profiles support, run splash server with
 
 .. note::
 
-    See also: :ref:`splash and docker`.
+    If you run Splash using Docker, check :ref:`docker-folder-sharing`.
 
 Then create an INI file with "proxy profile" config inside the
 specified folder, e.g. ``/etc/splash/proxy-profiles/mywebsite.ini``.
