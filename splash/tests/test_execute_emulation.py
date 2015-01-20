@@ -60,24 +60,6 @@ class EmulatedMetaRedirectTest(Base.EmulationMixin, test_redirects.MetaRedirectT
 class EmulatedRenderPngTest(Base.EmulationMixin, test_render.RenderPngTest):
     script = 'main = require("emulation").render_png'
 
-    # TODO: default width and height are not applied
-    @pytest.mark.xfail
-    def test_ok(self):
-        super(EmulatedRenderPngTest, self).test_ok()
-
-    @pytest.mark.xfail
-    def test_ok_https(self):
-        super(EmulatedRenderPngTest, self).test_ok_https()
-
-    # TODO: fix validation
-    @pytest.mark.xfail
-    def test_viewport_out_of_bounds(self):
-        super(EmulatedRenderPngTest, self).test_viewport_out_of_bounds()
-
-    @pytest.mark.xfail
-    def test_viewport_invalid(self):
-        super(EmulatedRenderPngTest, self).test_viewport_invalid()
-
     @pytest.mark.xfail(
         run=False,
         reason="""
