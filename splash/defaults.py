@@ -8,7 +8,7 @@ MAX_WAIT_TIME = 10.0
 
 # Default size of browser window.  As there're no decorations, this affects
 # both "window.inner*" and "window.outer*" values.
-WINDOW_SIZE = '1024x768'
+WINDOW_SIZE = '1366x768'
 
 # Window size limitations.
 WINDOW_MAX_WIDTH = 20000
