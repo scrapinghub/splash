@@ -453,33 +453,22 @@ class Splash(object):
         sz = self.tab.web_page.viewportSize()
         return {'width': sz.width(), 'height': sz.height()}
 
-    @command(table_argument=True)
-    def set_viewport(self, size):
-        size = self.lua2python(size)
-        if size is None:
-            # This is to simplify handling of window_size query argument: if it
-            # is not specified its value in Lua is `nil`.
-            return
-        elif isinstance(size, dict):
-            size = '%dx%d' % (size['width'], size['height'])
-        return self.tab.set_viewport(size, raise_if_empty=True)
+    @command()
+    def set_viewport_size(self, width, height):
+        return self.tab.set_viewport('%dx%d' % (width, height))
+
+    @command()
+    def set_viewport_full(self):
+        return self.tab.set_viewport('full', raise_if_empty=True)
 
     @command()
     def get_window_size(self):
         sz = self.tab.web_view.size()
         return {'width': sz.width(), 'height': sz.height()}
 
-    @command(table_argument=True)
-    def set_window_size(self, size):
-        size = self.lua2python(size)
-        self.tab.logger.log("lua window size: %s" % size)
-        if size is None:
-            # This is to simplify handling of window_size query argument: if it
-            # is not specified its value in Lua is `nil`.
-            return
-        elif isinstance(size, dict):
-            size = '%dx%d' % (size['width'], size['height'])
-        self.tab.set_window_size(size)
+    @command()
+    def set_window_size(self, width, height):
+        self.tab.set_window_size('%dx%d' % (width, height))
 
     @command()
     def set_images_enabled(self, enabled):

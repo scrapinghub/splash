@@ -28,10 +28,20 @@ function Splash:go_and_wait(args)
 
   self:set_images_enabled(self.args.images)
 
-  self:set_window_size(args.window_size)
+  if args.window_size ~= nil then
+    w, h = string.match(args.window_size, '^(%d+)x(%d+)')
+    if w == nil or h == nil then
+      error('Invalid window size format: ' .. args.window_size)
+    end
+    self:set_window_size(tonumber(w), tonumber(h))
+  end
   -- if viewport is 'full' it should be set only after waiting
-  if args.viewport ~= "full" then
-    self:set_viewport(args.viewport)
+  if args.viewport ~= nil and args.viewport ~= "full" then
+    w, h = string.match(args.viewport, '^(%d+)x(%d+)')
+    if w == nil or h == nil then
+      error('Invalid viewport size format: ' .. args.viewport)
+    end
+    self:set_viewport_size(tonumber(w), tonumber(h))
   end
 
   local ok, reason = self:go{url=url, baseurl=args.baseurl}
@@ -47,7 +57,7 @@ function Splash:go_and_wait(args)
   assert(self:_wait_restart_on_redirects(wait, 10))
 
   if args.viewport == "full" then
-    self:set_viewport(args.viewport)
+    self:set_viewport_full()
   end
 end
 

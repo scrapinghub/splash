@@ -1872,99 +1872,98 @@ end
                               'client': '1366x768'})
 
     def test_set_window_size(self):
-        self.assertSizeAfter('splash:set_window_size("2000x2000")',
+        self.assertSizeAfter('splash:set_window_size(2000, 2000)',
                              {'inner': '2000x2000',
                               'outer': '2000x2000',
                               'client': '2000x2000'})
 
     def test_set_sizes_as_table(self):
-        self.assertSizeAfter('splash:set_window_size{width=2000, height=2000}',
-                             {'inner': '2000x2000',
-                              'outer': '2000x2000',
-                              'client': '2000x2000'})
-        self.assertSizeAfter('splash:set_viewport{width=2000, height=2000}',
-                             {'inner': '2000x2000',
+        self.assertSizeAfter('splash:set_window_size{width=200, height=200}',
+                             {'inner': '200x200',
+                              'outer': '200x200',
+                              'client': '200x200'})
+        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
+                             {'inner': '111x222',
                               'outer': '1366x768',
-                              'client': '2000x2000'})
+                              'client': '111x222'})
+        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}',
+                             {'inner': '444x333',
+                              'outer': '1366x768',
+                              'client': '444x333'})
 
-    def test_window_size_roundtrip(self):
+    def test_window_and_viewport_sizes_roundtrip(self):
         self.assertSizeAfter(
             'splash:set_window_size(splash:get_window_size())',
             {'inner': '1366x768', 'outer': '1366x768', 'client': '1366x768'})
         self.assertSizeAfter(
-            'splash:set_viewport(splash:get_viewport_size())',
+            'splash:set_viewport_size(splash:get_viewport_size())',
             {'inner': '1366x768', 'outer': '1366x768', 'client': '1366x768'})
 
     def test_viewport_size(self):
-        self.assertSizeAfter('splash:set_viewport("2000x2000")',
+        self.assertSizeAfter('splash:set_viewport_size(2000, 2000)',
                              {'inner': '2000x2000',
                               'outer': '1366x768',
                               'client': '2000x2000'})
 
     def test_viewport_overwrites_client_size(self):
-        self.assertSizeAfter('splash:set_window_size("1000x1000");'
-                             'splash:set_viewport("2000x2000")',
+        self.assertSizeAfter('splash:set_window_size(1000, 1000);'
+                             'splash:set_viewport_size(2000, 2000)',
                              {'inner': '2000x2000',
                               'outer': '1000x1000',
                               'client': '2000x2000'})
 
     def test_window_size_overwrites_client_size(self):
-        self.assertSizeAfter('splash:set_viewport("2000x2000");'
-                             'splash:set_window_size("1000x1000");',
+        self.assertSizeAfter('splash:set_viewport_size(2000, 2000);'
+                             'splash:set_window_size(1000, 1000);',
                              {'inner': '1000x1000',
                               'outer': '1000x1000',
                               'client': '1000x1000'})
 
-    def test_window_size_validation(self):
+    def test_viewport_and_window_size_validation(self):
         cases = [
-            ('', 'Invalid window size format: '),
-            ('foobar', 'Invalid window size format: foobar'),
-            ('full', 'Invalid window size format: full'),
-            ('123', 'Invalid window size format: 123'),
-            ('123x', 'Invalid window size format: 123x'),
-            ('x', 'Invalid window size format: x'),
-            ('x123', 'Invalid window size format: x123'),
-            ('0x123', 'Window size is out of range'),
-            ('-1x123', 'Window size is out of range'),
-            ('99999x123', 'Window size is out of range'),
-            ('123x0', 'Window size is out of range'),
-            ('123x-1', 'Window size is out of range'),
-            ('123x99999', 'Window size is out of range'), ]
+            ('()', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('(1)', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{1}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('(1, nil)', 'TypeError.*a number is required'),
+            ('{1, nil}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('(nil, 1)', 'TypeError.*a number is required'),
+            ('{nil, 1}', 'TypeError.*a number is required'),
+            ('{width=1}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{width=1, nil}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{nil, width=1}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{height=1}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{height=1, nil}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{nil, height=1}', 'set_.*_size.* takes exactly 3 arguments'),
 
-        def run_test(size_str):
-            self.get_dims_after('splash:set_window_size(%s)' % repr(size_str))
+            ('{100, width=200}', 'set_.*_size.* got multiple values.*width'),
+            # This thing works.
+            # ('{height=200, 100}', 'set_.*_size.* got multiple values.*width'),
 
-        for size_str, errmsg in cases:
-            self.assertRaisesRegexp(RuntimeError, errmsg,
-                                    run_test, size_str)
+            ('{100, "a"}', 'TypeError.*a number is required'),
+            ('{100, {}}', 'TypeError.*a number is required'),
 
-    def test_viewport_validation(self):
-        cases = [
-            ('', 'Invalid viewport format: '),
-            ('foobar', 'Invalid viewport format: foobar'),
-            ('123', 'Invalid viewport format: 123'),
-            ('123x', 'Invalid viewport format: 123x'),
-            ('x', 'Invalid viewport format: x'),
-            ('x123', 'Invalid viewport format: x123'),
-            ('0x123', 'Viewport is out of range'),
-            ('-1x123', 'Viewport is out of range'),
-            ('99999x123', 'Viewport is out of range'),
-            ('123x0', 'Viewport is out of range'),
-            ('123x-1', 'Viewport is out of range'),
-            ('123x99999', 'Viewport is out of range'), ]
+            ('{100, -1}', '.* is out of range'),
+            ('{100, 0}', '.* is out of range'),
+            ('{100, 99999}', '.* is out of range'),
+            ('{1, -100}', '.* is out of range'),
+            ('{0, 100}', '.* is out of range'),
+            ('{99999, 100}', '.* is out of range'),
+            ]
 
-        def run_test(size_str):
-            self.get_dims_after('splash:set_viewport(%s)' % repr(size_str))
+        def run_test(size_str, kind):
+            self.get_dims_after('splash:set_%s_size%s' % (kind, size_str))
 
-        for size_str, errmsg in cases:
-            self.assertRaisesRegexp(RuntimeError, errmsg,
-                                    run_test, size_str)
+        for kind in ('viewport', 'window'):
+            for size_str, errmsg in cases:
+                self.assertRaisesRegexp(RuntimeError, errmsg,
+                                        run_test, size_str, kind)
 
     def test_viewport_full(self):
         w = int('1366x768'.split('x')[0])
         self.assertSizeAfter('splash:go(splash.args.url);'
                              'splash:wait(0.1);'
-                             'splash:set_viewport("full");',
+                             'splash:set_viewport_full();',
                              {'inner': '%dx2000' % w,
                               'outer': '1366x768',
                               'client': '%dx2000' % w},
@@ -1978,5 +1977,5 @@ end
                                 self.get_dims_after,
                                 """
                                 splash:go(splash.args.url)
-                                splash:set_viewport('full')
+                                splash:set_viewport_full()
                                 """, url=self.mockurl('delay'))
