@@ -644,7 +644,7 @@ class LuaRender(RenderScript):
                 try:
                     res = self.splash.lua2python(self.result)
                 except ValueError as e:
-                    # can't convert result to a Python object -> requets was bad
+                    # can't convert result to a Python object
                     raise ScriptError("'main' returned bad result. {!s}".format(e))
 
                 self._print_instructions_used()
