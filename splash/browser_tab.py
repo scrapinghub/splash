@@ -832,8 +832,9 @@ class _LuaResume(QObject):
         letters = [random.choice(string.ascii_lowercase) for _ in range(name_length)]
         return ''.join(letters)
 
+    @pyqtSlot()
     @pyqtSlot(str)
-    def lua_resume(self, message):
+    def lua_resume(self, message=""):
         if not self.used_up:
             self.used_up = True
             self.cancel_timer()
