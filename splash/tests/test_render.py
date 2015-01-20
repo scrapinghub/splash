@@ -280,7 +280,7 @@ class RenderPngTest(Base.RenderTest):
 
     def _test_ok(self, url):
         r = self.request({"url": url})
-        self.assertPng(r, width=1024, height=768)
+        self.assertPng(r, width=1366, height=768)
 
     def test_width(self):
         r = self.request({"url": self.mockurl("jsrender"), "width": "300"})

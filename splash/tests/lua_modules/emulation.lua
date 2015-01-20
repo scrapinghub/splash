@@ -28,6 +28,7 @@ function Splash:go_and_wait(args)
 
   self:set_images_enabled(self.args.images)
 
+  self:set_window_size(args.window_size)
   -- if viewport is 'full' it should be set only after waiting
   if args.viewport ~= "full" then
     self:set_viewport(args.viewport)

@@ -87,9 +87,7 @@ class BrowserTab(QObject):
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
 
-        self.set_window_size(render_options.get_window_size())
-        if render_options.get_viewport() != 'full':
-            self.set_viewport(render_options.get_viewport())
+        self.set_window_size(defaults.WINDOW_SIZE)
 
     def _set_default_webpage_options(self, web_page):
         """

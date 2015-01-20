@@ -22,7 +22,8 @@ SPLASH_RESOURCES = {
 
 # Note the http header use '-' instead of '_' for the parameter names
 HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
-               'viewport', 'js', 'js-source', 'images', 'filters']
+               'viewport', 'js', 'js-source', 'images', 'filters',
+               'window-size']
 PNG_PARAMS = ['width', 'height']
 JSON_PARAMS = ['html', 'png', 'iframes', 'script', 'console', 'history', 'har']
 

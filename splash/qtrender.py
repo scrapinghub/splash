@@ -91,10 +91,6 @@ class DefaultRenderScript(RenderScript):
         if images is not None:
             self.tab.set_images_enabled(images)
 
-        # XXX: window/viewport size initialization is duplicated in
-        # BrowserTab._init_webpage.  If self.render_options specifies the same
-        # values as passed into this function, this section can be dropped.
-        # Now, are they always the same?
         self.tab.set_window_size(self.window_size)
         if self.viewport != 'full':
             self.tab.set_viewport(self.viewport)
