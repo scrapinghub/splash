@@ -5,7 +5,6 @@ import unittest
 from cStringIO import StringIO
 import numbers
 import time
-from textwrap import dedent
 
 from PIL import Image
 import requests
@@ -1851,19 +1850,16 @@ end
         out = self.get_dims_after(lua_script, **kwargs)
         self.assertEqual(out, etalon)
 
-    def test_get_window_and_viewport_size(self):
+    def test_get_viewport_size(self):
         script = """
         function main(splash)
-        return {viewport_size=splash:get_viewport_size(),
-                window_size=splash:get_window_size()}
+        w, h = splash:get_viewport_size()
+        return {width=w, height=h}
         end
         """
         out = self.return_json_from_lua(script)
         self.assertEqual(out,
-                         {'viewport_size': {'width': 1366,
-                                            'height': 768},
-                          'window_size': {'width': 1366,
-                                          'height': 768}})
+                         {'width': 1366, 'height': 768})
 
     def test_default_dimensions(self):
         self.assertSizeAfter("",
@@ -1871,17 +1867,7 @@ end
                               'outer': '1366x768',
                               'client': '1366x768'})
 
-    def test_set_window_size(self):
-        self.assertSizeAfter('splash:set_window_size(2000, 2000)',
-                             {'inner': '2000x2000',
-                              'outer': '2000x2000',
-                              'client': '2000x2000'})
-
     def test_set_sizes_as_table(self):
-        self.assertSizeAfter('splash:set_window_size{width=200, height=200}',
-                             {'inner': '200x200',
-                              'outer': '200x200',
-                              'client': '200x200'})
         self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
                              {'inner': '111x222',
                               'outer': '1366x768',
@@ -1891,10 +1877,7 @@ end
                               'outer': '1366x768',
                               'client': '444x333'})
 
-    def test_window_and_viewport_sizes_roundtrip(self):
-        self.assertSizeAfter(
-            'splash:set_window_size(splash:get_window_size())',
-            {'inner': '1366x768', 'outer': '1366x768', 'client': '1366x768'})
+    def test_viewport_size_roundtrips(self):
         self.assertSizeAfter(
             'splash:set_viewport_size(splash:get_viewport_size())',
             {'inner': '1366x768', 'outer': '1366x768', 'client': '1366x768'})
@@ -1905,59 +1888,43 @@ end
                               'outer': '1366x768',
                               'client': '2000x2000'})
 
-    def test_viewport_overwrites_client_size(self):
-        self.assertSizeAfter('splash:set_window_size(1000, 1000);'
-                             'splash:set_viewport_size(2000, 2000)',
-                             {'inner': '2000x2000',
-                              'outer': '1000x1000',
-                              'client': '2000x2000'})
-
-    def test_window_size_overwrites_client_size(self):
-        self.assertSizeAfter('splash:set_viewport_size(2000, 2000);'
-                             'splash:set_window_size(1000, 1000);',
-                             {'inner': '1000x1000',
-                              'outer': '1000x1000',
-                              'client': '1000x1000'})
-
-    def test_viewport_and_window_size_validation(self):
+    def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{}', 'set_.*_size.* takes exactly 3 arguments'),
-            ('(1)', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{1}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('()', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(1)', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{1}', 'set_viewport_size.* takes exactly 3 arguments'),
             ('(1, nil)', 'TypeError.*a number is required'),
-            ('{1, nil}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
             ('(nil, 1)', 'TypeError.*a number is required'),
             ('{nil, 1}', 'TypeError.*a number is required'),
-            ('{width=1}', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{width=1, nil}', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{nil, width=1}', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{height=1}', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{height=1, nil}', 'set_.*_size.* takes exactly 3 arguments'),
-            ('{nil, height=1}', 'set_.*_size.* takes exactly 3 arguments'),
+            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
 
-            ('{100, width=200}', 'set_.*_size.* got multiple values.*width'),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
             # This thing works.
-            # ('{height=200, 100}', 'set_.*_size.* got multiple values.*width'),
+            # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
             ('{100, "a"}', 'TypeError.*a number is required'),
             ('{100, {}}', 'TypeError.*a number is required'),
 
-            ('{100, -1}', '.* is out of range'),
-            ('{100, 0}', '.* is out of range'),
-            ('{100, 99999}', '.* is out of range'),
-            ('{1, -100}', '.* is out of range'),
-            ('{0, 100}', '.* is out of range'),
-            ('{99999, 100}', '.* is out of range'),
+            ('{100, -1}', 'Viewport is out of range'),
+            ('{100, 0}', 'Viewport is out of range'),
+            ('{100, 99999}', 'Viewport is out of range'),
+            ('{1, -100}', 'Viewport is out of range'),
+            ('{0, 100}', 'Viewport is out of range'),
+            ('{99999, 100}', 'Viewport is out of range'),
             ]
 
-        def run_test(size_str, kind):
-            self.get_dims_after('splash:set_%s_size%s' % (kind, size_str))
+        def run_test(size_str):
+            self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for kind in ('viewport', 'window'):
-            for size_str, errmsg in cases:
-                self.assertRaisesRegexp(RuntimeError, errmsg,
-                                        run_test, size_str, kind)
+        for size_str, errmsg in cases:
+            self.assertRaisesRegexp(RuntimeError, errmsg, run_test, size_str)
 
     def test_viewport_full(self):
         w = int('1366x768'.split('x')[0])

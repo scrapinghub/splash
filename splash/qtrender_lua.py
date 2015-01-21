@@ -283,12 +283,12 @@ class Splash(object):
         return self.tab.html()
 
     @command()
-    def png(self, width=None, height=None):
+    def png(self, width=None, height=None, render_all=False):
         if width is not None:
             width = int(width)
         if height is not None:
             height = int(height)
-        result = self.tab.png(width, height, b64=False)
+        result = self.tab.png(width, height, b64=False, render_all=render_all)
         return BinaryCapsule(result)
 
     @command()
@@ -448,27 +448,18 @@ class Splash(object):
     def set_custom_headers(self, headers):
         self.tab.set_custom_headers(self.lua2python(headers, max_depth=3))
 
-    @command()
+    @command(multiple_return_values=True)
     def get_viewport_size(self):
         sz = self.tab.web_page.viewportSize()
-        return {'width': sz.width(), 'height': sz.height()}
+        return [sz.width(), sz.height()]
 
     @command()
     def set_viewport_size(self, width, height):
-        return self.tab.set_viewport('%dx%d' % (width, height))
+        self.tab.set_viewport('%dx%d' % (width, height))
 
     @command()
     def set_viewport_full(self):
-        return self.tab.set_viewport('full', raise_if_empty=True)
-
-    @command()
-    def get_window_size(self):
-        sz = self.tab.web_view.size()
-        return {'width': sz.width(), 'height': sz.height()}
-
-    @command()
-    def set_window_size(self, width, height):
-        self.tab.set_window_size('%dx%d' % (width, height))
+        self.tab.set_viewport('full')
 
     @command()
     def set_images_enabled(self, enabled):

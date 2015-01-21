@@ -28,16 +28,9 @@ function Splash:go_and_wait(args)
 
   self:set_images_enabled(self.args.images)
 
-  if args.window_size ~= nil then
-    w, h = string.match(args.window_size, '^(%d+)x(%d+)')
-    if w == nil or h == nil then
-      error('Invalid window size format: ' .. args.window_size)
-    end
-    self:set_window_size(tonumber(w), tonumber(h))
-  end
   -- if viewport is 'full' it should be set only after waiting
   if args.viewport ~= nil and args.viewport ~= "full" then
-    w, h = string.match(args.viewport, '^(%d+)x(%d+)')
+    local w, h = string.match(args.viewport, '^(%d+)x(%d+)')
     if w == nil or h == nil then
       error('Invalid viewport size format: ' .. args.viewport)
     end
@@ -55,10 +48,6 @@ function Splash:go_and_wait(args)
   end
 
   assert(self:_wait_restart_on_redirects(wait, 10))
-
-  if args.viewport == "full" then
-    self:set_viewport_full()
-  end
 end
 
 
@@ -102,9 +91,12 @@ end
 function emulation.render_png(splash)
   splash:go_and_wait(splash.args)
   splash:set_result_content_type("image/png")
+  local render_all = (splash.args.render_all or
+                      splash.args.viewport == "full")
   return splash:png{
     width=splash.args.width,
-    height=splash.args.height
+    height=splash.args.height,
+    render_all=render_all,
   }
 end
 

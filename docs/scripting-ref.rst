@@ -593,12 +593,13 @@ splash:png
 
 Return a `width x height` screenshot of a current page in PNG format.
 
-**Signature:** ``png = splash:png{width=nil, height=nil}``
+**Signature:** ``png = splash:png{width=nil, height=nil, render_all=false}``
 
 **Parameters:**
 
 * width - optional, width of a screenshot in pixels;
-* height - optional, height of a screenshot in pixels.
+* height - optional, height of a screenshot in pixels;
+* render_all - optional, if ``true`` render the whole webpage.
 
 **Returns:** PNG screenshot data.
 
@@ -609,7 +610,10 @@ not a size of an area screenshot is taken of. For example, if the viewport
 is 1024px wide then ``splash:png{width=100}`` will return a screenshot
 of the whole viewport, but an image will be downscaled to 100px width.
 
-To set the viewport size use :ref:`splash-set-viewport` method.
+To set the viewport size use :ref:`splash-set-viewport` method or use
+*render_all* argument.  *render_all=true* is equivalent to running
+``splash:set_viewport('full')`` just before the rendering and restoring the
+viewport size afterwards.
 
 If the result of ``splash:png()`` is returned directly as a result of
 "main" function, the screenshot is returned as binary data:
@@ -946,6 +950,14 @@ Set the browser viewport.
   will be auto-detected to fit the whole page (possibly very tall).
 
 **Returns:** two numbers: width and height the viewport is set to, in pixels.
+
+This will change the size of the visible area and subsequent rendering
+commands, e.g. :ref:`splash-png`, will produce an image with the specified
+size.
+
+This will also affect ``window.innerWidth`` and ``window.innerHeight`` JS
+variables, but not immediately.  To see the new values in JS runtime and to
+ensure ``window.onresize`` callback has fired, use :ref:`splash-wait`.
 
 ``splash:set_viewport("full")`` should be called only after page
 is loaded, and some time passed after that (use :ref:`splash-wait`). This is

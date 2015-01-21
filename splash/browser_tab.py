@@ -72,8 +72,7 @@ class BrowserTab(QObject):
                            render_options)
         self.http_client = _SplashHttpClient(self.web_page)
 
-    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory,
-                      render_options):
+    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
         """ Create and initialize QWebPage and QWebView """
         self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(network_manager)
@@ -87,7 +86,10 @@ class BrowserTab(QObject):
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
 
-        self.set_window_size(defaults.WINDOW_SIZE)
+        self.set_viewport(defaults.VIEWPORT_SIZE)
+        # XXX: hack to ensure that default window size is not 640x480.
+        self.web_view.resize(
+            QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
 
     def _set_default_webpage_options(self, web_page):
         """
@@ -140,31 +142,6 @@ class BrowserTab(QObject):
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, enabled)
 
-    def set_window_size(self, size):
-        """
-        Set size of browser window.
-
-        This will also change the size of the viewport, if for some reason you
-        want a viewport that is different from window size (e.g. ``full``), use
-        `set_viewport` afterwards.
-
-        """
-        if not isinstance(size, QSize):
-            validate_size_str(size, 'window size')
-            w, h = map(int, size.split('x'))
-            size = QSize(w, h)
-        self.web_view.resize(size)
-        self.logger.log("window size is set to %sx%s" %
-                        (size.width(), size.height()), min_level=2)
-        # As self.web_page is attached to self.web_view, normally one would
-        # expect page's viewport to resize automatically.  This indeed happens
-        # as a reaction to QResizeEvent generated when doing resize().
-        #
-        # However, Qt only guarantees delivery of that event before the widget
-        # is next shown on the screen which means it won't happen as long as
-        # splash is running headless.  So, fall back to manual mode.
-        self.set_viewport(size)
-
     def set_viewport(self, size, raise_if_empty=False):
         """
         Set viewport size.
@@ -178,12 +155,12 @@ class BrowserTab(QObject):
                 if raise_if_empty:
                     raise RuntimeError("Cannot detect viewport size")
                 else:
-                    size = defaults.WINDOW_SIZE
+                    size = defaults.VIEWPORT_SIZE
                     self.logger.log("Viewport is empty, falling back to: %s" %
                                     size)
 
         if not isinstance(size, QSize):
-            validate_size_str(size, 'viewport')
+            validate_size_str(size)
             w, h = map(int, size.split('x'))
             size = QSize(w, h)
         self.web_page.setViewportSize(size)
@@ -555,21 +532,31 @@ class BrowserTab(QObject):
         self.store_har_timing("_onHtmlRendered")
         return result
 
-    def png(self, width=None, height=None, b64=False):
+    def png(self, width=None, height=None, b64=False, render_all=False):
         """ Return screenshot in PNG format """
         self.logger.log("Getting PNG: width=%s, height=%s" %
                         (width, height), min_level=2)
-        image = render_qwebpage(self.web_page, self.logger,
-                                width=width, height=height)
-        self.store_har_timing("_onScreenshotPrepared")
+        old_size = self.web_page.viewportSize()
+        try:
+            if render_all:
+                self.logger.log("Rendering whole page contents (RENDER_ALL)",
+                                min_level=2)
+                self.set_viewport('full')
+            image = render_qwebpage(self.web_page, self.logger,
+                                    width=width, height=height)
+            self.store_har_timing("_onScreenshotPrepared")
 
-        b = StringIO()
-        image.save(b, "png", compress_level=defaults.PNG_COMPRESSION_LEVEL)
-        result = bytes(b.getvalue())
-        if b64:
-            result = base64.b64encode(result)
-        self.store_har_timing("_onPngRendered")
-        return result
+            b = StringIO()
+            image.save(b, "png", compress_level=defaults.PNG_COMPRESSION_LEVEL)
+            result = bytes(b.getvalue())
+            if b64:
+                result = base64.b64encode(result)
+            self.store_har_timing("_onPngRendered")
+            return result
+        finally:
+            if old_size != self.web_page.viewportSize():
+                # Let's not generate extra "set size" messages in the log.
+                self.web_page.setViewportSize(old_size)
 
     def iframes_info(self, children=True, html=True):
         """ Return information about all iframes """
@@ -750,18 +737,19 @@ class _BrowserTabLogger(object):
         self.verbosity = verbosity
 
     def add_web_page(self, web_page):
+        frame = web_page.mainFrame()
         # setup logging
         if self.verbosity >= 4:
             web_page.loadStarted.connect(self.on_load_started)
-            web_page.mainFrame().loadFinished.connect(self.on_frame_load_finished)
-            web_page.mainFrame().loadStarted.connect(self.on_frame_load_started)
-            web_page.mainFrame().contentsSizeChanged.connect(self.on_contents_size_changed)
+            frame.loadFinished.connect(self.on_frame_load_finished)
+            frame.loadStarted.connect(self.on_frame_load_started)
+            frame.contentsSizeChanged.connect(self.on_contents_size_changed)
             # TODO: on_repaint
 
         if self.verbosity >= 3:
-            web_page.mainFrame().javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
-            web_page.mainFrame().initialLayoutCompleted.connect(self.on_initial_layout_completed)
-            web_page.mainFrame().urlChanged.connect(self.on_url_changed)
+            frame.javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
+            frame.initialLayoutCompleted.connect(self.on_initial_layout_completed)
+            frame.urlChanged.connect(self.on_url_changed)
 
     def on_load_started(self):
         self.log("loadStarted")
