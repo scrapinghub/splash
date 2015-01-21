@@ -287,13 +287,14 @@ class DemoUI(_ValidatingResource):
 
     PATH = 'info'
 
-    def __init__(self, pool, lua_enabled):
+    def __init__(self, pool, lua_enabled, max_timeout):
         Resource.__init__(self)
         self.pool = pool
         self.lua_enabled = lua_enabled
+        self.max_timeout = max_timeout
 
     def _validate_params(self, request):
-        options = RenderOptions.fromrequest(request)
+        options = RenderOptions.fromrequest(request, self.max_timeout)
         options.get_filters(self.pool)  # check
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
@@ -569,7 +570,11 @@ class Root(Resource):
 
         if self.ui_enabled:
             self.putChild("_harviewer", File(self.HARVIEWER_PATH))
-            self.putChild(DemoUI.PATH, DemoUI(pool, self.lua_enabled))
+            self.putChild(DemoUI.PATH, DemoUI(
+                pool=pool,
+                lua_enabled=self.lua_enabled,
+                max_timeout=max_timeout
+            ))
 
     def getChild(self, name, request):
         if name == "" and self.ui_enabled:
