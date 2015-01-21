@@ -59,7 +59,7 @@ local function unpacks_multiple_return_values(func)
     -- Max allowed list size is 10; it is more than enough for
     -- functions which return multiple values. This trick is needed
     -- to handle `nil` as a first value correctly.
-    return table.unpack(func(...), 1, 10)
+    return table.unpack(func(...), 1, 2)
   end
 end
 
