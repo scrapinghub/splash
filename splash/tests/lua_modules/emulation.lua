@@ -22,8 +22,8 @@ function Splash:go_and_wait(args)
     error("'url' argument is required")
   end
   local wait = tonumber(args.wait)
-  if not wait and args.viewport == "full" then
-    error("non-zero 'wait' is required when viewport=='full'")
+  if not wait and (self.args.render_all or self.args.viewport == "full") then
+    error("non-zero 'wait' is required when rendering whole page")
   end
 
   self:set_images_enabled(self.args.images)
