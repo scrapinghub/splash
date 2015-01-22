@@ -457,9 +457,9 @@ class Splash(object):
     def set_viewport_size(self, width, height):
         self.tab.set_viewport('%dx%d' % (width, height))
 
-    @command()
+    @command(multiple_return_values=True)
     def set_viewport_full(self):
-        self.tab.set_viewport('full')
+        return list(self.tab.set_viewport('full'))
 
     @command()
     def set_images_enabled(self, enabled):

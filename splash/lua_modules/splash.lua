@@ -56,9 +56,14 @@ end
 --
 local function unpacks_multiple_return_values(func)
   return function(...)
-    -- Max allowed list size is 10; it is more than enough for
-    -- functions which return multiple values. This trick is needed
-    -- to handle `nil` as a first value correctly.
+    -- Max allowed list size is 2; it is enough for functions which return
+    -- error flag along with a value. This trick is needed to handle `nil` as a
+    -- first value correctly.
+    --
+    -- Max size used to be 10, but it created full 10-element tuples which,
+    -- when passed through lupa, causing errors in Python runtime, because
+    -- Python callables, unlike Lua ones, are strict about the number of
+    -- arguments.
     return table.unpack(func(...), 1, 2)
   end
 end

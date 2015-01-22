@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from base64 import standard_b64decode
 import json
 import unittest
 from cStringIO import StringIO
@@ -1853,7 +1854,7 @@ end
     def test_get_viewport_size(self):
         script = """
         function main(splash)
-        w, h = splash:get_viewport_size()
+        local w, h = splash:get_viewport_size()
         return {width=w, height=h}
         end
         """
@@ -1937,6 +1938,38 @@ end
                               'outer': defaults.VIEWPORT_SIZE,
                               'client': '%dx2000' % w},
                              url=self.mockurl('tall'))
+
+    def test_set_viewport_full_returns_dimensions(self):
+        script = """
+        function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.1))
+        local w, h = splash:set_viewport_full()
+        return {width=w, height=h}
+        end
+        """
+        out = self.return_json_from_lua(script, url=self.mockurl('tall'))
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertEqual(out, {'width': w, 'height': 2000})
+
+    def test_render_all_restores_viewport_size(self):
+        script = """
+        function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.1))
+        local before = {splash:get_viewport_size()}
+        png = splash:png{render_all=true}
+        local after = {splash:get_viewport_size()}
+        return {before=before, after=after, png=png}
+        end
+        """
+        out = self.return_json_from_lua(script, url=self.mockurl('tall'))
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertEqual(out['before'], {'1': w, '2': h})
+        self.assertEqual(out['after'], {'1': w, '2': h})
+        # 2000px is hardcoded in that html
+        img = Image.open(StringIO(standard_b64decode(out['png'])))
+        self.assertEqual(img.size, (w, 2000))
 
     @pytest.mark.xfail
     def test_viewport_full_raises_error_if_fails_in_script(self):

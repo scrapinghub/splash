@@ -105,8 +105,9 @@ viewport : string : optional
 .. _arg-render-all:
 
 render_all : int : optional
-  Extend the viewport to include the whole webpage (possibly very tall) when
-  ``1`` before rendering.  Possible values are ``1`` and ``0``.  Default is ``0``.
+  Possible values are ``1`` and ``0``.  When ``render_all=1``, extend the
+  viewport to include the whole webpage (possibly very tall) before rendering.
+  Default is ``render_all=0``.
 
 .. note::
 

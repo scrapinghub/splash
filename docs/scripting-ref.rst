@@ -959,7 +959,7 @@ Set the browser viewport size.
 * height - integer, requested viewport height in pixels.
 
 This will change the size of the visible area and subsequent rendering
-commands, e.g. :ref:`splash-png`, will produce an image with the specified
+commands, e.g., :ref:`splash-png`, will produce an image with the specified
 size.
 
 :ref:`splash-png` uses the viewport size.
