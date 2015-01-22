@@ -1858,34 +1858,36 @@ end
         end
         """
         out = self.return_json_from_lua(script)
-        self.assertEqual(out,
-                         {'width': 1366, 'height': 768})
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertEqual(out, {'width': w, 'height': h})
 
     def test_default_dimensions(self):
         self.assertSizeAfter("",
-                             {'inner': '1366x768',
-                              'outer': '1366x768',
-                              'client': '1366x768'})
+                             {'inner': defaults.VIEWPORT_SIZE,
+                              'outer': defaults.VIEWPORT_SIZE,
+                              'client': defaults.VIEWPORT_SIZE})
 
     def test_set_sizes_as_table(self):
         self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
                              {'inner': '111x222',
-                              'outer': '1366x768',
+                              'outer': defaults.VIEWPORT_SIZE,
                               'client': '111x222'})
         self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}',
                              {'inner': '444x333',
-                              'outer': '1366x768',
+                              'outer': defaults.VIEWPORT_SIZE,
                               'client': '444x333'})
 
     def test_viewport_size_roundtrips(self):
         self.assertSizeAfter(
             'splash:set_viewport_size(splash:get_viewport_size())',
-            {'inner': '1366x768', 'outer': '1366x768', 'client': '1366x768'})
+            {'inner': defaults.VIEWPORT_SIZE,
+             'outer': defaults.VIEWPORT_SIZE,
+             'client': defaults.VIEWPORT_SIZE})
 
     def test_viewport_size(self):
         self.assertSizeAfter('splash:set_viewport_size(2000, 2000)',
                              {'inner': '2000x2000',
-                              'outer': '1366x768',
+                              'outer': defaults.VIEWPORT_SIZE,
                               'client': '2000x2000'})
 
     def test_viewport_size_validation(self):
@@ -1927,12 +1929,12 @@ end
             self.assertRaisesRegexp(RuntimeError, errmsg, run_test, size_str)
 
     def test_viewport_full(self):
-        w = int('1366x768'.split('x')[0])
+        w = int(defaults.VIEWPORT_SIZE.split('x')[0])
         self.assertSizeAfter('splash:go(splash.args.url);'
                              'splash:wait(0.1);'
                              'splash:set_viewport_full();',
                              {'inner': '%dx2000' % w,
-                              'outer': '1366x768',
+                              'outer': defaults.VIEWPORT_SIZE,
                               'client': '%dx2000' % w},
                              url=self.mockurl('tall'))
 
