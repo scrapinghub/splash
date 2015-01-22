@@ -291,8 +291,12 @@ class RenderPngTest(Base.RenderTest):
     def test_viewport_full_wait(self):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
         self.assertStatusCode(r, 400)
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1})
+        self.assertStatusCode(r, 400)
 
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
+        self.assertStatusCode(r, 200)
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': 0.1})
         self.assertStatusCode(r, 200)
 
     def test_viewport_invalid(self):
@@ -309,6 +313,15 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    def test_render_all(self):
+        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': 0.1})
+        self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
+
+    def test_render_all_with_viewport(self):
+        r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
+                          'render_all': 1, 'wait': 0.1})
+        self.assertPng(r, width=2000, height=2000)
+
     def test_images_enabled(self):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
         self.assertPixelColor(r, 30, 30, (0,0,0,255))
@@ -319,7 +332,7 @@ class RenderPngTest(Base.RenderTest):
 
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
-                          'viewport': 'full', 'wait': '0.01'})
+                          'render_all': 1, 'wait': '0.01'})
         self.assertPng(r, height=60000)  # hardcoded in the html
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFF, 0x77, 0xFF))
 
