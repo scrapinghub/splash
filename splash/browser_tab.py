@@ -20,6 +20,7 @@ from splash.qtutils import (qurl2ascii, OPERATION_QT_CONSTANTS, qt2py,
                             WrappedSignal, render_qwebpage)
 from splash.har.qt import cookies2har
 from splash.har.utils import without_private
+from splash.render_options import validate_size_str
 
 from .qwebpage import SplashQWebPage
 
@@ -66,9 +67,9 @@ class BrowserTab(QObject):
         self._history = []
         self._autoload_scripts = []
 
+        self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
                            render_options)
-        self._setup_logging(verbosity)
         self.http_client = _SplashHttpClient(self.web_page)
 
     def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
@@ -85,6 +86,11 @@ class BrowserTab(QObject):
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
 
+        self.set_viewport(defaults.VIEWPORT_SIZE)
+        # XXX: hack to ensure that default window size is not 640x480.
+        self.web_view.resize(
+            QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.
@@ -99,20 +105,12 @@ class BrowserTab(QObject):
         web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
         web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
 
-    def _setup_logging(self, verbosity):
-        """ Setup logging of various events """
-        self.logger = _BrowserTabLogger(
-            uid=self._uid,
-            web_page=self.web_page,
-            verbosity=verbosity,
-        )
-        self.logger.enable()
-
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
         self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
         self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
         self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._on_javascript_window_object_cleared)
+        self.logger.add_web_page(self.web_page)
 
     def return_result(self, result):
         """ Return a result to the Pool. """
@@ -144,7 +142,7 @@ class BrowserTab(QObject):
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, enabled)
 
-    def set_viewport(self, size):
+    def set_viewport(self, size, raise_if_empty=False):
         """
         Set viewport size.
         If size is "full" viewport size is detected automatically.
@@ -152,14 +150,19 @@ class BrowserTab(QObject):
         """
         if size == 'full':
             size = self.web_page.mainFrame().contentsSize()
+            self.logger.log("Contents size: %s" % size, min_level=2)
             if size.isEmpty():
-                self.logger.log("contentsSize method doesn't work %s", min_level=1)
-                size = defaults.VIEWPORT_FALLBACK
+                if raise_if_empty:
+                    raise RuntimeError("Cannot detect viewport size")
+                else:
+                    size = defaults.VIEWPORT_SIZE
+                    self.logger.log("Viewport is empty, falling back to: %s" %
+                                    size)
 
         if not isinstance(size, QSize):
+            validate_size_str(size)
             w, h = map(int, size.split('x'))
             size = QSize(w, h)
-
         self.web_page.setViewportSize(size)
         w, h = int(size.width()), int(size.height())
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
@@ -529,21 +532,31 @@ class BrowserTab(QObject):
         self.store_har_timing("_onHtmlRendered")
         return result
 
-    def png(self, width=None, height=None, b64=False):
+    def png(self, width=None, height=None, b64=False, render_all=False):
         """ Return screenshot in PNG format """
         self.logger.log("Getting PNG: width=%s, height=%s" %
                         (width, height), min_level=2)
-        image = render_qwebpage(self.web_page, self.logger,
-                                width=width, height=height)
-        self.store_har_timing("_onScreenshotPrepared")
+        old_size = self.web_page.viewportSize()
+        try:
+            if render_all:
+                self.logger.log("Rendering whole page contents (RENDER_ALL)",
+                                min_level=2)
+                self.set_viewport('full')
+            image = render_qwebpage(self.web_page, self.logger,
+                                    width=width, height=height)
+            self.store_har_timing("_onScreenshotPrepared")
 
-        b = StringIO()
-        image.save(b, "png", compress_level=defaults.PNG_COMPRESSION_LEVEL)
-        result = bytes(b.getvalue())
-        if b64:
-            result = base64.b64encode(result)
-        self.store_har_timing("_onPngRendered")
-        return result
+            b = StringIO()
+            image.save(b, "png", compress_level=defaults.PNG_COMPRESSION_LEVEL)
+            result = bytes(b.getvalue())
+            if b64:
+                result = base64.b64encode(result)
+            self.store_har_timing("_onPngRendered")
+            return result
+        finally:
+            if old_size != self.web_page.viewportSize():
+                # Let's not generate extra "set size" messages in the log.
+                self.web_page.setViewportSize(old_size)
 
     def iframes_info(self, children=True, html=True):
         """ Return information about all iframes """
@@ -719,24 +732,24 @@ class _JavascriptConsole(QObject):
 
 class _BrowserTabLogger(object):
     """ This class logs various events that happen with QWebPage """
-    def __init__(self, uid, web_page, verbosity):
+    def __init__(self, uid, verbosity):
         self.uid = uid
-        self.web_page = web_page
         self.verbosity = verbosity
 
-    def enable(self):
+    def add_web_page(self, web_page):
+        frame = web_page.mainFrame()
         # setup logging
         if self.verbosity >= 4:
-            self.web_page.loadStarted.connect(self.on_load_started)
-            self.web_page.mainFrame().loadFinished.connect(self.on_frame_load_finished)
-            self.web_page.mainFrame().loadStarted.connect(self.on_frame_load_started)
-            self.web_page.mainFrame().contentsSizeChanged.connect(self.on_contents_size_changed)
+            web_page.loadStarted.connect(self.on_load_started)
+            frame.loadFinished.connect(self.on_frame_load_finished)
+            frame.loadStarted.connect(self.on_frame_load_started)
+            frame.contentsSizeChanged.connect(self.on_contents_size_changed)
             # TODO: on_repaint
 
         if self.verbosity >= 3:
-            self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
-            self.web_page.mainFrame().initialLayoutCompleted.connect(self.on_initial_layout_completed)
-            self.web_page.mainFrame().urlChanged.connect(self.on_url_changed)
+            frame.javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
+            frame.initialLayoutCompleted.connect(self.on_initial_layout_completed)
+            frame.urlChanged.connect(self.on_url_changed)
 
     def on_load_started(self):
         self.log("loadStarted")
@@ -747,8 +760,9 @@ class _BrowserTabLogger(object):
     def on_frame_load_started(self):
         self.log("mainFrame().loadStarted")
 
-    def on_contents_size_changed(self):
-        self.log("mainFrame().contentsSizeChanged")
+    @pyqtSlot('QSize')
+    def on_contents_size_changed(self, sz):
+        self.log("mainFrame().contentsSizeChanged: %s" % sz)
 
     def on_javascript_window_object_cleared(self):
         self.log("mainFrame().javaScriptWindowObjectCleared")

@@ -22,15 +22,19 @@ function Splash:go_and_wait(args)
     error("'url' argument is required")
   end
   local wait = tonumber(args.wait)
-  if not wait and args.viewport == "full" then
-    error("non-zero 'wait' is required when viewport=='full'")
+  if not wait and (self.args.render_all or self.args.viewport == "full") then
+    error("non-zero 'wait' is required when rendering whole page")
   end
 
   self:set_images_enabled(self.args.images)
 
   -- if viewport is 'full' it should be set only after waiting
-  if args.viewport ~= "full" then
-    self:set_viewport(args.viewport)
+  if args.viewport ~= nil and args.viewport ~= "full" then
+    local w, h = string.match(args.viewport, '^(%d+)x(%d+)')
+    if w == nil or h == nil then
+      error('Invalid viewport size format: ' .. args.viewport)
+    end
+    self:set_viewport_size(tonumber(w), tonumber(h))
   end
 
   local ok, reason = self:go{url=url, baseurl=args.baseurl}
@@ -44,10 +48,6 @@ function Splash:go_and_wait(args)
   end
 
   assert(self:_wait_restart_on_redirects(wait, 10))
-
-  if args.viewport == "full" then
-    self:set_viewport(args.viewport)
-  end
 end
 
 
@@ -91,9 +91,12 @@ end
 function emulation.render_png(splash)
   splash:go_and_wait(splash.args)
   splash:set_result_content_type("image/png")
+  local render_all = (splash.args.render_all or
+                      splash.args.viewport == "full")
   return splash:png{
     width=splash.args.width,
-    height=splash.args.height
+    height=splash.args.height,
+    render_all=render_all,
   }
 end
 

@@ -6,9 +6,11 @@ WAIT_TIME = 0.0
 MAX_TIMEOUT = 60.0
 MAX_WAIT_TIME = 10.0
 
-# png rendering options
-VIEWPORT = '1024x768'
-VIEWPORT_FALLBACK = VIEWPORT  # do not set it to 'full'
+# Default size of browser window.  As there're no decorations, this affects
+# both "window.inner*" and "window.outer*" values.
+VIEWPORT_SIZE = '1366x768'
+
+# Window size limitations.
 VIEWPORT_MAX_WIDTH = 20000
 VIEWPORT_MAX_HEIGTH = 20000
 VIEWPORT_MAX_AREA = 4000*4000
