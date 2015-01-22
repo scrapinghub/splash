@@ -610,10 +610,10 @@ not a size of an area screenshot is taken of. For example, if the viewport
 is 1024px wide then ``splash:png{width=100}`` will return a screenshot
 of the whole viewport, but an image will be downscaled to 100px width.
 
-To set the viewport size use :ref:`splash-set-viewport` method or use
-*render_all* argument.  *render_all=true* is equivalent to running
-``splash:set_viewport('full')`` just before the rendering and restoring the
-viewport size afterwards.
+To set the viewport size use :ref:`splash-set-viewport-size`,
+:ref:`splash-set-viewport-full` or *render_all* argument.  *render_all=true* is
+equivalent to running ``splash:set_viewport_full()`` just before the rendering
+and restoring the viewport size afterwards.
 
 If the result of ``splash:png()`` is returned directly as a result of
 "main" function, the screenshot is returned as binary data:
@@ -932,37 +932,71 @@ Example:
          return {png=splash:png()}
      end
 
+.. _splash-get-viewport-size:
 
-.. _splash-set-viewport:
+splash:get_viewport_size
+------------------------
 
-splash:set_viewport
--------------------
+Get the browser viewport size.
 
-Set the browser viewport.
+**Signature:** ``width, height = splash:get_viewport_size()``
 
-**Signature:** ``width, height = splash:set_viewport(size)``
+**Returns:** two numbers: width and height of the viewport in pixels.
+
+
+.. _splash-set-viewport-size:
+
+splash:set_viewport_size
+------------------------
+
+Set the browser viewport size.
+
+**Signature:** ``splash:set_viewport_size(width, height)``
 
 **Parameters:**
 
-* size - string, width and height of the viewport.
-  Format is ``"<width>x<heigth>"``, e.g. ``"800x600"``.
-  It also accepts ``"full"`` as a value; ``"full"`` means that the viewport size
-  will be auto-detected to fit the whole page (possibly very tall).
-
-**Returns:** two numbers: width and height the viewport is set to, in pixels.
+* width - integer, requested viewport width in pixels;
+* height - integer, requested viewport height in pixels.
 
 This will change the size of the visible area and subsequent rendering
 commands, e.g. :ref:`splash-png`, will produce an image with the specified
 size.
 
-This will also affect ``window.innerWidth`` and ``window.innerHeight`` JS
-variables, but not immediately.  To see the new values in JS runtime and to
-ensure ``window.onresize`` callback has fired, use :ref:`splash-wait`.
+:ref:`splash-png` uses the viewport size.
 
-``splash:set_viewport("full")`` should be called only after page
-is loaded, and some time passed after that (use :ref:`splash-wait`). This is
-an unfortunate restriction, but it seems that this is the only
-way to make rendering work reliably with size="full".
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go("http://example.com"))
+         splash:set_viewport_size(1980, 1020)
+         return {png=splash:png()}
+     end
+
+.. note::
+
+   This will affect ``window.innerWidth`` and ``window.innerHeight`` JS
+   variables and invoke ``window.onresize`` event callback.  However this will
+   only happen during the next asynchronous operation and :ref:`splash-png` is
+   notably synchronous, so if you have resized a page and want it to react
+   accordingly before taking the screenshot, use :ref:`splash-wait`.
+
+.. _splash-set-viewport-full:
+
+splash:set_viewport_full
+------------------------
+
+Resize browser viewport to fit the whole page.
+
+**Signature:** ``width, height = splash:set_viewport_full()``
+
+**Returns:** two numbers: width and height the viewport is set to, in pixels.
+
+``splash:set_viewport_full`` should be called only after page is loaded, and
+some time passed after that (use :ref:`splash-wait`). This is an unfortunate
+restriction, but it seems that this is the only way to make automatic resizing
+work reliably.
 
 :ref:`splash-png` uses the viewport size.
 
@@ -973,7 +1007,7 @@ Example:
      function main(splash)
          assert(splash:go("http://example.com"))
          assert(splash:wait(0.5))
-         splash:set_viewport("full")
+         splash:set_viewport_full()
          return {png=splash:png()}
      end
 

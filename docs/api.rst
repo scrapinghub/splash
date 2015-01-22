@@ -56,8 +56,8 @@ wait : float : optional
   (defaults to 0). Increase this value if you expect pages to contain
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
-  'wait' is also required for PNG rendering when viewport=full
-  (see later).
+  :ref:`wait <arg-wait>` is also required for PNG rendering when doing
+  full-page rendering (see :ref:`render_all <arg-render-all>`).
 
 .. _arg-proxy:
 
@@ -100,17 +100,17 @@ viewport : string : optional
 
   For backward compatibility reasons, it also accepts 'full' as value;
   ``viewport=full`` is semantically equivalent to ``render_all=1`` (see
-  :ref:`arg-render-all`).
+  :ref:`render_all <arg-render-all>`).
 
 .. _arg-render-all:
 
 render_all : int : optional
-  Render the whole webpage (possibly very tall) when ``1``, possible values are
-  ``1`` and ``0``.  Default is ``0``.
+  Extend the viewport to include the whole webpage (possibly very tall) when
+  ``1`` before rendering.  Possible values are ``1`` and ``0``.  Default is ``0``.
 
 .. note::
 
-    ``render_all=1`` requires non-zero :ref:`arg-wait` parameter. This is an
+    ``render_all=1`` requires non-zero :ref:`wait <arg-wait>` parameter. This is an
     unfortunate restriction, but it seems that this is the only way to make
     rendering work reliably with ``render_all=1``.
 
