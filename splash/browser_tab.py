@@ -10,9 +10,10 @@ import random
 import string
 import weakref
 import functools
+import uuid
 from PIL import Image
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QSize, QTimer, QObject, pyqtSlot
+from PyQt4.QtCore import Qt, QUrl, QSize, QTimer, QObject, QVariant, pyqtSlot
 from PyQt4.QtGui import QMouseEvent, QKeyEvent
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
@@ -505,27 +506,30 @@ class BrowserTab(QObject):
         js_source = "%s;undefined" % js_source
         self.evaljs(js_source, handle_errors=handle_errors)
 
-    def runjs_async(self, js_source, callback, errback, timeout=0):
+    def wait_for_resume(self, js_source, callback, errback, timeout=0):
         """
-        An async variant of runjs.
+        Run some Javascript asynchronously.
 
-        It injects a callback function named <lua_resume> into the scope of
-        the user's script. When lua_resume() is called, the corresponding
-        Lua coroutine will resume.
+        The JavaScript must contain a method called `main()` that accepts
+        one argument. The first argument will be an object with `return()`
+        and `error` methods. The code _must_ call one of these functions
+        before the timeout or else it will be canceled.
         """
 
         frame = self.web_page.mainFrame()
-        lua_resume = _LuaResume(self, callback, errback, timeout)
-        frame.addToJavaScriptWindowObject(lua_resume.name, lua_resume)
+        js_callback_proxy = OneShotJsCallbackProxy(self, callback, errback, timeout)
+        frame.addToJavaScriptWindowObject(js_callback_proxy.name, js_callback_proxy)
 
         wrapped = """
-        (function (lua_resume, lua_error) {
+        (function () {
+            var splash = window["%(callback_name)s"];
+            delete window["%(callback_name)s"];
             %(script_text)s
-        })(window.%(callback_name)s.lua_resume, window.%(callback_name)s.lua_error);
-        undefined
-        """ % dict(script_text=js_source, callback_name=lua_resume.name)
+            ;main(splash);
+        })();undefined
+        """ % dict(script_text=js_source, callback_name=js_callback_proxy.name)
 
-        self.logger.log("runjs_async wrapped script:\n%s" % wrapped, min_level=2)
+        self.logger.log("runjs_async wrapped script:\n%s" % wrapped, min_level=2, encode=False)
         frame.evaluateJavaScript(wrapped)
 
     def store_har_timing(self, name):
@@ -784,22 +788,32 @@ class _BrowserTabLogger(object):
     def on_url_changed(self, url):
         self.log("mainFrame().urlChanged %s" % qurl2ascii(url))
 
-    def log(self, message, min_level=None):
+    def log(self, message, min_level=None, encode=True):
         if min_level is not None and self.verbosity < min_level:
             return
 
-        if isinstance(message, unicode):
+        if encode and isinstance(message, unicode):
             message = message.encode('unicode-escape').decode('ascii')
 
         message = "[%s] %s" % (self.uid, message)
         log.msg(message, system='render')
 
 
-class _LuaResume(QObject):
-    """ Allows us to resume a Lua coroutine from a Javascript context. """
+class OneShotJsCallbackProxy(QObject):
+    """
+    A proxy object that allows JavaScript to run Python callbacks.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has functions `return()` and `error()` that can be connected to
+    Python callbacks.
+
+    It is "one shot" because either `return()` or `error()` should be called
+    exactly _once_. It raises an exception if the combined number of calls
+    to these methods is greater than 1.
+    """
 
     def __init__(self, parent, callback, errback, timeout=0):
-        self.name = _LuaResume.generate_name()
+        self.name = str(uuid.uuid1())
         self.used_up = False
         self.callback = callback
         self.errback = errback
@@ -818,23 +832,11 @@ class _LuaResume(QObject):
             self.timer.timeout.connect(timer_callback)
             self.timer.start()
 
-        super(_LuaResume, self).__init__(parent)
-
-    @classmethod
-    def generate_name(cls):
-        """
-        Generates a random name with ~64 bits of entropy.
-
-        This prevents possible conflicts with other objects in the JavaScript
-        root context (i.e. "window").
-        """
-        name_length = 16
-        letters = [random.choice(string.ascii_lowercase) for _ in range(name_length)]
-        return ''.join(letters)
+        super(OneShotJsCallbackProxy, self).__init__(parent)
 
     @pyqtSlot()
     @pyqtSlot(str)
-    def lua_resume(self, message=""):
+    def resume(self, message=None):
         if not self.used_up:
             self.used_up = True
             self.cancel_timer()
@@ -843,7 +845,7 @@ class _LuaResume(QObject):
             raise JsError("Lua resume cannot be invoked more than once.")
 
     @pyqtSlot(str)
-    def lua_error(self, message):
+    def error(self, message):
         if not self.used_up:
             self.used_up = True
             self.cancel_timer()

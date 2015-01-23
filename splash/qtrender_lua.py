@@ -316,7 +316,7 @@ class Splash(object):
             return [None, e.args[0]]
 
     @command(async=True)
-    def runjs_async(self, snippet, timeout=0):
+    def wait_for_resume(self, snippet, timeout=0):
         cmd_id = next(self._command_ids)
 
         def callback(result):
@@ -325,7 +325,7 @@ class Splash(object):
         def errback(msg):
             self._return(cmd_id, None, "error: %s" % msg)
 
-        return _AsyncBrowserCommand(cmd_id, "runjs_async", dict(
+        return _AsyncBrowserCommand(cmd_id, "wait_for_resume", dict(
             js_source=snippet,
             callback=callback,
             errback=errback,
