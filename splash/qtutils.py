@@ -265,7 +265,16 @@ def _render_qwebpage_full(web_page, logger,
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         painter.setWindow(QRect(QPoint(0, 0), web_page.viewportSize()))
         painter.setViewport(QRect(QPoint(0, 0), viewport_size))
-        painter.setClipRect(QRect(QPoint(0, 0), viewport_size))
+        if image_size != viewport_size:
+            # Try not to draw stuff that won't fit into the image.  Clipping
+            # must be specified in input (aka logical) coordinates, but we know
+            # it in output (aka physical) coordinates, so we have to do an
+            # inverse transformation.  If, for some reason, we cannot, skip the
+            # clipping altogether.
+            clip_rect = QRect(QPoint(0, 0), viewport_size)
+            inv_transform, invertible = painter.combinedTransform().inverted()
+            if invertible:
+                painter.setClipRect(inv_transform.mapRect(clip_rect))
         web_page.mainFrame().render(painter)
     finally:
         # It is important to end painter explicitly in python code, because

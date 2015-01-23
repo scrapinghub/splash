@@ -322,6 +322,41 @@ class RenderPngTest(Base.RenderTest):
                           'render_all': 1, 'wait': 0.1})
         self.assertPng(r, width=2000, height=2000)
 
+    RED, GREEN = (255, 0, 0, 255), (0, 255, 0, 255)
+
+    def test_assert_box_color_on_red_green_page(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000'})
+        self.assertPng(r, width=1000, height=1000)
+        self.assertBoxColor(r, (0, 0, 500, 1000), self.RED)
+        self.assertBoxColor(r, (500, 0, 1000, 1000), self.GREEN)
+
+    def test_width_parameter_scales_the_image_full(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000', 'width': 200})
+        self.assertPng(r, width=200, height=200)
+        self.assertBoxColor(r, (0, 0, 100, 200), self.RED)
+        self.assertBoxColor(r, (100, 0, 200, 200), self.GREEN)
+
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x100', 'width': 200})
+        self.assertPng(r, width=200, height=200)
+        self.assertBoxColor(r, (0, 0, 100, 200), self.RED)
+        self.assertBoxColor(r, (100, 0, 200, 200), self.GREEN)
+
+    def test_width_parameter_scales_the_image_tiled(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '400x10000', 'width': 200})
+        self.assertPng(r, width=200, height=5000)
+        self.assertBoxColor(r, (0, 0, 100, 5000), self.RED)
+        self.assertBoxColor(r, (100, 0, 200, 5000), self.GREEN)
+
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '40x1000', 'width': 200})
+        self.assertPng(r, width=200, height=5000)
+        self.assertBoxColor(r, (0, 0, 100, 5000), self.RED)
+        self.assertBoxColor(r, (100, 0, 200, 5000), self.GREEN)
+
     def test_images_enabled(self):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
         self.assertPixelColor(r, 30, 30, (0,0,0,255))
@@ -339,11 +374,9 @@ class RenderPngTest(Base.RenderTest):
     def test_extra_height_doesnt_leave_garbage_when_using_full_render(self):
         r = self.request({'url': self.mockurl('tall'), 'viewport': '100x100',
                           'height': 1000})
-        png = self.assertPng(r, height=1000)
+        self.assertPng(r, height=1000)
         # Ensure that the extra pixels at the bottom are transparent.
-        alpha_channel = png.crop((0, 100, 100, 1000)).getdata(3)
-        self.assertEqual(alpha_channel.size, (100, 900))
-        self.assertEqual(alpha_channel.getextrema(), (0, 0))
+        self.assertBoxColor(r, (0, 100, 100, 1000), (0, 0, 0, 0))
 
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
@@ -359,6 +392,24 @@ class RenderPngTest(Base.RenderTest):
     def assertPixelColor(self, response, x, y, color):
         img = Image.open(StringIO(response.content))
         self.assertEqual(color, img.getpixel((x, y)))
+
+    COLOR_NAMES = ('red', 'green', 'blue', 'alpha')
+
+    def assertBoxColor(self, response, box, etalon):
+        assert len(etalon) == 4  # RGBA components
+        img = Image.open(StringIO(response.content))
+        extrema = img.crop(box).getextrema()
+        print "extrema:", extrema
+        print "etalon:", etalon
+        for (color_name, (min_val, max_val)) in zip(self.COLOR_NAMES, extrema):
+            self.assertEqual(
+                min_val, max_val,
+                "Selected region does not have same values in %s component:"
+                "%s -> %s" % (color_name, min_val, max_val))
+        color = tuple(e[0] for e in extrema)
+        self.assertEqual(color, etalon,
+                         "Region color (%s) doesn't match the etalon (%s)" %
+                         (color, etalon))
 
 
 class RenderJsonTest(Base.RenderTest):
