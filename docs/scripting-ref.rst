@@ -969,8 +969,8 @@ Example:
 .. code-block:: lua
 
      function main(splash)
-         assert(splash:go("http://example.com"))
          splash:set_viewport_size(1980, 1020)
+         assert(splash:go("http://example.com"))
          return {png=splash:png()}
      end
 
