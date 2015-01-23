@@ -115,6 +115,18 @@ TallPage = _html_resource("""
 </html>
 """)
 
+RedGreenPage = _html_resource("""
+<html>
+  <style type="text/css" media="screen">
+    * { padding: 0px; margin: 0px }
+    #left { float:left; width: 50%%; height: 100%%; background-color: #ff0000 }
+    #right { float:left; width: 50%%; height: 100%%; background-color: #00ff00 }
+  </style>
+<body>
+  <div id="left">&nbsp;</div><div id="right">&nbsp;</div>
+</body>
+</html>
+""")
 
 BadRelatedResource = _html_resource("""
 <html>
@@ -592,6 +604,7 @@ class Root(Resource):
         self.putChild("jsinterval", JsInterval())
         self.putChild("jsviewport", JsViewport())
         self.putChild("tall", TallPage())
+        self.putChild("red-green", RedGreenPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
         self.putChild("slow.gif", SlowImage())
