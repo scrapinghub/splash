@@ -5,7 +5,7 @@ from threading import Thread
 from collections import Counter
 import requests
 
-from .utils import SplashServer
+from .utils import SplashServer, MockServer
 
 class StressTest():
 
@@ -123,20 +123,30 @@ class ArgsFromLogfile(object):
                 yield d['args']
 
 
-def lua_runonce(script, timeout=60., **kwargs):
+def lua_runonce(script, timeout=60., splash_args=None, **kwargs):
     """ Start splash server, execute lua script in it and return the output.
 
     :type script: str
     :param script: Script to be executed.
     :type timeout: float
     :param timeout: Timeout value for the execution request.
+    :param splash_args: Extra parameters for splash server invocation.
     :type kwargs: dict
     :param kwargs: Any other parameters are passed as arguments to the request
                    and will be available via ``splash.args``.
 
+    This function also starts a `MockServer`.  If `url` kwarg has scheme=mock,
+    e.g., "mock://jsrender", it will be resolved as a url pointing to
+    corresponding mock server resource.
+
     """
-    with SplashServer(extra_args=['--disable-lua-sandbox',
-                                  '--allowed-schemes=file,http,https', ]) as s:
+    if splash_args is None:
+        splash_args = ['--disable-lua-sandbox',
+                       '--allowed-schemes=file,http,https', ]
+    with SplashServer(extra_args=splash_args) as s, \
+         MockServer() as ms:
+        if kwargs.get('url', '').startswith('mock://'):
+            kwargs['url'] = ms.url(kwargs['url'][7:])
         params = {'lua_source': script}
         params.update(kwargs)
         resp = requests.get(s.url('execute'), params=params, timeout=timeout)
