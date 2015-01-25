@@ -619,9 +619,9 @@ specified one without resizing the content.  The region created by such
 extension is transparent.
 
 To set the viewport size use :ref:`splash-set-viewport-size`,
-:ref:`splash-set-viewport-full` or *render_all* argument.  *render_all=true* is
-equivalent to running ``splash:set_viewport_full()`` just before the rendering
-and restoring the viewport size afterwards.
+:ref:`splash-set-viewport-full` or *render_all* argument.  ``render_all=true``
+is equivalent to running ``splash:set_viewport_full()`` just before the
+rendering and restoring the viewport size afterwards.
 
 *scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
 ``scale_method='raster'``, the image is resized per-pixel.  When
@@ -990,11 +990,12 @@ Example:
 
 .. note::
 
-   This will affect ``window.innerWidth`` and ``window.innerHeight`` JS
-   variables and invoke ``window.onresize`` event callback.  However this will
-   only happen during the next asynchronous operation and :ref:`splash-png` is
-   notably synchronous, so if you have resized a page and want it to react
-   accordingly before taking the screenshot, use :ref:`splash-wait`.
+   This will relayout all document elements and affect geometry variables, such
+   as ``window.innerWidth`` and ``window.innerHeight``.  However
+   ``window.onresize`` event callback will only be invoked during the next
+   asynchronous operation and :ref:`splash-png` is notably synchronous, so if
+   you have resized a page and want it to react accordingly before taking the
+   screenshot, use :ref:`splash-wait`.
 
 .. _splash-set-viewport-full:
 
@@ -1011,6 +1012,8 @@ Resize browser viewport to fit the whole page.
 some time passed after that (use :ref:`splash-wait`). This is an unfortunate
 restriction, but it seems that this is the only way to make automatic resizing
 work reliably.
+
+See :ref:`splash-set-viewport-size` for a note about interaction with JS.
 
 :ref:`splash-png` uses the viewport size.
 
