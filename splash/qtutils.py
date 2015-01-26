@@ -373,32 +373,136 @@ def render_qwebpage(web_page, logger=None, width=None, height=None):
     """
     if logger is None:
         logger = _DummyLogger()
-    size = web_page.viewportSize()
-    viewport_size, image_size = _get_viewport_and_image_size(
-        web_page.viewportSize(), width=width, height=height)
-    logger.log("png render: web page viewport size=(%s, %s)"
-               % (size.width(), size.height()),
-               min_level=2)
-    logger.log("png render: draw region size=%s" % viewport_size,
-               min_level=2)
-    logger.log("png render: image size=%s" % image_size, min_level=2)
-
-    too_large = (viewport_size.width() >= defaults.TILE_MAXSIZE or
-                 viewport_size.height() >= defaults.TILE_MAXSIZE)
+    rg = _calculate_render_geometry(
+        web_page.viewportSize(), img_width=width, img_height=height)
+    for k, v in rg.__dict__.iteritems():
+        logger.log("png render: %s=%s" % (k, v), min_level=2)
+    # One bug is worked around by rendering the page one tile at a time onto a
+    # small-ish temporary image
+    too_large = rg.horizontal_tile_count > 1 or rg.vertical_tile_count > 1
     if too_large:
         logger.log("png render: draw region too large, rendering tile-by-tile",
                    min_level=2)
-        render_fn = _render_qwebpage_tiled
     else:
         logger.log("png render: rendering webpage in one step", min_level=2)
-        render_fn = _render_qwebpage_full
-    return render_fn(web_page, logger, viewport_size=viewport_size,
-                     image_size=image_size)
+    return _render_qwebpage_impl(web_page=web_page, render_geometry=rg,
+                                 logger=logger)
+
+
+def _render_qwebpage_impl(web_page, render_geometry, logger):
+    rg = render_geometry
+    # The other bug manifests itself when you do painter.drawImage trying to
+    # concatenate tiles onto a single image and once you reach 32'768 along
+    # either dimension all of a sudden drawImage simply stops drawing anything.
+    # The simplest workaround that comes to mind is to use pillow for pasting
+    # images.
+    render_image = Image.new(mode='RGBA',
+                             size=(rg.render_viewport_size.width(),
+                                   rg.render_viewport_size.height()))
+    render_device = QImage(rg.render_device_size, QImage.Format_ARGB32)
+    painter = QPainter(render_device)
+    try:
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.TextAntialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setWindow(rg.web_clip_rect)
+        painter_viewport = QRect(QPoint(0, 0), rg.render_viewport_size)
+        for i in xrange(rg.horizontal_tile_count):
+            for j in xrange(rg.vertical_tile_count):
+                left = i * rg.render_device_size.width()
+                top = j * rg.render_device_size.height()
+                painter.setViewport(painter_viewport.translated(-left, -top))
+                logger.log("Rendering with viewport=%s"
+                           % painter.viewport(), min_level=2)
+
+                web_page.mainFrame().render(painter)
+                pil_tile_image = qimage_to_pil_image(render_device)
+                if rg.render_viewport_size.height() - top < rg.render_device_size.height():
+                    # If this is the last tile, make sure that the bottom of
+                    # the image is not garbled: the last tile's bottom may be
+                    # clipped and will then have stuff left over from rendering
+                    # the previous tile.  Crop it, because the image can be
+                    # taller than the viewport because of "height=" option.
+                    box = (0, 0, rg.render_device_size.width(), rg.render_viewport_size.height() - top)
+                    pil_tile_image = pil_tile_image.crop(box)
+
+                if logger:
+                    logger.log("Pasting rendered tile to coords: %s" %
+                               ((left, top),),
+                               min_level=2)
+                render_image.paste(pil_tile_image, (left, top))
+        # Make sure that painter.end() is invoked before destroying the
+        # underlying image.
+    finally:
+        painter.end()
+
+    if rg.render_viewport_size != rg.image_viewport_size:
+        size = (rg.image_viewport_size.width(),
+                rg.image_viewport_size.height())
+        render_image = render_image.resize(size, resample=Image.BILINEAR)
+    if rg.image_viewport_size != rg.image_size:
+        render_image = render_image.crop(
+            (0, 0, rg.image_size.width(), rg.image_size.height()))
+    return render_image
 
 
 class _DummyLogger(object):
     def log(self, *args, **kwargs):
         pass
+
+
+class RenderGeometry(object):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
+
+
+def _calculate_render_geometry(web_viewport_size, img_width, img_height,
+                               render_kind='vector'):
+    if img_width is None:
+        img_width = web_viewport_size.width()
+        ratio = 1.0
+    else:
+        if img_width == 0 or web_viewport_size.width() == 0:
+            ratio = 1.0
+        else:
+            ratio = img_width / float(web_viewport_size.width())
+    if img_height is None:
+        img_height = int(web_viewport_size.height() * ratio)
+
+    img_viewport_size = web_viewport_size * ratio
+    if img_height < img_viewport_size.height():
+        web_clip_size = QSize(web_viewport_size.width(),
+                              img_height / ratio)
+    else:
+        web_clip_size = web_viewport_size
+
+    if render_kind == 'vector':
+        render_viewport_size = img_viewport_size
+    elif render_kind == 'raster':
+        render_viewport_size = web_clip_size
+    else:
+        raise ValueError(
+            "Invalid render kind (must be 'vector' or 'raster'): %s" %
+            str(render_kind))
+
+    tile_maxsize = defaults.TILE_MAXSIZE
+    tile_hsize = min(tile_maxsize, render_viewport_size.width())
+    tile_vsize = min(tile_maxsize, render_viewport_size.height())
+    htiles = 1 + (render_viewport_size.width() - 1) // tile_hsize
+    vtiles = 1 + (render_viewport_size.height() - 1) // tile_vsize
+    return RenderGeometry(
+        # This reads more or less as a rendering pipeline.
+        web_viewport_size=web_viewport_size,
+        web_clip_rect=QRect(QPoint(0, 0), web_clip_size),
+        render_viewport_size=render_viewport_size,
+        image_viewport_size=img_viewport_size,
+        image_size=QSize(img_width, img_height),
+
+        # Tiling configuration.
+        render_device_size=QSize(tile_hsize, tile_vsize),
+        horizontal_tile_count=htiles,
+        vertical_tile_count=vtiles)
 
 
 def _get_viewport_and_image_size(orig_size, width, height):
