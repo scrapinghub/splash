@@ -373,18 +373,14 @@ def render_qwebpage(web_page, logger=None, width=None, height=None):
     """
     if logger is None:
         logger = _DummyLogger()
-    size = web_page.viewportSize()
-    viewport_size, image_size = _get_viewport_and_image_size(
-        web_page.viewportSize(), width=width, height=height)
-    logger.log("png render: web page viewport size=(%s, %s)"
-               % (size.width(), size.height()),
-               min_level=2)
-    logger.log("png render: draw region size=%s" % viewport_size,
-               min_level=2)
-    logger.log("png render: image size=%s" % image_size, min_level=2)
 
-    too_large = (viewport_size.width() >= defaults.TILE_MAXSIZE or
-                 viewport_size.height() >= defaults.TILE_MAXSIZE)
+    rg = _calculate_render_geometry(
+        web_page.viewportSize(), img_width=width, img_height=height)
+    for k, v in rg.__dict__.iteritems():
+        logger.log("png render: %s=%s" % (k, v), min_level=2)
+    # One bug is worked around by rendering the page one tile at a time onto a
+    # small-ish temporary image
+    too_large = rg.horizontal_tile_count > 1 or rg.vertical_tile_count > 1
     if too_large:
         logger.log("png render: draw region too large, rendering tile-by-tile",
                    min_level=2)
@@ -392,33 +388,71 @@ def render_qwebpage(web_page, logger=None, width=None, height=None):
     else:
         logger.log("png render: rendering webpage in one step", min_level=2)
         render_fn = _render_qwebpage_full
-    return render_fn(web_page, logger, viewport_size=viewport_size,
-                     image_size=image_size)
+    return render_fn(web_page, logger, viewport_size=rg.image_viewport_size,
+                     image_size=rg.image_size)
+
+
+class RenderGeometry(object):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
+
+
+def _calculate_render_geometry(web_viewport_size, img_width, img_height,
+                               render_kind='vector'):
+    # This function calculates geometry parameters for rendering pipeline that
+    # looks like this:
+    # - webpage viewport -> (un-)cropping -> webpage cliprect
+    # - webpage cliprect -> vector resizing -> render viewport
+    # - render viewport -> raster resizing -> image viewport
+    # - image viewport -> (un-)cropping -> image size
+    if img_width is None:
+        img_width = web_viewport_size.width()
+        ratio = 1.0
+    else:
+        if img_width == 0 or web_viewport_size.width() == 0:
+            ratio = 1.0
+        else:
+            ratio = img_width / float(web_viewport_size.width())
+    if img_height is None:
+        img_height = int(web_viewport_size.height() * ratio)
+
+    img_viewport_size = web_viewport_size * ratio
+    if img_height < img_viewport_size.height():
+        web_clip_size = QSize(web_viewport_size.width(),
+                              img_height / ratio)
+    else:
+        web_clip_size = web_viewport_size
+
+    if render_kind == 'vector':
+        render_viewport_size = img_viewport_size
+    elif render_kind == 'raster':
+        render_viewport_size = web_clip_size
+    else:
+        raise ValueError(
+            "Invalid render kind (must be 'vector' or 'raster'): %s" %
+            str(render_kind))
+
+    tile_maxsize = defaults.TILE_MAXSIZE
+    tile_hsize = min(tile_maxsize, render_viewport_size.width())
+    tile_vsize = min(tile_maxsize, render_viewport_size.height())
+    htiles = 1 + (render_viewport_size.width() - 1) // tile_hsize
+    vtiles = 1 + (render_viewport_size.height() - 1) // tile_vsize
+    return RenderGeometry(
+        # This reads more or less as a rendering pipeline.
+        web_viewport_size=web_viewport_size,
+        web_clip_rect=QRect(QPoint(0, 0), web_clip_size),
+        render_viewport_size=render_viewport_size,
+        image_viewport_size=img_viewport_size,
+        image_size=QSize(img_width, img_height),
+
+        # Tiling configuration.
+        render_device_size=QSize(tile_hsize, tile_vsize),
+        horizontal_tile_count=htiles,
+        vertical_tile_count=vtiles)
 
 
 class _DummyLogger(object):
+    """Logger to use when no logger is passed into rendering functions."""
     def log(self, *args, **kwargs):
         pass
-
-
-def _get_viewport_and_image_size(orig_size, width, height):
-    viewport_width = orig_width = orig_size.width()
-    viewport_height = orig_height = orig_size.height()
-
-    if width is not None:
-        assert width > 0
-        if orig_width > 0:
-            # If size.width() != 0, maintain the ratio.
-            ratio = width / float(orig_width)
-            viewport_height = int(orig_height * ratio)
-        viewport_width = width
-
-    image_width = viewport_width
-    if height is not None:
-        assert height > 0
-        image_height = height
-    else:
-        image_height = viewport_height
-
-    return (QSize(viewport_width, viewport_height),
-            QSize(image_width, image_height))
