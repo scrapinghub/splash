@@ -92,7 +92,7 @@ allowed_domains : string : optional
 viewport : string : optional
 
   View width and height (in pixels) of the browser viewport to render the web
-  page. Format is "<width>x<height>", e.g. 800x600.  Default value is 1366x768.
+  page. Format is "<width>x<height>", e.g. 800x600.  Default value is 1024x768.
 
   'viewport' parameter is more important for PNG rendering; it is supported for
   all rendering endpoints because javascript code execution can depend on
