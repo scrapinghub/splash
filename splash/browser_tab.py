@@ -523,7 +523,7 @@ class BrowserTab(QObject):
         wrapped = """
         (function () {
             var splash = window["%(callback_name)s"];
-            delete window["%(callback_name)s"];
+            //delete window["%(callback_name)s"];
             %(script_text)s
             ;main(splash);
         })();undefined
