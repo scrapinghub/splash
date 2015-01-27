@@ -254,27 +254,18 @@ def swap_byte_order_i32(buf):
     return arr.tostring()
 
 
-def _render_qwebpage_full(web_page, logger,
-                          viewport_size, image_size):
-    image = QImage(image_size, QImage.Format_ARGB32)
+def _render_qwebpage_full(web_page, logger, render_geometry):
+    rg = render_geometry
+    image = QImage(rg.image_size, QImage.Format_ARGB32)
     image.fill(0)
     painter = QPainter(image)
     try:
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.TextAntialiasing, True)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.setWindow(QRect(QPoint(0, 0), web_page.viewportSize()))
-        painter.setViewport(QRect(QPoint(0, 0), viewport_size))
-        if image_size != viewport_size:
-            # Try not to draw stuff that won't fit into the image.  Clipping
-            # must be specified in input (aka logical) coordinates, but we know
-            # it in output (aka physical) coordinates, so we have to do an
-            # inverse transformation.  If, for some reason, we cannot, skip the
-            # clipping altogether.
-            clip_rect = QRect(QPoint(0, 0), viewport_size)
-            inv_transform, invertible = painter.combinedTransform().inverted()
-            if invertible:
-                painter.setClipRect(inv_transform.mapRect(clip_rect))
+        painter.setWindow(rg.web_clip_rect)
+        painter.setClipRect(rg.web_clip_rect)
+        painter.setViewport(rg.render_viewport)
         web_page.mainFrame().render(painter)
     finally:
         # It is important to end painter explicitly in python code, because
@@ -285,12 +276,12 @@ def _render_qwebpage_full(web_page, logger,
     return qimage_to_pil_image(image)
 
 
-def _render_qwebpage_tiled(web_page, logger,
-                           viewport_size, image_size):
+def _render_qwebpage_tiled(web_page, logger, render_geometry):
+    rg = render_geometry
     tile_maxsize = defaults.TILE_MAXSIZE
 
-    draw_width = viewport_size.width()
-    draw_height = min(viewport_size.height(), image_size.height())
+    draw_width = rg.render_viewport.width()
+    draw_height = rg.render_viewport.height()
 
     # One bug is worked around by rendering the page one tile at a time onto a
     # small-ish temporary image.  The magic happens in viewport-window
@@ -305,7 +296,7 @@ def _render_qwebpage_tiled(web_page, logger,
     htiles = 1 + (draw_width - 1) // tile_hsize
     vtiles = 1 + (draw_height - 1) // tile_vsize
     tile_image = QImage(QSize(tile_hsize, tile_vsize), QImage.Format_ARGB32)
-    ratio = viewport_size.width() / float(web_page.viewportSize().width())
+    ratio = rg.render_viewport.width() / float(rg.web_clip_rect.width())
 
     # The other bug manifests itself when you do painter.drawImage trying to
     # concatenate tiles onto a single image and once you reach 32'768 along
@@ -313,15 +304,15 @@ def _render_qwebpage_tiled(web_page, logger,
     # The simplest workaround that comes to mind is to use pillow for pasting
     # images.
     pil_image = Image.new(mode='RGBA',
-                          size=(image_size.width(), image_size.height()))
+                          size=(rg.image_size.width(), rg.image_size.height()))
 
     painter = QPainter(tile_image)
     try:
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.TextAntialiasing, True)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.setWindow(QRect(QPoint(0, 0), web_page.viewportSize()))
-        painter_viewport = QRect(QPoint(0, 0), viewport_size)
+        painter.setWindow(rg.web_clip_rect)
+        painter_viewport = rg.render_viewport
         for i in xrange(htiles):
             for j in xrange(vtiles):
                 left, top = i * tile_hsize, j * tile_vsize
@@ -336,13 +327,15 @@ def _render_qwebpage_tiled(web_page, logger,
                            ceil((top + tile_vsize) / ratio)))
                 web_page.mainFrame().render(painter, QRegion(clip_rect))
                 pil_tile_image = qimage_to_pil_image(tile_image)
-                if viewport_size.height() - top < tile_vsize:
+                rendered_vsize = min(rg.render_viewport.height() - top,
+                                     tile_vsize)
+                if rendered_vsize < tile_vsize:
                     # If this is the last tile, make sure that the bottom of
                     # the image is not garbled: the last tile's bottom may be
                     # clipped and will then have stuff left over from rendering
                     # the previous tile.  Crop it, because the image can be
                     # taller than the viewport because of "height=" option.
-                    box = (0, 0, tile_hsize, viewport_size.height() - top)
+                    box = (0, 0, tile_hsize, rendered_vsize)
                     pil_tile_image = pil_tile_image.crop(box)
 
                 if logger:
@@ -388,8 +381,7 @@ def render_qwebpage(web_page, logger=None, width=None, height=None):
     else:
         logger.log("png render: rendering webpage in one step", min_level=2)
         render_fn = _render_qwebpage_full
-    return render_fn(web_page, logger, viewport_size=rg.image_viewport_size,
-                     image_size=rg.image_size)
+    return render_fn(web_page, logger, render_geometry=rg)
 
 
 class RenderGeometry(object):
@@ -442,7 +434,7 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
         # This reads more or less as a rendering pipeline.
         web_viewport_size=web_viewport_size,
         web_clip_rect=QRect(QPoint(0, 0), web_clip_size),
-        render_viewport_size=render_viewport_size,
+        render_viewport=QRect(QPoint(0, 0), render_viewport_size),
         image_viewport_size=img_viewport_size,
         image_size=QSize(img_width, img_height),
 
