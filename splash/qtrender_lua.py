@@ -59,7 +59,7 @@ class _ImmediateResult(object):
         self.value = value
 
 
-def command(async=False, table_argument=False, multiple_return_values=False):
+def command(async=False, table_argument=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
         if not table_argument:
@@ -71,7 +71,6 @@ def command(async=False, table_argument=False, multiple_return_values=False):
         )
         meth._is_command = True
         meth._is_async = async
-        meth._multiple_return_values = multiple_return_values
         return meth
     return decorator
 
@@ -84,7 +83,10 @@ def emits_lua_objects(meth):
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
-        return python2lua(self.lua, res)
+        if isinstance(res, tuple):
+            return tuple(python2lua(self.lua, r) for r in res)
+        else:
+            return python2lua(self.lua, res)
     return wrapper
 
 
@@ -124,7 +126,10 @@ def exceptions_as_return_values(meth):
     def wrapper(self, *args, **kwargs):
         try:
             result = meth(self, *args, **kwargs)
-            return True, result
+            if isinstance(result, tuple):
+                return (True,) + result
+            else:
+                return True, result
         except Exception as e:
             return False, repr(e)
     wrapper._returns_error_flag = True
@@ -221,7 +226,6 @@ class Splash(object):
                 commands[name] = self.lua.table_from({
                     'is_async': getattr(value, '_is_async'),
                     'returns_error_flag': getattr(value, '_returns_error_flag', False),
-                    'multiple_return_values': getattr(value, '_multiple_return_values', False),
                 })
         self.commands = python2lua(self.lua, commands)
 
@@ -307,13 +311,13 @@ class Splash(object):
     def evaljs(self, snippet):
         return self.tab.evaljs(snippet)
 
-    @command(multiple_return_values=True)
+    @command()
     def runjs(self, snippet):
         try:
             self.tab.runjs(snippet)
-            return [True]
+            return True
         except JsError as e:
-            return [None, e.args[0]]
+            return None, e.args[0]
 
     @command()
     def jsfunc_private(self, func):
@@ -448,18 +452,18 @@ class Splash(object):
     def set_custom_headers(self, headers):
         self.tab.set_custom_headers(self.lua2python(headers, max_depth=3))
 
-    @command(multiple_return_values=True)
+    @command()
     def get_viewport_size(self):
         sz = self.tab.web_page.viewportSize()
-        return [sz.width(), sz.height()]
+        return sz.width(), sz.height()
 
     @command()
     def set_viewport_size(self, width, height):
         self.tab.set_viewport('%dx%d' % (width, height))
 
-    @command(multiple_return_values=True)
+    @command()
     def set_viewport_full(self):
-        return list(self.tab.set_viewport('full'))
+        return tuple(self.tab.set_viewport('full'))
 
     @command()
     def set_images_enabled(self, enabled):
