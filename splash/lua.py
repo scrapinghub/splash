@@ -74,15 +74,15 @@ def get_main_sandboxed(lua, script):
     Get "main" function and its (sandboxed) global environment
     from a ``script``.
     """
-    env = _execute_in_sandbox(lua, script)
+    env = run_in_sandbox(lua, script)
     main = env["main"]
     _check_main(main)
     return main, env
 
 
-def _execute_in_sandbox(lua, script):
+def run_in_sandbox(lua, script):
     """
-    Execute ``script`` in ``lua`` runtime using ``sandbox``.
+    Execute ``script`` in ``lua`` runtime using "sandbox" Lua module.
     Return a (sandboxed) global environment for the executed script.
 
     "sandbox" module should be importable in the environment.
