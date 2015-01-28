@@ -514,6 +514,13 @@ class BrowserTab(QObject):
         one argument. The first argument will be an object with `return()`
         and `error` methods. The code _must_ call one of these functions
         before the timeout or else it will be canceled.
+
+        Note: this cleans up the JavaScript global variable that it creates,
+        but QT seems to notice when a JS GV is deleted and it destroys the
+        underlying C++ object. Therefore, we can only delete the JS GV _after_
+        the user's code has called us back. This should change in QT5, since
+        it will then be possible to specify a different object ownership
+        policy when calling addToJavaScriptWindowObject().
         """
 
         frame = self.web_page.mainFrame()
@@ -521,11 +528,19 @@ class BrowserTab(QObject):
         frame.addToJavaScriptWindowObject(js_callback_proxy.name, js_callback_proxy)
 
         wrapped = """
-        (function () {
-            var splash = window["%(callback_name)s"];
-            //delete window["%(callback_name)s"];
-            %(script_text)s
-            ;main(splash);
+        %(script_text)s
+        ;(function () {
+            var finish = function(callback) {
+                return function (value) {
+                    setTimeout(function () {callback(value)}, 0);
+                    setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                };
+            };
+            var splash = {
+                'resume': finish(window["%(callback_name)s"].resume),
+                'error': finish(window["%(callback_name)s"].error)
+            };
+            main(splash);
         })();undefined
         """ % dict(script_text=js_source, callback_name=js_callback_proxy.name)
 
