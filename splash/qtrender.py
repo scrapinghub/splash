@@ -177,11 +177,13 @@ class PngRender(DefaultRenderScript):
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
+        self.scale_method = kwargs.pop('scale_method')
         return super(PngRender, self).start(**kwargs)
 
     def get_result(self):
         return self.tab.png(self.width, self.height,
-                            render_all=self.render_all)
+                            render_all=self.render_all,
+                            scale_method=self.scale_method)
 
 
 class JsonRender(DefaultRenderScript):
@@ -189,6 +191,7 @@ class JsonRender(DefaultRenderScript):
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
+        self.scale_method = kwargs.pop('scale_method')
         self.include = {
             inc: kwargs.pop(inc)
             for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
@@ -201,7 +204,8 @@ class JsonRender(DefaultRenderScript):
 
         if self.include['png']:
             res['png'] = self.tab.png(self.width, self.height, b64=True,
-                                      render_all=self.render_all)
+                                      render_all=self.render_all,
+                                      scale_method=self.scale_method)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output

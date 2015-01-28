@@ -287,12 +287,14 @@ class Splash(object):
         return self.tab.html()
 
     @command()
-    def png(self, width=None, height=None, render_all=False):
+    def png(self, width=None, height=None, render_all=False,
+            scale_method=None):
         if width is not None:
             width = int(width)
         if height is not None:
             height = int(height)
-        result = self.tab.png(width, height, b64=False, render_all=render_all)
+        result = self.tab.png(width, height, b64=False, render_all=render_all,
+                              scale_method=scale_method)
         return BinaryCapsule(result)
 
     @command()

@@ -29,6 +29,11 @@ AUTOLOAD_IMAGES = 1
 # larger files.
 PNG_COMPRESSION_LEVEL = 1
 
+# If 'raster', PNG images will be rescaled after rendering as regular images.
+# If 'vector', PNG image will be rescaled during rendering which is faster and
+# crisper, but may cause rendering artifacts.
+PNG_SCALE_METHOD = 'vector'
+
 # There's a bug in Qt that manifests itself when width or height of rendering
 # surface (aka the png image) is more than 32768.  Usually, this is solved by
 # rendering the image in tiled manner and obviously, TILE_MAXSIZE must not

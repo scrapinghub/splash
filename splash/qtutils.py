@@ -273,6 +273,7 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
         out_image = Image.new(mode='RGBA',
                               size=_qsize_to_tuple(rg.render_viewport.size()))
     else:
+        assert rg.render_viewport.size() == rg.render_device_size
         # If tiled rendering is not used, out_image will be created from
         # render_device after the first (and the only) rendering operation.
         # Not preallocating out_image will save some memory.
@@ -337,7 +338,8 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
     return out_image
 
 
-def render_qwebpage(web_page, logger=None, width=None, height=None):
+def render_qwebpage(web_page, logger=None, width=None, height=None,
+                    scale_method=None):
     """
     Render QWebPage into PIL.Image.
 
@@ -354,7 +356,8 @@ def render_qwebpage(web_page, logger=None, width=None, height=None):
     if logger is None:
         logger = _DummyLogger()
     rg = _calculate_render_geometry(
-        web_page.viewportSize(), img_width=width, img_height=height)
+        web_page.viewportSize(), img_width=width, img_height=height,
+        scale_method=scale_method)
     for k, v in rg.__dict__.iteritems():
         logger.log("png render: %s=%s" % (k, v), min_level=2)
     return _render_qwebpage_impl(web_page, logger, render_geometry=rg)
@@ -367,7 +370,7 @@ class RenderGeometry(object):
 
 
 def _calculate_render_geometry(web_viewport_size, img_width, img_height,
-                               scale_method='vector'):
+                               scale_method=None):
     # This function calculates geometry parameters for rendering pipeline that
     # looks like this:
     # - webpage viewport -> (un-)cropping -> webpage cliprect
@@ -394,6 +397,8 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
         web_clip_size = web_viewport_size
 
     img_viewport_size = web_clip_size * ratio
+    if scale_method is None:
+        scale_method = defaults.PNG_SCALE_METHOD
     if scale_method == 'vector':
         render_viewport_size = img_viewport_size
     elif scale_method == 'raster':

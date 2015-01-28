@@ -532,10 +532,12 @@ class BrowserTab(QObject):
         self.store_har_timing("_onHtmlRendered")
         return result
 
-    def png(self, width=None, height=None, b64=False, render_all=False):
+    def png(self, width=None, height=None, b64=False, render_all=False,
+            scale_method=None):
         """ Return screenshot in PNG format """
-        self.logger.log("Getting PNG: width=%s, height=%s" %
-                        (width, height), min_level=2)
+        self.logger.log("Getting PNG: width=%s, height=%s,"
+                        " render_all=%s, scale_method=%s" %
+                        (width, height, render_all, scale_method), min_level=2)
         old_size = self.web_page.viewportSize()
         try:
             if render_all:
@@ -543,7 +545,8 @@ class BrowserTab(QObject):
                                 min_level=2)
                 self.set_viewport('full')
             image = render_qwebpage(self.web_page, self.logger,
-                                    width=width, height=height)
+                                    width=width, height=height,
+                                    scale_method=scale_method)
             self.store_har_timing("_onScreenshotPrepared")
 
             b = StringIO()
