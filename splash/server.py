@@ -248,18 +248,12 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           lua_sandbox_allowed_modules=(),
                           verbosity=None):
     from splash import network_manager
-    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
-    if allowed_schemes is None:
-        allowed_schemes = defaults.ALLOWED_SCHEMES
-    else:
-        allowed_schemes = allowed_schemes.split(',')
-    manager = network_manager.SplashQNetworkAccessManager(
+    manager = network_manager.create_default(
         filters_path=filters_path,
-        allowed_schemes=allowed_schemes,
-        verbosity=verbosity
+        verbosity=verbosity,
+        allowed_schemes=allowed_schemes
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
-
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access)

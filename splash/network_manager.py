@@ -22,6 +22,23 @@ from splash.request_middleware import (
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
 )
+from splash import defaults
+
+
+def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
+    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    if allowed_schemes is None:
+        allowed_schemes = defaults.ALLOWED_SCHEMES
+    else:
+        allowed_schemes = allowed_schemes.split(',')
+    manager = SplashQNetworkAccessManager(
+        filters_path=filters_path,
+        allowed_schemes=allowed_schemes,
+        verbosity=verbosity
+    )
+    manager.setCache(None)
+    return manager
+
 
 
 class ProxiedQNetworkAccessManager(QNetworkAccessManager):
