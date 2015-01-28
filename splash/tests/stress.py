@@ -145,7 +145,7 @@ def lua_runonce(script, timeout=60., **kwargs):
             raise RuntimeError(resp.text)
 
 
-def benchmark_png(url, viewport='full', wait=0.5,
+def benchmark_png(url, viewport=None, wait=0.5, render_all=1,
                   width=None, height=None, nrepeats=3, timeout=60.):
     f = """
 function main(splash)
@@ -164,9 +164,11 @@ function main(splash)
 
     local susage = splash:get_perf_stats()
     local nrepeats = tonumber(splash.args.nrepeats)
+    local render_all = splash.args.render_all or splash.args.viewport == 'full'
     for i = 1, nrepeats do
         local png, err = splash:png{width=splash.args.width,
-                                    height=splash.args.height}
+                                    height=splash.args.height,
+                                    render_all=render_all}
         assert(png, err)
     end
     local eusage = splash:get_perf_stats()
