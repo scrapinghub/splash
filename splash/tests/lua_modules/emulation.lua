@@ -97,6 +97,7 @@ function emulation.render_png(splash)
     width=splash.args.width,
     height=splash.args.height,
     render_all=render_all,
+    scale_method=splash.args.scale_method,
   }
 end
 

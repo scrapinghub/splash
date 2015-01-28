@@ -378,6 +378,31 @@ class RenderPngTest(Base.RenderTest):
         # Ensure that the extra pixels at the bottom are transparent.
         self.assertBoxColor(r, (0, 100, 100, 1000), (0, 0, 0, 0))
 
+    def vertical_split_is_sharp(self, img):
+        width, height = img.size
+        left = (0, 0, width // 2, height)
+        right = (width // 2, 0, width, height)
+        left_extrema = img.crop(left).getextrema()
+        right_extrema = img.crop(right).getextrema()
+        return (all(e_min == e_max for e_min, e_max in left_extrema) and
+                all(e_min == e_max for e_min, e_max in right_extrema))
+
+    def test_scale_method_raster_produces_blurry_split(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000', 'width': 200,
+                          'scale_method': 'raster'})
+        img = self.assertPng(r, width=200, height=200)
+        self.assertFalse(self.vertical_split_is_sharp(img),
+                         "Split is not blurry")
+
+    def test_scale_method_vector_produces_sharp_split(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000', 'width': 200,
+                          'scale_method': 'vector'})
+        img = self.assertPng(r, width=200, height=200)
+        self.assertTrue(self.vertical_split_is_sharp(img),
+                        "Split is not sharp")
+
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
@@ -408,7 +433,6 @@ class RenderPngTest(Base.RenderTest):
         self.assertEqual(color, etalon,
                          "Region color (%s) doesn't match the etalon (%s)" %
                          (color, etalon))
-
 
 class RenderJsonTest(Base.RenderTest):
 
@@ -465,6 +489,14 @@ class RenderJsonTest(Base.RenderTest):
     def test_png_images(self):
         self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100"})
         self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100", "images": 0})
+
+    def test_png_scale_method(self):
+        self.assertSamePng(self.mockurl("red-green"),
+                           {"viewport": "100x100", "width": 200,
+                            "scale_method": "raster"})
+        self.assertSamePng(self.mockurl("red-green"),
+                           {"viewport": "100x100", "width": 200,
+                            "scale_method": "vector"})
 
     @https_only
     def test_fields_all(self):
@@ -585,6 +617,12 @@ class RenderJsonTest(Base.RenderTest):
         self.assertStatusCode(r1, 200)
         self.assertStatusCode(r2, 200)
         return r1, r2
+
+
+class RenderVectorPngTest(RenderPngTest):
+    def request(self, query, *args, **kwargs):
+        query.setdefault('scale_method', 'vector')
+        return super(RenderVectorPngTest, self).request(query, *args, **kwargs)
 
 
 class RenderJsonHistoryTest(BaseRenderTest):
