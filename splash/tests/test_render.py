@@ -335,27 +335,27 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl('red-green'),
                           'viewport': '1000x1000', 'width': 200})
         self.assertPng(r, width=200, height=200)
-        self.assertBoxColor(r, (0, 0, 100, 200), self.RED)
-        self.assertBoxColor(r, (100, 0, 200, 200), self.GREEN)
+        self.assertBoxColor(r, (0, 0, 98, 200), self.RED)
+        self.assertBoxColor(r, (102, 0, 200, 200), self.GREEN)
 
         r = self.request({'url': self.mockurl('red-green'),
                           'viewport': '100x100', 'width': 200})
         self.assertPng(r, width=200, height=200)
-        self.assertBoxColor(r, (0, 0, 100, 200), self.RED)
-        self.assertBoxColor(r, (100, 0, 200, 200), self.GREEN)
+        self.assertBoxColor(r, (0, 0, 98, 200), self.RED)
+        self.assertBoxColor(r, (102, 0, 200, 200), self.GREEN)
 
     def test_width_parameter_scales_the_image_tiled(self):
         r = self.request({'url': self.mockurl('red-green'),
                           'viewport': '400x10000', 'width': 200})
         self.assertPng(r, width=200, height=5000)
-        self.assertBoxColor(r, (0, 0, 100, 5000), self.RED)
-        self.assertBoxColor(r, (100, 0, 200, 5000), self.GREEN)
+        self.assertBoxColor(r, (0, 0, 98, 5000), self.RED)
+        self.assertBoxColor(r, (102, 0, 200, 5000), self.GREEN)
 
         r = self.request({'url': self.mockurl('red-green'),
                           'viewport': '40x1000', 'width': 200})
-        self.assertPng(r, width=200, height=5000)
-        self.assertBoxColor(r, (0, 0, 100, 5000), self.RED)
-        self.assertBoxColor(r, (100, 0, 200, 5000), self.GREEN)
+        p = self.assertPng(r, width=200, height=5000)
+        self.assertBoxColor(r, (0, 0, 98, 5000), self.RED)
+        self.assertBoxColor(r, (102, 0, 200, 5000), self.GREEN)
 
     def test_images_enabled(self):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
@@ -399,8 +399,6 @@ class RenderPngTest(Base.RenderTest):
         assert len(etalon) == 4  # RGBA components
         img = Image.open(StringIO(response.content))
         extrema = img.crop(box).getextrema()
-        print "extrema:", extrema
-        print "etalon:", etalon
         for (color_name, (min_val, max_val)) in zip(self.COLOR_NAMES, extrema):
             self.assertEqual(
                 min_val, max_val,
