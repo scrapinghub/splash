@@ -37,6 +37,11 @@ def skip_if_closing(meth):
     return wrapped
 
 
+class OneShotCallbackError(Exception):
+    """ A one shot callback was called more than once. """
+    pass
+
+
 class JsError(Exception):
     """ JavaScript error, raised as a Python exception """
     pass
@@ -506,13 +511,13 @@ class BrowserTab(QObject):
         js_source = "%s;undefined" % js_source
         self.evaljs(js_source, handle_errors=handle_errors)
 
-    def wait_for_resume(self, js_source, callback, errback, timeout=0):
+    def wait_for_resume(self, js_source, callback, errback, timeout):
         """
         Run some Javascript asynchronously.
 
         The JavaScript must contain a method called `main()` that accepts
-        one argument. The first argument will be an object with `return()`
-        and `error` methods. The code _must_ call one of these functions
+        one argument. The first argument will be an object with `resume()`
+        and `error()` methods. The code _must_ call one of these functions
         before the timeout or else it will be canceled.
 
         Note: this cleans up the JavaScript global variable that it creates,
@@ -524,28 +529,45 @@ class BrowserTab(QObject):
         """
 
         frame = self.web_page.mainFrame()
-        js_callback_proxy = OneShotJsCallbackProxy(self, callback, errback, timeout)
-        frame.addToJavaScriptWindowObject(js_callback_proxy.name, js_callback_proxy)
+        script_text = js_source.replace('\n', ' \\\n').replace('\"', '\\"')
+        callback_proxy = OneShotCallbackProxy(self, callback, errback, timeout)
+        frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
 
         wrapped = """
-        %(script_text)s
-        ;(function () {
-            var finish = function(callback) {
-                return function (value) {
-                    setTimeout(function () {callback(value)}, 0);
-                    setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+        (function () {
+            try {
+                eval("%(script_text)s");
+            } catch (err) {
+                var main = function (splash) {
+                    splash.error(err);
+                }
+            }
+            (function () {
+                var finish = function(callback) {
+                    return function (value) {
+                        setTimeout(function () {callback(value)}, 0);
+                        setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                    };
                 };
-            };
-            var splash = {
-                'resume': finish(window["%(callback_name)s"].resume),
-                'error': finish(window["%(callback_name)s"].error)
-            };
-            main(splash);
+                var splash = {
+                    'resume': finish(window["%(callback_name)s"].resume),
+                    'error': finish(window["%(callback_name)s"].error)
+                };
+                try {
+                    if (typeof main === 'undefined') {
+                        throw "wait_for_resume(): no main() function defined";
+                    }
+                    main(splash);
+                } catch (err) {
+                    splash.error(err);
+                }
+            })();
         })();undefined
-        """ % dict(script_text=js_source, callback_name=js_callback_proxy.name)
+        """ % dict(script_text=script_text, callback_name=callback_proxy.name)
 
-        self.logger.log("runjs_async wrapped script:\n%s" % wrapped, min_level=2, encode=False)
-        frame.evaluateJavaScript(wrapped)
+        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped,
+                        min_level=2, encode=False)
+        foo = frame.evaluateJavaScript(wrapped)
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
@@ -814,60 +836,61 @@ class _BrowserTabLogger(object):
         log.msg(message, system='render')
 
 
-class OneShotJsCallbackProxy(QObject):
+class OneShotCallbackProxy(QObject):
     """
     A proxy object that allows JavaScript to run Python callbacks.
 
     This creates a JavaScript-compatible object (can be added to `window`)
-    that has functions `return()` and `error()` that can be connected to
+    that has functions `resume()` and `error()` that can be connected to
     Python callbacks.
 
-    It is "one shot" because either `return()` or `error()` should be called
+    It is "one shot" because either `resume()` or `error()` should be called
     exactly _once_. It raises an exception if the combined number of calls
     to these methods is greater than 1.
     """
 
-    def __init__(self, parent, callback, errback, timeout=0):
+    def __init__(self, parent, callback, errback, timeout):
         self.name = str(uuid.uuid1())
-        self.used_up = False
-        self.callback = callback
-        self.errback = errback
+        self._used_up = False
+        self._callback = callback
+        self._errback = errback
 
-        if timeout == 0:
-            self.timer = None
-        else:
-            self.timer = QTimer()
-            self.timer.setSingleShot(True)
+        self._timer = QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._timed_out)
+        self._timer.start(timeout * 1000)
 
-            timer_callback = functools.partial(
-                self.lua_error,
-                message="Timed out while waiting for runjs_async()",
-            )
+        parent.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._cancel)
 
-            self.timer.timeout.connect(timer_callback)
-            self.timer.start()
-
-        super(OneShotJsCallbackProxy, self).__init__(parent)
+        super(OneShotCallbackProxy, self).__init__(parent)
 
     @pyqtSlot()
     @pyqtSlot(str)
     def resume(self, message=None):
-        if not self.used_up:
-            self.used_up = True
-            self.cancel_timer()
-            self.callback(message)
-        else:
-            raise JsError("Lua resume cannot be invoked more than once.")
+        if self._used_up:
+            raise OneShotCallbackError("resume() called on a one shot" \
+                                       " callback that was already used up.")
+        self._use_up()
+        self._callback(message)
 
     @pyqtSlot(str)
     def error(self, message):
-        if not self.used_up:
-            self.used_up = True
-            self.cancel_timer()
-            self.errback(message)
-        else:
-            raise JsError("Lua resume cannot be invoked more than once.")
+        if self._used_up:
+            raise OneShotCallbackError("error() called on a one shot" \
+                                       " callback that was already used up.")
+        self._use_up()
+        self._errback(message)
 
-    def cancel_timer(self):
-        if self.timer is not None:
-            self.timer.stop()
+    def _cancel(self):
+        self._use_up()
+        self._errback("One shot callback canceled due to navigation action.")
+
+    def _timed_out(self):
+        self._use_up()
+        self._errback("Timed out while waiting for resume() or error().")
+
+    def _use_up(self):
+        self._used_up = True
+
+        if self._timer is not None and self._timer.isActive():
+            self._timer.stop()

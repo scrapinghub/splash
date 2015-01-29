@@ -316,7 +316,11 @@ class Splash(object):
             return [None, e.args[0]]
 
     @command(async=True)
-    def wait_for_resume(self, snippet, timeout=0):
+    def wait_for_resume(self, snippet, timeout=5):
+        if timeout <= 0 or timeout > 60:
+            raise ValueError('timeout argument must be greater than 0 and' \
+                             ' less than or equal to 60 seconds')
+
         cmd_id = next(self._command_ids)
 
         def callback(result):
@@ -329,7 +333,7 @@ class Splash(object):
             js_source=snippet,
             callback=callback,
             errback=errback,
-            timeout=int(timeout*1000),
+            timeout=timeout,
         ))
 
     @command()
