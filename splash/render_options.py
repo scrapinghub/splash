@@ -116,7 +116,12 @@ class RenderOptions(object):
         return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
-        return self.get("scale_method", defaults.PNG_SCALE_METHOD)
+        scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
+        if scale_method not in ('raster', 'vector'):
+            raise BadOption(
+                "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
+                scale_method)
+        return scale_method
 
     def get_http_method(self):
         return self.get("http_method", "GET")

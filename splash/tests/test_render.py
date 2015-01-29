@@ -387,6 +387,12 @@ class RenderPngTest(Base.RenderTest):
         return (all(e_min == e_max for e_min, e_max in left_extrema) and
                 all(e_min == e_max for e_min, e_max in right_extrema))
 
+    def test_invalid_scale_method(self):
+        for method in ['foo', '1', '']:
+            r = self.request({'url': self.mockurl("jsrender"),
+                              'scale_method': method})
+            self.assertStatusCode(r, 400)
+
     def test_scale_method_raster_produces_blurry_split(self):
         r = self.request({'url': self.mockurl('red-green'),
                           'viewport': '1000x1000', 'width': 200,
