@@ -109,11 +109,25 @@ render_all : int : optional
   viewport to include the whole webpage (possibly very tall) before rendering.
   Default is ``render_all=0``.
 
-.. note::
+  .. note::
 
-    ``render_all=1`` requires non-zero :ref:`wait <arg-wait>` parameter. This is an
-    unfortunate restriction, but it seems that this is the only way to make
-    rendering work reliably with ``render_all=1``.
+      ``render_all=1`` requires non-zero :ref:`wait <arg-wait>` parameter. This is an
+      unfortunate restriction, but it seems that this is the only way to make
+      rendering work reliably with ``render_all=1``.
+
+.. _arg-scale-method:
+
+scale_method : string : optional
+  Possible values are ``raster`` (default) and ``vector``.  If
+  ``scale_method=raster``, rescaling operation performed via :ref:`width
+  <arg-width>` parameter is pixel-wise.  If ``scale_method=vector``, rescaling
+  is done element-wise during rendering.
+
+  .. note::
+
+     Vector-based rescaling is more performant and results in crisper fonts and
+     sharper element boundaries, however there may be rendering issues, so use
+     it with caution.
 
 .. _arg-images:
 
@@ -748,6 +762,9 @@ X-Splash-height : string
 
 X-Splash-render-all : string
   Same as :ref:`'render_all' <arg-render-all>` argument for `render.png`_.
+
+X-Splash-scale-method : string
+  Same as :ref:`'scale_method' <arg-scale-method>` argument for `render.png`_.
 
 X-Splash-html : string
   Same as :ref:`'html' <arg-html>` argument for `render.json`_.
