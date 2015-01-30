@@ -565,9 +565,13 @@ class BrowserTab(QObject):
         })();undefined
         """ % dict(script_text=script_text, callback_name=callback_proxy.name)
 
+        def cancel_callback():
+            callback_proxy.cancel(reason='javascript window object cleared')
+
         self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped,
                         min_level=2, encode=False)
-        foo = frame.evaluateJavaScript(wrapped)
+        frame.javaScriptWindowObjectCleared.connect(cancel_callback)
+        frame.evaluateJavaScript(wrapped)
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
@@ -860,18 +864,15 @@ class OneShotCallbackProxy(QObject):
         self._timer.timeout.connect(self._timed_out)
         self._timer.start(timeout * 1000)
 
-        parent.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._cancel)
-
         super(OneShotCallbackProxy, self).__init__(parent)
 
-    @pyqtSlot()
     @pyqtSlot(str)
-    def resume(self, message=None):
+    def resume(self, value):
         if self._used_up:
             raise OneShotCallbackError("resume() called on a one shot" \
                                        " callback that was already used up.")
         self._use_up()
-        self._callback(message)
+        self._callback(str(value))
 
     @pyqtSlot(str)
     def error(self, message):
@@ -879,11 +880,11 @@ class OneShotCallbackProxy(QObject):
             raise OneShotCallbackError("error() called on a one shot" \
                                        " callback that was already used up.")
         self._use_up()
-        self._errback(message)
+        self._errback(str(message))
 
-    def _cancel(self):
+    def cancel(self, reason):
         self._use_up()
-        self._errback("One shot callback canceled due to navigation action.")
+        self._errback("One shot callback canceled due to: %s." % reason)
 
     def _timed_out(self):
         self._use_up()
