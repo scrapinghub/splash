@@ -311,7 +311,7 @@ def _default_proxy_factory(proxy_profiles_path):
 
     if proxy_profiles_enabled:
         log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
-        return functools.partial(proxy.ProfilesSplashProxyFactory, proxy_profiles_path)
+        return functools.partial(proxy.NovaSplashProxyFactory, proxy_profiles_path)
 
 
 def _check_js_profiles_path(js_profiles_path):

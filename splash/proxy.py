@@ -9,6 +9,7 @@ Not to be confused with Splash Proxy mode when Splash itself works as
 an HTTP proxy (see :mod:`splash.proxy_server`).
 """
 from __future__ import absolute_import
+import json
 import re, os, ConfigParser
 from PyQt4.QtNetwork import QNetworkProxy
 from splash.render_options import BadOption
@@ -61,6 +62,22 @@ class _BlackWhiteSplashProxyFactory(object):
                 proxy = QNetworkProxy(QNetworkProxy.HttpProxy, host, port)
             proxies.append(proxy)
         return proxies
+
+class NovaSplashProxyFactory(_BlackWhiteSplashProxyFactory):
+    def __init__(self, proxy_profiles_path):
+        self.proxy_json = proxy_profiles_path
+        proxy_list = self._getProxy()
+        super(NovaSplashProxyFactory, self).__init__(proxy_list=proxy_list)
+
+    def _getProxy(self):
+        """
+        Return one proxy
+        """
+        if self.proxy_json is not None:
+            obj = dict(json.loads(self.proxy_json))
+            return [(obj['host'], int(obj['port']), obj.get('username',None), obj.get('password',None))]
+        else:
+            return []
 
 
 class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
