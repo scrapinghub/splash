@@ -514,6 +514,25 @@ Hello, I am a loooooong green page
 """)
 
 
+RgbStripesPage = _html_resource("""
+<html>
+  <style>
+    * { margin: 0px; padding: 0px; }
+    body {
+        background: -webkit-repeating-linear-gradient(
+            -90deg,
+            #ff0000, #ff0000 1px,
+            #00ff00 1px, #00ff00 2px,
+            #0000ff 2px, #0000ff 3px);
+    width: 10px; height: 10px}
+  </style>
+  <body>
+    &nbsp
+  </body>
+</html>
+""")
+
+
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
         code = request.args['code'][0]
@@ -621,6 +640,7 @@ class Root(Resource):
         self.putChild("get-cookie", GetCookie()),
         self.putChild("eggspam.js", EggSpamScript()),
         self.putChild("very-long-green-page", VeryLongGreenPage())
+        self.putChild("rgb-stripes", RgbStripesPage())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-to", JsRedirectTo())

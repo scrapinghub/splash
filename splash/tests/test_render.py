@@ -8,7 +8,7 @@ from cStringIO import StringIO
 
 import pytest
 import requests
-from PIL import Image
+from PIL import Image, ImageChops
 from splash import defaults
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
@@ -440,6 +440,24 @@ class RenderPngTest(Base.RenderTest):
                          "Region color (%s) doesn't match the etalon (%s)" %
                          (color, etalon))
 
+    def test_height_parameter_is_equivalent_to_cropping(self):
+        query0 = {'url': self.mockurl('rgb-stripes'), 'width': 99,
+                  'viewport': '10x10'}
+        r = self.request(query0)
+        full_img = self.assertPng(r, width=99, height=99)
+
+        for height in (1, 5, 10, 45, 46, 47, 98, 99, 100, 110):
+            query = query0.copy()
+            query['height'] = height
+            r = self.request(query)
+            img = self.assertPng(r, width=99, height=height)
+            self.assertImagesEqual(full_img.crop((0, 0, 99, height)), img)
+
+    def assertImagesEqual(self, img1, img2):
+        diffbox = ImageChops.difference(img1, img2).getbbox()
+        self.assertIsNone(diffbox, ("Images differ in region %s" % diffbox))
+
+
 class RenderJsonTest(Base.RenderTest):
 
     endpoint = 'render.json'
@@ -587,7 +605,6 @@ class RenderJsonTest(Base.RenderTest):
         html = r.json()['html']
         self.assertTrue(u'проверка' in html)
         self.assertTrue(u'1251' in html)
-
 
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
