@@ -910,6 +910,9 @@ class OneShotCallbackProxy(QObject):
         in the range [0,n-1], where n is the number of keys in the dict_.
         """
 
+        if len(dict_) == 0:
+            return False
+
         try:
             indices = map(int, dict_.keys())
         except ValueError:

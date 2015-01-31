@@ -412,40 +412,44 @@ yield until the JavaScript code tells it to resume.
   must include a function called ``main``. The first argument to ``main``
   is an object that has the properties ``resume`` and ``error``. ``resume``
   is a function which can be used to resume Lua execution. It takes an optional
-  string argument which will be returned to Lua in the ``value`` return value.
+  argument which will be returned to Lua in the ``value`` return value.
   ``error`` is a function which can be called with a required string value
   that is returned in the ``error`` return value.
-* timeout - a float which determines (in seconds) how long to allow JavaScript
-  to execute before cancelling it and returning control to Lua. The timeout
-  must be strictly greater than zero and less than or equal to 60. The timeout
-  defaults to 5 seconds.
+* timeout - a number which determines (in seconds) how long to allow JavaScript
+  to execute before forceably returning control to Lua. Defaults to
+  zero, which disables the timeout.
 
 **Returns:** ``value, error`` pair. When the execution is successful
-``value`` is either nil or contains a stringified JavaScript value. In case of
-timeout or JavaScript errors ``value`` is ``nil`` and ``error`` contains
-an error message string.
+``value`` contains the JavaScript value passed to
+``splash.resume(…)``. ``value`` will be nil if no argument is passed to
+``splash.resume()``. In case of timeout or JavaScript errors ``value``
+is ``nil`` and ``error`` contains an error message string.
 
-Example:
+Examples:
 
-.. code-block:: lua
-
-    local value, error = splash:wait_for_resume([[
-        function main(splash) {
-            setTimeout(function () {
-                splash.resume("Hello, world!");
-            }, 3000);
-        }
-    ]])
-
-    -- value is "Hello, world!"
-    -- error is nil
-
-This trivial example shows how to transfer control of execution from Lua
+The first, trivial example shows how to transfer control of execution from Lua
 to JavaScript and then back to Lua. This command will tell JavaScript to
 sleep for 3 seconds and then return to Lua. Note that this is an async
 operation: the Lua event loop and the JavaScript event loop continue to run
-during this 3 second pause, but the Lua ``print()`` function will not be called
-until JavaScript calls ``splash.resume()``.
+during this 3 second pause, but Lua will not continue executing the current
+function until JavaScript calls ``splash.resume()``.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume();
+                }, 3000);
+            }
+        ]])
+
+        -- value is nil
+        -- error is nil
+
+    end
 
 .. note::
 
@@ -454,46 +458,113 @@ until JavaScript calls ``splash.resume()``.
     name you choose, of course. We will call it ``splash`` by convention in
     this documentation.
 
-``value`` equals the string passed to ``splash.resume()`` and error is ``nil``
-to indicate that no error occurred.
+The next example shows an incorrect usage of ``splash:wait_for_resume()``:
+the JavaScript code does not contain a ``main()`` function. ``value`` is
+nil because ``splash.resume()`` is never called, and ``error`` contains
+an error message explaining the mistake.
 
 .. code-block:: lua
 
-    local value, error = splash:wait_for_resume([[
-        function main(splash) {
-            setTimeout(function () {
-                splash.error("Goodbye, cruel world!");
-            }, 3000);
-        }
-    ]])
+    function main(splash)
 
-    -- value is nil
-    -- error is "Goodbye, cruel world!"
+        local value, error = splash:wait_for_resume([[
+            console.log('hello!');
+        ]])
 
-This example shows a similar flow of execution as the previous example,
-but it uses ``splash.error()`` to return an error value instead of a
-success value.  ``value`` is nil to indicate that no value was returned,
-and ``error`` contains the string passed to ``splash.error()``.
+        -- value is nil
+        -- error is "error: wait_for_resume(): no main() function defined"
+
+    end
+
+The next example shows how to return a value from JavaScript to Lua.
+You can also return booleans, numbers, arrays, or objects.
 
 .. code-block:: lua
 
-    local value, error = splash:wait_for_resume([[
-        function main(splash) {
-            setTimeout(function () {
-                splash.resume("Hello, world!");
-            }, 3000);
-        }
-    ]], 1)
+    function main(splash)
 
-    -- value is nil
-    -- error is "error: Timed out while waiting for resume() or error()."
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("Hello, world!");
+                }, 3000);
+            }
+        ]])
 
-This example is similar to the first example, but here we have changed the
-``timeout`` argument from its default 5 seconds to just 1 second. Of course,
+        -- value is "Hello, world!"
+        -- error is nil
+
+    end
+
+The next example shows error handling. If ``splash.error(…)`` is
+called instead of ``splash.resume()``, then ``value`` will be ``nil``
+and ``error`` will contain the string passed to ``splash.error(…)``.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.error("Goodbye, cruel world!");
+                }, 3000);
+            }
+        ]])
+
+        -- value is nil
+        -- error is "error: Goodbye, cruel world!"
+
+    end
+
+Note that your JavaScript code must either call ``splash.resume()`` or
+``splash.error()`` exactly one time. Subsequent calls to either function
+have no effect, as shown in the next example.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("ok");
+                    splash.resume("still ok");
+                    splash.error("not ok");
+                }, 3000);
+            }
+        ]])
+
+        -- value is "ok"
+        -- error is nil
+
+    end
+
+The next example shows the effect of the ``timeout`` argument. We have changed
+``timeout`` argument from its default 5 seconds to just 1 second, but
 our JavaScript code will not call ``splash.resume()`` for 3 seconds, which
-guarantees that it will time out. ``value`` is nil because ``splash.resume()``
-is never called. Instead, the JavaScript times out returns an error message
-in ``error``.
+guarantees that ``splash:wait_for_resume()`` will time out.
+
+When it times out, ``value`` will be nil, ``error`` will contain a string
+explaining the timeout, and Lua will continue executing. Calling
+``splash.resume()`` or ``splash.error()`` after a timeout has no effect.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("Hello, world!");
+                }, 3000);
+            }
+        ]], 1)
+
+        -- value is nil
+        -- error is "error: One shot callback timed out while waiting for resume() or error()."
+
+    end
 
 .. note::
 
@@ -501,19 +572,8 @@ in ``error``.
     ``splash:wait_for_resume()`` will never timeout (although Splash's
     HTTP timeout still applies).
 
-.. code-block:: lua
-
-    local value, error = splash:wait_for_resume([[
-        console.log('hello!');
-    ]])
-
-    -- value is nil
-    -- error is "error: wait_for_resume(): no main() function defined"
-
-This final example shows an incorrect usage of ``splash:wait_for_resume()``:
-the JavaScript code does not contain a ``main()`` function. ``value`` is
-nil because ``splash.resume()`` is never called, and ``error`` contains
-an error message explaining the mistake.
+Note that your JavaScript code is not forceably canceled by a timeout: it may
+continue to run until Splash shuts down the entire browser context.
 
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`.
 

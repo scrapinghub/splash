@@ -569,6 +569,22 @@ class WaitForResumeTest(BaseLuaRenderTest):
             "value_type": "table"}
         )
 
+    @pytest.mark.xfail
+    def test_cannot_return_function(self):
+        """
+        If you pass a function to resume(), then Lua sees an empty object.
+        I don't think this is a great behavior. It should either error out
+        or show a stringified function.
+        """
+
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(splash.resume);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertIn('error', resp.json())
+
     def test_delayed_return(self):
         resp = self._wait_for_resume_request("""
             function main(splash) {
