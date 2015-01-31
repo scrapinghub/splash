@@ -485,15 +485,12 @@ class EvaljsTest(BaseLuaRenderTest):
 class WaitForResumeTest(BaseLuaRenderTest):
 
     def _wait_for_resume_request(self, js, timeout=1):
-        resp = self.request_lua("""
+        return self.request_lua("""
         function main(splash)
             local value, error = splash:wait_for_resume([[%s]], %.1f)
             return {value=value, error=error}
         end
         """ % (js, timeout))
-
-        self.assertStatusCode(resp, 200)
-        return resp
 
     #TODO
     @pytest.mark.xfail
@@ -503,6 +500,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 splash.resume();
             }
         """)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {})
 
     def test_return_string(self):
@@ -511,6 +509,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 splash.resume("ok");
             }
         """)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok"})
 
     @pytest.mark.xfail
@@ -520,6 +519,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 splash.resume(42);
             }
         """)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": 42})
 
     def test_delayed_return(self):
@@ -530,6 +530,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 500);
             }
         """)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok"})
 
     def test_error_string(self):
@@ -538,6 +539,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 splash.error("not ok");
             }
         """)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"error": "error: not ok"})
 
     def test_timed_out(self):
@@ -548,7 +550,9 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 2500);
             }
         """, timeout=0.5)
-        expected_error = 'error: Timed out while waiting for resume() or error().'
+        expected_error = 'error: One shot callback timed out while waiting' \
+                         ' for resume() or error().'
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"error": expected_error})
 
     def test_missing_main_function(self):
@@ -560,6 +564,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         expected_error = 'error: wait_for_resume(): no main() function defined'
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"error": expected_error})
 
     def test_js_syntax_error(self):
@@ -572,6 +577,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         json = resp.json()
+        self.assertStatusCode(resp, 200)
         self.assertIn('error', json)
         self.assertIn('SyntaxError', json['error'])
 
@@ -582,6 +588,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """ % self.mockurl('/'))
         json = resp.json()
+        self.assertStatusCode(resp, 200)
         self.assertIn('error', json)
         self.assertIn('canceled', json['error'])
 
@@ -603,6 +610,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 splash.resume('not ok');
             }
         """)
+        self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok"})
 
 

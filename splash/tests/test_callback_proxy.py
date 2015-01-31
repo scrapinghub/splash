@@ -21,14 +21,14 @@ class OneShotCallbackProxyTest(unittest.TestCase):
         self._callback_count = 0
         self._errback_count = 0
 
-    def _make_proxy(self, timeout=1):
+    def _make_proxy(self):
         def callback(val):
             self._callback_count += 1
 
         def errback(message):
             self._errback_count += 1
 
-        return OneShotCallbackProxy(None, callback, errback, timeout)
+        return OneShotCallbackProxy(None, callback, errback, timeout=0)
 
     def test_can_resume_once(self):
         cb_proxy = self._make_proxy()
@@ -62,3 +62,7 @@ class OneShotCallbackProxyTest(unittest.TestCase):
 
         with self.assertRaises(OneShotCallbackError):
             cb_proxy.resume('ok')
+
+    def test_negative_timeout_is_invalid(self):
+        with self.assertRaises(ValueError):
+            cb_proxy = OneShotCallbackProxy(None, lambda a: a, lambda b: b, -1)

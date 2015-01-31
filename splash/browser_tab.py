@@ -529,7 +529,7 @@ class BrowserTab(QObject):
         """
 
         frame = self.web_page.mainFrame()
-        script_text = js_source.replace('\n', ' \\\n').replace('\"', '\\"')
+        script_text = json.dumps(js_source)[1:-1]
         callback_proxy = OneShotCallbackProxy(self, callback, errback, timeout)
         frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
 
@@ -568,8 +568,7 @@ class BrowserTab(QObject):
         def cancel_callback():
             callback_proxy.cancel(reason='javascript window object cleared')
 
-        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped,
-                        min_level=2, encode=False)
+        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped, min_level=2)
         frame.javaScriptWindowObjectCleared.connect(cancel_callback)
         frame.evaluateJavaScript(wrapped)
 
@@ -829,11 +828,11 @@ class _BrowserTabLogger(object):
     def on_url_changed(self, url):
         self.log("mainFrame().urlChanged %s" % qurl2ascii(url))
 
-    def log(self, message, min_level=None, encode=True):
+    def log(self, message, min_level=None):
         if min_level is not None and self.verbosity < min_level:
             return
 
-        if encode and isinstance(message, unicode):
+        if isinstance(message, unicode):
             message = message.encode('unicode-escape').decode('ascii')
 
         message = "[%s] %s" % (self.uid, message)
@@ -851,18 +850,25 @@ class OneShotCallbackProxy(QObject):
     It is "one shot" because either `resume()` or `error()` should be called
     exactly _once_. It raises an exception if the combined number of calls
     to these methods is greater than 1.
+
+    If timeout is zero, then the timeout is disabled.
     """
 
-    def __init__(self, parent, callback, errback, timeout):
+    def __init__(self, parent, callback, errback, timeout=0):
         self.name = str(uuid.uuid1())
         self._used_up = False
         self._callback = callback
         self._errback = errback
 
-        self._timer = QTimer()
-        self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self._timed_out)
-        self._timer.start(timeout * 1000)
+        if timeout < 0:
+            raise ValueError('OneShotCallbackProxy timeout must be >= 0.')
+        elif timeout == 0:
+            self._timer = None
+        elif timeout > 0:
+            self._timer = QTimer()
+            self._timer.setSingleShot(True)
+            self._timer.timeout.connect(self._timed_out)
+            self._timer.start(timeout * 1000)
 
         super(OneShotCallbackProxy, self).__init__(parent)
 
@@ -888,7 +894,8 @@ class OneShotCallbackProxy(QObject):
 
     def _timed_out(self):
         self._use_up()
-        self._errback("Timed out while waiting for resume() or error().")
+        self._errback("One shot callback timed out while waiting for" \
+                      " resume() or error().")
 
     def _use_up(self):
         self._used_up = True

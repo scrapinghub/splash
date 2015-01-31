@@ -497,8 +497,9 @@ in ``error``.
 
 .. note::
 
-    Remember that the timeout t must satisfy ``0 < t <= 60`` seconds. You
-    will receive an error if you choose an invalid timeout value.
+    The timeout must be >= 0. If the timeout is 0, then
+    ``splash:wait_for_resume()`` will never timeout (although Splash's
+    HTTP timeout still applies).
 
 .. code-block:: lua
 
