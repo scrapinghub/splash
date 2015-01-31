@@ -488,12 +488,16 @@ class WaitForResumeTest(BaseLuaRenderTest):
         return self.request_lua("""
         function main(splash)
             local value, error = splash:wait_for_resume([[%s]], %.1f)
-            return {value=value, error=error}
+            local result = {value=value, error=error}
+
+            if error == nil then
+                result["value_type"] = type(value)
+            end
+
+            return result
         end
         """ % (js, timeout))
 
-    #TODO
-    @pytest.mark.xfail
     def test_return_nil(self):
         resp = self._wait_for_resume_request("""
             function main(splash) {
@@ -501,7 +505,9 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {})
+        # In Lua, a `nil` table value means that the corresponding key isn't
+        # stored in the table, so we don't get a "value" key in the response.
+        self.assertEqual(resp.json(), {"value_type": "nil"})
 
     def test_return_string(self):
         resp = self._wait_for_resume_request("""
@@ -510,9 +516,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": "ok"})
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
-    @pytest.mark.xfail
     def test_return_int(self):
         resp = self._wait_for_resume_request("""
             function main(splash) {
@@ -520,7 +525,49 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": 42})
+        self.assertEqual(resp.json(), {"value": 42, "value_type": "number"})
+
+    def test_return_float(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(1234.5);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": 1234.5, "value_type": "number"})
+
+    def test_return_boolean(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(true);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": True, "value_type": "boolean"})
+
+    def test_return_list(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume([1,2,'red','blue']);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "value": [1,2,'red','blue'],
+            "value_type": "table"}
+        )
+
+    def test_return_dict(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume({'stomach':'empty','brain':'crazy'});
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "value": {'stomach':'empty', 'brain':'crazy'},
+            "value_type": "table"}
+        )
 
     def test_delayed_return(self):
         resp = self._wait_for_resume_request("""
@@ -531,7 +578,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": "ok"})
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
     def test_error_string(self):
         resp = self._wait_for_resume_request("""
@@ -607,11 +654,13 @@ class WaitForResumeTest(BaseLuaRenderTest):
         resp = self._wait_for_resume_request("""
             function main(splash) {
                 splash.resume('ok');
-                splash.resume('not ok');
+                setTimeout(function () {
+                    splash.resume('not ok');
+                }, 500);
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": "ok"})
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
 
 class RunjsTest(BaseLuaRenderTest):
