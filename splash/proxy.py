@@ -63,22 +63,26 @@ class _BlackWhiteSplashProxyFactory(object):
             proxies.append(proxy)
         return proxies
 
-class NovaSplashProxyFactory(_BlackWhiteSplashProxyFactory):
-    def __init__(self, proxy_profiles_path):
-        self.proxy_json = proxy_profiles_path
+class AdhocSplashProxyFactory(_BlackWhiteSplashProxyFactory):
+    def __init__(self, profile_name):
+        self.proxy = profile_name
         proxy_list = self._getProxy()
-        super(NovaSplashProxyFactory, self).__init__(proxy_list=proxy_list)
+        super(AdhocSplashProxyFactory, self).__init__(proxy_list=proxy_list)
 
     def _getProxy(self):
         """
         Return one proxy
         """
-        if self.proxy_json is not None:
-            obj = dict(json.loads(self.proxy_json))
-            return [(obj['host'], int(obj['port']), obj.get('username',None), obj.get('password',None))]
+        if self.proxy is not None:
+            obj = self.proxy.split(',')
+            if len(obj)>1:
+                return [(obj[0], int(obj[1]), obj[2] if len(obj)>2 else None, obj[3] if len(obj)>3 else None)]
+            else:
+                return []
         else:
             return []
-
+    def queryProxy(self, query=None, *args, **kwargs):
+        return self._customProxyList();
 
 class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
     """
