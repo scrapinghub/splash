@@ -12,10 +12,10 @@ from math import floor, ceil
 
 from twisted.python import log
 from PIL import Image
-from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
+from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion, QTransform, QPolygonF
 from PyQt4.QtCore import (
     QAbstractEventDispatcher, QVariant, QString, QObject,
-    QDateTime, QRegExp, QSize, QRect, QPoint
+    QDateTime, QRegExp, QSize, QRect, QPoint, QRectF, 
 )
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply
@@ -266,19 +266,18 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
     # a sudden drawImage simply stops drawing anything.  This is a known
     # limitation of Qt painting system where coordinates are signed short ints.
     # The simplest workaround that comes to mind is to use pillow for pasting.
-    tiled_render = rg.horizontal_tile_count > 1 or rg.vertical_tile_count > 1
-    if tiled_render:
+    direct_render = rg.render_canvas_size == rg.render_device_size
+    if not direct_render:
         logger.log("png render: draw region too large, rendering tile-by-tile",
                    min_level=2)
-        out_image = Image.new(mode='RGBA',
-                              size=_qsize_to_tuple(rg.render_viewport.size()))
+        render_canvas = Image.new(
+            mode='RGBA', size=_qsize_to_tuple(rg.render_canvas_size))
     else:
-        assert rg.render_viewport.size() == rg.render_device_size
-        # If tiled rendering is not used, out_image will be created from
+        # If tiled rendering is not used, render_canvas will be created from
         # render_device after the first (and the only) rendering operation.
-        # Not preallocating out_image will save some memory.
+        # Not preallocating render_canvas will save some memory.
         logger.log("png render: rendering webpage in one step", min_level=2)
-        out_image = None
+        render_canvas = None
 
     render_device = QImage(rg.render_device_size, QImage.Format_ARGB32)
     render_device.fill(0)
@@ -287,8 +286,9 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.TextAntialiasing, True)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.setWindow(rg.web_clip_rect)
-        painter.setClipRect(rg.web_clip_rect)
+        painter.setWindow(rg.web_viewport)
+        painter.setViewport(rg.render_viewport)
+        painter.setClipRect(rg.web_draw_rect)
         painter_viewport = rg.render_viewport
         for i in xrange(rg.horizontal_tile_count):
             left = i * render_device.width()
@@ -300,15 +300,15 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
 
                 web_page.mainFrame().render(painter)
                 pil_tile_image = qimage_to_pil_image(render_device)
-                if not tiled_render:
-                    out_image = pil_tile_image
+                if direct_render:
+                    render_canvas = pil_tile_image
                     break
 
                 # If this is the bottommost tile, its bottom may have stuff
                 # left over from rendering the previous tile.  Make sure these
                 # leftovers don't garble the resulting image which may be
-                # taller than render_viewport because of "height=" option.
-                rendered_vsize = min(rg.render_viewport.height() - top,
+                # taller than render_draw_rect because of "height=" option.
+                rendered_vsize = min(rg.render_draw_rect.height() - top,
                                      render_device.height())
                 if rendered_vsize < render_device.height():
                     box = (0, 0, render_device.width(), rendered_vsize)
@@ -316,7 +316,7 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
 
                 logger.log("Pasting rendered tile to coords: %s" %
                            ((left, top),), min_level=2)
-                out_image.paste(pil_tile_image, (left, top))
+                render_canvas.paste(pil_tile_image, (left, top))
     finally:
         # It is important to end painter explicitly in python code, because
         # Python finalizer invocation order, unlike C++ destructors, is not
@@ -324,18 +324,29 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
         # before painter's which may break tests and kill your cat.
         painter.end()
 
-    if out_image.size != _qsize_to_tuple(rg.image_viewport_size):
+    if render_canvas.size != _qsize_to_tuple(rg.image_draw_rect.size()):
         logger.log("Scaling render viewport (%s) to image viewport (%s)" %
-                   (rg.render_viewport.size(), rg.image_viewport_size),
+                   (rg.render_draw_rect.size(), rg.image_draw_rect.size()),
                    min_level=2)
-        out_image = out_image.resize(_qsize_to_tuple(rg.image_viewport_size),
-                                     Image.BILINEAR)
-    if out_image.size != _qsize_to_tuple(rg.image_size):
+        viewport_box = (0, 0) + _qsize_to_tuple(rg.render_viewport.size())
+        image_box = (0, 0) + _qsize_to_tuple(rg.image_draw_rect.size())
+        # This is somewhat lengthy, but there seems to be no way to specify
+        # "resize with the following scale" command for PIL.Image.  Without it
+        # the scale is inferred from the original and the resulting sizes and
+        # any rounding in render_viewport <-> image_viewport may adjust the
+        # ratio.
+        render_canvas = (render_canvas
+                         .crop(viewport_box)
+                         .resize(_qsize_to_tuple(rg.image_viewport.size()),
+                                 Image.BILINEAR)
+                         .crop(image_box))
+    if render_canvas.size != _qsize_to_tuple(rg.image_size):
         logger.log("Cropping image viewport (%s) to image size (%s)" %
-                   (rg.image_viewport_size, rg.image_size),
+                   (rg.image_draw_rect.size(), rg.image_size),
                    min_level=2)
-        out_image = out_image.crop((0, 0) + _qsize_to_tuple(rg.image_size))
-    return out_image
+        crop_box = (0, 0) + _qsize_to_tuple(rg.image_size)
+        render_canvas = render_canvas.crop(crop_box)
+    return render_canvas
 
 
 def render_qwebpage(web_page, logger=None, width=None, height=None,
@@ -377,47 +388,78 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
     # - webpage cliprect -> vector resizing -> render viewport
     # - render viewport -> raster resizing -> image viewport
     # - image viewport -> (un-)cropping -> image size
-    web_clip_rect = QRect(QPoint(0, 0), web_viewport_size)
+    web_viewport = QRect(QPoint(0, 0), web_viewport_size)
     if img_width is None:
-        img_width = web_viewport_size.width()
+        img_width = web_viewport.width()
         ratio = 1.0
     else:
-        if img_width == 0 or web_viewport_size.width() == 0:
+        if img_width == 0 or web_viewport.width() == 0:
             ratio = 1.0
         else:
-            ratio = img_width / float(web_viewport_size.width())
+            ratio = img_width / float(web_viewport.width())
     if img_height is None:
-        img_height = round(web_viewport_size.height() * ratio)
+        img_height = round(web_viewport.height() * ratio)
+    image_size = QSize(img_width, img_height)
 
-    img_viewport_size = web_clip_rect.size() * ratio
+    image_viewport = QRect(QPoint(0, 0), web_viewport.size() * ratio)
     if scale_method is None:
         scale_method = defaults.PNG_SCALE_METHOD
     if scale_method == 'vector':
-        render_viewport_size = img_viewport_size
+        render_viewport = image_viewport
     elif scale_method == 'raster':
-        render_viewport_size = web_clip_rect.size()
+        render_viewport = web_viewport
     else:
         raise ValueError(
             "Invalid scale method (must be 'vector' or 'raster'): %s" %
             str(scale_method))
 
+    if image_size.height() >= image_viewport.height():
+        image_draw_rect = image_viewport
+        web_draw_rect = web_viewport
+        render_draw_rect = render_viewport
+    else:
+        image_draw_rect = image_viewport.intersected(
+            QRect(QPoint(0, 0), image_size))
+        render_draw_rect = transform_rect(
+            image_draw_rect, src=image_viewport, dst=render_viewport)
+        web_draw_rect = transform_rect(
+            image_draw_rect, src=image_viewport, dst=web_viewport)
+
     tile_maxsize = defaults.TILE_MAXSIZE
-    tile_hsize = min(tile_maxsize, render_viewport_size.width())
-    tile_vsize = min(tile_maxsize, render_viewport_size.height())
-    htiles = 1 + (render_viewport_size.width() - 1) // tile_hsize
-    vtiles = 1 + (render_viewport_size.height() - 1) // tile_vsize
+    tile_hsize = min(tile_maxsize, render_draw_rect.width())
+    tile_vsize = min(tile_maxsize, render_draw_rect.height())
+    htiles = 1 + (render_draw_rect.width() - 1) // tile_hsize
+    vtiles = 1 + (render_draw_rect.height() - 1) // tile_vsize
     return RenderGeometry(
         # This reads more or less as a rendering pipeline.
-        web_viewport=QRect(QPoint(0, 0), web_viewport_size),
-        web_clip_rect=web_clip_rect,
-        render_viewport=QRect(QPoint(0, 0), render_viewport_size),
-        image_viewport_size=img_viewport_size,
-        image_size=QSize(img_width, img_height),
+        web_viewport=web_viewport,
+        render_viewport=render_viewport,
+        image_viewport=image_viewport,
+
+        web_draw_rect=web_draw_rect,
+        render_draw_rect=render_draw_rect,
+        image_draw_rect=image_draw_rect,
 
         # Tiling configuration.
+        render_canvas_size=render_draw_rect.size(),
         render_device_size=QSize(tile_hsize, tile_vsize),
+        image_size=image_size,
+
         horizontal_tile_count=htiles,
         vertical_tile_count=vtiles)
+
+
+def transform_rect(rect, src, dst):
+    if src == dst:
+        return rect
+    else:
+        trans = QTransform()
+        res = QTransform.quadToQuad(
+            QPolygonF(QRectF(src))[:4], QPolygonF(QRectF(dst))[:4], trans)
+        if not res:
+            raise ValueError("Cannot create a transform")
+        return (trans.mapRect(QRectF(rect)).adjusted(-1, -1, 1, 1)
+                .toAlignedRect().intersected(dst))
 
 
 class _DummyLogger(object):
