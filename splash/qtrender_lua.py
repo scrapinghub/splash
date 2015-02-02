@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import os
 import json
 import functools
 import itertools
@@ -18,10 +17,7 @@ from splash.lua_runner import (
     AsyncCommand
 )
 from splash.qtrender import RenderScript, stop_on_error
-from splash.lua import (
-    get_main,
-    get_main_sandboxed,
-    run_in_sandbox)
+from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har
 from splash.render_options import BadOption
 from splash.utils import truncated, BinaryCapsule

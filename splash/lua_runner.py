@@ -42,11 +42,9 @@ class BaseScriptRunner(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    default_min_log_level = 2
     result = ''
     _START_CMD = '__START__'
     _waiting_for_result_id = _START_CMD
-
 
     def __init__(self, lua, log, sandboxed):
         """

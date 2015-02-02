@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+
 from splash.lua import lua2python, python2lua, get_new_runtime
 
 
