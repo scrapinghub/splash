@@ -455,7 +455,7 @@ class RenderPngTest(Base.RenderTest):
 
     def assertImagesEqual(self, img1, img2):
         diffbox = ImageChops.difference(img1, img2).getbbox()
-        self.assertIsNone(diffbox, ("Images differ in region %s" % diffbox))
+        self.assertIsNone(diffbox, ("Images differ in region %s" % (diffbox,)))
 
 
 class RenderJsonTest(Base.RenderTest):
