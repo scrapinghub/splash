@@ -377,6 +377,7 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
     # - webpage cliprect -> vector resizing -> render viewport
     # - render viewport -> raster resizing -> image viewport
     # - image viewport -> (un-)cropping -> image size
+    web_clip_rect = QRect(QPoint(0, 0), web_viewport_size)
     if img_width is None:
         img_width = web_viewport_size.width()
         ratio = 1.0
@@ -386,23 +387,15 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
         else:
             ratio = img_width / float(web_viewport_size.width())
     if img_height is None:
-        img_height = int(web_viewport_size.height() * ratio)
+        img_height = round(web_viewport_size.height() * ratio)
 
-    if img_height < web_viewport_size.height() * ratio:
-        # Output image will be clipped by height, let's propagate this clipping
-        # to the input region.
-        web_clip_size = QSize(web_viewport_size.width(),
-                              img_height / ratio)
-    else:
-        web_clip_size = web_viewport_size
-
-    img_viewport_size = web_clip_size * ratio
+    img_viewport_size = web_clip_rect.size() * ratio
     if scale_method is None:
         scale_method = defaults.PNG_SCALE_METHOD
     if scale_method == 'vector':
         render_viewport_size = img_viewport_size
     elif scale_method == 'raster':
-        render_viewport_size = web_clip_size
+        render_viewport_size = web_clip_rect.size()
     else:
         raise ValueError(
             "Invalid scale method (must be 'vector' or 'raster'): %s" %
@@ -415,8 +408,8 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
     vtiles = 1 + (render_viewport_size.height() - 1) // tile_vsize
     return RenderGeometry(
         # This reads more or less as a rendering pipeline.
-        web_viewport_size=web_viewport_size,
-        web_clip_rect=QRect(QPoint(0, 0), web_clip_size),
+        web_viewport=QRect(QPoint(0, 0), web_viewport_size),
+        web_clip_rect=web_clip_rect,
         render_viewport=QRect(QPoint(0, 0), render_viewport_size),
         image_viewport_size=img_viewport_size,
         image_size=QSize(img_width, img_height),
