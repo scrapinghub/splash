@@ -135,7 +135,8 @@ def lua_runonce(script, timeout=60., **kwargs):
                    and will be available via ``splash.args``.
 
     """
-    with SplashServer() as s:
+    with SplashServer(extra_args=['--disable-lua-sandbox',
+                                  '--allowed-schemes=file,http,https', ]) as s:
         params = {'lua_source': script}
         params.update(kwargs)
         resp = requests.get(s.url('execute'), params=params, timeout=timeout)
@@ -159,28 +160,30 @@ function main(splash)
       if w == nil or h == nil then
         error('Invalid viewport size format: ' .. splash.args.viewport)
       end
-      self:set_viewport_size(tonumber(w), tonumber(h))
+      splash:set_viewport_size(tonumber(w), tonumber(h))
     end
 
     local susage = splash:get_perf_stats()
     local nrepeats = tonumber(splash.args.nrepeats)
     local render_all = splash.args.render_all or splash.args.viewport == 'full'
+    local png, err
     for i = 1, nrepeats do
-        local png, err = splash:png{width=splash.args.width,
-                                    height=splash.args.height,
-                                    render_all=render_all}
+        png, err = splash:png{width=splash.args.width,
+                              height=splash.args.height,
+                              render_all=render_all}
         assert(png, err)
     end
     local eusage = splash:get_perf_stats()
     return {
         wallclock_secs=(eusage.walltime - susage.walltime) / nrepeats,
         maxrss=eusage.maxrss,
-        cpu_secs=(eusage.cputime - susage.cputime) / nrepeats
+        cpu_secs=(eusage.cputime - susage.cputime) / nrepeats,
+        png=png,
     }
 end
     """
     return json.loads(lua_runonce(
-        f, url=url, width=width, height=height,
+        f, url=url, width=width, height=height, render_all=render_all,
         nrepeats=nrepeats, wait=wait, viewport=viewport, timeout=timeout))
 
 
