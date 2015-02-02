@@ -14,7 +14,7 @@ from twisted.python import log
 from PIL import Image
 from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
 from PyQt4.QtCore import (
-    QAbstractEventDispatcher, QVariant, QString, QObject,
+    QAbstractEventDispatcher, QByteArray, QVariant, QString, QObject,
     QDateTime, QRegExp, QSize, QRect, QPoint
 )
 from PyQt4.QtCore import QUrl
@@ -166,7 +166,7 @@ def qt2py(obj, max_depth=100):
 
     # print(obj, obj.__class__)
 
-    if isinstance(obj, QString):
+    if isinstance(obj, (QString,QByteArray)):
         return unicode(obj)
 
     if isinstance(obj, QDateTime):

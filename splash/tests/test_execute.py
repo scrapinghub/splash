@@ -553,7 +553,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "value": [1,2,'red','blue'],
+            "value": {'0': 1, '1': 2, '2': 'red', '3': 'blue'},
             "value_type": "table"}
         )
 

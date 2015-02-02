@@ -13,8 +13,7 @@ import functools
 import uuid
 from PIL import Image
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QByteArray, QUrl, QSize, QTimer, QObject, \
-                         QString, pyqtSlot
+from PyQt4.QtCore import Qt, QUrl, QSize, QTimer, QObject, pyqtSlot
 from PyQt4.QtGui import QMouseEvent, QKeyEvent
 from PyQt4.QtNetwork import QNetworkRequest
 from twisted.internet import defer
@@ -884,7 +883,7 @@ class OneShotCallbackProxy(QObject):
                                        " callback that was already used up.")
 
         self._use_up()
-        self._callback(self._qt_object_to_py_object(value))
+        self._callback(qt2py(value))
 
     @pyqtSlot(str)
     def error(self, message):
@@ -897,79 +896,6 @@ class OneShotCallbackProxy(QObject):
     def cancel(self, reason):
         self._use_up()
         self._errback("One shot callback canceled due to: %s." % reason)
-
-    def _dict_looks_like_list(self, dict_):
-        """
-        QT converts JS arrays and objects into QVariantMap, which it then
-        converts to Python dict.
-
-        The problem with this behavior is that we don't know if the dict
-        we received started life as a JS Array or a generic JS object. We
-        use a simple heuristic to determine if dict_ "looks like" a
-        list: the dict_ is a list if dict_.keys() contains all of the integers
-        in the range [0,n-1], where n is the number of keys in the dict_.
-        """
-
-        if len(dict_) == 0:
-            return False
-
-        try:
-            indices = map(int, dict_.keys())
-        except ValueError:
-            return False
-
-        if min(indices) != 0 or max(indices) != len(indices) - 1:
-            return False
-
-        return True
-
-    def _dict_to_list(self, dict_):
-        """
-        Convert a list-like dictionary to a list.
-
-        See _dict_looks_like_list().
-        """
-
-        list_ = list()
-
-        for i in range(0, len(dict_)):
-            list_.append(dict_[str(i)])
-
-        return list_
-
-    def _qt_object_to_py_object(self, qt_object):
-        """
-        Recursively convert a QT object to built-in Python types.
-
-        Raises TypeError for any type that is unsupported.
-        """
-
-        if qt_object is None or isinstance(qt_object, (float,int)):
-            # These are already built-in Python types; no conversion required.
-            py_object = qt_object
-
-        elif isinstance(qt_object, (QByteArray, QString)):
-            # Convert QT strings to Python strings.
-            py_object = str(qt_object)
-
-        elif isinstance(qt_object, dict):
-            py_object = dict()
-
-            for key, value in qt_object.iteritems():
-                converted_key = self._qt_object_to_py_object(key)
-                converted_value = self._qt_object_to_py_object(value)
-                py_object[converted_key] = converted_value
-
-            if self._dict_looks_like_list(py_object):
-                print(py_object)
-                print(py_object.keys())
-                py_object = self._dict_to_list(py_object)
-
-        else:
-            raise TypeError("Cannot convert QT type '%s' to built-in Python type."
-                            % type(qt_object))
-
-        return py_object
 
     def _timed_out(self):
         self._use_up()

@@ -477,7 +477,7 @@ an error message explaining the mistake.
     end
 
 The next example shows how to return a value from JavaScript to Lua.
-You can also return booleans, numbers, arrays, or objects.
+You can also return booleans, numbers, or objects.
 
 .. code-block:: lua
 
@@ -495,6 +495,31 @@ You can also return booleans, numbers, arrays, or objects.
         -- error is nil
 
     end
+
+Due to technical limitations of the underlying stack, passing an array
+as an argument to ``splash.resume()`` has surprising results. The array is
+treated as an object and its numeric indices are converted to string
+keys. The next example shows this behavior.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume([1, 2, 'red', 'blue']);
+                }, 3000);
+            }
+        ]])
+
+        -- value is {['0']=1, ['1']=2, ['2']='red', ['3']='blue'}
+        -- error is nil
+
+    end
+
+Nested lists inside other data structures do not display this behavior,
+only top-level lists.
 
 The next example shows error handling. If ``splash.error(…)`` is
 called instead of ``splash.resume()``, then ``value`` will be ``nil``
@@ -517,7 +542,7 @@ and ``error`` will contain the string passed to ``splash.error(…)``.
 
     end
 
-Note that your JavaScript code must either call ``splash.resume()`` or
+Your JavaScript code must either call ``splash.resume()`` or
 ``splash.error()`` exactly one time. Subsequent calls to either function
 have no effect, as shown in the next example.
 
