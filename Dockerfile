@@ -34,7 +34,7 @@ VOLUME ["/etc/splash/proxy-profiles", "/etc/splash/js-profiles", "/etc/splash/fi
 EXPOSE 8050 8051 5023
 ENTRYPOINT [ \
     "/app/bin/splash", \
-    "--adhoc_proxy_enabled",  "True", \
+    "--adhoc-proxy-enabled",  "True", \
     "--js-profiles-path", "/etc/splash/js-profiles", \
     "--filters-path", "/etc/splash/filters", \
     "--lua-package-path", "/etc/splash/lua_modules/?.lua" \
