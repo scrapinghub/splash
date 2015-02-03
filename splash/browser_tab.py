@@ -543,15 +543,20 @@ class BrowserTab(QObject):
                 }
             }
             (function () {
-                var finish = function(callback) {
-                    return function (value) {
-                        setTimeout(function () {callback(value)}, 0);
-                        setTimeout(function () {delete window["%(callback_name)s"]}, 0);
-                    };
-                };
+                var returnObject = {};
                 var splash = {
-                    'resume': finish(window["%(callback_name)s"].resume),
-                    'error': finish(window["%(callback_name)s"].error)
+                    'error': function (message) {
+                        setTimeout(function () {window["%(callback_name)s"].error(message)}, 0);
+                        setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                    },
+                    'resume': function (value) {
+                        this.set('return', value);
+                        setTimeout(function () {window["%(callback_name)s"].resume(returnObject)}, 0);
+                        setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                    },
+                    'set': function (key, value) {
+                        returnObject[key] = value;
+                    }
                 };
                 try {
                     if (typeof main === 'undefined') {
@@ -872,10 +877,6 @@ class OneShotCallbackProxy(QObject):
 
         super(OneShotCallbackProxy, self).__init__(parent)
 
-    @pyqtSlot()
-    @pyqtSlot('bool')
-    @pyqtSlot('double')
-    @pyqtSlot('QByteArray')
     @pyqtSlot('QVariantMap')
     def resume(self, value=None):
         if self._used_up:

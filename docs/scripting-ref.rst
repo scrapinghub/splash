@@ -420,9 +420,9 @@ yield until the JavaScript code tells it to resume.
   zero, which disables the timeout.
 
 **Returns:** ``value, error`` pair. When the execution is successful
-``value`` contains the JavaScript value passed to
-``splash.resume(…)``. ``value`` will be nil if no argument is passed to
-``splash.resume()``. In case of timeout or JavaScript errors ``value``
+``value`` is a table that contains the JavaScript value passed to
+``splash.resume(…)``. It also contains any additional key/value pairs
+set by ``splash.set(…)``. In case of timeout or JavaScript errors ``value``
 is ``nil`` and ``error`` contains an error message string.
 
 Examples:
@@ -446,10 +446,15 @@ function until JavaScript calls ``splash.resume()``.
             }
         ]])
 
-        -- value is nil
+        -- value is {}
         -- error is nil
 
     end
+
+``value`` is set to an empty table to indicate that nothing was returned
+from ``splash.resume``. You can use ``assert(splash:wait_for_resume(…))``
+even when JavaScript does not return a value because the empty table signifies
+success to ``assert()``.
 
 .. note::
 
@@ -457,6 +462,55 @@ function until JavaScript calls ``splash.resume()``.
     you do not include it. The first argument to this function can have any
     name you choose, of course. We will call it ``splash`` by convention in
     this documentation.
+
+The next example shows how to return a value from JavaScript to Lua.
+You can return booleans, numbers, strings, arrays, or objects.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume([1, 2, 'red', 'blue']);
+                }, 3000);
+            }
+        ]])
+
+        -- value is {return=[1, 2, 'red', 'blue']}
+        -- error is nil
+
+    end
+
+.. note::
+
+    As with :ref:`splash-evaljs`, be wary of returning objects that are
+    too large, such as the ``$`` object in jQuery, which will consume a lot
+    of time and memory to convert to a Lua result.
+
+You can also set additional key/value pairs in JavaScript with the
+``splash.set(key, value)`` function. Key/value pairs will be included
+in the ``value`` table returned to Lua. The following example demonstrates
+this.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local value, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.set("foo", "bar");
+                    splash.resume("ok");
+                }, 3000);
+            }
+        ]])
+
+        -- value is {foo="bar", return="ok"}
+        -- error is nil
+
+    end
 
 The next example shows an incorrect usage of ``splash:wait_for_resume()``:
 the JavaScript code does not contain a ``main()`` function. ``value`` is
@@ -475,51 +529,6 @@ an error message explaining the mistake.
         -- error is "error: wait_for_resume(): no main() function defined"
 
     end
-
-The next example shows how to return a value from JavaScript to Lua.
-You can also return booleans, numbers, or objects.
-
-.. code-block:: lua
-
-    function main(splash)
-
-        local value, error = splash:wait_for_resume([[
-            function main(splash) {
-                setTimeout(function () {
-                    splash.resume("Hello, world!");
-                }, 3000);
-            }
-        ]])
-
-        -- value is "Hello, world!"
-        -- error is nil
-
-    end
-
-Due to technical limitations of the underlying stack, passing an array
-as an argument to ``splash.resume()`` has surprising results. The array is
-treated as an object and its numeric indices are converted to string
-keys. The next example shows this behavior.
-
-.. code-block:: lua
-
-    function main(splash)
-
-        local value, error = splash:wait_for_resume([[
-            function main(splash) {
-                setTimeout(function () {
-                    splash.resume([1, 2, 'red', 'blue']);
-                }, 3000);
-            }
-        ]])
-
-        -- value is {['0']=1, ['1']=2, ['2']='red', ['3']='blue'}
-        -- error is nil
-
-    end
-
-Nested lists inside other data structures do not display this behavior,
-only top-level lists.
 
 The next example shows error handling. If ``splash.error(…)`` is
 called instead of ``splash.resume()``, then ``value`` will be ``nil``
@@ -600,7 +609,7 @@ explaining the timeout, and Lua will continue executing. Calling
 Note that your JavaScript code is not forceably canceled by a timeout: it may
 continue to run until Splash shuts down the entire browser context.
 
-See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`.
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-evaljs`.
 
 .. _splash-autoload:
 

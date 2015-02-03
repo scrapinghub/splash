@@ -166,7 +166,7 @@ def qt2py(obj, max_depth=100):
 
     # print(obj, obj.__class__)
 
-    if isinstance(obj, (QString,QByteArray)):
+    if isinstance(obj, QString):
         return unicode(obj)
 
     if isinstance(obj, QDateTime):

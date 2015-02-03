@@ -488,26 +488,38 @@ class WaitForResumeTest(BaseLuaRenderTest):
         return self.request_lua("""
         function main(splash)
             local value, error = splash:wait_for_resume([[%s]], %.1f)
-            local result = {value=value, error=error}
+            local result = {}
 
             if error == nil then
-                result["value_type"] = type(value)
+                result["return"] = value["return"]
+                result["return_type"] = type(value["return"])
+            else
+                result["error"] = error
             end
 
             return result
         end
         """ % (js, timeout))
 
-    def test_return_nil(self):
+    def test_return_undefined(self):
         resp = self._wait_for_resume_request("""
             function main(splash) {
                 splash.resume();
             }
         """)
         self.assertStatusCode(resp, 200)
-        # In Lua, a `nil` table value means that the corresponding key isn't
-        # stored in the table, so we don't get a "value" key in the response.
-        self.assertEqual(resp.json(), {"value_type": "nil"})
+        # A Lua table with a nil value is equivalent to not setting that
+        # key/value pair at all, so there is no "return" key in the response.
+        self.assertEqual(resp.json(), {"return_type": "nil"})
+
+    def test_return_null(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(null);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"return": "", "return_type": "string"})
 
     def test_return_string(self):
         resp = self._wait_for_resume_request("""
@@ -516,7 +528,16 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+        self.assertEqual(resp.json(), {"return": "ok", "return_type": "string"})
+
+    def test_return_non_ascii_string(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume("你好");
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"return": u"你好", "return_type": "string"})
 
     def test_return_int(self):
         resp = self._wait_for_resume_request("""
@@ -525,7 +546,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": 42, "value_type": "number"})
+        self.assertEqual(resp.json(), {"return": 42, "return_type": "number"})
 
     def test_return_float(self):
         resp = self._wait_for_resume_request("""
@@ -534,7 +555,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": 1234.5, "value_type": "number"})
+        self.assertEqual(resp.json(), {"return": 1234.5, "return_type": "number"})
 
     def test_return_boolean(self):
         resp = self._wait_for_resume_request("""
@@ -543,7 +564,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": True, "value_type": "boolean"})
+        self.assertEqual(resp.json(), {"return": True, "return_type": "boolean"})
 
     def test_return_list(self):
         resp = self._wait_for_resume_request("""
@@ -553,8 +574,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "value": {'0': 1, '1': 2, '2': 'red', '3': 'blue'},
-            "value_type": "table"}
+            "return": [1, 2, 'red', 'blue'],
+            "return_type": "table"}
         )
 
     def test_return_dict(self):
@@ -565,25 +586,24 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "value": {'stomach':'empty', 'brain':'crazy'},
-            "value_type": "table"}
+            "return": {'stomach':'empty', 'brain':'crazy'},
+            "return_type": "table"}
         )
 
-    @pytest.mark.xfail
-    def test_cannot_return_function(self):
-        """
-        If you pass a function to resume(), then Lua sees an empty object.
-        I don't think this is a great behavior. It should either error out
-        or show a stringified function.
-        """
+    def test_return_additional_keys(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local value, error = splash:wait_for_resume([[
+                function main(splash) {
+                    splash.set("foo", "bar");
+                    splash.resume("ok");
+                }
+            ]])
 
-        resp = self._wait_for_resume_request("""
-            function main(splash) {
-                splash.resume(splash.resume);
-            }
-        """)
+            return value
+        end""")
         self.assertStatusCode(resp, 200)
-        self.assertIn('error', resp.json())
+        self.assertEqual(resp.json(), {'foo': 'bar', 'return': 'ok'})
 
     def test_delayed_return(self):
         resp = self._wait_for_resume_request("""
@@ -594,7 +614,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+        self.assertEqual(resp.json(), {"return": "ok", "return_type": "string"})
 
     def test_error_string(self):
         resp = self._wait_for_resume_request("""
@@ -676,7 +696,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+        self.assertEqual(resp.json(), {"return": "ok", "return_type": "string"})
 
 
 class RunjsTest(BaseLuaRenderTest):
