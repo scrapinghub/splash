@@ -34,7 +34,7 @@ def parse_opts():
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
     op.add_option("--adhoc-proxy-enabled",default=defaults.ADHOC_PROXY_ENABLED,
-        help="adhoc proxy enabled (default: %default)")
+        help="adhoc proxy enabled (default: %default).If --proxy-profiles-path exist, then --adhoc-proxy-enabled always be False;")
     op.add_option("--js-profiles-path",
         help="path to a folder with javascript profiles")
     op.add_option("--no-js-cross-domain-access",
