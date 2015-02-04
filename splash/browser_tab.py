@@ -555,7 +555,7 @@ class BrowserTab(QObject):
                         }, 0);
                     },
                     'resume': function (value) {
-                        this.set('value', value);
+                        returnObject['value'] = value;
                         setTimeout(function () {
                             window["%(callback_name)s"].resume(returnObject);
                             deleteCallbackLater();
@@ -897,7 +897,7 @@ class OneShotCallbackProxy(QObject):
         self._callback(qt2py(value))
 
     @pyqtSlot(str, bool)
-    def error(self, message, raise_):
+    def error(self, message, raise_=False):
         if self._used_up:
             raise OneShotCallbackError("error() called on a one shot" \
                                        " callback that was already used up.")

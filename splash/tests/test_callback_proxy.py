@@ -20,13 +20,17 @@ class OneShotCallbackProxyTest(unittest.TestCase):
         # to count how many times our callback and errback are called.
         self._callback_count = 0
         self._errback_count = 0
+        self._raise_count = 0
 
     def _make_proxy(self):
         def callback(val):
             self._callback_count += 1
 
-        def errback(message):
+        def errback(message, raise_):
             self._errback_count += 1
+
+            if raise_:
+                raise Exception()
 
         return OneShotCallbackProxy(None, callback, errback, timeout=0)
 
@@ -39,6 +43,15 @@ class OneShotCallbackProxyTest(unittest.TestCase):
     def test_can_error_once(self):
         cb_proxy = self._make_proxy()
         cb_proxy.error('not ok')
+        self.assertEqual(self._callback_count, 0)
+        self.assertEqual(self._errback_count, 1)
+
+    def test_can_error_with_raise(self):
+        cb_proxy = self._make_proxy()
+
+        with self.assertRaises(Exception):
+            cb_proxy.error('not ok', raise_=True)
+
         self.assertEqual(self._callback_count, 0)
         self.assertEqual(self._errback_count, 1)
 
