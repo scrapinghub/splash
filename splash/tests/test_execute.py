@@ -490,7 +490,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             local result, error = splash:wait_for_resume([[%s]], %.1f)
             local response = {}
 
-            if error == nil then
+            if result ~= nil then
                 response["value"] = result["value"]
                 response["value_type"] = type(result["value"])
             else
@@ -623,7 +623,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"error": "error: not ok"})
+        self.assertEqual(resp.json(), {"error": "JavaScript error: not ok"})
 
     def test_timed_out(self):
         resp = self._wait_for_resume_request("""
@@ -633,8 +633,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 2500);
             }
         """, timeout=0.5)
-        expected_error = 'error: One shot callback timed out while waiting' \
-                         ' for resume() or error().'
+        expected_error = 'JavaScript error: One shot callback timed out' \
+                         ' while waiting for resume() or error().'
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"error": expected_error})
 
@@ -646,9 +646,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 500);
             }
         """)
-        expected_error = 'error: wait_for_resume(): no main() function defined'
-        self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"error": expected_error})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('no main() function defined', resp.text)
 
     def test_js_syntax_error(self):
         resp = self._wait_for_resume_request("""
@@ -659,10 +658,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 500);
             }
         """)
-        json = resp.json()
-        self.assertStatusCode(resp, 200)
-        self.assertIn('error', json)
-        self.assertIn('SyntaxError', json['error'])
+        self.assertStatusCode(resp, 400)
+        self.assertIn('SyntaxError', resp.text)
 
     def test_navigation_cancels_resume(self):
         resp = self._wait_for_resume_request("""

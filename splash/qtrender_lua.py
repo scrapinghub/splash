@@ -59,7 +59,7 @@ class _ImmediateResult(object):
         self.value = value
 
 
-def command(async=False, table_argument=False, multiple_return_values=False):
+def command(async=False, can_raise_async=False, table_argument=False, multiple_return_values=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
         if not table_argument:
@@ -71,6 +71,7 @@ def command(async=False, table_argument=False, multiple_return_values=False):
         )
         meth._is_command = True
         meth._is_async = async
+        meth._can_raise_async = can_raise_async
         meth._multiple_return_values = multiple_return_values
         return meth
     return decorator
@@ -222,6 +223,7 @@ class Splash(object):
                     'is_async': getattr(value, '_is_async'),
                     'returns_error_flag': getattr(value, '_returns_error_flag', False),
                     'multiple_return_values': getattr(value, '_multiple_return_values', False),
+                    'can_raise_async': getattr(value, '_can_raise_async', False),
                 })
         self.commands = python2lua(self.lua, commands)
 
@@ -315,15 +317,15 @@ class Splash(object):
         except JsError as e:
             return [None, e.args[0]]
 
-    @command(async=True)
+    @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
         cmd_id = next(self._command_ids)
 
         def callback(result):
             self._return(cmd_id, self.python2lua(result))
 
-        def errback(msg):
-            self._return(cmd_id, None, "error: %s" % msg)
+        def errback(msg, raise_):
+            self._return(cmd_id, None, "JavaScript error: %s" % msg, raise_)
 
         return _AsyncBrowserCommand(cmd_id, "wait_for_resume", dict(
             js_source=snippet,

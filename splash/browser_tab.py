@@ -539,20 +539,27 @@ class BrowserTab(QObject):
                 eval("%(script_text)s");
             } catch (err) {
                 var main = function (splash) {
-                    splash.error(err);
+                    throw err;
                 }
             }
             (function () {
                 var returnObject = {};
+                var deleteCallbackLater = function () {
+                    setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                }
                 var splash = {
                     'error': function (message) {
-                        setTimeout(function () {window["%(callback_name)s"].error(message)}, 0);
-                        setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                        setTimeout(function () {
+                            window["%(callback_name)s"].error(message, false);
+                            deleteCallbackLater();
+                        }, 0);
                     },
                     'resume': function (value) {
                         this.set('value', value);
-                        setTimeout(function () {window["%(callback_name)s"].resume(returnObject)}, 0);
-                        setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                        setTimeout(function () {
+                            window["%(callback_name)s"].resume(returnObject);
+                            deleteCallbackLater();
+                        }, 0);
                     },
                     'set': function (key, value) {
                         returnObject[key] = value;
@@ -564,7 +571,10 @@ class BrowserTab(QObject):
                     }
                     main(splash);
                 } catch (err) {
-                    splash.error(err);
+                    setTimeout(function () {
+                        window["%(callback_name)s"].error(err, true);
+                        deleteCallbackLater();
+                    }, 0);
                 }
             })();
         })();undefined
@@ -886,22 +896,24 @@ class OneShotCallbackProxy(QObject):
         self._use_up()
         self._callback(qt2py(value))
 
-    @pyqtSlot(str)
-    def error(self, message):
+    @pyqtSlot(str, bool)
+    def error(self, message, raise_):
         if self._used_up:
             raise OneShotCallbackError("error() called on a one shot" \
                                        " callback that was already used up.")
+
         self._use_up()
-        self._errback(str(message))
+        self._errback(message, raise_)
 
     def cancel(self, reason):
         self._use_up()
-        self._errback("One shot callback canceled due to: %s." % reason)
+        self._errback("One shot callback canceled due to: %s." % reason,
+                      raise_=False)
 
     def _timed_out(self):
         self._use_up()
         self._errback("One shot callback timed out while waiting for" \
-                      " resume() or error().")
+                      " resume() or error().", raise_=False)
 
     def _use_up(self):
         self._used_up = True
