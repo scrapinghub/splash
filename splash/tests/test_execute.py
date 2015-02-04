@@ -487,17 +487,17 @@ class WaitForResumeTest(BaseLuaRenderTest):
     def _wait_for_resume_request(self, js, timeout=1):
         return self.request_lua("""
         function main(splash)
-            local value, error = splash:wait_for_resume([[%s]], %.1f)
-            local result = {}
+            local result, error = splash:wait_for_resume([[%s]], %.1f)
+            local response = {}
 
             if error == nil then
-                result["return"] = value["return"]
-                result["return_type"] = type(value["return"])
+                response["value"] = result["value"]
+                response["value_type"] = type(result["value"])
             else
-                result["error"] = error
+                response["error"] = error
             end
 
-            return result
+            return response
         end
         """ % (js, timeout))
 
@@ -509,8 +509,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         # A Lua table with a nil value is equivalent to not setting that
-        # key/value pair at all, so there is no "return" key in the response.
-        self.assertEqual(resp.json(), {"return_type": "nil"})
+        # key/value pair at all, so there is no "result" key in the response.
+        self.assertEqual(resp.json(), {"value_type": "nil"})
 
     def test_return_null(self):
         resp = self._wait_for_resume_request("""
@@ -519,7 +519,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": "", "return_type": "string"})
+        self.assertEqual(resp.json(), {"value": "", "value_type": "string"})
 
     def test_return_string(self):
         resp = self._wait_for_resume_request("""
@@ -528,7 +528,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": "ok", "return_type": "string"})
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
     def test_return_non_ascii_string(self):
         resp = self._wait_for_resume_request("""
@@ -537,7 +537,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": u"你好", "return_type": "string"})
+        self.assertEqual(resp.json(), {"value": u"你好", "value_type": "string"})
 
     def test_return_int(self):
         resp = self._wait_for_resume_request("""
@@ -546,7 +546,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": 42, "return_type": "number"})
+        self.assertEqual(resp.json(), {"value": 42, "value_type": "number"})
 
     def test_return_float(self):
         resp = self._wait_for_resume_request("""
@@ -555,7 +555,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": 1234.5, "return_type": "number"})
+        self.assertEqual(resp.json(), {"value": 1234.5, "value_type": "number"})
 
     def test_return_boolean(self):
         resp = self._wait_for_resume_request("""
@@ -564,7 +564,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": True, "return_type": "boolean"})
+        self.assertEqual(resp.json(), {"value": True, "value_type": "boolean"})
 
     def test_return_list(self):
         resp = self._wait_for_resume_request("""
@@ -574,8 +574,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "return": [1, 2, 'red', 'blue'],
-            "return_type": "table"}
+            "value": [1, 2, 'red', 'blue'],
+            "value_type": "table"}
         )
 
     def test_return_dict(self):
@@ -586,24 +586,24 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "return": {'stomach':'empty', 'brain':'crazy'},
-            "return_type": "table"}
+            "value": {'stomach':'empty', 'brain':'crazy'},
+            "value_type": "table"}
         )
 
     def test_return_additional_keys(self):
         resp = self.request_lua("""
         function main(splash)
-            local value, error = splash:wait_for_resume([[
+            local result, error = splash:wait_for_resume([[
                 function main(splash) {
                     splash.set("foo", "bar");
                     splash.resume("ok");
                 }
             ]])
 
-            return value
+            return result
         end""")
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {'foo': 'bar', 'return': 'ok'})
+        self.assertEqual(resp.json(), {'foo': 'bar', 'value': 'ok'})
 
     def test_delayed_return(self):
         resp = self._wait_for_resume_request("""
@@ -614,7 +614,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": "ok", "return_type": "string"})
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
     def test_error_string(self):
         resp = self._wait_for_resume_request("""
@@ -696,7 +696,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             }
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"return": "ok", "return_type": "string"})
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
 
 class RunjsTest(BaseLuaRenderTest):

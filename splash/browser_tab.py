@@ -550,7 +550,7 @@ class BrowserTab(QObject):
                         setTimeout(function () {delete window["%(callback_name)s"]}, 0);
                     },
                     'resume': function (value) {
-                        this.set('return', value);
+                        this.set('value', value);
                         setTimeout(function () {window["%(callback_name)s"].resume(returnObject)}, 0);
                         setTimeout(function () {delete window["%(callback_name)s"]}, 0);
                     },
