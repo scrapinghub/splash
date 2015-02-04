@@ -34,14 +34,10 @@ end
 --
 local function raises_async(func)
   return function(...)
-    print("raises_async","calling func(...)")
     ok, err, raise = func(...)
-    print("raises_async",ok,err,raise)
     if ok == nil and raise then
-      print("raising error")
       error(err, 2)
     else
-      print("sending ok,err")
       return ok, err
     end
   end
