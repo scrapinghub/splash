@@ -66,7 +66,10 @@ class RenderOptions(object):
         value = self.data.get(name)
         if value is not None:
             if type is not None:
-                value = type(value)
+                if type is str and isinstance(value, unicode):
+                    value = value.encode('utf8')
+                else:
+                    value = type(value)
             if range is not None and not (range[0] <= value <= range[1]):
                 raise BadOption("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
             return value
