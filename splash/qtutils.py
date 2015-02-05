@@ -2,20 +2,23 @@
 """ Utils for working with QWebKit objects.
 """
 from __future__ import absolute_import
+
+import array
+import functools
+import itertools
+import struct
 import sys
 import time
-import itertools
-import functools
-import struct
-import array
-from math import floor, ceil
+from abc import ABCMeta, abstractmethod, abstractproperty
+from cStringIO import StringIO
+from math import ceil, floor
 
 from twisted.python import log
 from PIL import Image
 from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion, QTransform, QPolygonF
 from PyQt4.QtCore import (
     QAbstractEventDispatcher, QVariant, QString, QObject,
-    QDateTime, QRegExp, QSize, QRect, QPoint, QRectF, 
+    QDateTime, QRegExp, QSize, QRect, QPoint, QRectF, QBuffer, Qt
 )
 from PyQt4.QtCore import QUrl
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply
@@ -253,8 +256,180 @@ def swap_byte_order_i32(buf):
     return arr.tostring()
 
 
-def _render_qwebpage_impl(web_page, logger, render_geometry):
-    rg = render_geometry
+def render_qwebpage(web_page, logger=None, width=None, height=None,
+                    scale_method=None):
+    """
+    Render QWebPage into a WrappedImage.
+
+    :type web_page: PyQt4.QtWebKit.QWebPage
+    :type logger: splash.browser_tab._BrowserTabLogger
+    :type width: int
+    :type height: int
+    :type scale_method: str {'raster', 'vector'}
+    :rtype: WrappedImage
+
+    """
+    # Overall rendering pipeline looks as follows:
+    # 1. render_qwebpage
+    # 2. render_qwebpage_raster/-vector
+    # 3. render_qwebpage_impl
+    # 4. render_qwebpage_full/-tiled
+    if logger is None:
+        logger = _DummyLogger()
+    if scale_method is None:
+        scale_method = defaults.PNG_SCALE_METHOD
+
+    web_viewport = QRect(QPoint(0, 0), web_page.viewportSize())
+    img_viewport, img_size = _calculate_image_parameters(
+        web_viewport, width, height)
+    logger.log("png render: output size=%s, viewport=%s" %
+               (img_size, img_viewport), min_level=2)
+
+    if scale_method == 'vector':
+        return _render_qwebpage_vector(
+            web_page, logger,
+            in_viewport=web_viewport, out_viewport=img_viewport,
+            image_size=img_size)
+    elif scale_method == 'raster':
+        return _render_qwebpage_raster(
+            web_page, logger,
+            in_viewport=web_viewport, out_viewport=img_viewport,
+            image_size=img_size)
+    else:
+        raise ValueError(
+            "Invalid scale method (must be 'vector' or 'raster'): %s" %
+            str(scale_method))
+
+
+def _render_qwebpage_vector(web_page, logger,
+                            in_viewport, out_viewport, image_size):
+    """
+    Render a webpage using vector rescale method.
+
+    :param in_viewport: region of the webpage to render from
+    :param out_viewport: region of the image to render to
+    :param image_size: size of the resulting image
+
+    :type in_viewport: QRect
+    :type out_viewport: QRect
+    :type image_size: QSize
+
+    """
+    web_rect = QRect(in_viewport)
+    render_rect = QRect(out_viewport)
+    canvas_size = QSize(image_size)
+
+    logger.log("png render: rendering %s of the web page" % web_rect,
+               min_level=2)
+    logger.log("png render: rendering into %s of the canvas" % render_rect,
+               min_level=2)
+    logger.log("png render: canvas size=%s" % canvas_size, min_level=2)
+
+    to_paint = render_rect.intersected(QRect(QPoint(0, 0), canvas_size))
+    # QPainter has several issues when its rendering area is more than 2**15 in
+    # any dimension.
+    need_tiling = max(to_paint.width(), to_paint.height()) >= (1 << 15)
+    if need_tiling:
+        logger.log("png render: draw region too large, rendering tile-by-tile",
+                   min_level=2)
+        return _render_qwebpage_tiled(web_page, logger,
+                                      web_rect, render_rect, canvas_size)
+    else:
+        logger.log("png render: rendering webpage in one step", min_level=2)
+        return _render_qwebpage_full(web_page, logger,
+                                     web_rect, render_rect, canvas_size)
+
+
+def _render_qwebpage_raster(web_page, logger,
+                            in_viewport, out_viewport, image_size):
+    """
+    Render a webpage rescaling pixel-wise if necessary.
+
+    :param in_viewport: region of the webpage to render from
+    :param out_viewport: region of the image to render to
+    :param image_size: size of the resulting image
+
+    :type in_viewport: QRect
+    :type out_viewport: QRect
+    :type image_size: QSize
+
+    """
+    render_rect = QRect(in_viewport)
+    if in_viewport.size() == out_viewport.size():
+        # If no resizing is requested, we can make canvas of the size of the
+        # output image to avoid the final cropping step.
+        canvas_size = QSize(image_size)
+    else:
+        canvas_size = QSize(in_viewport.size())
+
+    if image_size.height() < out_viewport.height():
+        logger.log("png render: image is trimmed vertically")
+        hcut = image_size.height()
+        if in_viewport.size() == out_viewport.size():
+            # If no resizing then we need to render exactly the requested
+            # number of pixels vertically.
+            hrender = hcut
+        else:
+            # If there's a resize, there will be interpolation.  We must ensure
+            # that both pixels that contribute to the color of the last row of
+            # the resulting image are rendered.
+            h0 = in_viewport.height()
+            h1 = out_viewport.height()
+            hrender = min(ceil(h0 * (hcut - 0.5) / float(h1) + 0.5), h0)
+        render_rect = QRect(QPoint(0, 0),
+                            QSize(in_viewport.width(), hrender))
+        logger.log("png render: image is trimmed vertically,"
+                   " need to render %s pixel(-s)" % hrender, min_level=2)
+
+    # To perform pixel-wise rescaling, we first render the image without
+    # rescaling via vector-based method and resize/crop afterwards.
+    canvas = _render_qwebpage_vector(
+        web_page, logger,
+        in_viewport=render_rect, out_viewport=render_rect,
+        image_size=canvas_size)
+    if in_viewport.size() != out_viewport.size():
+        logger.log("Scaling canvas (%s) to image viewport (%s)" %
+                   (canvas.size, out_viewport.size()), min_level=2)
+        canvas.resize(out_viewport.size())
+    if canvas.size != image_size:
+        logger.log("Cropping canvas (%s) to image size (%s)" %
+                   (canvas.size, image_size), min_level=2)
+        canvas.crop(QRect(QPoint(0, 0), image_size))
+    return canvas
+
+
+def _render_qwebpage_full(web_page, logger,
+                          web_rect, render_rect, canvas_size):
+    """Render web page in one step."""
+    if max(render_rect.width(), render_rect.height()) >= (1 << 15):
+        # If this condition is true, this function may get stuck.
+        raise ValueError("Rendering region is too large to be drawn"
+                         " in one step, use tile-by-tile renderer instead")
+    canvas = QImage(canvas_size, QImage.Format_ARGB32)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    try:
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.TextAntialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setWindow(web_rect)
+        painter.setViewport(render_rect)
+        painter.setClipRect(web_rect)
+        web_page.mainFrame().render(painter)
+    finally:
+        painter.end()
+    return WrappedQImage(canvas)
+
+
+def _render_qwebpage_tiled(web_page, logger,
+                           web_rect, render_rect, canvas_size):
+    """
+    Render web page tile-by-tile.
+
+    This function works around bugs in QPaintEngine that occur when render_rect
+    is larger than 32k pixels in either dimension.
+
+    """
     # One bug is worked around by rendering the page one tile at a time onto a
     # small-ish temporary image.  The magic happens in viewport-window
     # transformation: painter viewport is moved appropriately so that rendering
@@ -266,129 +441,62 @@ def _render_qwebpage_impl(web_page, logger, render_geometry):
     # a sudden drawImage simply stops drawing anything.  This is a known
     # limitation of Qt painting system where coordinates are signed short ints.
     # The simplest workaround that comes to mind is to use pillow for pasting.
-    direct_render = rg.render_canvas_size == rg.render_device_size
-    if not direct_render:
-        logger.log("png render: draw region too large, rendering tile-by-tile",
-                   min_level=2)
-        render_canvas = Image.new(
-            mode='RGBA', size=_qsize_to_tuple(rg.render_canvas_size))
-    else:
-        # If tiled rendering is not used, render_canvas will be created from
-        # render_device after the first (and the only) rendering operation.
-        # Not preallocating render_canvas will save some memory.
-        logger.log("png render: rendering webpage in one step", min_level=2)
-        render_canvas = None
+    tile_conf = _calculate_tiling(
+        to_paint=render_rect.intersected(QRect(QPoint(0, 0), canvas_size)))
 
-    render_device = QImage(rg.render_device_size, QImage.Format_ARGB32)
-    render_device.fill(0)
-    painter = QPainter(render_device)
+    canvas = Image.new('RGBA', _qsize_to_tuple(canvas_size))
+
+    tile_qimage = QImage(tile_conf['tile_size'], QImage.Format_ARGB32)
+    tile_qimage.fill(0)
+    painter = QPainter(tile_qimage)
     try:
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.TextAntialiasing, True)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.setWindow(rg.web_viewport)
-        painter.setViewport(rg.render_viewport)
-        painter.setClipRect(rg.web_draw_rect)
-        painter_viewport = rg.render_viewport
-        for i in xrange(rg.horizontal_tile_count):
-            left = i * render_device.width()
-            for j in xrange(rg.vertical_tile_count):
-                top = j * render_device.height()
-                painter.setViewport(painter_viewport.translated(-left, -top))
+        painter.setWindow(web_rect)
+        # painter.setViewport here seems superfluous (actual viewport is being
+        # set inside the loop below), but it is not.  For some reason, if
+        # viewport is reset after setClipRect, clipping rectangle is adjusted,
+        # which is not what we want.
+        painter.setViewport(render_rect)
+        painter.setClipRect(web_rect)
+        for i in xrange(tile_conf['horizontal_count']):
+            left = i * tile_qimage.width()
+            for j in xrange(tile_conf['vertical_count']):
+                top = j * tile_qimage.height()
+                painter.setViewport(render_rect.translated(-left, -top))
                 logger.log("Rendering with viewport=%s"
                            % painter.viewport(), min_level=2)
 
                 web_page.mainFrame().render(painter)
-                pil_tile_image = qimage_to_pil_image(render_device)
-                if direct_render:
-                    render_canvas = pil_tile_image
-                    break
+                tile_image = qimage_to_pil_image(tile_qimage)
 
                 # If this is the bottommost tile, its bottom may have stuff
                 # left over from rendering the previous tile.  Make sure these
-                # leftovers don't garble the resulting image which may be
-                # taller than render_draw_rect because of "height=" option.
-                rendered_vsize = min(rg.render_draw_rect.height() - top,
-                                     render_device.height())
-                if rendered_vsize < render_device.height():
-                    box = (0, 0, render_device.width(), rendered_vsize)
-                    pil_tile_image = pil_tile_image.crop(box)
+                # leftovers don't garble the bottom of the canvas which can be
+                # larger than render_rect because of "height=" option.
+                rendered_vsize = min(render_rect.height() - top,
+                                     tile_qimage.height())
+                if rendered_vsize < tile_qimage.height():
+                    box = (0, 0, tile_qimage.width(), rendered_vsize)
+                    tile_image = tile_image.crop(box)
 
                 logger.log("Pasting rendered tile to coords: %s" %
                            ((left, top),), min_level=2)
-                render_canvas.paste(pil_tile_image, (left, top))
+                canvas.paste(tile_image, (left, top))
     finally:
         # It is important to end painter explicitly in python code, because
         # Python finalizer invocation order, unlike C++ destructors, is not
         # deterministic and there is a possibility of image's finalizer running
         # before painter's which may break tests and kill your cat.
         painter.end()
-
-    if render_canvas.size != _qsize_to_tuple(rg.image_draw_rect.size()):
-        logger.log("Scaling render viewport (%s) to image viewport (%s)" %
-                   (rg.render_draw_rect.size(), rg.image_draw_rect.size()),
-                   min_level=2)
-        viewport_box = (0, 0) + _qsize_to_tuple(rg.render_viewport.size())
-        image_box = (0, 0) + _qsize_to_tuple(rg.image_draw_rect.size())
-        # This is somewhat lengthy, but there seems to be no way to specify
-        # "resize with the following scale" command for PIL.Image.  Without it
-        # the scale is inferred from the original and the resulting sizes and
-        # any rounding in render_viewport <-> image_viewport may adjust the
-        # ratio.
-        render_canvas = (render_canvas
-                         .crop(viewport_box)
-                         .resize(_qsize_to_tuple(rg.image_viewport.size()),
-                                 Image.BILINEAR)
-                         .crop(image_box))
-    if render_canvas.size != _qsize_to_tuple(rg.image_size):
-        logger.log("Cropping image viewport (%s) to image size (%s)" %
-                   (rg.image_draw_rect.size(), rg.image_size),
-                   min_level=2)
-        crop_box = (0, 0) + _qsize_to_tuple(rg.image_size)
-        render_canvas = render_canvas.crop(crop_box)
-    return render_canvas
+    return WrappedPillowImage(canvas)
 
 
-def render_qwebpage(web_page, logger=None, width=None, height=None,
-                    scale_method=None):
+def _calculate_image_parameters(web_viewport, img_width, img_height):
     """
-    Render QWebPage into PIL.Image.
-
-    This function works around bugs in QPaintEngine that occur when the
-    resulting image is larger than 32k pixels in either dimension.
-
-    :type web_page: PyQt4.QtWebKit.QWebPage
-    :type logger: splash.browser_tab._BrowserTabLogger
-    :type width: int
-    :type height: int
-    :rtype: PIL.Image.Image
-
+    :return: (image_viewport, image_size)
     """
-    if logger is None:
-        logger = _DummyLogger()
-    rg = _calculate_render_geometry(
-        web_page.viewportSize(), img_width=width, img_height=height,
-        scale_method=scale_method)
-    for k, v in rg.__dict__.iteritems():
-        logger.log("png render: %s=%s" % (k, v), min_level=2)
-    return _render_qwebpage_impl(web_page, logger, render_geometry=rg)
-
-
-class RenderGeometry(object):
-    def __init__(self, **kwargs):
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
-
-
-def _calculate_render_geometry(web_viewport_size, img_width, img_height,
-                               scale_method=None):
-    # This function calculates geometry parameters for rendering pipeline that
-    # looks like this:
-    # - webpage viewport -> (un-)cropping -> webpage cliprect
-    # - webpage cliprect -> vector resizing -> render viewport
-    # - render viewport -> raster resizing -> image viewport
-    # - image viewport -> (un-)cropping -> image size
-    web_viewport = QRect(QPoint(0, 0), web_viewport_size)
     if img_width is None:
         img_width = web_viewport.width()
         ratio = 1.0
@@ -397,69 +505,25 @@ def _calculate_render_geometry(web_viewport_size, img_width, img_height,
             ratio = 1.0
         else:
             ratio = img_width / float(web_viewport.width())
+    image_viewport = QRect(
+        QPoint(0, 0),
+        QSize(img_width, round(web_viewport.height() * ratio)))
     if img_height is None:
-        img_height = round(web_viewport.height() * ratio)
+        img_height = image_viewport.height()
     image_size = QSize(img_width, img_height)
+    return image_viewport, image_size
 
-    image_viewport = QRect(QPoint(0, 0), web_viewport.size() * ratio)
-    if scale_method is None:
-        scale_method = defaults.PNG_SCALE_METHOD
-    if scale_method == 'vector':
-        render_viewport = image_viewport
-    elif scale_method == 'raster':
-        render_viewport = web_viewport
-    else:
-        raise ValueError(
-            "Invalid scale method (must be 'vector' or 'raster'): %s" %
-            str(scale_method))
 
-    if image_size.height() >= image_viewport.height():
-        image_draw_rect = image_viewport
-        web_draw_rect = web_viewport
-        render_draw_rect = render_viewport
-    else:
-        image_draw_rect = image_viewport.intersected(
-            QRect(QPoint(0, 0), image_size))
-        render_draw_rect = transform_rect(
-            image_draw_rect, src=image_viewport, dst=render_viewport)
-        web_draw_rect = transform_rect(
-            image_draw_rect, src=image_viewport, dst=web_viewport)
-
+def _calculate_tiling(to_paint):
     tile_maxsize = defaults.TILE_MAXSIZE
-    tile_hsize = min(tile_maxsize, render_draw_rect.width())
-    tile_vsize = min(tile_maxsize, render_draw_rect.height())
-    htiles = 1 + (render_draw_rect.width() - 1) // tile_hsize
-    vtiles = 1 + (render_draw_rect.height() - 1) // tile_vsize
-    return RenderGeometry(
-        # This reads more or less as a rendering pipeline.
-        web_viewport=web_viewport,
-        render_viewport=render_viewport,
-        image_viewport=image_viewport,
-
-        web_draw_rect=web_draw_rect,
-        render_draw_rect=render_draw_rect,
-        image_draw_rect=image_draw_rect,
-
-        # Tiling configuration.
-        render_canvas_size=render_draw_rect.size(),
-        render_device_size=QSize(tile_hsize, tile_vsize),
-        image_size=image_size,
-
-        horizontal_tile_count=htiles,
-        vertical_tile_count=vtiles)
-
-
-def transform_rect(rect, src, dst):
-    if src == dst:
-        return rect
-    else:
-        trans = QTransform()
-        res = QTransform.quadToQuad(
-            QPolygonF(QRectF(src))[:4], QPolygonF(QRectF(dst))[:4], trans)
-        if not res:
-            raise ValueError("Cannot create a transform")
-        return (trans.mapRect(QRectF(rect)).adjusted(-1, -1, 1, 1)
-                .toAlignedRect().intersected(dst))
+    tile_hsize = min(tile_maxsize, to_paint.width())
+    tile_vsize = min(tile_maxsize, to_paint.height())
+    htiles = 1 + (to_paint.width() - 1) // tile_hsize
+    vtiles = 1 + (to_paint.height() - 1) // tile_vsize
+    tile_size = QSize(tile_hsize, tile_vsize)
+    return {'horizontal_count': htiles,
+            'vertical_count': vtiles,
+            'tile_size': tile_size}
 
 
 class _DummyLogger(object):
@@ -470,3 +534,102 @@ class _DummyLogger(object):
 
 def _qsize_to_tuple(sz):
     return sz.width(), sz.height()
+
+
+class WrappedImage(object):
+    """
+    Base interface for operations with images of rendered webpages.
+
+    QImage doesn't work well with large images, but PIL.Image seems
+    significantly slower in resizing, so depending on context we may want to
+    use one or another.
+
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def size(self):
+        """
+        Size of the image.
+
+        :rtype: QSize
+
+        """
+
+    @abstractmethod
+    def resize(self, new_size):
+        """
+        Resize the image.
+
+        :type new_size: QSize
+
+        """
+
+    @abstractmethod
+    def crop(self, rect):
+        """
+        Crop/extend image to specified rectangle.
+
+        :type rect: QRect
+        """
+
+    @abstractmethod
+    def to_png(self, complevel):
+        """
+        Serialize image as PNG and return the result as a byte sequence.
+
+        :param complevel: compression level as defined by zlib (0 being
+                          no compression and 9 being maximum compression)
+
+        """
+
+
+class WrappedQImage(WrappedImage):
+    def __init__(self, qimage):
+        assert isinstance(qimage, QImage)
+        self.img = qimage
+
+    @property
+    def size(self):
+        return self.img.size()
+
+    def resize(self, new_size):
+        assert isinstance(new_size, QSize)
+        self.img = self.img.scaled(new_size,
+                                   transformMode=Qt.SmoothTransformation)
+
+    def crop(self, rect):
+        assert isinstance(rect, QRect)
+        self.img = self.img.copy(rect)
+
+    def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
+        quality = 90 - (complevel * 10)
+        buf = QBuffer()
+        self.img.save(buf, 'png', quality=quality)
+        return bytes(buf.data())
+
+
+class WrappedPillowImage(WrappedImage):
+    def __init__(self, image):
+        assert isinstance(image, Image.Image)
+        self.img = image
+
+    @property
+    def size(self):
+        return QSize(*self.img.size)
+
+    def resize(self, new_size):
+        assert isinstance(new_size, QSize)
+        self.img = self.img.resize((new_size.width(), new_size.height()),
+                                   Image.BILINEAR)
+
+    def crop(self, rect):
+        assert isinstance(rect, QRect)
+        left, right = rect.left(), rect.left() + rect.width()
+        top, bottom = rect.top(), rect.top() + rect.height()
+        self.img = self.img.crop((left, top, right, bottom))
+
+    def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
+        buf = StringIO()
+        self.img.save(buf, 'png', compression_level=complevel)
+        return buf.getvalue()
