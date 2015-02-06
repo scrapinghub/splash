@@ -48,7 +48,7 @@ class EmulatedJsRedirectTest(Base.EmulationMixin, test_redirects.JsRedirectTest)
     def test_redirect_to_non_existing(self):
         r = self.request({
             "url": self.mockurl("jsredirect-non-existing"),
-            "wait": 0.2,
+            "wait": 2.,
         })
         self.assertStatusCode(r, 400)
 

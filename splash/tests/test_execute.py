@@ -797,7 +797,7 @@ class WaitTest(BaseLuaRenderTest):
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror(self):
         resp = self.go_and_wait(
-            "{time=0.2, cancel_on_redirect=false, cancel_on_error=true}",
+            "{time=2., cancel_on_redirect=false, cancel_on_error=true}",
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
@@ -806,7 +806,7 @@ class WaitTest(BaseLuaRenderTest):
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror_nocancel(self):
         resp = self.go_and_wait(
-            "{time=0.2, cancel_on_redirect=false, cancel_on_error=false}",
+            "{time=2., cancel_on_redirect=false, cancel_on_error=false}",
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
@@ -815,7 +815,7 @@ class WaitTest(BaseLuaRenderTest):
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror_nocancel_redirect(self):
         resp = self.go_and_wait(
-            "{time=0.2, cancel_on_redirect=true, cancel_on_error=false}",
+            "{time=2., cancel_on_redirect=true, cancel_on_error=false}",
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)

@@ -505,10 +505,31 @@ MetaRedirectTarget = _html_resource("""
 
 VeryLongGreenPage = _html_resource("""
 <html>
-<body
- style="height:60000px; padding:0px; margin:0px; background-color:#00FF77">
+<style>
+* { margin: 0px; padding: 0px }
+</style>
+<body style="border: 1px solid #00FF77; height:59998px; background-color: #00FF77">
 Hello, I am a loooooong green page
 </body></html>
+""")
+
+
+RgbStripesPage = _html_resource("""
+<html>
+  <style>
+    * { margin: 0px; padding: 0px; }
+    body {
+        background: -webkit-repeating-linear-gradient(
+            -90deg,
+            #ff0000, #ff0000 1px,
+            #00ff00 1px, #00ff00 2px,
+            #0000ff 2px, #0000ff 3px);
+    width: 10px; height: 10px}
+  </style>
+  <body>
+    &nbsp
+  </body>
+</html>
 """)
 
 
@@ -619,6 +640,7 @@ class Root(Resource):
         self.putChild("get-cookie", GetCookie()),
         self.putChild("eggspam.js", EggSpamScript()),
         self.putChild("very-long-green-page", VeryLongGreenPage())
+        self.putChild("rgb-stripes", RgbStripesPage())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-to", JsRedirectTo())
