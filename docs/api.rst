@@ -90,7 +90,6 @@ allowed_domains : string : optional
 .. _arg-viewport:
 
 viewport : string : optional
-
   View width and height (in pixels) of the browser viewport to render the web
   page. Format is "<width>x<height>", e.g. 800x600.  Default value is 1024x768.
 
