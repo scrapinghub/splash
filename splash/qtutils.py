@@ -445,9 +445,8 @@ def _render_qwebpage_tiled(web_page, logger,
         to_paint=render_rect.intersected(QRect(QPoint(0, 0), canvas_size)))
 
     canvas = Image.new('RGBA', _qsize_to_tuple(canvas_size))
-
+    ratio = render_rect.width() / float(web_rect.width())
     tile_qimage = QImage(tile_conf['tile_size'], QImage.Format_ARGB32)
-    tile_qimage.fill(0)
     painter = QPainter(tile_qimage)
     try:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -459,7 +458,7 @@ def _render_qwebpage_tiled(web_page, logger,
         # viewport is reset after setClipRect, clipping rectangle is adjusted,
         # which is not what we want.
         painter.setViewport(render_rect)
-        painter.setClipRect(web_rect)
+        # painter.setClipRect(web_rect)
         for i in xrange(tile_conf['horizontal_count']):
             left = i * tile_qimage.width()
             for j in xrange(tile_conf['vertical_count']):
@@ -468,7 +467,12 @@ def _render_qwebpage_tiled(web_page, logger,
                 logger.log("Rendering with viewport=%s"
                            % painter.viewport(), min_level=2)
 
-                web_page.mainFrame().render(painter)
+                clip_rect = QRect(
+                    QPoint(floor(left / ratio),
+                           floor(top / ratio)),
+                    QPoint(ceil((left + tile_qimage.width()) / ratio),
+                           ceil((top + tile_qimage.height()) / ratio)))
+                web_page.mainFrame().render(painter, QRegion(clip_rect))
                 tile_image = qimage_to_pil_image(tile_qimage)
 
                 # If this is the bottommost tile, its bottom may have stuff
