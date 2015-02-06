@@ -600,7 +600,8 @@ Return a `width x height` screenshot of a current page in PNG format.
 * width - optional, width of a screenshot in pixels;
 * height - optional, height of a screenshot in pixels;
 * render_all - optional, if ``true`` render the whole webpage;
-* scale_method - optional, method to use when resizing the image
+* scale_method - optional, method to use when resizing the image, ``'raster'``
+  or ``'vector'``
 
 **Returns:** PNG screenshot data.
 
