@@ -92,6 +92,8 @@ REQUEST_ERRORS_SHORT = {
     QNetworkReply.ProtocolFailure : 'protocol_error',
 }
 
+# QPainter cannot render a region with any dimension greater than this value.
+QPAINTER_MAXSIZE = 32766
 
 
 # A global reference must be kept to QApplication, otherwise the process will
@@ -325,11 +327,7 @@ def _render_qwebpage_vector(web_page, logger,
                min_level=2)
     logger.log("png render: canvas size=%s" % canvas_size, min_level=2)
 
-    to_paint = render_rect.intersected(QRect(QPoint(0, 0), canvas_size))
-    # QPainter has several issues when its rendering area is more than 2**15 in
-    # any dimension.
-    need_tiling = max(to_paint.width(), to_paint.height()) >= (1 << 15)
-    if need_tiling:
+    if _qpainter_needs_tiling(render_rect, canvas_size):
         logger.log("png render: draw region too large, rendering tile-by-tile",
                    min_level=2)
         return _render_qwebpage_tiled(web_page, logger,
@@ -401,7 +399,7 @@ def _render_qwebpage_raster(web_page, logger,
 def _render_qwebpage_full(web_page, logger,
                           web_rect, render_rect, canvas_size):
     """Render web page in one step."""
-    if max(render_rect.width(), render_rect.height()) >= (1 << 15):
+    if _qpainter_needs_tiling(render_rect, canvas_size):
         # If this condition is true, this function may get stuck.
         raise ValueError("Rendering region is too large to be drawn"
                          " in one step, use tile-by-tile renderer instead")
@@ -637,3 +635,9 @@ class WrappedPillowImage(WrappedImage):
         buf = StringIO()
         self.img.save(buf, 'png', compression_level=complevel)
         return buf.getvalue()
+
+
+def _qpainter_needs_tiling(render_rect, canvas_size):
+    """Return True if QPainter cannot perform given render without tiling."""
+    to_paint = render_rect.intersected(QRect(QPoint(0, 0), canvas_size))
+    return max(to_paint.width(), to_paint.height()) > QPAINTER_MAXSIZE
