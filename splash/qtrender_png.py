@@ -422,7 +422,7 @@ class WrappedPillowImage(WrappedImage):
 
     def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
         buf = StringIO()
-        self.img.save(buf, 'png', compression_level=complevel)
+        self.img.save(buf, 'png', compress_level=complevel)
         return buf.getvalue()
 
 
