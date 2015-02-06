@@ -589,7 +589,7 @@ function main(splash)
   assert(splash:wait(0.5))
   return {
     html = splash:html(),
-    png = splash:png{width=640},
+    png = splash:png(),
     har = splash:har(),
   }
 end
