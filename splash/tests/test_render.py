@@ -56,7 +56,7 @@ class DirectRequestHandler(object):
         return requests.post(url, params=params, data=payload, headers=headers)
 
     def _url_and_params(self, endpoint, query):
-        endpoint = endpoint or self.endpoint
+        endpoint = endpoint if endpoint is not None else self.endpoint
         if isinstance(query, dict):
             url = "http://%s/%s" % (self.host, endpoint)
             params = query
