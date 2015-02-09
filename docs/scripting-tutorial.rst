@@ -259,6 +259,7 @@ e.g. ``splash:wait(time)`` or ``splash:go(url)`` only make sense because
 webpage changes after calling them, but still - keep it in mind.
 
 Currently async methods are :ref:`splash-go`, :ref:`splash-wait`,
+:ref:`splash-wait-for-resume`,
 :ref:`splash-http-get` and :ref:`splash-set-content`;
 :ref:`splash-autoload` becomes async when an URL is passed.
 Most splash methods are currently **not** async, but thinking

@@ -257,7 +257,7 @@ If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
-See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`wait-for-resume`,
+See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-wait-for-resume`,
 :ref:`splash-autoload`.
 
 .. _splash-evaljs:
@@ -328,8 +328,8 @@ Compare:
         -- ...
     end
 
-See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`wait-for-resume`,
-:ref:`splash-autoload`.
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
+:ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
 
 .. _splash-runjs:
 
@@ -394,9 +394,9 @@ Compare:
     end
 
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`,
-:ref:`wait-for-resume`.
+:ref:`splash-wait-for-resume`.
 
-.. _wait-for-resume:
+.. _splash-wait-for-resume:
 
 splash:wait_for_resume
 ----------------------
@@ -680,7 +680,7 @@ If :ref:`splash-autoload` is called multiple times then all its scripts
 are executed on page load, in order they were added.
 
 See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
-:ref:`wait-for-resume`.
+:ref:`splash-wait-for-resume`.
 
 .. _splash-http-get:
 
