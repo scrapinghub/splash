@@ -8,6 +8,7 @@ import itertools
 import sys
 import time
 
+
 from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
                           QRegExp, QString, QUrl, QVariant)
 from PyQt4.QtGui import QApplication

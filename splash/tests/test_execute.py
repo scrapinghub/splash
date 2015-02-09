@@ -484,6 +484,220 @@ class EvaljsTest(BaseLuaRenderTest):
         self.assertEvaljsError("throw new Error('ABC')", ["JsError", "Error: ABC"])
 
 
+class WaitForResumeTest(BaseLuaRenderTest):
+
+    def _wait_for_resume_request(self, js, timeout=1):
+        return self.request_lua("""
+        function main(splash)
+            local result, error = splash:wait_for_resume([[%s]], %.1f)
+            local response = {}
+
+            if result ~= nil then
+                response["value"] = result["value"]
+                response["value_type"] = type(result["value"])
+            else
+                response["error"] = error
+            end
+
+            return response
+        end
+        """ % (js, timeout))
+
+    def test_return_undefined(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume();
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        # A Lua table with a nil value is equivalent to not setting that
+        # key/value pair at all, so there is no "result" key in the response.
+        self.assertEqual(resp.json(), {"value_type": "nil"})
+
+    def test_return_null(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(null);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": "", "value_type": "string"})
+
+    def test_return_string(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume("ok");
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+
+    def test_return_non_ascii_string(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume("你好");
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": u"你好", "value_type": "string"})
+
+    def test_return_int(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(42);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": 42, "value_type": "number"})
+
+    def test_return_float(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(1234.5);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": 1234.5, "value_type": "number"})
+
+    def test_return_boolean(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(true);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": True, "value_type": "boolean"})
+
+    def test_return_list(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume([1,2,'red','blue']);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "value": [1, 2, 'red', 'blue'],
+            "value_type": "table"}
+        )
+
+    def test_return_dict(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume({'stomach':'empty','brain':'crazy'});
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "value": {'stomach':'empty', 'brain':'crazy'},
+            "value_type": "table"}
+        )
+
+    def test_return_additional_keys(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local result, error = splash:wait_for_resume([[
+                function main(splash) {
+                    splash.set("foo", "bar");
+                    splash.resume("ok");
+                }
+            ]])
+
+            return result
+        end""")
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'foo': 'bar', 'value': 'ok'})
+
+    def test_delayed_return(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("ok");
+                }, 500);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+
+    def test_error_string(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.error("not ok");
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"error": "JavaScript error: not ok"})
+
+    def test_timed_out(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("ok");
+                }, 2500);
+            }
+        """, timeout=0.5)
+        expected_error = 'JavaScript error: One shot callback timed out' \
+                         ' while waiting for resume() or error().'
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"error": expected_error})
+
+    def test_missing_main_function(self):
+        resp = self._wait_for_resume_request("""
+            function foo(splash) {
+                setTimeout(function () {
+                    splash.resume("ok");
+                }, 500);
+            }
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn('no main() function defined', resp.text)
+
+    def test_js_syntax_error(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                )
+                setTimeout(function () {
+                    splash.resume("ok");
+                }, 500);
+            }
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertIn('SyntaxError', resp.text)
+
+    def test_navigation_cancels_resume(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                location.href = '%s';
+            }
+        """ % self.mockurl('/'))
+        json = resp.json()
+        self.assertStatusCode(resp, 200)
+        self.assertIn('error', json)
+        self.assertIn('canceled', json['error'])
+
+    def test_cannot_resume_twice(self):
+        """
+        We can't easily test that resuming twice throws an exception,
+        because that exception is thrown in Python code after Lua has already
+        resumed. The server log (if set to verbose) will show the stack trace,
+        but Lua will have no idea that it happened; indeed, that's the
+        _whole purpose_ of the one shot callback.
+
+        We can at least verify that if resume is called multiple times,
+        then the first value is returned and subsequent values are ignored.
+        """
+
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume('ok');
+                setTimeout(function () {
+                    splash.resume('not ok');
+                }, 500);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+
+
 class RunjsTest(BaseLuaRenderTest):
     def test_define_variable(self):
         resp = self.request_lua("""
