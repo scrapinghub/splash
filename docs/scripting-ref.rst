@@ -576,10 +576,10 @@ have no effect, as shown in the next example.
 
     end
 
-The next example shows the effect of the ``timeout`` argument. We have changed
-``timeout`` argument from its default 5 seconds to just 1 second, but
-our JavaScript code will not call ``splash.resume()`` for 3 seconds, which
-guarantees that ``splash:wait_for_resume()`` will time out.
+The next example shows the effect of the ``timeout`` argument. We have set
+the ``timeout`` argument to 1 second, but our JavaScript code will not call
+``splash.resume()`` for 3 seconds, which guarantees that
+``splash:wait_for_resume()`` will time out.
 
 When it times out, ``result`` will be nil, ``error`` will contain a string
 explaining the timeout, and Lua will continue executing. Calling

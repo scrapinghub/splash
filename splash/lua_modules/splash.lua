@@ -117,10 +117,6 @@ function Splash.create(py_splash)
       command = raises_async(command)
     end
 
-    if opts.multiple_return_values then
-      command = unpacks_multiple_return_values(command)
-    end
-
     self[key] = command
   end
 
