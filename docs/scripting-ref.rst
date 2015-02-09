@@ -412,7 +412,7 @@ yield until the JavaScript code tells it to resume.
   must include a function called ``main``. The first argument to ``main``
   is an object that has the properties ``resume`` and ``error``. ``resume``
   is a function which can be used to resume Lua execution. It takes an optional
-  argument which will be returned to Lua in the ``result`` return value.
+  argument which will be returned to Lua in the ``result.value`` return value.
   ``error`` is a function which can be called with a required string value
   that is returned in the ``error`` return value.
 * timeout - a number which determines (in seconds) how long to allow JavaScript
@@ -460,10 +460,10 @@ success to ``assert()``.
 
 .. note::
 
-    The ``main()`` function is required, and you will get an error if
-    you do not include it. The first argument to this function can have any
-    name you choose, of course. We will call it ``splash`` by convention in
-    this documentation.
+    Your JavaScript code must contain a ``main()`` function. You will get an
+    error if you do not include it. The first argument to this function can
+    have any name you choose, of course. We will call it ``splash`` by
+    convention in this documentation.
 
 The next example shows how to return a value from JavaScript to Lua.
 You can return booleans, numbers, strings, arrays, or objects.
@@ -480,7 +480,7 @@ You can return booleans, numbers, strings, arrays, or objects.
             }
         ]])
 
-        -- result is {return=[1, 2, 'red', 'blue']}
+        -- result is {value=[1, 2, 'red', 'blue']}
         -- error is nil
 
     end
@@ -509,7 +509,7 @@ this.
             }
         ]])
 
-        -- result is {foo="bar", return="ok"}
+        -- result is {foo="bar", value="ok"}
         -- error is nil
 
     end
@@ -571,7 +571,7 @@ have no effect, as shown in the next example.
             }
         ]])
 
-        -- result is "ok"
+        -- result is {value="ok"}
         -- error is nil
 
     end

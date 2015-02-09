@@ -34,7 +34,7 @@ end
 --
 local function raises_async(func)
   return function(...)
-    ok, err, raise = func(...)
+    local ok, err, raise = func(...)
     if ok == nil and raise then
       error(err, 2)
     else
