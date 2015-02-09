@@ -287,13 +287,14 @@ class DemoUI(_ValidatingResource):
 
     PATH = 'info'
 
-    def __init__(self, pool, lua_enabled):
+    def __init__(self, pool, lua_enabled, max_timeout):
         Resource.__init__(self)
         self.pool = pool
         self.lua_enabled = lua_enabled
+        self.max_timeout = max_timeout
 
     def _validate_params(self, request):
-        options = RenderOptions.fromrequest(request)
+        options = RenderOptions.fromrequest(request, self.max_timeout)
         options.get_filters(self.pool)  # check
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
@@ -569,7 +570,11 @@ class Root(Resource):
 
         if self.ui_enabled:
             self.putChild("_harviewer", File(self.HARVIEWER_PATH))
-            self.putChild(DemoUI.PATH, DemoUI(pool, self.lua_enabled))
+            self.putChild(DemoUI.PATH, DemoUI(
+                pool=pool,
+                lua_enabled=self.lua_enabled,
+                max_timeout=max_timeout
+            ))
 
     def getChild(self, name, request):
         if name == "" and self.ui_enabled:
@@ -578,31 +583,13 @@ class Root(Resource):
 
     def get_example_script(self):
         return """
--- Hey, this is a Splash rendering script.
--- It is written in Lua. Hope you like it.
-
 function main(splash)
-
   local url = splash.args.url
-
-  local ok, msg = splash:go(url) -- this is async!
-  if not ok then
-    return {status="error", msg=msg}
-  end
-
-  splash:wait(0.5)
-  splash:stop()
-
-  local prefixed_title = splash:jsfunc([[
-    function(prefix){
-      return prefix + " " + document.title;
-    }
-  ]])
-
+  assert(splash:go(url))
+  assert(splash:wait(0.5))
   return {
-    greeting = prefixed_title("Hello, "),
     html = splash:html(),
-    png = splash:png{width=640},
+    png = splash:png(),
     har = splash:har(),
   }
 end

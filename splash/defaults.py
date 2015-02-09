@@ -6,9 +6,11 @@ WAIT_TIME = 0.0
 MAX_TIMEOUT = 60.0
 MAX_WAIT_TIME = 10.0
 
-# png rendering options
-VIEWPORT = '1024x768'
-VIEWPORT_FALLBACK = VIEWPORT  # do not set it to 'full'
+# Default size of browser window.  As there're no decorations, this affects
+# both "window.inner*" and "window.outer*" values.
+VIEWPORT_SIZE = '1024x768'
+
+# Window size limitations.
 VIEWPORT_MAX_WIDTH = 20000
 VIEWPORT_MAX_HEIGTH = 20000
 VIEWPORT_MAX_AREA = 4000*4000
@@ -26,6 +28,11 @@ AUTOLOAD_IMAGES = 1
 # The default is 1, because it is twice as fast as 9 and produces only 15%
 # larger files.
 PNG_COMPRESSION_LEVEL = 1
+
+# If 'raster', PNG images will be rescaled after rendering as regular images.
+# If 'vector', PNG image will be rescaled during rendering which is faster and
+# crisper, but may cause rendering artifacts.
+PNG_SCALE_METHOD = 'raster'
 
 # There's a bug in Qt that manifests itself when width or height of rendering
 # surface (aka the png image) is more than 32768.  Usually, this is solved by

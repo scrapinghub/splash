@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from base64 import standard_b64decode
 import json
 import unittest
 from cStringIO import StringIO
@@ -14,6 +15,7 @@ from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
+from .. import defaults
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
@@ -1009,7 +1011,7 @@ class WaitTest(BaseLuaRenderTest):
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror(self):
         resp = self.go_and_wait(
-            "{time=0.2, cancel_on_redirect=false, cancel_on_error=true}",
+            "{time=2., cancel_on_redirect=false, cancel_on_error=true}",
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
@@ -1018,7 +1020,7 @@ class WaitTest(BaseLuaRenderTest):
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror_nocancel(self):
         resp = self.go_and_wait(
-            "{time=0.2, cancel_on_redirect=false, cancel_on_error=false}",
+            "{time=2., cancel_on_redirect=false, cancel_on_error=false}",
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
@@ -1027,7 +1029,7 @@ class WaitTest(BaseLuaRenderTest):
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror_nocancel_redirect(self):
         resp = self.go_and_wait(
-            "{time=0.2, cancel_on_redirect=true, cancel_on_error=false}",
+            "{time=2., cancel_on_redirect=true, cancel_on_error=false}",
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
@@ -1098,6 +1100,19 @@ class ArgsTest(BaseLuaRenderTest):
         resp = self.args_request({"filters": 'foo,bar'})
         self.assertStatusCode(resp, 400)
         self.assertIn("Invalid filter names", resp.text)
+
+
+class JsonPostUnicodeTest(BaseLuaRenderTest):
+    request_handler = JsonPostRequestHandler
+
+    def test_unicode(self):
+        resp = self.request_lua(u"""
+        function main(splash) return {key="значение"} end
+        """.encode('utf8'))
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.headers['content-type'], 'application/json')
+        self.assertEqual(resp.json(), {"key": u"значение"})
 
 
 class JsonPostArgsTest(ArgsTest):
@@ -2023,3 +2038,173 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         now = time.time()
         self.assertLess(now - 120, out['walltime'])
         self.assertLess(out['walltime'], now)
+
+
+class WindowSizeTest(BaseLuaRenderTest):
+    """This is a test for window & viewport size interaction in Lua scripts."""
+
+    GET_DIMS_AFTER_SCRIPT = """
+function get_dims(splash)
+    return {
+        inner = splash:evaljs("window.innerWidth") .. "x" .. splash:evaljs("window.innerHeight"),
+        outer = splash:evaljs("window.outerWidth") .. "x" .. splash:evaljs("window.outerHeight"),
+        client = (splash:evaljs("document.documentElement.clientWidth") .. "x"
+                  .. splash:evaljs("document.documentElement.clientHeight"))
+    }
+end
+
+function main(splash)
+    alter_state(splash)
+    return get_dims(splash)
+end
+
+function alter_state(splash)
+%s
+end
+"""
+
+    def return_json_from_lua(self, script, **kwargs):
+        resp = self.request_lua(script, kwargs)
+        if resp.ok:
+            return resp.json()
+        else:
+            raise RuntimeError(resp.content)
+
+    def get_dims_after(self, lua_script, **kwargs):
+        return self.return_json_from_lua(
+            self.GET_DIMS_AFTER_SCRIPT % lua_script, **kwargs)
+
+    def assertSizeAfter(self, lua_script, etalon, **kwargs):
+        out = self.get_dims_after(lua_script, **kwargs)
+        self.assertEqual(out, etalon)
+
+    def test_get_viewport_size(self):
+        script = """
+        function main(splash)
+        local w, h = splash:get_viewport_size()
+        return {width=w, height=h}
+        end
+        """
+        out = self.return_json_from_lua(script)
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertEqual(out, {'width': w, 'height': h})
+
+    def test_default_dimensions(self):
+        self.assertSizeAfter("",
+                             {'inner': defaults.VIEWPORT_SIZE,
+                              'outer': defaults.VIEWPORT_SIZE,
+                              'client': defaults.VIEWPORT_SIZE})
+
+    def test_set_sizes_as_table(self):
+        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
+                             {'inner': '111x222',
+                              'outer': defaults.VIEWPORT_SIZE,
+                              'client': '111x222'})
+        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}',
+                             {'inner': '444x333',
+                              'outer': defaults.VIEWPORT_SIZE,
+                              'client': '444x333'})
+
+    def test_viewport_size_roundtrips(self):
+        self.assertSizeAfter(
+            'splash:set_viewport_size(splash:get_viewport_size())',
+            {'inner': defaults.VIEWPORT_SIZE,
+             'outer': defaults.VIEWPORT_SIZE,
+             'client': defaults.VIEWPORT_SIZE})
+
+    def test_viewport_size(self):
+        self.assertSizeAfter('splash:set_viewport_size(2000, 2000)',
+                             {'inner': '2000x2000',
+                              'outer': defaults.VIEWPORT_SIZE,
+                              'client': '2000x2000'})
+
+    def test_viewport_size_validation(self):
+        cases = [
+            ('()', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(1)', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(1, nil)', 'TypeError.*a number is required'),
+            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(nil, 1)', 'TypeError.*a number is required'),
+            ('{nil, 1}', 'TypeError.*a number is required'),
+            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
+            # This thing works.
+            # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
+
+            ('{100, "a"}', 'TypeError.*a number is required'),
+            ('{100, {}}', 'TypeError.*a number is required'),
+
+            ('{100, -1}', 'Viewport is out of range'),
+            ('{100, 0}', 'Viewport is out of range'),
+            ('{100, 99999}', 'Viewport is out of range'),
+            ('{1, -100}', 'Viewport is out of range'),
+            ('{0, 100}', 'Viewport is out of range'),
+            ('{99999, 100}', 'Viewport is out of range'),
+            ]
+
+        def run_test(size_str):
+            self.get_dims_after('splash:set_viewport_size%s' % size_str)
+
+        for size_str, errmsg in cases:
+            self.assertRaisesRegexp(RuntimeError, errmsg, run_test, size_str)
+
+    def test_viewport_full(self):
+        w = int(defaults.VIEWPORT_SIZE.split('x')[0])
+        self.assertSizeAfter('splash:go(splash.args.url);'
+                             'splash:wait(0.1);'
+                             'splash:set_viewport_full();',
+                             {'inner': '%dx2000' % w,
+                              'outer': defaults.VIEWPORT_SIZE,
+                              'client': '%dx2000' % w},
+                             url=self.mockurl('tall'))
+
+    def test_set_viewport_full_returns_dimensions(self):
+        script = """
+        function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.1))
+        local w, h = splash:set_viewport_full()
+        return {width=w, height=h}
+        end
+        """
+        out = self.return_json_from_lua(script, url=self.mockurl('tall'))
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertEqual(out, {'width': w, 'height': 2000})
+
+    def test_render_all_restores_viewport_size(self):
+        script = """
+        function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.1))
+        local before = {splash:get_viewport_size()}
+        png = splash:png{render_all=true}
+        local after = {splash:get_viewport_size()}
+        return {before=before, after=after, png=png}
+        end
+        """
+        out = self.return_json_from_lua(script, url=self.mockurl('tall'))
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertEqual(out['before'], {'1': w, '2': h})
+        self.assertEqual(out['after'], {'1': w, '2': h})
+        # 2000px is hardcoded in that html
+        img = Image.open(StringIO(standard_b64decode(out['png'])))
+        self.assertEqual(img.size, (w, 2000))
+
+    @pytest.mark.xfail
+    def test_viewport_full_raises_error_if_fails_in_script(self):
+        # XXX: for local resources loadFinished event generally arrives after
+        # initialLayoutCompleted, so the error doesn't manifest itself.
+        self.assertRaisesRegexp(RuntimeError, "zyzzy",
+                                self.get_dims_after,
+                                """
+                                splash:go(splash.args.url)
+                                splash:set_viewport_full()
+                                """, url=self.mockurl('delay'))

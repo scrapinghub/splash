@@ -56,8 +56,8 @@ wait : float : optional
   (defaults to 0). Increase this value if you expect pages to contain
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
-  'wait' is also required for PNG rendering when viewport=full
-  (see later).
+  :ref:`wait <arg-wait>` is also required for PNG rendering when doing
+  full-page rendering (see :ref:`render_all <arg-render-all>`).
 
 .. _arg-proxy:
 
@@ -90,20 +90,16 @@ allowed_domains : string : optional
 .. _arg-viewport:
 
 viewport : string : optional
-  View width and height (in pixels) of the browser viewport
-  to render the web page. Format is "<width>x<heigth>", e.g. 800x600.
-  It also accepts 'full' as value; viewport=full means that the whole
-  page (possibly very tall) will be rendered. Default value is 1024x768.
+  View width and height (in pixels) of the browser viewport to render the web
+  page. Format is "<width>x<height>", e.g. 800x600.  Default value is 1024x768.
 
-  'viewport' parameter is more important for PNG rendering;
-  it is supported for all rendering endpoints because javascript
-  code execution can depend on viewport size.
+  'viewport' parameter is more important for PNG rendering; it is supported for
+  all rendering endpoints because javascript code execution can depend on
+  viewport size.
 
-.. note::
-
-    viewport=full requires non-zero 'wait' parameter. This is
-    an unfortunate restriction, but it seems that this is the only
-    way to make rendering work reliably with viewport=full.
+  For backward compatibility reasons, it also accepts 'full' as value;
+  ``viewport=full`` is semantically equivalent to ``render_all=1`` (see
+  :ref:`render_all <arg-render-all>`).
 
 .. _arg-images:
 
@@ -166,6 +162,33 @@ width : integer : optional
 height : integer : optional
   Crop the renderd image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
+
+.. _arg-render-all:
+
+render_all : int : optional
+  Possible values are ``1`` and ``0``.  When ``render_all=1``, extend the
+  viewport to include the whole webpage (possibly very tall) before rendering.
+  Default is ``render_all=0``.
+
+  .. note::
+
+      ``render_all=1`` requires non-zero :ref:`wait <arg-wait>` parameter. This is an
+      unfortunate restriction, but it seems that this is the only way to make
+      rendering work reliably with ``render_all=1``.
+
+.. _arg-scale-method:
+
+scale_method : string : optional
+  Possible values are ``raster`` (default) and ``vector``.  If
+  ``scale_method=raster``, rescaling operation performed via :ref:`width
+  <arg-width>` parameter is pixel-wise.  If ``scale_method=vector``, rescaling
+  is done element-wise during rendering.
+
+  .. note::
+
+     Vector-based rescaling is more performant and results in crisper fonts and
+     sharper element boundaries, however there may be rendering issues, so use
+     it with caution.
 
 Examples
 ~~~~~~~~
@@ -645,7 +668,7 @@ To enable proxy profiles support, run splash server with
 
 .. note::
 
-    See also: :ref:`splash and docker`.
+    If you run Splash using Docker, check :ref:`docker-folder-sharing`.
 
 Then create an INI file with "proxy profile" config inside the
 specified folder, e.g. ``/etc/splash/proxy-profiles/mywebsite.ini``.
@@ -735,6 +758,12 @@ X-Splash-width : string
 
 X-Splash-height : string
   Same as :ref:`'height' <arg-height>` argument for `render.png`_.
+
+X-Splash-render-all : string
+  Same as :ref:`'render_all' <arg-render-all>` argument for `render.png`_.
+
+X-Splash-scale-method : string
+  Same as :ref:`'scale_method' <arg-scale-method>` argument for `render.png`_.
 
 X-Splash-html : string
   Same as :ref:`'html' <arg-html>` argument for `render.json`_.

@@ -8,9 +8,11 @@ from cStringIO import StringIO
 
 import pytest
 import requests
-from PIL import Image
+from PIL import Image, ImageChops
+from splash import defaults
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
+
 
 def https_only(func):
     @wraps(func)
@@ -54,7 +56,7 @@ class DirectRequestHandler(object):
         return requests.post(url, params=params, data=payload, headers=headers)
 
     def _url_and_params(self, endpoint, query):
-        endpoint = endpoint or self.endpoint
+        endpoint = endpoint if endpoint is not None else self.endpoint
         if isinstance(query, dict):
             url = "http://%s/%s" % (self.host, endpoint)
             params = query
@@ -95,6 +97,33 @@ class BaseRenderTest(unittest.TestCase):
     def assertStatusCode(self, response, code):
         msg = (response.status_code, truncated(response.content, 1000))
         self.assertEqual(response.status_code, code, msg)
+
+    def assertPng(self, response, width=None, height=None):
+        self.assertStatusCode(response, 200)
+        self.assertEqual(response.headers["content-type"], "image/png")
+        img = Image.open(StringIO(response.content))
+        self.assertEqual(img.format, "PNG")
+        if width is not None:
+            self.assertEqual(img.size[0], width)
+        if height is not None:
+            self.assertEqual(img.size[1], height)
+        return img
+
+    COLOR_NAMES = ('red', 'green', 'blue', 'alpha')
+
+    def assertBoxColor(self, response, box, etalon):
+        assert len(etalon) == 4  # RGBA components
+        img = Image.open(StringIO(response.content))
+        extrema = img.crop(box).getextrema()
+        for (color_name, (min_val, max_val)) in zip(self.COLOR_NAMES, extrema):
+            self.assertEqual(
+                min_val, max_val,
+                "Selected region does not have same values in %s component:"
+                "%s -> %s" % (color_name, min_val, max_val))
+        color = tuple(e[0] for e in extrema)
+        self.assertEqual(color, etalon,
+                         "Region color (%s) doesn't match the etalon (%s)" %
+                         (color, etalon))
 
 
 class Base(object):
@@ -268,7 +297,8 @@ class RenderPngTest(Base.RenderTest):
 
     def _test_ok(self, url):
         r = self.request({"url": url})
-        self.assertPng(r, width=1024, height=768)
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertPng(r, width=w, height=h)
 
     def test_width(self):
         r = self.request({"url": self.mockurl("jsrender"), "width": "300"})
@@ -288,8 +318,12 @@ class RenderPngTest(Base.RenderTest):
     def test_viewport_full_wait(self):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
         self.assertStatusCode(r, 400)
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1})
+        self.assertStatusCode(r, 400)
 
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
+        self.assertStatusCode(r, 200)
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': 0.1})
         self.assertStatusCode(r, 200)
 
     def test_viewport_invalid(self):
@@ -306,6 +340,15 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    def test_render_all(self):
+        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': 0.1})
+        self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
+
+    def test_render_all_with_viewport(self):
+        r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
+                          'render_all': 1, 'wait': 0.1})
+        self.assertPng(r, width=2000, height=2000)
+
     def test_images_enabled(self):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
         self.assertPixelColor(r, 30, 30, (0,0,0,255))
@@ -316,33 +359,138 @@ class RenderPngTest(Base.RenderTest):
 
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
-                          'viewport': 'full', 'wait': '0.01'})
+                          'render_all': 1, 'wait': '0.01'})
         self.assertPng(r, height=60000)  # hardcoded in the html
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFF, 0x77, 0xFF))
 
     def test_extra_height_doesnt_leave_garbage_when_using_full_render(self):
         r = self.request({'url': self.mockurl('tall'), 'viewport': '100x100',
                           'height': 1000})
-        png = self.assertPng(r, height=1000)
+        self.assertPng(r, height=1000)
         # Ensure that the extra pixels at the bottom are transparent.
-        alpha_channel = png.crop((0, 100, 100, 1000)).getdata(3)
-        self.assertEqual(alpha_channel.size, (100, 900))
-        self.assertEqual(alpha_channel.getextrema(), (0, 0))
+        self.assertBoxColor(r, (0, 100, 100, 1000), (0, 0, 0, 0))
 
-    def assertPng(self, response, width=None, height=None):
-        self.assertStatusCode(response, 200)
-        self.assertEqual(response.headers["content-type"], "image/png")
-        img = Image.open(StringIO(response.content))
-        self.assertEqual(img.format, "PNG")
-        if width is not None:
-            self.assertEqual(img.size[0], width)
-        if height is not None:
-            self.assertEqual(img.size[1], height)
-        return img
+    def vertical_split_is_sharp(self, img):
+        width, height = img.size
+        left = (0, 0, width // 2, height)
+        right = (width // 2, 0, width, height)
+        left_extrema = img.crop(left).getextrema()
+        right_extrema = img.crop(right).getextrema()
+        return (all(e_min == e_max for e_min, e_max in left_extrema) and
+                all(e_min == e_max for e_min, e_max in right_extrema))
+
+    def test_invalid_scale_method(self):
+        for method in ['foo', '1', '']:
+            r = self.request({'url': self.mockurl("jsrender"),
+                              'scale_method': method})
+            self.assertStatusCode(r, 400)
+
+    def test_scale_method_raster_produces_blurry_split(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x100', 'width': 200,
+                          'scale_method': 'raster'})
+        img = self.assertPng(r, width=200, height=200)
+        self.assertFalse(self.vertical_split_is_sharp(img),
+                         "Split is not blurry")
+
+    def test_scale_method_vector_produces_sharp_split(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x100', 'width': 200,
+                          'scale_method': 'vector'})
+        img = self.assertPng(r, width=200, height=200)
+        self.assertTrue(self.vertical_split_is_sharp(img),
+                        "Split is not sharp")
 
     def assertPixelColor(self, response, x, y, color):
         img = Image.open(StringIO(response.content))
         self.assertEqual(color, img.getpixel((x, y)))
+
+
+class RenderPngScalingAndCroppingTest(BaseRenderTest):
+    endpoint = "render.png"
+
+    RED, GREEN = (255, 0, 0, 255), (0, 255, 0, 255)
+
+    def assertHalfRedHalfGreen(self, r, width, height, delta=5):
+        self.assertPng(r, width=width, height=height)
+        self.assertBoxColor(r, (0, 0, width // 2 - delta, height),
+                            self.RED)
+        self.assertBoxColor(r, (width // 2 + delta, 0, width, height),
+                            self.GREEN)
+
+    def test_assert_box_color_on_red_green_page(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000'})
+        self.assertHalfRedHalfGreen(r, 1000, 1000, delta=0)
+
+    def test_width_parameter_scales_the_image_full_raster(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000', 'width': 200,
+                          'scale_method': 'raster'})
+        self.assertHalfRedHalfGreen(r, 200, 200, delta=2)
+
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x100', 'width': 200,
+                          'scale_method': 'raster'})
+        self.assertHalfRedHalfGreen(r, 200, 200, delta=2)
+
+    def test_width_parameter_scales_the_image_full_vector(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '1000x1000', 'width': 200,
+                          'scale_method': 'vector'})
+        self.assertHalfRedHalfGreen(r, 200, 200, delta=0)
+
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x100', 'width': 200,
+                          'scale_method': 'vector'})
+        self.assertHalfRedHalfGreen(r, 200, 200, delta=0)
+
+    @pytest.mark.xfail(reason="""
+Tiling is enabled in raster mode when any dimension of the viewport reaches
+32768, whereas as of now there's a hard limit of 20000 placed in defaults.py
+""")
+    def test_width_parameter_scales_the_image_tiled_raster(self):
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '400x33000', 'width': 200,
+                          'scale_method': 'raster'})
+        self.assertHalfRedHalfGreen(r, 200, 16500, delta=2)
+
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x33000', 'width': 200})
+        self.assertHalfRedHalfGreen(r, 200, 66000, delta=2)
+
+    def test_width_parameter_scales_the_image_tiled_vector(self):
+        # Disabled for similar reason as above: tiling in vector mode is
+        # enabled when any dimension of the image exceeds 32768, which means
+        # that one needs even more to test if downscaling produces a nice
+        # equipartitioned image.  Alas, no dimension can exceed 20k.
+        #
+        # r = self.request({'url': self.mockurl('red-green'),
+        #                   'viewport': '400x33000', 'width': 200,
+        #                   'scale_method': 'vector'})
+        # self.assertHalfRedHalfGreen(r, 200, 16500, delta=2)
+
+        r = self.request({'url': self.mockurl('red-green'),
+                          'viewport': '100x16500', 'width': 200,
+                          'scale_method': 'vector'})
+        self.assertHalfRedHalfGreen(r, 200, 33000, delta=0)
+
+    def test_height_parameter_is_equivalent_to_cropping(self):
+        query0 = {'url': self.mockurl('rgb-stripes'), 'width': 99,
+                  'viewport': '10x10'}
+        r = self.request(query0)
+        full_img = self.assertPng(r, width=99, height=99)
+
+        for height in (1, 5, 10, 45, 46, 47, 98, 99, 100, 110):
+            query = query0.copy()
+            query['height'] = height
+            r = self.request(query)
+            img = self.assertPng(r, width=99, height=height)
+            self.assertImagesEqual(full_img.crop((0, 0, 99, height)), img)
+
+    def assertImagesEqual(self, img1, img2):
+        diffbox = ImageChops.difference(img1, img2).getbbox()
+        self.assertIsNone(diffbox, ("Images differ in region %s" % (diffbox,)))
 
 
 class RenderJsonTest(Base.RenderTest):
@@ -400,6 +548,14 @@ class RenderJsonTest(Base.RenderTest):
     def test_png_images(self):
         self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100"})
         self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100", "images": 0})
+
+    def test_png_scale_method(self):
+        self.assertSamePng(self.mockurl("red-green"),
+                           {"viewport": "100x100", "width": 200,
+                            "scale_method": "raster"})
+        self.assertSamePng(self.mockurl("red-green"),
+                           {"viewport": "100x100", "width": 200,
+                            "scale_method": "vector"})
 
     @https_only
     def test_fields_all(self):
@@ -485,7 +641,6 @@ class RenderJsonTest(Base.RenderTest):
         self.assertTrue(u'проверка' in html)
         self.assertTrue(u'1251' in html)
 
-
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
             self.assertTrue(key in res, "%s is not in response" % key)
@@ -520,6 +675,12 @@ class RenderJsonTest(Base.RenderTest):
         self.assertStatusCode(r1, 200)
         self.assertStatusCode(r2, 200)
         return r1, r2
+
+
+class RenderVectorPngTest(RenderPngTest):
+    def request(self, query, *args, **kwargs):
+        query.setdefault('scale_method', 'vector')
+        return super(RenderVectorPngTest, self).request(query, *args, **kwargs)
 
 
 class RenderJsonHistoryTest(BaseRenderTest):

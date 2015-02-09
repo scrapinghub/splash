@@ -78,15 +78,17 @@ class DefaultRenderScript(RenderScript):
     Subclasses choose how to return the result (as html, json, png).
     """
     def start(self, url, baseurl=None, wait=None, viewport=None,
-                  js_source=None, js_profile=None, images=None, console=False,
-                  headers=None, http_method='GET', body=None):
+              js_source=None, js_profile=None, images=None, console=False,
+              headers=None, http_method='GET', body=None,
+              render_all=False):
 
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
-        self.viewport = defaults.VIEWPORT if viewport is None else viewport
+        self.viewport = defaults.VIEWPORT_SIZE if viewport is None else viewport
+        self.render_all = render_all or viewport == 'full'
 
         if images is not None:
             self.tab.set_images_enabled(images)
@@ -175,10 +177,13 @@ class PngRender(DefaultRenderScript):
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
+        self.scale_method = kwargs.pop('scale_method')
         return super(PngRender, self).start(**kwargs)
 
     def get_result(self):
-        return self.tab.png(self.width, self.height)
+        return self.tab.png(self.width, self.height,
+                            render_all=self.render_all,
+                            scale_method=self.scale_method)
 
 
 class JsonRender(DefaultRenderScript):
@@ -186,6 +191,7 @@ class JsonRender(DefaultRenderScript):
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
+        self.scale_method = kwargs.pop('scale_method')
         self.include = {
             inc: kwargs.pop(inc)
             for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
@@ -197,7 +203,9 @@ class JsonRender(DefaultRenderScript):
         res = {}
 
         if self.include['png']:
-            res['png'] = self.tab.png(self.width, self.height, b64=True)
+            res['png'] = self.tab.png(self.width, self.height, b64=True,
+                                      render_all=self.render_all,
+                                      scale_method=self.scale_method)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output

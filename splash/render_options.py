@@ -66,7 +66,10 @@ class RenderOptions(object):
         value = self.data.get(name)
         if value is not None:
             if type is not None:
-                value = type(value)
+                if type is str and isinstance(value, unicode):
+                    value = value.encode('utf8')
+                else:
+                    value = type(value)
             if range is not None and not (range[0] <= value <= range[1]):
                 raise BadOption("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
             return value
@@ -115,11 +118,25 @@ class RenderOptions(object):
     def get_height(self):
         return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
 
+    def get_scale_method(self):
+        scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
+        if scale_method not in ('raster', 'vector'):
+            raise BadOption(
+                "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
+                scale_method)
+        return scale_method
+
     def get_http_method(self):
         return self.get("http_method", "GET")
 
     def get_body(self):
         return self.get("body", None)
+
+    def get_render_all(self, wait=None):
+        result = self._get_bool("render_all", False)
+        if result == 1 and wait == 0:
+            raise BadOption("Pass non-zero 'wait' to render full webpage")
+        return result
 
     def get_lua_source(self):
         return self.get("lua_source")
@@ -156,23 +173,17 @@ class RenderOptions(object):
         return headers
 
     def get_viewport(self, wait=None):
-        viewport = self.get("viewport", defaults.VIEWPORT)
+        viewport = self.get("viewport", defaults.VIEWPORT_SIZE)
 
         if viewport == 'full':
             if wait == 0:
                 raise BadOption("Pass non-zero 'wait' to render full webpage")
-            return viewport
-
-        max_width = defaults.VIEWPORT_MAX_WIDTH
-        max_heigth = defaults.VIEWPORT_MAX_HEIGTH
-        max_area = defaults.VIEWPORT_MAX_AREA
-        try:
-            w, h = map(int, viewport.split('x'))
-            if (0 < w <= max_width) and (0 < h <= max_heigth) and (w*h < max_area):
-                return viewport
-            raise BadOption("Viewport is out of range (%dx%d, area=%d)" % (max_width, max_heigth, max_area))
-        except ValueError:
-            raise BadOption("Invalid viewport format: %s" % viewport)
+        else:
+            try:
+                validate_size_str(viewport)
+            except ValueError as e:
+                raise BadOption(str(e))
+        return viewport
 
     def get_filters(self, pool=None, adblock_rules=None):
         filter_names = self.get('filters', '')
@@ -211,6 +222,7 @@ class RenderOptions(object):
             'baseurl': self.get_baseurl(),
             'wait': wait,
             'viewport': self.get_viewport(wait),
+            'render_all': self.get_render_all(wait),
             'images': self.get_images(),
             'headers': self.get_headers(),
             'proxy': self.get_proxy(),
@@ -222,7 +234,8 @@ class RenderOptions(object):
         }
 
     def get_png_params(self):
-        return {'width': self.get_width(), 'height': self.get_height()}
+        return {'width': self.get_width(), 'height': self.get_height(),
+                'scale_method': self.get_scale_method()}
 
     def get_include_params(self):
         return dict(
@@ -234,3 +247,28 @@ class RenderOptions(object):
             history = self._get_bool("history", defaults.SHOW_HISTORY),
             har = self._get_bool("har", defaults.SHOW_HAR),
         )
+
+
+def validate_size_str(size_str):
+    """
+    Validate size string in WxH format.
+
+    Can be used to validate both viewport and window size strings.  Does not
+    special-case ``'full'`` viewport.  Raises ``ValueError`` if anything goes
+    wrong.
+
+    :param size_str: string to validate
+
+    """
+    max_width = defaults.VIEWPORT_MAX_WIDTH
+    max_heigth = defaults.VIEWPORT_MAX_HEIGTH
+    max_area = defaults.VIEWPORT_MAX_AREA
+    try:
+        w, h = map(int, size_str.split('x'))
+    except ValueError:
+        raise ValueError("Invalid viewport format: %s" % size_str)
+    else:
+        if not ((0 < w <= max_width) and (0 < h <= max_heigth) and
+                (w*h < max_area)):
+            raise ValueError("Viewport is out of range (%dx%d, area=%d)" %
+                             (max_width, max_heigth, max_area))

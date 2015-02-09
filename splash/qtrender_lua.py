@@ -59,7 +59,7 @@ class _ImmediateResult(object):
         self.value = value
 
 
-def command(async=False, can_raise_async=False, table_argument=False, multiple_return_values=False):
+def command(async=False, can_raise_async=False, table_argument=False):
     """ Decorator for marking methods as commands available to Lua """
     def decorator(meth):
         if not table_argument:
@@ -72,7 +72,6 @@ def command(async=False, can_raise_async=False, table_argument=False, multiple_r
         meth._is_command = True
         meth._is_async = async
         meth._can_raise_async = can_raise_async
-        meth._multiple_return_values = multiple_return_values
         return meth
     return decorator
 
@@ -85,7 +84,10 @@ def emits_lua_objects(meth):
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
-        return python2lua(self.lua, res)
+        if isinstance(res, tuple):
+            return tuple(python2lua(self.lua, r) for r in res)
+        else:
+            return python2lua(self.lua, res)
     return wrapper
 
 
@@ -125,7 +127,10 @@ def exceptions_as_return_values(meth):
     def wrapper(self, *args, **kwargs):
         try:
             result = meth(self, *args, **kwargs)
-            return True, result
+            if isinstance(result, tuple):
+                return (True,) + result
+            else:
+                return True, result
         except Exception as e:
             return False, repr(e)
     wrapper._returns_error_flag = True
@@ -187,7 +192,7 @@ class _WrappedJavascriptFunction(object):
 class Splash(object):
     """
     This object is passed to Lua script as an argument to 'main' function
-    (wrapped in 'Splash' Lua object; see :file:`scripts/splash.lua`).
+    (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args']
@@ -222,7 +227,6 @@ class Splash(object):
                 commands[name] = self.lua.table_from({
                     'is_async': getattr(value, '_is_async'),
                     'returns_error_flag': getattr(value, '_returns_error_flag', False),
-                    'multiple_return_values': getattr(value, '_multiple_return_values', False),
                     'can_raise_async': getattr(value, '_can_raise_async', False),
                 })
         self.commands = python2lua(self.lua, commands)
@@ -285,12 +289,14 @@ class Splash(object):
         return self.tab.html()
 
     @command()
-    def png(self, width=None, height=None):
+    def png(self, width=None, height=None, render_all=False,
+            scale_method=None):
         if width is not None:
             width = int(width)
         if height is not None:
             height = int(height)
-        result = self.tab.png(width, height, b64=False)
+        result = self.tab.png(width, height, b64=False, render_all=render_all,
+                              scale_method=scale_method)
         return BinaryCapsule(result)
 
     @command()
@@ -309,13 +315,13 @@ class Splash(object):
     def evaljs(self, snippet):
         return self.tab.evaljs(snippet)
 
-    @command(multiple_return_values=True)
+    @command()
     def runjs(self, snippet):
         try:
             self.tab.runjs(snippet)
-            return [True]
+            return True
         except JsError as e:
-            return [None, e.args[0]]
+            return None, e.args[0]
 
     @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
@@ -468,10 +474,17 @@ class Splash(object):
         self.tab.set_custom_headers(self.lua2python(headers, max_depth=3))
 
     @command()
-    def set_viewport(self, size):
-        if size is None:
-            return
-        return self.tab.set_viewport(size)
+    def get_viewport_size(self):
+        sz = self.tab.web_page.viewportSize()
+        return sz.width(), sz.height()
+
+    @command()
+    def set_viewport_size(self, width, height):
+        self.tab.set_viewport('%dx%d' % (width, height))
+
+    @command()
+    def set_viewport_full(self):
+        return tuple(self.tab.set_viewport('full'))
 
     @command()
     def set_images_enabled(self, enabled):
@@ -663,7 +676,7 @@ class LuaRender(RenderScript):
                 try:
                     res = self.splash.lua2python(self.result)
                 except ValueError as e:
-                    # can't convert result to a Python object -> requets was bad
+                    # can't convert result to a Python object
                     raise ScriptError("'main' returned bad result. {!s}".format(e))
 
                 self._print_instructions_used()

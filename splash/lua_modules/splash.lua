@@ -1,15 +1,35 @@
+-- This function works very much like standard Lua assert, but:
 --
--- Python Splash commands return `ok, result` pairs; this decorator
--- raises an error if "ok" is false and returns "result" otherwise.
+-- * the first argument is the stack level to report the error at (1 being
+--   current level, like for `error` function)
+-- * it strips the flag if it evaluates to true
+-- * it does not take a message parameter and thus will always preserve all
+--   elements of the tuple
+--
+local function assertx(nlevels, ok, ...)
+  if not ok then
+    error(select(1, ...), 1 + nlevels)
+  else
+    return ...
+  end
+end
+
+
+--
+-- Python Splash commands return
+--
+--     ok, result1, [ result2, ... ]
+--
+-- tuples.  If "ok" is false, this decorator raises an error using "result1" as
+-- message.  Otherwise, it returns
+--
+--     result1, [result2, ...]
 --
 local function unwraps_errors(func)
   return function(...)
-    local ok, result = func(...)
-    if not ok then
-      error(result, 2)
-    else
-      return result
-    end
+    -- Here assertx is tail-call-optimized and extra stack level is not
+    -- created, hence nlevels==1.
+    return assertx(1, func(...))
   end
 end
 
@@ -66,19 +86,6 @@ local function yields_result(func)
   end
 end
 
-
---
--- This decorator expects function return value to be a Python list
--- and unpacks it to Lua multiple return values.
---
-local function unpacks_multiple_return_values(func)
-  return function(...)
-    -- Max allowed list size is 10; it is more than enough for
-    -- functions which return multiple values. This trick is needed
-    -- to handle `nil` as a first value correctly.
-    return table.unpack(func(...), 1, 10)
-  end
-end
 
 --
 -- Lua wrapper for Splash Python object.
