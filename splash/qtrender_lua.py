@@ -6,6 +6,7 @@ import itertools
 import resource
 import time
 import sys
+from twisted.internet import defer
 
 import lupa
 
@@ -19,7 +20,7 @@ from splash.lua_runner import (
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har
-from splash.render_options import BadOption
+from splash.render_options import BadOption, RenderOptions
 from splash.utils import truncated, BinaryCapsule
 from splash.qtutils import REQUEST_ERRORS_SHORT
 from splash.lua_runtime import SplashLuaRuntime
@@ -174,12 +175,12 @@ class Splash(object):
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args']
 
-    def __init__(self, tab, return_func, render_options, lua):
+    def __init__(self, lua, tab, return_func, render_options=None):
         """
+        :param SplashLuaRuntime lua: Lua wrapper
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param callable return_func: function that continues the script
         :param splash.render_options.RenderOptions render_options: arguments
-        :param SplashLuaRuntime lua: Lua wrapper
         """
         self.tab = tab
         self.lua = lua
@@ -188,7 +189,14 @@ class Splash(object):
         self._exceptions = []
         self._command_ids = itertools.count()
 
-        self.args = self.lua.python2lua(render_options.data)
+        if isinstance(render_options, RenderOptions):
+            self.args = self.lua.python2lua(render_options.data)
+        elif isinstance(render_options, dict):
+            self.args = self.lua.python2lua(render_options)
+        elif render_options is None:
+            self.args = self.lua.python2lua({})
+        else:
+            raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
         self.attr_whitelist = []
         commands = {}
@@ -542,10 +550,10 @@ class LuaRender(RenderScript):
         )
 
         self.splash = Splash(
+            lua=self.lua,
             tab=self.tab,
             return_func=self.runner.dispatch,
             render_options=self.render_options,
-            lua=self.lua,
         )
         self.lua.add_allowed_object(self.splash, self.splash.attr_whitelist)
 
