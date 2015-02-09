@@ -2,25 +2,18 @@
 """ Utils for working with QWebKit objects.
 """
 from __future__ import absolute_import
+
+import functools
+import itertools
 import sys
 import time
-import itertools
-import functools
-import struct
-import array
-from math import floor, ceil
 
-from twisted.python import log
-from PIL import Image
-from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
-from PyQt4.QtCore import (
-    QAbstractEventDispatcher, QVariant, QString, QObject,
-    QDateTime, QRegExp, QSize, QRect, QPoint
-)
-from PyQt4.QtCore import QUrl
+from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
+                          QRegExp, QString, QUrl, QVariant)
+from PyQt4.QtGui import QApplication
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply
+from twisted.python import log
 
-from splash import defaults
 from splash.utils import truncated
 
 
@@ -88,7 +81,6 @@ REQUEST_ERRORS_SHORT = {
     QNetworkReply.UnknownContentError : 'unknown_remote_content_error',
     QNetworkReply.ProtocolFailure : 'protocol_error',
 }
-
 
 
 # A global reference must be kept to QApplication, otherwise the process will
@@ -222,203 +214,3 @@ class WrappedSignal(object):
     def disconnect(self, callback_id):
         cb = self.callbacks.pop(callback_id)
         self.signal.disconnect(cb)
-
-
-# Brain-dead simple endianness detection needed because QImage stores
-# bytes in host-native order.
-#
-# XXX: do we care about big endian hosts?
-# XXX: is there a better way?
-_is_little_endian = struct.pack('<i', 0x1122) == struct.pack('=i', 0x1122)
-
-
-def qimage_to_pil_image(qimage):
-    """Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode)."""
-    # In our case QImage uses 0xAARRGGBB format stored in host endian order,
-    # we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences used by pillow.
-    buf = qimage.bits().asstring(qimage.numBytes())
-    if not _is_little_endian:
-        buf = swap_byte_order_i32(buf)
-    # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
-    # hence the 'BGRA' decoder argument.
-    return Image.frombytes(
-        'RGBA', (qimage.size().width(), qimage.size().height()), buf,
-        'raw', 'BGRA')
-
-
-def swap_byte_order_i32(buf):
-    """Swap order of bytes in each 32-bit word of given byte sequence."""
-    arr = array.array('I')
-    arr.fromstring(buf)
-    arr.byteswap()
-    return arr.tostring()
-
-
-def _render_qwebpage_full(web_page, logger,
-                          viewport_size, image_size):
-    image = QImage(image_size, QImage.Format_ARGB32)
-    image.fill(0)
-    painter = QPainter(image)
-    try:
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setRenderHint(QPainter.TextAntialiasing, True)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.setWindow(QRect(QPoint(0, 0), web_page.viewportSize()))
-        painter.setViewport(QRect(QPoint(0, 0), viewport_size))
-        if image_size != viewport_size:
-            # Try not to draw stuff that won't fit into the image.  Clipping
-            # must be specified in input (aka logical) coordinates, but we know
-            # it in output (aka physical) coordinates, so we have to do an
-            # inverse transformation.  If, for some reason, we cannot, skip the
-            # clipping altogether.
-            clip_rect = QRect(QPoint(0, 0), viewport_size)
-            inv_transform, invertible = painter.combinedTransform().inverted()
-            if invertible:
-                painter.setClipRect(inv_transform.mapRect(clip_rect))
-        web_page.mainFrame().render(painter)
-    finally:
-        # It is important to end painter explicitly in python code, because
-        # Python finalizer invocation order, unlike C++ destructors, is not
-        # deterministic and there is a possibility of image's finalizer running
-        # before painter's which may break tests and kill your cat.
-        painter.end()
-    return qimage_to_pil_image(image)
-
-
-def _render_qwebpage_tiled(web_page, logger,
-                           viewport_size, image_size):
-    tile_maxsize = defaults.TILE_MAXSIZE
-
-    draw_width = viewport_size.width()
-    draw_height = min(viewport_size.height(), image_size.height())
-
-    # One bug is worked around by rendering the page one tile at a time onto a
-    # small-ish temporary image.  The magic happens in viewport-window
-    # transformation:
-    #
-    # - Sizes of tile painter viewport and tile painter window match
-    #   webpage viewport size to avoid rescaling.
-    # - Tile painter window is moved appropriately so that tile region is
-    #   overlayed onto the temporary image.
-    tile_hsize = min(tile_maxsize, draw_width)
-    tile_vsize = min(tile_maxsize, draw_height)
-    htiles = 1 + (draw_width - 1) // tile_hsize
-    vtiles = 1 + (draw_height - 1) // tile_vsize
-    tile_image = QImage(QSize(tile_hsize, tile_vsize), QImage.Format_ARGB32)
-    ratio = viewport_size.width() / float(web_page.viewportSize().width())
-
-    # The other bug manifests itself when you do painter.drawImage trying to
-    # concatenate tiles onto a single image and once you reach 32'768 along
-    # either dimension all of a sudden drawImage simply stops drawing anything.
-    # The simplest workaround that comes to mind is to use pillow for pasting
-    # images.
-    pil_image = Image.new(mode='RGBA',
-                          size=(image_size.width(), image_size.height()))
-
-    painter = QPainter(tile_image)
-    try:
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setRenderHint(QPainter.TextAntialiasing, True)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.setWindow(QRect(QPoint(0, 0), web_page.viewportSize()))
-        painter_viewport = QRect(QPoint(0, 0), viewport_size)
-        for i in xrange(htiles):
-            for j in xrange(vtiles):
-                left, top = i * tile_hsize, j * tile_vsize
-                painter.setViewport(painter_viewport.translated(-left, -top))
-                logger.log("Rendering with viewport=%s"
-                           % painter.viewport(), min_level=2)
-
-                clip_rect = QRect(
-                    QPoint(floor(left / ratio),
-                           floor(top / ratio)),
-                    QPoint(ceil((left + tile_hsize) / ratio),
-                           ceil((top + tile_vsize) / ratio)))
-                web_page.mainFrame().render(painter, QRegion(clip_rect))
-                pil_tile_image = qimage_to_pil_image(tile_image)
-                if viewport_size.height() - top < tile_vsize:
-                    # If this is the last tile, make sure that the bottom of
-                    # the image is not garbled: the last tile's bottom may be
-                    # clipped and will then have stuff left over from rendering
-                    # the previous tile.  Crop it, because the image can be
-                    # taller than the viewport because of "height=" option.
-                    box = (0, 0, tile_hsize, viewport_size.height() - top)
-                    pil_tile_image = pil_tile_image.crop(box)
-
-                if logger:
-                    logger.log("Pasting rendered tile to coords: %s" %
-                               ((left, top),),
-                               min_level=2)
-                pil_image.paste(pil_tile_image, (left, top))
-        # Make sure that painter.end() is invoked before destroying the
-        # underlying image.
-    finally:
-        painter.end()
-    return pil_image
-
-
-def render_qwebpage(web_page, logger=None, width=None, height=None):
-    """
-    Render QWebPage into PIL.Image.
-
-    This function works around bugs in QPaintEngine that occur when the
-    resulting image is larger than 32k pixels in either dimension.
-
-    :type web_page: PyQt4.QtWebKit.QWebPage
-    :type logger: splash.browser_tab._BrowserTabLogger
-    :type width: int
-    :type height: int
-    :rtype: PIL.Image.Image
-
-    """
-    if logger is None:
-        logger = _DummyLogger()
-    size = web_page.viewportSize()
-    viewport_size, image_size = _get_viewport_and_image_size(
-        web_page.viewportSize(), width=width, height=height)
-    logger.log("png render: web page viewport size=(%s, %s)"
-               % (size.width(), size.height()),
-               min_level=2)
-    logger.log("png render: draw region size=%s" % viewport_size,
-               min_level=2)
-    logger.log("png render: image size=%s" % image_size, min_level=2)
-
-    too_large = (viewport_size.width() >= defaults.TILE_MAXSIZE or
-                 viewport_size.height() >= defaults.TILE_MAXSIZE)
-    if too_large:
-        logger.log("png render: draw region too large, rendering tile-by-tile",
-                   min_level=2)
-        render_fn = _render_qwebpage_tiled
-    else:
-        logger.log("png render: rendering webpage in one step", min_level=2)
-        render_fn = _render_qwebpage_full
-    return render_fn(web_page, logger, viewport_size=viewport_size,
-                     image_size=image_size)
-
-
-class _DummyLogger(object):
-    def log(self, *args, **kwargs):
-        pass
-
-
-def _get_viewport_and_image_size(orig_size, width, height):
-    viewport_width = orig_width = orig_size.width()
-    viewport_height = orig_height = orig_size.height()
-
-    if width is not None:
-        assert width > 0
-        if orig_width > 0:
-            # If size.width() != 0, maintain the ratio.
-            ratio = width / float(orig_width)
-            viewport_height = int(orig_height * ratio)
-        viewport_width = width
-
-    image_width = viewport_width
-    if height is not None:
-        assert height > 0
-        image_height = height
-    else:
-        image_height = viewport_height
-
-    return (QSize(viewport_width, viewport_height),
-            QSize(image_width, image_height))

@@ -1,28 +1,26 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from cStringIO import StringIO
-import os
 import base64
 import copy
-import json
-import pprint
-import weakref
 import functools
-from PIL import Image
-from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
-from PyQt4.QtCore import Qt, QUrl, QSize, QTimer, QObject, pyqtSlot
-from PyQt4.QtGui import QMouseEvent, QKeyEvent
+import json
+import os
+import weakref
+
+from PyQt4.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
 from PyQt4.QtNetwork import QNetworkRequest
+from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
 from twisted.internet import defer
 from twisted.python import log
+
 from splash import defaults
-from splash.qtutils import (qurl2ascii, OPERATION_QT_CONSTANTS, qt2py,
-                            WrappedSignal, render_qwebpage)
 from splash.har.qt import cookies2har
 from splash.har.utils import without_private
+from splash.qtrender_png import render_qwebpage
+from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
+                            qurl2ascii)
 from splash.render_options import validate_size_str
-
-from .qwebpage import SplashQWebPage, SplashQWebView
+from splash.qwebpage import SplashQWebPage, SplashQWebView
 
 
 def skip_if_closing(meth):
@@ -546,10 +544,12 @@ class BrowserTab(QObject):
         self.store_har_timing("_onHtmlRendered")
         return result
 
-    def png(self, width=None, height=None, b64=False, render_all=False):
+    def png(self, width=None, height=None, b64=False, render_all=False,
+            scale_method=None):
         """ Return screenshot in PNG format """
-        self.logger.log("Getting PNG: width=%s, height=%s" %
-                        (width, height), min_level=2)
+        self.logger.log("Getting PNG: width=%s, height=%s,"
+                        " render_all=%s, scale_method=%s" %
+                        (width, height, render_all, scale_method), min_level=2)
         old_size = self.web_page.viewportSize()
         try:
             if render_all:
@@ -557,12 +557,11 @@ class BrowserTab(QObject):
                                 min_level=2)
                 self.set_viewport('full')
             image = render_qwebpage(self.web_page, self.logger,
-                                    width=width, height=height)
+                                    width=width, height=height,
+                                    scale_method=scale_method)
             self.store_har_timing("_onScreenshotPrepared")
 
-            b = StringIO()
-            image.save(b, "png", compress_level=defaults.PNG_COMPRESSION_LEVEL)
-            result = bytes(b.getvalue())
+            result = image.to_png()
             if b64:
                 result = base64.b64encode(result)
             self.store_har_timing("_onPngRendered")

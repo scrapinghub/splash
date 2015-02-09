@@ -66,7 +66,10 @@ class RenderOptions(object):
         value = self.data.get(name)
         if value is not None:
             if type is not None:
-                value = type(value)
+                if type is str and isinstance(value, unicode):
+                    value = value.encode('utf8')
+                else:
+                    value = type(value)
             if range is not None and not (range[0] <= value <= range[1]):
                 raise BadOption("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
             return value
@@ -114,6 +117,14 @@ class RenderOptions(object):
 
     def get_height(self):
         return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
+
+    def get_scale_method(self):
+        scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
+        if scale_method not in ('raster', 'vector'):
+            raise BadOption(
+                "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
+                scale_method)
+        return scale_method
 
     def get_http_method(self):
         return self.get("http_method", "GET")
@@ -223,7 +234,8 @@ class RenderOptions(object):
         }
 
     def get_png_params(self):
-        return {'width': self.get_width(), 'height': self.get_height()}
+        return {'width': self.get_width(), 'height': self.get_height(),
+                'scale_method': self.get_scale_method()}
 
     def get_include_params(self):
         return dict(
