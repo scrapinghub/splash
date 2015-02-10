@@ -69,7 +69,12 @@ except ImportError:
 else:
     setup_args['zip_safe'] = False
     setup_args['install_requires'] = [
-        'Twisted', 'qt4reactor', 'psutil', 'adblockparser', 'xvfbwrapper',
+        'Twisted',
+        'qt4reactor',
+        'psutil',
+        'adblockparser',
+        'xvfbwrapper',
+        'Pillow',
     ]
 
 setup(**setup_args)
