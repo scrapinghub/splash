@@ -150,6 +150,13 @@ class BrowserTab(QObject):
         Set viewport size.
         If size is "full" viewport size is detected automatically.
         If can also be "<width>x<height>".
+
+        .. note::
+
+           This will update all JS geometry variables, but window resize event
+           is delivered asynchronously and so ``window.resize`` will not be
+           invoked until control is yielded to the event loop.
+
         """
         if size == 'full':
             size = self.web_page.mainFrame().contentsSize()
@@ -167,9 +174,21 @@ class BrowserTab(QObject):
             w, h = map(int, size.split('x'))
             size = QSize(w, h)
         self.web_page.setViewportSize(size)
+        self._force_relayout()
         w, h = int(size.width()), int(size.height())
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
         return w, h
+
+    def _force_relayout(self):
+        """Force a relayout of the web page contents."""
+        # setPreferredContentsSize may be used to force a certain size for
+        # layout purposes.  Passing an invalid size resets the override and
+        # tells the QWebPage to use the size as requested by the document.
+        # This is in fact the default behavior, so we don't change anything.
+        #
+        # The side-effect of this operation is a forced synchronous relayout of
+        # the page.
+        self.web_page.setPreferredContentsSize(QSize())
 
     def lock_navigation(self):
         self.web_page.navigation_locked = True

@@ -2198,6 +2198,28 @@ end
         img = Image.open(StringIO(standard_b64decode(out['png'])))
         self.assertEqual(img.size, (w, 2000))
 
+    def test_set_viewport_size_changes_contents_size_immediately(self):
+        # GH167
+        script = """
+function main(splash)
+splash:set_viewport_size(1024, 768)
+assert(splash:set_content([[
+<html>
+<body style="min-width: 800px; margin: 0px">&nbsp;</body>
+</html>
+]]))
+result = {}
+result.before = {splash:set_viewport_full()}
+splash:set_viewport_size(640, 480)
+result.after = {splash:set_viewport_full()}
+return result
+end
+        """
+        out = self.return_json_from_lua(script)
+        self.assertEqual(out,
+                         {'before': {'1': 1024, '2': 768},
+                          'after': {'1': 800, '2': 480}})
+
     @pytest.mark.xfail
     def test_viewport_full_raises_error_if_fails_in_script(self):
         # XXX: for local resources loadFinished event generally arrives after
