@@ -1,7 +1,7 @@
 Changes
 =======
 
-dev (unreleased)
+1.4 (2015-02-10)
 ----------------
 
 This release provides faster and more robust screenshot rendering,
