@@ -146,7 +146,7 @@ class BaseScriptRunner(object):
                 self.log("[lua] got non-command")
 
                 if isinstance(cmd, tuple):
-                    raise ScriptError("'main' function must return a single result")
+                    cmd = list(cmd)
 
                 self.result = cmd
 
