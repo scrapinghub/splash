@@ -10,6 +10,7 @@ import time
 from PIL import Image
 import requests
 import pytest
+lupa = pytest.importorskip("lupa")
 
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler

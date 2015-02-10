@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from splash import lua
 from .test_render import BaseRenderTest
 
 
@@ -9,4 +10,8 @@ class UITest(BaseRenderTest):
         ui_main = self.request({}, endpoint="")
         self.assertStatusCode(ui_main, 200)
         self.assertIn("Splash", ui_main.text)
-        self.assertIn("<textarea", ui_main.text)
+
+        if lua.is_supported():
+            self.assertIn("<textarea", ui_main.text)
+        else:
+            self.assertNotIn("<textarea", ui_main.text)
