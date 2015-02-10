@@ -108,7 +108,7 @@ class SplashKernel(Kernel):
     def __init__(self, **kwargs):
         super(SplashKernel, self).__init__(**kwargs)
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
-        self.lua_repr = self.lua.eval("tostring")
+        self.lua_repr = self.lua.eval("require('repr')")
         self.tab = init_browser()
         self.runner = DeferredSplashRunner(self.tab, self.lua, self.sandboxed)
         # try:
@@ -147,9 +147,9 @@ class SplashKernel(Kernel):
             super(SplashKernel, self).send_execute_reply(stream, ident, parent, md, reply)
 
             if result:
-                data = {
-                    'text/plain': repr(result),
-                }
+                if not isinstance(result, (str, unicode)):
+                    result = self.lua_repr(self.lua.python2lua(result))
+                data = {'text/plain': result}
                 # if isinstance(result, BinaryCapsule):
                 #     data["image/png"] = result.data
                 self._publish_execute_result(parent, data, {}, self.execution_count)
@@ -184,8 +184,9 @@ class SplashKernel(Kernel):
         try:
             try:
                 lua_source = """
+                local repr = require("repr")
                 function main(splash)
-                    return %s
+                    return repr(%s)
                 end
                 """ % code
                 main_coro = self.get_main(lua_source)
