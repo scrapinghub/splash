@@ -42,9 +42,7 @@ class BaseScriptRunner(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    result = ''
     _START_CMD = '__START__'
-    _waiting_for_result_id = _START_CMD
 
     def __init__(self, lua, log, sandboxed):
         """
@@ -64,6 +62,8 @@ class BaseScriptRunner(object):
         :param list coro_args: arguments to pass to coro_func
         """
         self.coro = coro_func(*coro_args)
+        self.result = ''
+        self._waiting_for_result_id = self._START_CMD
         self.dispatch(self._START_CMD)
 
     @abc.abstractmethod
