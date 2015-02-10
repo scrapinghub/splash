@@ -257,7 +257,8 @@ If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
-See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-autoload`.
+See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-wait-for-resume`,
+:ref:`splash-autoload`.
 
 .. _splash-evaljs:
 
@@ -327,7 +328,8 @@ Compare:
         -- ...
     end
 
-See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`.
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
+:ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
 
 .. _splash-runjs:
 
@@ -391,7 +393,225 @@ Compare:
         -- ...
     end
 
-See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`.
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-autoload`,
+:ref:`splash-wait-for-resume`.
+
+.. _splash-wait-for-resume:
+
+splash:wait_for_resume
+----------------------
+
+Run asynchronous JavaScript code in page context. The Lua script will
+yield until the JavaScript code tells it to resume.
+
+**Signature:** ``result, error = splash:wait_for_resume(snippet, timeout)``
+
+**Parameters:**
+
+* snippet - a string with a JavaScript source code to execute. This code
+  must include a function called ``main``. The first argument to ``main``
+  is an object that has the properties ``resume`` and ``error``. ``resume``
+  is a function which can be used to resume Lua execution. It takes an optional
+  argument which will be returned to Lua in the ``result.value`` return value.
+  ``error`` is a function which can be called with a required string value
+  that is returned in the ``error`` return value.
+* timeout - a number which determines (in seconds) how long to allow JavaScript
+  to execute before forceably returning control to Lua. Defaults to
+  zero, which disables the timeout.
+
+**Returns:** ``result, error`` pair. When the execution is successful
+``result`` is a table. If the value returned by JavaScript is not
+``undefined``, then the ``result`` table will contain a key ``value``
+that has the value passed to ``splash.resume(…)``. The ``result`` table also
+contains any additional key/value pairs set by ``splash.set(…)``. In case of
+timeout or JavaScript errors ``result`` is ``nil`` and ``error`` contains an
+error message string.
+
+Examples:
+
+The first, trivial example shows how to transfer control of execution from Lua
+to JavaScript and then back to Lua. This command will tell JavaScript to
+sleep for 3 seconds and then return to Lua. Note that this is an async
+operation: the Lua event loop and the JavaScript event loop continue to run
+during this 3 second pause, but Lua will not continue executing the current
+function until JavaScript calls ``splash.resume()``.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume();
+                }, 3000);
+            }
+        ]])
+
+        -- result is {}
+        -- error is nil
+
+    end
+
+``result`` is set to an empty table to indicate that nothing was returned
+from ``splash.resume``. You can use ``assert(splash:wait_for_resume(…))``
+even when JavaScript does not return a value because the empty table signifies
+success to ``assert()``.
+
+.. note::
+
+    Your JavaScript code must contain a ``main()`` function. You will get an
+    error if you do not include it. The first argument to this function can
+    have any name you choose, of course. We will call it ``splash`` by
+    convention in this documentation.
+
+The next example shows how to return a value from JavaScript to Lua.
+You can return booleans, numbers, strings, arrays, or objects.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume([1, 2, 'red', 'blue']);
+                }, 3000);
+            }
+        ]])
+
+        -- result is {value=[1, 2, 'red', 'blue']}
+        -- error is nil
+
+    end
+
+.. note::
+
+    As with :ref:`splash-evaljs`, be wary of returning objects that are
+    too large, such as the ``$`` object in jQuery, which will consume a lot
+    of time and memory to convert to a Lua result.
+
+You can also set additional key/value pairs in JavaScript with the
+``splash.set(key, value)`` function. Key/value pairs will be included
+in the ``result`` table returned to Lua. The following example demonstrates
+this.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.set("foo", "bar");
+                    splash.resume("ok");
+                }, 3000);
+            }
+        ]])
+
+        -- result is {foo="bar", value="ok"}
+        -- error is nil
+
+    end
+
+The next example shows an incorrect usage of ``splash:wait_for_resume()``:
+the JavaScript code does not contain a ``main()`` function. ``result`` is
+nil because ``splash.resume()`` is never called, and ``error`` contains
+an error message explaining the mistake.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            console.log('hello!');
+        ]])
+
+        -- result is nil
+        -- error is "error: wait_for_resume(): no main() function defined"
+
+    end
+
+The next example shows error handling. If ``splash.error(…)`` is
+called instead of ``splash.resume()``, then ``result`` will be ``nil``
+and ``error`` will contain the string passed to ``splash.error(…)``.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.error("Goodbye, cruel world!");
+                }, 3000);
+            }
+        ]])
+
+        -- result is nil
+        -- error is "error: Goodbye, cruel world!"
+
+    end
+
+Your JavaScript code must either call ``splash.resume()`` or
+``splash.error()`` exactly one time. Subsequent calls to either function
+have no effect, as shown in the next example.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("ok");
+                    splash.resume("still ok");
+                    splash.error("not ok");
+                }, 3000);
+            }
+        ]])
+
+        -- result is {value="ok"}
+        -- error is nil
+
+    end
+
+The next example shows the effect of the ``timeout`` argument. We have set
+the ``timeout`` argument to 1 second, but our JavaScript code will not call
+``splash.resume()`` for 3 seconds, which guarantees that
+``splash:wait_for_resume()`` will time out.
+
+When it times out, ``result`` will be nil, ``error`` will contain a string
+explaining the timeout, and Lua will continue executing. Calling
+``splash.resume()`` or ``splash.error()`` after a timeout has no effect.
+
+.. code-block:: lua
+
+    function main(splash)
+
+        local result, error = splash:wait_for_resume([[
+            function main(splash) {
+                setTimeout(function () {
+                    splash.resume("Hello, world!");
+                }, 3000);
+            }
+        ]], 1)
+
+        -- result is nil
+        -- error is "error: One shot callback timed out while waiting for resume() or error()."
+
+    end
+
+.. note::
+
+    The timeout must be >= 0. If the timeout is 0, then
+    ``splash:wait_for_resume()`` will never timeout (although Splash's
+    HTTP timeout still applies).
+
+Note that your JavaScript code is not forceably canceled by a timeout: it may
+continue to run until Splash shuts down the entire browser context.
+
+See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`, :ref:`splash-evaljs`.
 
 .. _splash-autoload:
 
@@ -459,7 +679,8 @@ is not a constant.
 If :ref:`splash-autoload` is called multiple times then all its scripts
 are executed on page load, in order they were added.
 
-See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`.
+See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
+:ref:`splash-wait-for-resume`.
 
 .. _splash-http-get:
 
@@ -619,9 +840,9 @@ specified one without resizing the content.  The region created by such
 extension is transparent.
 
 To set the viewport size use :ref:`splash-set-viewport-size`,
-:ref:`splash-set-viewport-full` or *render_all* argument.  *render_all=true* is
-equivalent to running ``splash:set_viewport_full()`` just before the rendering
-and restoring the viewport size afterwards.
+:ref:`splash-set-viewport-full` or *render_all* argument.  ``render_all=true``
+is equivalent to running ``splash:set_viewport_full()`` just before the
+rendering and restoring the viewport size afterwards.
 
 *scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
 ``scale_method='raster'``, the image is resized per-pixel.  When
@@ -990,11 +1211,12 @@ Example:
 
 .. note::
 
-   This will affect ``window.innerWidth`` and ``window.innerHeight`` JS
-   variables and invoke ``window.onresize`` event callback.  However this will
-   only happen during the next asynchronous operation and :ref:`splash-png` is
-   notably synchronous, so if you have resized a page and want it to react
-   accordingly before taking the screenshot, use :ref:`splash-wait`.
+   This will relayout all document elements and affect geometry variables, such
+   as ``window.innerWidth`` and ``window.innerHeight``.  However
+   ``window.onresize`` event callback will only be invoked during the next
+   asynchronous operation and :ref:`splash-png` is notably synchronous, so if
+   you have resized a page and want it to react accordingly before taking the
+   screenshot, use :ref:`splash-wait`.
 
 .. _splash-set-viewport-full:
 
@@ -1011,6 +1233,8 @@ Resize browser viewport to fit the whole page.
 some time passed after that (use :ref:`splash-wait`). This is an unfortunate
 restriction, but it seems that this is the only way to make automatic resizing
 work reliably.
+
+See :ref:`splash-set-viewport-size` for a note about interaction with JS.
 
 :ref:`splash-png` uses the viewport size.
 

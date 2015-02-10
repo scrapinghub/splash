@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import unittest
 import pytest
+lupa = pytest.importorskip("lupa")
 
 from splash.lua import lua2python, python2lua
 

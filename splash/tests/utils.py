@@ -115,6 +115,7 @@ class MockServer(object):
         )
         for port in (self.http_port, self.https_port, self.proxy_port):
             _wait_for_port(port)
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()

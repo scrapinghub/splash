@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import unittest
 
 import pytest
+lupa = pytest.importorskip("lupa")
 
 from . import test_render, test_redirects, test_har
 from .utils import NON_EXISTING_RESOLVABLE

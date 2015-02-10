@@ -169,6 +169,7 @@ def splash_server(portnum, slots, network_manager, max_timeout,
     from splash.resources import Root
     from splash.pool import RenderPool
     from twisted.python import log
+    from splash import lua
 
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
     log.msg("verbosity=%d" % verbosity)
@@ -183,6 +184,10 @@ def splash_server(portnum, slots, network_manager, max_timeout,
         js_profiles_path=js_profiles_path,
         verbosity=verbosity,
     )
+
+    if not lua.is_supported() and lua_enabled:
+        lua_enabled = False
+        log.msg("WARNING: Lua is not available, but --disable-lua option is not passed")
 
     # HTTP API
     onoff = {True: "enabled", False: "disabled"}

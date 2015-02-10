@@ -1,17 +1,19 @@
 Changes
 =======
 
-dev (unreleased)
+1.4 (2015-02-10)
 ----------------
 
-This release provides many improvements in Splash scripting engine,
-as well as other improvements like better cookie handling and better
-image rendering.
+This release provides faster and more robust screenshot rendering,
+many improvements in Splash scripting engine and other improvements
+like better cookie handling.
 
 From version 1.4 Splash requires Pillow (built with PNG support) to work.
 
 There are backwards-incompatible changes in Splash scripts:
 
+* splash:set_viewport() is split into splash:set_viewport_size()
+  and splash:set_viewport_full();
 * old splash:runjs() method is renamed to splash:evaljs();
 * new splash:runjs() method just runs JavaScript code
   without returning the result of the last JS statement.
@@ -19,12 +21,18 @@ There are backwards-incompatible changes in Splash scripts:
 To upgrade check all splash:runjs() usages: if the returned result is used
 then replace splash:runjs() with splash:evaljs().
 
+``viewport=full`` argument is deprecated; use ``render_all=1``.
+
 New scripting features:
 
 * it is now possible to write custom Lua plugins stored server-side;
 * a restricted version of Lua ``require`` is enabled in sandbox;
 * splash:autoload() method for setting JS to load on each request;
+* splash:wait_for_resume() method for interacting with async JS code;
 * splash:lock_navigation() and splash:unlock_navigation() methods;
+* splash:set_viewport() is split into splash:set_viewport_size()
+  and splash:set_viewport_full();
+* splash:get_viewport_size() method;
 * splash:http_get() method for sending HTTP GET requests without loading result
   to the browser;
 * splash:set_content() method for setting page content from a string;
@@ -45,11 +53,16 @@ New scripting features:
 
 Other improvements:
 
+* --max-timeout option can be passed to Splash at startup to increase or
+  decrease maximum allowed timeout value;
 * cookies are no longer shared between requests;
-* PNG rendering becomes more efficient, especially for large webpages:
-  images are resized while painting to avoid pixel-based resize step;
-  less CPU is spent on compression. The downside is that the returned
-  PNG images become 10-15% larger;
+* PNG rendering becomes more efficient: less CPU is spent on compression.
+  The downside is that the returned PNG images become 10-15% larger;
+* there is an option (``scale_method=vector``) to resize images
+  while painting to avoid pixel-based resize step - it can make taking
+  a screenshot much faster on image-light webpages (up to several times faster);
+* when 'height' is set and image is downscaled the rendering is more efficient
+  because Splash now avoids rendering unnecessary parts;
 * /debug endpoint tracks more objects;
 * testing setup improvements;
 * application/json POST requests handle invalid JSON better;
@@ -58,10 +71,13 @@ Other improvements:
 * Lua sandbox is cleaned up;
 * long log messages from Lua are truncated in logs;
 * more detailed error info is logged;
+* example script in Splash UI is simplified;
 * stress tests now include PNG rendering benchmark.
 
 Bug fixes:
 
+* default viewport size and window geometry are now set to 1024x768;
+  this fixes PNG screenshots with viewport=full;
 * PNG rendering is fixed for huge viewports;
 * splash:go() argument validation is improved;
 * timer is properly deleted when an exception is raised in an errback;

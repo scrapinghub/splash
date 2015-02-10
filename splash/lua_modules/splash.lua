@@ -47,6 +47,23 @@ end
 
 
 --
+-- Allows an async function to raise a Lua error by returning ok, err, raise.
+--
+-- If raise is true and ok is nil, then an error will be raised using res
+-- as the reason.
+--
+local function raises_async(func)
+  return function(...)
+    local ok, err, raise = func(...)
+    if ok == nil and raise then
+      error(err, 2)
+    else
+      return ok, err
+    end
+  end
+end
+
+--
 -- This decorator makes function yield the result instead of returning it
 --
 local function yields_result(func)
@@ -94,6 +111,10 @@ function Splash.create(py_splash)
 
     if opts.is_async then
       command = yields_result(command)
+    end
+
+    if opts.can_raise_async then
+      command = raises_async(command)
     end
 
     self[key] = command

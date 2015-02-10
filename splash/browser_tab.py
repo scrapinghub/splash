@@ -6,7 +6,7 @@ import functools
 import json
 import os
 import weakref
-
+import uuid
 from PyQt4.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
 from PyQt4.QtNetwork import QNetworkRequest
 from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
@@ -31,6 +31,11 @@ def skip_if_closing(meth):
             return
         return meth(self, *args, **kwargs)
     return wrapped
+
+
+class OneShotCallbackError(Exception):
+    """ A one shot callback was called more than once. """
+    pass
 
 
 class JsError(Exception):
@@ -152,6 +157,13 @@ class BrowserTab(QObject):
         Set viewport size.
         If size is "full" viewport size is detected automatically.
         If can also be "<width>x<height>".
+
+        .. note::
+
+           This will update all JS geometry variables, but window resize event
+           is delivered asynchronously and so ``window.resize`` will not be
+           invoked until control is yielded to the event loop.
+
         """
         if size == 'full':
             size = self.web_page.mainFrame().contentsSize()
@@ -169,9 +181,21 @@ class BrowserTab(QObject):
             w, h = map(int, size.split('x'))
             size = QSize(w, h)
         self.web_page.setViewportSize(size)
+        self._force_relayout()
         w, h = int(size.width()), int(size.height())
         self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
         return w, h
+
+    def _force_relayout(self):
+        """Force a relayout of the web page contents."""
+        # setPreferredContentsSize may be used to force a certain size for
+        # layout purposes.  Passing an invalid size resets the override and
+        # tells the QWebPage to use the size as requested by the document.
+        # This is in fact the default behavior, so we don't change anything.
+        #
+        # The side-effect of this operation is a forced synchronous relayout of
+        # the page.
+        self.web_page.setPreferredContentsSize(QSize())
 
     def lock_navigation(self):
         self.web_page.navigation_locked = True
@@ -518,6 +542,82 @@ class BrowserTab(QObject):
         js_source = "%s;undefined" % js_source
         self.evaljs(js_source, handle_errors=handle_errors)
 
+    def wait_for_resume(self, js_source, callback, errback, timeout):
+        """
+        Run some Javascript asynchronously.
+
+        The JavaScript must contain a method called `main()` that accepts
+        one argument. The first argument will be an object with `resume()`
+        and `error()` methods. The code _must_ call one of these functions
+        before the timeout or else it will be canceled.
+
+        Note: this cleans up the JavaScript global variable that it creates,
+        but QT seems to notice when a JS GV is deleted and it destroys the
+        underlying C++ object. Therefore, we can only delete the JS GV _after_
+        the user's code has called us back. This should change in QT5, since
+        it will then be possible to specify a different object ownership
+        policy when calling addToJavaScriptWindowObject().
+        """
+
+        frame = self.web_page.mainFrame()
+        script_text = json.dumps(js_source)[1:-1]
+        callback_proxy = OneShotCallbackProxy(self, callback, errback, timeout)
+        frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
+
+        wrapped = """
+        (function () {
+            try {
+                eval("%(script_text)s");
+            } catch (err) {
+                var main = function (splash) {
+                    throw err;
+                }
+            }
+            (function () {
+                var returnObject = {};
+                var deleteCallbackLater = function () {
+                    setTimeout(function () {delete window["%(callback_name)s"]}, 0);
+                }
+                var splash = {
+                    'error': function (message) {
+                        setTimeout(function () {
+                            window["%(callback_name)s"].error(message, false);
+                            deleteCallbackLater();
+                        }, 0);
+                    },
+                    'resume': function (value) {
+                        returnObject['value'] = value;
+                        setTimeout(function () {
+                            window["%(callback_name)s"].resume(returnObject);
+                            deleteCallbackLater();
+                        }, 0);
+                    },
+                    'set': function (key, value) {
+                        returnObject[key] = value;
+                    }
+                };
+                try {
+                    if (typeof main === 'undefined') {
+                        throw "wait_for_resume(): no main() function defined";
+                    }
+                    main(splash);
+                } catch (err) {
+                    setTimeout(function () {
+                        window["%(callback_name)s"].error(err, true);
+                        deleteCallbackLater();
+                    }, 0);
+                }
+            })();
+        })();undefined
+        """ % dict(script_text=script_text, callback_name=callback_proxy.name)
+
+        def cancel_callback():
+            callback_proxy.cancel(reason='javascript window object cleared')
+
+        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped, min_level=2)
+        frame.javaScriptWindowObjectCleared.connect(cancel_callback)
+        frame.evaluateJavaScript(wrapped)
+
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
         self.web_page.har_log.store_timing(name)
@@ -795,3 +895,71 @@ class _BrowserTabLogger(object):
 
         message = "[%s] %s" % (self.uid, message)
         log.msg(message, system='render')
+
+
+class OneShotCallbackProxy(QObject):
+    """
+    A proxy object that allows JavaScript to run Python callbacks.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has functions `resume()` and `error()` that can be connected to
+    Python callbacks.
+
+    It is "one shot" because either `resume()` or `error()` should be called
+    exactly _once_. It raises an exception if the combined number of calls
+    to these methods is greater than 1.
+
+    If timeout is zero, then the timeout is disabled.
+    """
+
+    def __init__(self, parent, callback, errback, timeout=0):
+        self.name = str(uuid.uuid1())
+        self._used_up = False
+        self._callback = callback
+        self._errback = errback
+
+        if timeout < 0:
+            raise ValueError('OneShotCallbackProxy timeout must be >= 0.')
+        elif timeout == 0:
+            self._timer = None
+        elif timeout > 0:
+            self._timer = QTimer()
+            self._timer.setSingleShot(True)
+            self._timer.timeout.connect(self._timed_out)
+            self._timer.start(timeout * 1000)
+
+        super(OneShotCallbackProxy, self).__init__(parent)
+
+    @pyqtSlot('QVariantMap')
+    def resume(self, value=None):
+        if self._used_up:
+            raise OneShotCallbackError("resume() called on a one shot" \
+                                       " callback that was already used up.")
+
+        self._use_up()
+        self._callback(qt2py(value))
+
+    @pyqtSlot(str, bool)
+    def error(self, message, raise_=False):
+        if self._used_up:
+            raise OneShotCallbackError("error() called on a one shot" \
+                                       " callback that was already used up.")
+
+        self._use_up()
+        self._errback(message, raise_)
+
+    def cancel(self, reason):
+        self._use_up()
+        self._errback("One shot callback canceled due to: %s." % reason,
+                      raise_=False)
+
+    def _timed_out(self):
+        self._use_up()
+        self._errback("One shot callback timed out while waiting for" \
+                      " resume() or error().", raise_=False)
+
+    def _use_up(self):
+        self._used_up = True
+
+        if self._timer is not None and self._timer.isActive():
+            self._timer.stop()
