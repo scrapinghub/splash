@@ -310,7 +310,7 @@ class Splash(object):
         cmd_id = next(self._command_ids)
 
         def callback(result):
-            self._return(cmd_id, self.python2lua(result))
+            self._return(cmd_id, self.lua.python2lua(result))
 
         def errback(msg, raise_):
             self._return(cmd_id, None, "JavaScript error: %s" % msg, raise_)
