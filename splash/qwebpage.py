@@ -67,6 +67,7 @@ class SplashQWebPage(QWebPage):
     def acceptNavigationRequest(self, webFrame, networkRequest, navigationType):
         if self.navigation_locked:
             return False
+        self.error_info = None
         return super(SplashQWebPage, self).acceptNavigationRequest(webFrame, networkRequest, navigationType)
 
     def javaScriptAlert(self, frame, msg):
