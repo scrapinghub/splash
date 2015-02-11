@@ -44,12 +44,25 @@ def init_browser():
 
 class DeferredSplashRunner(object):
 
-    def __init__(self, tab, lua, sandboxed):
-        self.tab = tab
+    def __init__(self, lua, splash, sandboxed, log=None, render_options=None):
         self.lua = lua
+        self.splash = splash
         self.sandboxed = sandboxed
 
-    def run(self, main_coro, render_options=None):
+        if log is None:
+            self.log = self.splash.tab.logger.log
+        else:
+            self.log = log
+
+        self.runner = SplashScriptRunner(
+            lua=self.lua,
+            log=self.log,
+            splash=splash,
+            sandboxed=self.sandboxed,
+        )
+        self.splash.init_dispatcher(self.runner.dispatch)
+
+    def run(self, main_coro):
         """
         Run main_coro Lua coroutine, passing it a Splash
         instance as an argument. Return a Deferred.
@@ -62,22 +75,11 @@ class DeferredSplashRunner(object):
         def return_error(err):
             d.errback(err)
 
-        runner = SplashScriptRunner(
-            lua=self.lua,
-            log=self.tab.logger.log,
-            sandboxed=self.sandboxed,
+        self.runner.start(
+            main_coro=main_coro,
             return_result=return_result,
             return_error=return_error,
         )
-        splash = Splash(
-            lua=self.lua,
-            tab=self.tab,
-            return_func=runner.dispatch,
-            render_options=render_options,
-        )
-        self.lua.add_allowed_object(splash, splash.attr_whitelist)
-
-        runner.start(main_coro, splash)
         return d
 
 
@@ -107,14 +109,19 @@ class SplashKernel(Kernel):
 
     def __init__(self, **kwargs):
         super(SplashKernel, self).__init__(**kwargs)
+        self.tab = init_browser()
+
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
         self.lua_repr = self.lua.eval("require('repr')")
-        self.tab = init_browser()
-        self.runner = DeferredSplashRunner(self.tab, self.lua, self.sandboxed)
+        self.splash = Splash(lua=self.lua, tab=self.tab)
+        self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed)
         # try:
         #     sys.stdout.write = self._print
         # except:
         #     pass # Can't change stdout
+
+    def log_msg(self, text, min_level=2):
+        self._print(text + "\n")
 
     def _print(self, message):
         stream_content = {'name': 'stdout', 'text': message, 'metadata': dict()}
@@ -147,8 +154,8 @@ class SplashKernel(Kernel):
             super(SplashKernel, self).send_execute_reply(stream, ident, parent, md, reply)
 
             if result:
-                if not isinstance(result, (str, unicode)):
-                    result = self.lua_repr(self.lua.python2lua(result))
+                # if not isinstance(result, (str, unicode)):
+                #     result = self.lua_repr(self.lua.python2lua(result))
                 data = {'text/plain': result}
                 # if isinstance(result, BinaryCapsule):
                 #     data["image/png"] = result.data

@@ -176,16 +176,14 @@ class Splash(object):
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args']
 
-    def __init__(self, lua, tab, return_func, render_options=None):
+    def __init__(self, lua, tab, render_options=None):
         """
         :param SplashLuaRuntime lua: Lua wrapper
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
-        :param callable return_func: function that continues the script
         :param splash.render_options.RenderOptions render_options: arguments
         """
         self.tab = tab
         self.lua = lua
-        self._return = return_func
 
         self._exceptions = []
         self._command_ids = itertools.count()
@@ -212,6 +210,16 @@ class Splash(object):
                 })
         self.commands = self.lua.python2lua(commands)
         self.attr_whitelist.extend(self._attribute_whitelist)
+        self.lua.add_allowed_object(self, self.attr_whitelist)
+
+        wrapper = self.lua.eval("require('splash')")
+        self._wrapped = wrapper.create(self)
+
+    def init_dispatcher(self, return_func):
+        """
+        :param callable return_func: function that continues the script
+        """
+        self._return = return_func
 
     @command(async=True)
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
@@ -502,8 +510,7 @@ class Splash(object):
 
     def get_wrapped(self):
         """ Return a Lua wrapper for this object. """
-        wrapper = self.lua.eval("require('splash')")
-        return wrapper.create(self)
+        return self._wrapped
 
     def run_async_command(self, cmd):
         """ Execute _AsyncCommand """
@@ -513,17 +520,15 @@ class Splash(object):
 
 class SplashScriptRunner(BaseScriptRunner):
 
-    def __init__(self, lua, log, sandboxed, return_result, return_error):
-        self.splash = None
-        self.return_result = return_result
-        self.return_error = return_error
+    def __init__(self, lua, splash, log, sandboxed):
+        self.splash = splash
+        self.splash.init_dispatcher(self.dispatch)
         super(SplashScriptRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
 
-    def start(self, main_coro, splash):
-        if self.splash is not None:
-            raise ValueError("SplashScriptRunner.start() method is called multiple times")
-        self.splash = splash
-        super(SplashScriptRunner, self).start(main_coro, [splash.get_wrapped()])
+    def start(self, main_coro, return_result, return_error):
+        self.return_result = return_result
+        self.return_error = return_error
+        super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
 
     def on_result(self, result):
         self.return_result((result, self.splash.result_content_type()))
@@ -559,29 +564,25 @@ class LuaRender(RenderScript):
             lua_package_path=lua_package_path,
             lua_sandbox_allowed_modules=lua_sandbox_allowed_modules
         )
+        self.splash = Splash(self.lua, self.tab, self.render_options)
 
         self.runner = SplashScriptRunner(
             lua=self.lua,
             log=self.log,
+            splash=self.splash,
             sandboxed=sandboxed,
-            return_result=self.return_result,
-            return_error=self.return_error,
         )
-
-        self.splash = Splash(
-            lua=self.lua,
-            tab=self.tab,
-            return_func=self.runner.dispatch,
-            render_options=self.render_options,
-        )
-        self.lua.add_allowed_object(self.splash, self.splash.attr_whitelist)
 
         try:
             main_coro = self.get_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + repr(e))
 
-        self.runner.start(main_coro, self.splash)
+        self.runner.start(
+            main_coro=main_coro,
+            return_result=self.return_result,
+            return_error=self.return_error,
+        )
 
     def get_main(self, lua_source):
         if self.sandboxed:
