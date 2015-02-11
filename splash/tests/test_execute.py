@@ -1226,7 +1226,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("{'foo': ['1']}", data['html_1'])
         self.assertIn("{'bar': ['2']}", data['html_2'])
 
-    def test_go_bad_then_good(self):
+    def test_go_404_then_good(self):
         resp = self.request_lua("""
         function main(splash)
             local ok1, err1 = splash:go(splash.args.url_1)
@@ -1249,6 +1249,18 @@ class GoTest(BaseLuaRenderTest):
 
         self.assertIn("No Such Resource", data["html_1"])
         self.assertIn("http://non-existing", data["html_2"])
+
+    @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
+    def test_go_bad_then_good(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go("--non-existing-host")
+            local ok, err = splash:go(splash.args.url)
+            return {ok=ok, err=err}
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"ok": True})
 
     def test_go_headers_cookie(self):
         resp = self.request_lua("""
