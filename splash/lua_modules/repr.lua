@@ -2,7 +2,7 @@
 -- A wrapper for inspect.lua. It discards metatables and supports multiple
 -- arguments.
 --
-local inspect = require("inspect")
+local inspect = require("vendor/inspect")
 
 local remove_all_metatables = function(item, path)
   if path[#path] ~= inspect.METATABLE then return item end
