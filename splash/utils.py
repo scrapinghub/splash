@@ -86,7 +86,7 @@ def truncated(text, max_length=100, msg='...'):
 def dedupe(it):
     """
     >>> list(dedupe([3,1,3,1,2]))
-    [3,1,2]
+    [3, 1, 2]
     """
     seen = set()
     for el in it:
