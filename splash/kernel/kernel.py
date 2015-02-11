@@ -26,6 +26,12 @@ from splash.utils import BinaryCapsule
 
 def init_browser():
     # TODO: support the same command-line options as HTTP server.
+
+    # from splash.server import start_logging
+    # class opts(object):
+    #    logfile = "./kernel.log"
+    # start_logging(opts)
+
     manager = network_manager.create_default()
     proxy_factory = None  # TODO
 
@@ -114,9 +120,10 @@ class SplashKernel(Kernel):
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
         self.lua_repr = self.lua.eval("require('repr')")
         self.splash = Splash(lua=self.lua, tab=self.tab)
-        self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed)
+        self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed) #, self.log_msg)
         # try:
         #     sys.stdout.write = self._print
+        #     sys.stderr.write = self._print
         # except:
         #     pass # Can't change stdout
 

@@ -519,7 +519,9 @@ class Splash(object):
 
 
 class SplashScriptRunner(BaseScriptRunner):
-
+    """
+    An utility class for running Lua coroutines that interact with Splash.
+    """
     def __init__(self, lua, splash, log, sandboxed):
         self.splash = splash
         self.splash.init_dispatcher(self.dispatch)
@@ -568,8 +570,8 @@ class LuaRender(RenderScript):
 
         self.runner = SplashScriptRunner(
             lua=self.lua,
-            log=self.log,
             splash=self.splash,
+            log=self.log,
             sandboxed=sandboxed,
         )
 

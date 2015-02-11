@@ -35,15 +35,13 @@ class ScriptError(BadOption):
             self.args = (e.args[0] + "; " + self_repr,) + self.args[1:]
 
 
-
 class BaseScriptRunner(object):
     """
     An utility class for running Lua coroutines.
     """
     __metaclass__ = abc.ABCMeta
-
     _START_CMD = '__START__'
-    _waiting_for_result_id = _START_CMD
+    _waiting_for_result_id = None
 
     def __init__(self, lua, log, sandboxed):
         """
@@ -64,6 +62,7 @@ class BaseScriptRunner(object):
         """
         self.coro = coro_func(*coro_args)
         self.result = ''
+        self._waiting_for_result_id = self._START_CMD
         self.dispatch(self._waiting_for_result_id)
 
     @abc.abstractmethod
