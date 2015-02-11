@@ -118,7 +118,6 @@ class SplashKernel(Kernel):
         self.tab = init_browser()
 
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
-        self.lua_repr = self.lua.eval("require('repr')")
         self.splash = Splash(lua=self.lua, tab=self.tab)
         self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed) #, self.log_msg)
         # try:
@@ -126,31 +125,6 @@ class SplashKernel(Kernel):
         #     sys.stderr.write = self._print
         # except:
         #     pass # Can't change stdout
-
-    def log_msg(self, text, min_level=2):
-        self._print(text + "\n")
-
-    def _print(self, message):
-        stream_content = {'name': 'stdout', 'text': message, 'metadata': dict()}
-        self.log.debug('Write: %s' % message)
-        self.send_response(self.iopub_socket, 'stream', stream_content)
-
-    def get_main(self, lua_source):
-        if self.sandboxed:
-            main, env = get_main_sandboxed(self.lua, lua_source)
-        else:
-            main, env = get_main(self.lua, lua_source)
-        return self.lua.create_coroutine(main)
-
-    def _publish_execute_result(self, parent, data, metadata, execution_count):
-        msg = {
-            u'data': data,
-            u'metadata': metadata,
-            u'execution_count': execution_count
-        }
-        self.session.send(self.iopub_socket, u'execute_result', msg,
-                          parent=parent, ident=self._topic('execute_result')
-        )
 
     def send_execute_reply(self, stream, ident, parent, md, reply_content):
         def done(result):
@@ -203,14 +177,14 @@ class SplashKernel(Kernel):
                     return repr(%s)
                 end
                 """ % code
-                main_coro = self.get_main(lua_source)
+                main_coro = self._get_main(lua_source)
             except lupa.LuaSyntaxError:
                 lua_source = """
                 function main(splash)
                     %s
                 end
                 """ % code
-                main_coro = self.get_main(lua_source)
+                main_coro = self._get_main(lua_source)
         except Exception:
             d = defer.Deferred()
             d.addCallbacks(success, error)
@@ -220,6 +194,31 @@ class SplashKernel(Kernel):
         d = self.runner.run(main_coro)
         d.addCallbacks(success, error)
         return d
+
+    def _publish_execute_result(self, parent, data, metadata, execution_count):
+        msg = {
+            u'data': data,
+            u'metadata': metadata,
+            u'execution_count': execution_count
+        }
+        self.session.send(self.iopub_socket, u'execute_result', msg,
+                          parent=parent, ident=self._topic('execute_result')
+        )
+
+    def log_msg(self, text, min_level=2):
+        self._print(text + "\n")
+
+    def _print(self, message):
+        stream_content = {'name': 'stdout', 'text': message, 'metadata': dict()}
+        self.log.debug('Write: %s' % message)
+        self.send_response(self.iopub_socket, 'stream', stream_content)
+
+    def _get_main(self, lua_source):
+        if self.sandboxed:
+            main, env = get_main_sandboxed(self.lua, lua_source)
+        else:
+            main, env = get_main(self.lua, lua_source)
+        return self.lua.create_coroutine(main)
 
 
 def start():
