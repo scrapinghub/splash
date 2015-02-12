@@ -97,12 +97,12 @@ class Completer(object):
         for tok in reversed(tokens):
             if tok.type in ".:":
                 if state == "dot":
-                    return []  # invalid chain
+                    return []  # invalid chain: two consequent separators
                 state = "dot"
                 chain.append(tok)
             elif tok.type == "iden":
                 if state == "iden":
-                    return []  # invalid chain
+                    return []  # invalid chain: two consequent identifiers
                 state = "iden"
                 chain.append(tok)
             else:
