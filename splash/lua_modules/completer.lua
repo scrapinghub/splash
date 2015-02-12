@@ -21,21 +21,22 @@ end
 
 
 --
--- Return all string table keys
+-- Return all string table keys for which values passes `value_ok` test.
 --
 function completer._table_keys(tbl, value_ok)
   local res = {}
   for k, v in pairs(tbl) do
-    if type(k) == "string" then
-      if value_ok(v) then
-        res[#res+1] = k
-      end
+    if type(k) == "string" and value_ok(v) then
+      res[#res+1] = k
     end
   end
   return res
 end
 
 
+--
+-- Return all attributes of a global variable.
+--
 function completer.attrs(ident, no_methods, only_methods)
   local obj = _G[ident]
   local tp = type(obj)

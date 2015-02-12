@@ -66,7 +66,7 @@ class Completer(object):
 
         # _pp(tokens[3:], types[-3:], prev, cur, matches)
         return {
-            'matches': dedupe(matches),
+            'matches': list(dedupe(matches)),
             'cursor_end': cursor_pos,
             'cursor_start': cursor_pos - len(prefix),
             'metadata': {},
