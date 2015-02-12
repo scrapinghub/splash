@@ -20,9 +20,14 @@ class SplashQWebView(QWebView):
     onBeforeClose = None
 
     def closeEvent(self, event):
+        dont_close = False
         if self.onBeforeClose:
-            self.onBeforeClose()
-        event.accept()
+            dont_close = self.onBeforeClose()
+
+        if dont_close:
+            event.ignore()
+        else:
+            event.accept()
 
 
 class SplashQWebPage(QWebPage):

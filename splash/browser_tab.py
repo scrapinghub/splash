@@ -319,10 +319,11 @@ class BrowserTab(QObject):
         self.web_view.deleteLater()
 
     def _on_before_close(self):
-        self._closing = True
-        self._cancel_all_timers()
-        if not self._closing_normally:
-            self.return_error(Exception("Window is closed by user"))
+        # self._closing = True
+        # self._cancel_all_timers()
+        # if not self._closing_normally:
+        #     self.return_error(Exception("Window is closed by user"))
+        return True  # don't close the window
 
     @skip_if_closing
     def _on_load_finished(self, ok):
