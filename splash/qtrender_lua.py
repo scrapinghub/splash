@@ -503,6 +503,9 @@ class Splash(object):
         if self._exceptions:
             return self._exceptions[-1]
 
+    def clear_exceptions(self):
+        self._exceptions[:] = []
+
     def result_content_type(self):
         if self._result_content_type is None:
             return None
@@ -530,6 +533,7 @@ class SplashScriptRunner(BaseScriptRunner):
     def start(self, main_coro, return_result, return_error):
         self.return_result = return_result
         self.return_error = return_error
+        self.splash.clear_exceptions()
         super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
 
     def on_result(self, result):

@@ -12,8 +12,9 @@ from IPython.kernel.zmq.eventloops import loop_qt4
 from twisted.internet import defer
 
 import splash
-from splash.lua import lua2python, get_version, get_main_sandboxed, get_main
+from splash.lua import get_version, get_main_sandboxed, get_main, parse_lua_error
 from splash.browser_tab import BrowserTab
+from splash.lua_runner import ScriptError
 from splash.lua_runtime import SplashLuaRuntime
 from splash.qtrender_lua import Splash, SplashScriptRunner
 from splash.qtutils import init_qt_app
@@ -162,7 +163,18 @@ class SplashKernel(Kernel):
             return reply, result, content_type or 'text/plain'
 
         def error(failure):
-            text = str(failure)
+            text = "<unknown error>"
+            try:
+                failure.raiseException()
+            except (lupa.LuaSyntaxError, lupa.LuaError, ScriptError) as e:
+                tp, line_num, message = parse_lua_error(e)
+                line_num -= 2
+                if line_num-1 > code.count("\n") or line_num < 0:
+                    text = "[input]:?: %s error: %s" % (tp, message)
+                else:
+                    text = "[input]:%s: %s" % (line_num, message)
+            except Exception as e:
+                text = repr(e)
             reply = {
                 'status': 'error',
                 'execution_count': self.execution_count,
@@ -170,12 +182,13 @@ class SplashKernel(Kernel):
                 'evalue': text,
                 'traceback': []
             }
-            return reply, failure, 'text/plain'
+            return reply, text, 'text/plain'
 
         try:
             try:
-                lua_source = """
-                local repr = require("repr")
+                # XXX: %s must be on 3rd line for exceptions
+                # to be displayed properly!
+                lua_source = """local repr = require("repr");
                 function main(splash)
                     return repr(%s)
                 end
@@ -188,6 +201,11 @@ class SplashKernel(Kernel):
                 end
                 """ % code
                 main_coro = self._get_main(lua_source)
+        except (lupa.LuaSyntaxError, lupa.LuaError) as e:
+            d = defer.Deferred()
+            d.addCallbacks(success, error)
+            d.errback(e)
+            return d
         except Exception:
             d = defer.Deferred()
             d.addCallbacks(success, error)

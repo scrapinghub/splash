@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+import re
 import functools
 import datetime
 from twisted.python import log
@@ -233,3 +234,24 @@ def python2lua(lua, obj, max_depth=100):
         # }, max_depth)
 
     return obj
+
+
+_SYNTAX_ERROR_RE = re.compile('^error loading code: \[string "<python>"\]:(\d+):(.+)')
+_RUNTIME_ERROR_RE = re.compile('^unhandled Lua error: \[string "<python>"\]:(\d+):(.+)')
+_RERAISED_SCRIPT_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+Error\([\'"](.+)[\'"],\)$')
+
+def parse_lua_error(e):
+    full_msg = str(e)
+    error_type = "syntax"
+    m = _SYNTAX_ERROR_RE.match(full_msg)
+    if not m:
+        error_type = "runtime"
+        m = _RUNTIME_ERROR_RE.match(full_msg)
+    if not m:
+        error_type = "runtime"
+        m = _RERAISED_SCRIPT_ERROR_RE.match(full_msg)
+    if not m:
+        return "unknown", -1, full_msg
+    line_num = int(m.group(1))
+    error = m.group(2)
+    return error_type, line_num, error.strip()
