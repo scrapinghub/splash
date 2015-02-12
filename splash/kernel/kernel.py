@@ -186,7 +186,7 @@ class SplashKernel(Kernel):
 
         try:
             try:
-                # XXX: %s must be on 3rd line for exceptions
+                # XXX: 'function main' must be on 2nd line for exceptions
                 # to be displayed properly!
                 lua_source = """local repr = require("repr");
                 function main(splash)
@@ -195,12 +195,25 @@ class SplashKernel(Kernel):
                 """ % code
                 main_coro = self._get_main(lua_source)
             except lupa.LuaSyntaxError:
-                lua_source = """
-                function main(splash)
-                    %s
-                end
-                """ % code
-                main_coro = self._get_main(lua_source)
+                try:
+                    lines = code.splitlines(False)
+
+                    lua_source = """local repr = require("repr");
+                    function main(splash)
+                        %s
+                        return repr(%s)
+                    end
+                    """ % ("\n".join(lines[:-1]), lines[-1])
+                    main_coro = self._get_main(lua_source)
+                except lupa.LuaSyntaxError:
+                    lua_source = """
+                    function main(splash)
+                        %s
+                    end
+                    """ % code
+                    main_coro = self._get_main(lua_source)
+
+
         except (lupa.LuaSyntaxError, lupa.LuaError) as e:
             d = defer.Deferred()
             d.addCallbacks(success, error)
