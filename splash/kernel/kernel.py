@@ -120,7 +120,7 @@ class SplashKernel(Kernel):
 
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
         self.splash = Splash(lua=self.lua, tab=self.tab)
-        self.lua.eval("function(splash_) splash = splash_ end")(self.splash.get_wrapped())
+        self.lua.add_to_globals("splash", self.splash.get_wrapped())
         self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed) #, self.log_msg)
         self.completer = Completer(self.lua)
         #

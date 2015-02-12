@@ -21,6 +21,10 @@ class SplashLuaRuntime(object):
         self._setup_lua_sandbox(lua_sandbox_allowed_modules)
         self._allowed_object_attrs = {}
 
+    def add_to_globals(self, name, value):
+        code = "function(_) %s = _ end" % name
+        self.eval(code)(value)
+
     def table_from(self, *args, **kwargs):
         return self._lua.table_from(*args, **kwargs)
 
