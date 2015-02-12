@@ -24,3 +24,15 @@ def lua(request):
     lua = lupa.LuaRuntime()
     request.cls.lua = lua
     return lua
+
+
+@pytest.fixture()
+def configured_lua():
+    from splash.lua_runtime import SplashLuaRuntime
+    return SplashLuaRuntime(False, "", ())
+
+
+@pytest.fixture()
+def completer(configured_lua):
+    from splash.kernel.completer import Completer
+    return Completer(configured_lua)
