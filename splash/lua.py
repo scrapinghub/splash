@@ -238,7 +238,8 @@ def python2lua(lua, obj, max_depth=100):
 
 _SYNTAX_ERROR_RE = re.compile('^error loading code: \[string "<python>"\]:(\d+):(.+)')
 _RUNTIME_ERROR_RE = re.compile('^unhandled Lua error: \[string "<python>"\]:(\d+):(.+)')
-_RERAISED_SCRIPT_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+Error\([\'"](.+)[\'"],\)$')
+_RERAISED_JS_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+JsError\(u?[\'"](.+)[\'"],\)$')
+_RERAISED_SCRIPT_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+Error\(u?[\'"](.+)[\'"],\)$')
 
 def parse_lua_error(e):
     full_msg = str(e)
@@ -247,6 +248,9 @@ def parse_lua_error(e):
     if not m:
         error_type = "runtime"
         m = _RUNTIME_ERROR_RE.match(full_msg)
+    if not m:
+        error_type = "js"
+        m = _RERAISED_JS_ERROR_RE.match(full_msg)
     if not m:
         error_type = "runtime"
         m = _RERAISED_SCRIPT_ERROR_RE.match(full_msg)

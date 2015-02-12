@@ -170,9 +170,9 @@ class SplashKernel(Kernel):
                 tp, line_num, message = parse_lua_error(e)
                 line_num -= 2
                 if line_num-1 > code.count("\n") or line_num < 0:
-                    text = "[input]:?: %s error: %s" % (tp, message)
+                    text = "<%s error> [input]:?: %s" % (tp, message)
                 else:
-                    text = "[input]:%s: %s" % (line_num, message)
+                    text = "<%s error> [input]:%s: %s" % (tp, line_num, message)
             except Exception as e:
                 text = repr(e)
             reply = {
