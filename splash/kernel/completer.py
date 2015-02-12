@@ -38,33 +38,51 @@ class Completer(object):
         types = [t.type for t in tokens]
         prev2, prev, cur = tokens[-3:]
 
-        if types[-2:] == ['iden', '.']:
-            if prev == SplashTok:
-                matches += self.complete_non_method(prev.value)
-            else:
-                matches += self.complete_any_attribute(prev.value)
+        attr_chain = self._attr_chain(tokens)
 
-        elif types[-3:] == ['iden', '.', 'iden']:
+        # 'splash' object is special-cased: we know that its methods
+        # should be called only using splash:foo() syntax, so methods
+        # are not suggested for splash.foo().
+        # This may be changed if error handling changes - pcall could
+        # require writing "splash.foo".
+        if len(attr_chain) == 2 and types[-2:] == ['iden', '.'] and prev == SplashTok:
+            names_chain = self.lua.table_from([prev.value])
+            matches += self.complete_non_method(names_chain)
+
+        elif len(attr_chain) == 3 and types[-3:] == ['iden', '.', 'iden'] and prev2 == SplashTok:
             prefix = cur.value
-            if prev == SplashTok:
-                matches += self.complete_non_method(prev.value, prefix)
+            names_chain = self.lua.table_from([prev2.value])
+            matches += self.complete_non_method(names_chain, prefix)
+
+        elif attr_chain:
+            prefix = ""
+            lookup_type = "."
+
+            if len(attr_chain) != 1:
+                if attr_chain[-1].type == 'iden':
+                    prefix = attr_chain[-1].value
+                    attr_chain.pop()  # pop the prefix
+
+                lookup_type = attr_chain.pop().type
+                assert lookup_type in ".:"
+
+            names = [t.value for t in attr_chain if t.type == 'iden']
+            attr_chain = self.lua.table_from(names)
+
+            if lookup_type == ".":
+                matches += self.complete_any_attribute(attr_chain, prefix)
+            elif lookup_type == ":":
+                matches += self.complete_method(attr_chain, prefix)
             else:
-                matches += self.complete_any_attribute(prev2.value, prefix)
-
-        elif types[-2:] == ['iden', ':']:
-            matches += self.complete_method(prev.value)
-
-        elif types[-3:] == ['iden', ':', 'iden']:
-            prefix = cur.value
-            matches += self.complete_method(prev2.value, prefix)
+                raise ValueError("invalid lookup_type")
 
         if (prev.type not in '.:') and cur.type == 'iden':
+            # standalone identifier
             prefix = cur.value
             matches += self.complete_keyword(prefix)
             matches += self.complete_local_identifier(code, prefix)
             matches += self.complete_global_variable(prefix)
 
-        # _pp(tokens[3:], types[-3:], prev, cur, matches)
         return {
             'matches': list(dedupe(matches)),
             'cursor_end': cursor_pos,
@@ -73,16 +91,49 @@ class Completer(object):
             'status': 'ok',
         }
 
-    def complete_any_attribute(self, obj_name, prefix=""):
-        attrs = self._completer.attrs(obj_name, False, False)
+    def _attr_chain(self, tokens):
+        chain = []
+        state = "start"
+        for tok in reversed(tokens):
+            if tok.type in ".:":
+                if state == "dot":
+                    return []  # invalid chain
+                state = "dot"
+                chain.append(tok)
+            elif tok.type == "iden":
+                if state == "iden":
+                    return []  # invalid chain
+                state = "iden"
+                chain.append(tok)
+            else:
+                break
+
+        chain.reverse()
+
+        # no identifiers found => nothing to complete
+        if sum(1 for t in chain if t.type == 'iden') == 0:
+            return []
+
+        # only a single : is allowed, near the end of the chain
+        if any(t.type == ":" for t in chain[:-2]):
+            return []
+
+        # leading "." means we're not completing an object attribute
+        if chain[0].type != "iden":
+            return []
+
+        return chain
+
+    def complete_any_attribute(self, names_chain, prefix=""):
+        attrs = self._completer.attrs(names_chain, False, False)
         return sorted_with_prefix(prefix, attrs.values())
 
-    def complete_non_method(self, obj_name, prefix=""):
-        attrs = self._completer.attrs(obj_name, True, False)
+    def complete_non_method(self, names_chain, prefix=""):
+        attrs = self._completer.attrs(names_chain, True, False)
         return sorted_with_prefix(prefix, attrs.values())
 
-    def complete_method(self, obj_name, prefix=""):
-        methods = self._completer.attrs(obj_name, False, True)
+    def complete_method(self, names_chain, prefix=""):
+        methods = self._completer.attrs(names_chain, False, True)
         return sorted_with_prefix(prefix, methods.values())
 
     def complete_keyword(self, prefix):

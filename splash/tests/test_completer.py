@@ -20,42 +20,6 @@ def autocomplete(completer, code):
     return res
 
 
-def test_tokenize(completer):
-    code = """
-    function foo()
-        local x = 1.
-        local y = [[hello]]
-    end
-    """
-    assert completer.tokenize(code) == [
-        Tok(type=u'space', value=u'\n    '),
-        Tok(type=u'keyword', value=u'function'),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'iden', value=u'foo'),
-        Tok(type=u'(', value=u'('),
-        Tok(type=u')', value=u')'),
-        Tok(type=u'space', value=u'\n        '),
-        Tok(type=u'keyword', value=u'local'),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'iden', value=u'x'),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'=', value=u'='),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'number', value=1),
-        Tok(type=u'space', value=u'\n        '),
-        Tok(type=u'keyword', value=u'local'),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'iden', value=u'y'),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'=', value=u'='),
-        Tok(type=u'space', value=u' '),
-        Tok(type=u'string', value=u'hello'),
-        Tok(type=u'space', value=u'\n    '),
-        Tok(type=u'keyword', value=u'end'),
-        Tok(type=u'space', value=u'\n    ')
-    ]
-
-
 def test_complete_keywords(completer):
     res = autocomplete(completer, "fun|")
     assert "function" in res["matches"]
@@ -113,6 +77,60 @@ def test_globals_attributes(completer):
     assert res["matches"] == ["len", "lower"]
 
 
+def test_globals_attributes_nested_false_positive(completer):
+    res = autocomplete(completer, "foo = table.string.|")
+    assert res["matches"] == []
+
+
+def test_globals_attributes_nested(completer):
+    completer.lua.execute("""
+    weight = 20
+    tbl={foo={width=10, heigth=5}}
+    """)
+    res = autocomplete(completer, "tbl.foo.w|")
+    assert res["matches"] == ["width"]
+
+
+def test_globals_attributes_nested_method(completer):
+    completer.lua.execute("""
+    obj = {foo="bar"}
+    function obj:hello()
+        return "hello"
+    end
+    tbl = {prop=obj}
+    """)
+    res = autocomplete(completer, "tbl.prop.|")
+    assert res["matches"] == ["foo", "hello"]
+
+    res = autocomplete(completer, "tbl.prop:|")
+    assert res["matches"] == ["hello"]
+
+
+def test_globals_attributes_nested_broken(completer):
+    completer.lua.execute("""
+    tbl = {prop={foo="bar"}}
+    """)
+    res = autocomplete(completer, "tbl:prop.|")
+    assert res["matches"] == []
+
+    res = autocomplete(completer, "tbl:prop:|")
+    assert res["matches"] == []
+
+
+def test_not_attributes(completer):
+    res = autocomplete(completer, "string..|")
+    assert res["matches"] == []
+
+    res = autocomplete(completer, "(:|")
+    assert res["matches"] == []
+
+
+def test_complete_array(completer):
+    completer.lua.execute("foo = {'x', 'y', z=5}")
+    res = autocomplete(completer, "foo.|")
+    assert res["matches"] == ["z"]
+
+
 def test_complete_methods(completer):
     completer.lua.execute("""
     tbl = {foo="bar"}
@@ -125,6 +143,18 @@ def test_complete_methods(completer):
 
     res = autocomplete(completer, "tbl.|")
     assert res["matches"] == ["foo", "hello"]
+
+
+def test_complete_function_result(completer):
+    completer.lua.execute("""
+    function foo()
+        return {bar="baz"}
+    end
+    """)
+    # It is too hard for a completer to return a proper result,
+    # but at least there shouldn't be spurious matches.
+    res = autocomplete(completer, "foo().b|")
+    assert res["matches"] == []
 
 
 def test_complete_local_variables(completer):
@@ -150,3 +180,38 @@ def test_dont_complete_globals_inside_string(completer):
     res = autocomplete(completer, "x = 's|'")
     assert "string" not in res["matches"]
 
+
+def test_tokenize(completer):
+    code = """
+    function foo()
+        local x = 1.
+        local y = [[hello]]
+    end
+    """
+    assert completer.tokenize(code) == [
+        Tok(type=u'space', value=u'\n    '),
+        Tok(type=u'keyword', value=u'function'),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'iden', value=u'foo'),
+        Tok(type=u'(', value=u'('),
+        Tok(type=u')', value=u')'),
+        Tok(type=u'space', value=u'\n        '),
+        Tok(type=u'keyword', value=u'local'),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'iden', value=u'x'),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'=', value=u'='),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'number', value=1),
+        Tok(type=u'space', value=u'\n        '),
+        Tok(type=u'keyword', value=u'local'),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'iden', value=u'y'),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'=', value=u'='),
+        Tok(type=u'space', value=u' '),
+        Tok(type=u'string', value=u'hello'),
+        Tok(type=u'space', value=u'\n    '),
+        Tok(type=u'keyword', value=u'end'),
+        Tok(type=u'space', value=u'\n    ')
+    ]
