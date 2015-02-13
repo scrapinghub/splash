@@ -112,8 +112,10 @@ class BrowserTab(QObject):
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
-        web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
-        web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
+
+        scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
+        web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, scroll_bars)
+        web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, scroll_bars)
 
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
