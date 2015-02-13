@@ -115,6 +115,8 @@ else:
                 self._abort_queues()
 
             self._publish_idle()
+            if hasattr(stream, 'flush'):
+                stream.flush()
 
         def _flush_execute_output(self):
             # Flush output before sending the reply.
