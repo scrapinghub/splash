@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from collections import namedtuple
+import string
 import sys
 from splash.utils import dedupe
 
@@ -30,9 +31,18 @@ class Completer(object):
         return code[:cursor_pos].split("\n")[-1]
 
     def complete(self, code, cursor_pos):
+        next_char = code[cursor_pos:cursor_pos+1]
+        if next_char and next_char not in string.whitespace+".,:;\"')([]/*+^-=&%{}<>~":
+            return {
+                'matches': [],
+                'cursor_end': cursor_pos,
+                'cursor_start': cursor_pos,
+                'metadata': {},
+                'status': 'ok',
+            }
+
         matches = []
         prefix = ""
-
         text = self._context(code, cursor_pos)
         tokens = self.tokenize(text, pad=3)
         types = [t.type for t in tokens]

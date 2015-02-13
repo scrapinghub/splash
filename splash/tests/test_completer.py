@@ -190,6 +190,11 @@ def test_dont_complete_globals_inside_string(completer):
     assert "string" not in res["matches"]
 
 
+def test_dont_complete_inside_identifier(completer):
+    res = autocomplete(completer, "loc|omotive")
+    assert res["matches"] == []
+
+
 def test_tokenize(completer):
     code = """
     function foo()
