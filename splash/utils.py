@@ -23,11 +23,14 @@ class BinaryCapsule(object):
     def __init__(self, data):
         self.data = data
 
+    def as_b64(self):
+        return base64.b64encode(self.data)
+
 
 class SplashJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, BinaryCapsule):
-            return base64.b64encode(o.data)
+            return o.as_b64()
         return super(SplashJSONEncoder, self).default(o)
 
 

@@ -129,15 +129,10 @@ class SplashKernel(Kernel):
     def send_execute_reply(self, stream, ident, parent, md, reply_content):
         def done(result):
             reply, result, ct = result
-            # self._print(str(reply))
-            # self._print(repr(result)+"\n")
-            # self._print(ct)
             if result:
-                # if not isinstance(result, (str, unicode)):
-                #     result = self.lua_repr(self.lua.python2lua(result))
-                data = {'text/plain': result}
-                # if isinstance(result, BinaryCapsule):
-                #     data["image/png"] = result.data
+                data = {'text/plain': str(result)}
+                if isinstance(result, BinaryCapsule):
+                    data["image/png"] = result.as_b64()
                 self._publish_execute_result(parent, data, {}, self.execution_count)
 
             super(SplashKernel, self).send_execute_reply(stream, ident, parent, md, reply)
@@ -147,8 +142,8 @@ class SplashKernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        def success(result):
-            result, content_type = result
+        def success(res):
+            result, content_type = res
             reply = {
                 'status': 'ok',
                 'execution_count': self.execution_count,
