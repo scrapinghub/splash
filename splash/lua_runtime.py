@@ -22,7 +22,7 @@ class SplashLuaRuntime(object):
         self._allowed_object_attrs = {}
 
     def add_to_globals(self, name, value):
-        code = "function(_) %s = _ end" % name
+        code = "function(%s_) %s = %s_ end" % (name, name, name)
         self.eval(code)(value)
 
     def table_from(self, *args, **kwargs):
