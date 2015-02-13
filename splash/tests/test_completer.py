@@ -77,6 +77,11 @@ def test_globals_attributes(completer):
     assert res["matches"] == ["len", "lower"]
 
 
+def test_globals_without_dot(completer):
+    res = autocomplete(completer, "foo = string|")
+    assert res["matches"] == []
+
+
 def test_globals_attributes_nested_false_positive(completer):
     res = autocomplete(completer, "foo = table.string.|")
     assert res["matches"] == []

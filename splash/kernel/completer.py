@@ -68,7 +68,7 @@ class Completer(object):
             prefix = ""
             lookup_type = "."
 
-            if len(attr_chain) != 1:
+            if len(attr_chain) >= 2:
                 if attr_chain[-1].type == 'iden':
                     prefix = attr_chain[-1].value
                     attr_chain.pop()  # pop the prefix
@@ -124,6 +124,10 @@ class Completer(object):
         if sum(1 for t in chain if t.type == 'iden') == 0:
             return []
 
+        # not really a chain
+        if len(chain) == 1:
+            return []
+
         # only a single : is allowed, near the end of the chain
         if any(t.type == ":" for t in chain[:-2]):
             return []
@@ -154,9 +158,7 @@ class Completer(object):
         return sorted_with_prefix(prefix, g.keys())
 
     def complete_local_identifier(self, code, prefix):
-        return sorted_with_prefix(prefix, [
-            t for t in self._local_identifiers(code) if t != prefix
-        ])
+        return sorted_with_prefix(prefix, self._local_identifiers(code))
 
     def _local_identifiers(self, code):
         """ yield all Lua identifiers """
@@ -167,12 +169,15 @@ class Completer(object):
                 yield tok.value
 
 
-def sorted_with_prefix(prefix, it):
+def sorted_with_prefix(prefix, it, drop_exact=True):
     """
     >>> sorted_with_prefix("foo", ["fooZ", "fooAA", "fox"])
     ['fooAA', 'fooZ']
     """
-    return sorted([el for el in it if el.startswith(prefix)])
+    return sorted([
+        el for el in it
+        if el.startswith(prefix) and (not drop_exact or el != prefix)
+    ])
 
 
 # XXX: how to print debug messages in IPython kernels???
