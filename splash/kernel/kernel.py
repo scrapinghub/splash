@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import json
-import sys
-import time
-from IPython.utils import py3compat
-from IPython.utils.jsonutil import json_clean
 
 import lupa
 from IPython.kernel.zmq.kernelapp import IPKernelApp
@@ -137,8 +132,6 @@ class SplashKernel(Kernel):
             # self._print(str(reply))
             # self._print(repr(result)+"\n")
             # self._print(ct)
-            super(SplashKernel, self).send_execute_reply(stream, ident, parent, md, reply)
-
             if result:
                 # if not isinstance(result, (str, unicode)):
                 #     result = self.lua_repr(self.lua.python2lua(result))
@@ -146,6 +139,8 @@ class SplashKernel(Kernel):
                 # if isinstance(result, BinaryCapsule):
                 #     data["image/png"] = result.data
                 self._publish_execute_result(parent, data, {}, self.execution_count)
+
+            super(SplashKernel, self).send_execute_reply(stream, ident, parent, md, reply)
 
         assert isinstance(reply_content, defer.Deferred)
         reply_content.addCallback(done)
@@ -212,7 +207,6 @@ class SplashKernel(Kernel):
                     end
                     """ % code
                     main_coro = self._get_main(lua_source)
-
 
         except (lupa.LuaSyntaxError, lupa.LuaError) as e:
             d = defer.Deferred()
