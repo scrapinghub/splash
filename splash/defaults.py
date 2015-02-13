@@ -3,7 +3,7 @@
 TIMEOUT = 30
 WAIT_TIME = 0.0
 
-MAX_TIMEOUT = 60.0
+MAX_TIMEOUT = 120.0
 MAX_WAIT_TIME = 10.0
 
 # Default size of browser window.  As there're no decorations, this affects
@@ -76,3 +76,7 @@ JS_CROSS_DOMAIN_ENABLED = False
 
 # logging
 VERBOSITY = 1
+
+
+ADHOC_PROXY_ENABLED = 'False'
+

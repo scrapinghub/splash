@@ -33,6 +33,8 @@ def parse_opts():
         help="maximum allowed value for timeout (default: %default)")
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
+    op.add_option("--adhoc-proxy-enabled",default=defaults.ADHOC_PROXY_ENABLED,
+        help="adhoc proxy enabled (default: %default).If --proxy-profiles-path exist, then --adhoc-proxy-enabled always be False;")
     op.add_option("--js-profiles-path",
         help="path to a folder with javascript profiles")
     op.add_option("--no-js-cross-domain-access",
@@ -242,7 +244,7 @@ def monitor_maxrss(maxrss):
 
 def default_splash_server(portnum, max_timeout, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
-                          proxy_profiles_path=None, js_profiles_path=None,
+                          proxy_profiles_path=None,adhoc_proxy_enabled=True, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
@@ -265,7 +267,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
 
-    splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
+    splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path,adhoc_proxy_enabled)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access)
     return splash_server(
@@ -303,7 +305,7 @@ def _default_cache(cache_enabled, cache_path, cache_size):
         return cache.construct(cache_path, cache_size)
 
 
-def _default_proxy_factory(proxy_profiles_path):
+def _default_proxy_factory(proxy_profiles_path,adhoc_proxy_enabled):
     from twisted.python import log
     from splash import proxy
 
@@ -315,10 +317,11 @@ def _default_proxy_factory(proxy_profiles_path):
         proxy_profiles_enabled = proxy_profiles_path is not None
 
     if proxy_profiles_enabled:
-        log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
+        log.msg("ProfilesSplashProxyFactory enabled")
         return functools.partial(proxy.ProfilesSplashProxyFactory, proxy_profiles_path)
-
-
+    elif adhoc_proxy_enabled == True:
+        log.msg("AdhocSplashProxyFactory enabled")
+        return functools.partial(proxy.AdhocSplashProxyFactory)
 def _check_js_profiles_path(js_profiles_path):
     from twisted.python import log
 
@@ -364,6 +367,7 @@ def main():
             cache_path=opts.cache_path,
             cache_size=opts.cache_size,
             proxy_profiles_path=opts.proxy_profiles_path,
+            adhoc_proxy_enabled= not (opts.adhoc_proxy_enabled=='False'),
             js_profiles_path=opts.js_profiles_path,
             js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
             disable_proxy=opts.disable_proxy,

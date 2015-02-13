@@ -9,10 +9,11 @@ Not to be confused with Splash Proxy mode when Splash itself works as
 an HTTP proxy (see :mod:`splash.proxy_server`).
 """
 from __future__ import absolute_import
+import json
 import re, os, ConfigParser
 from PyQt4.QtNetwork import QNetworkProxy
 from splash.render_options import BadOption
-
+from twisted.python import log
 
 class _BlackWhiteSplashProxyFactory(object):
     """
@@ -62,6 +63,38 @@ class _BlackWhiteSplashProxyFactory(object):
             proxies.append(proxy)
         return proxies
 
+class AdhocSplashProxyFactory():
+    def __init__(self, profile_name):
+        self.profile_name = profile_name
+        self.proxy_list = []        
+    #     super(AdhocSplashProxyFactory, self).__init__(proxy_list=proxy_list)
+
+    def _buildProxyList(self):
+        """
+        Return one proxy
+        """
+        if self.profile_name is not None:
+            
+            obj = self.profile_name.split('@')
+            if len(obj) == 1:
+                host = obj[0].split(':')[0]
+                port = int(obj[0].split(':')[1])
+                proxy = QNetworkProxy(QNetworkProxy.HttpProxy, host, port) 
+                self.proxy_list.append(proxy)               
+            elif len(obj) == 2:
+                proxy = QNetworkProxy(QNetworkProxy.HttpProxy, obj[1].split(':')[0],int(obj[1].split(':')[1]), obj[0].split(':')[0],obj[0].split(':')[1])         
+                self.proxy_list.append(proxy)
+            else:
+                log.msg("proxy profile error,expect username:password@ip:port or ip:port,actual:".format(self.profile_name))
+    def _defaultProxyList(self):
+        return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
+
+    def queryProxy(self, query=None, *args, **kwargs):
+        if len(self.proxy_list) == 0:
+            self._buildProxyList()
+        if len(self.proxy_list) > 0:     
+            return self.proxy_list
+        return self._defaultProxyList();
 
 class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
     """
