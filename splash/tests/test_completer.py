@@ -28,6 +28,11 @@ def test_complete_keywords(completer):
     assert "true" in res["matches"]
 
 
+def test_complete_keywords_after_space(completer):
+    res = autocomplete(completer, "fun |")
+    assert res["matches"] == []
+
+
 def test_dont_complete_keywords_as_attributes(completer):
     res = autocomplete(completer, "x.fun|")
     assert "function" not in res["matches"]
@@ -80,6 +85,11 @@ def test_globals_attributes(completer):
 def test_globals_without_dot(completer):
     res = autocomplete(completer, "foo = string|")
     assert res["matches"] == []
+
+
+def test_globals_without_dot_multiple(completer):
+    res = autocomplete(completer, "strings=""; foo = string|")
+    assert res["matches"] == ["strings"]
 
 
 def test_globals_attributes_nested_false_positive(completer):
@@ -208,29 +218,17 @@ def test_tokenize(completer):
     end
     """
     assert completer.tokenize(code) == [
-        Tok(type=u'space', value=u'\n    '),
         Tok(type=u'keyword', value=u'function'),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'iden', value=u'foo'),
         Tok(type=u'(', value=u'('),
         Tok(type=u')', value=u')'),
-        Tok(type=u'space', value=u'\n        '),
         Tok(type=u'keyword', value=u'local'),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'iden', value=u'x'),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'=', value=u'='),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'number', value=1),
-        Tok(type=u'space', value=u'\n        '),
         Tok(type=u'keyword', value=u'local'),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'iden', value=u'y'),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'=', value=u'='),
-        Tok(type=u'space', value=u' '),
         Tok(type=u'string', value=u'hello'),
-        Tok(type=u'space', value=u'\n    '),
         Tok(type=u'keyword', value=u'end'),
-        Tok(type=u'space', value=u'\n    ')
     ]

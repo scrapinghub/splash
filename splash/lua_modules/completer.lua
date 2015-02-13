@@ -10,7 +10,7 @@ local completer = {}
 --
 function completer.tokenize(src)
   local res = {}
-  local filter = {space=false, comments=true}
+  local filter = {space=true, comments=true}
   local options = {number=true, string=true}
 
   for tp, value in lexer.lua(src, filter, options) do

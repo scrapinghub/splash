@@ -31,15 +31,21 @@ class Completer(object):
         return code[:cursor_pos].split("\n")[-1]
 
     def complete(self, code, cursor_pos):
+        NO_SUGGESTIONS = {
+            'matches': [],
+            'cursor_end': cursor_pos,
+            'cursor_start': cursor_pos,
+            'metadata': {},
+            'status': 'ok',
+        }
         next_char = code[cursor_pos:cursor_pos+1]
+        prev_char = code[cursor_pos-1:cursor_pos]
+
+        if prev_char in string.whitespace:
+            return NO_SUGGESTIONS
+
         if next_char and next_char not in string.whitespace+".,:;\"')([]/*+^-=&%{}<>~":
-            return {
-                'matches': [],
-                'cursor_end': cursor_pos,
-                'cursor_start': cursor_pos,
-                'metadata': {},
-                'status': 'ok',
-            }
+            return NO_SUGGESTIONS
 
         matches = []
         prefix = ""
