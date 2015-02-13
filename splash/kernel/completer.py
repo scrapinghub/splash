@@ -140,7 +140,8 @@ class Completer(object):
         return sorted_with_prefix(prefix, LUA_KEYWORDS)
 
     def complete_global_variable(self, prefix):
-        return sorted_with_prefix(prefix, self.lua.globals())
+        g = self.lua.globals()
+        return sorted_with_prefix(prefix, g.keys())
 
     def complete_local_identifier(self, code, prefix):
         return sorted_with_prefix(prefix, [

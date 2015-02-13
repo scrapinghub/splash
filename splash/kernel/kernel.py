@@ -130,7 +130,9 @@ class SplashKernel(Kernel):
         def done(result):
             reply, result, ct = result
             if result:
-                data = {'text/plain': str(result)}
+                data = {
+                    'text/plain': result if isinstance(result, basestring) else str(result),
+                }
                 if isinstance(result, BinaryCapsule):
                     data["image/png"] = result.as_b64()
                 self._publish_execute_result(parent, data, {}, self.execution_count)
