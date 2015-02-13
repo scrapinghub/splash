@@ -201,6 +201,10 @@ def test_complete_latter_local_variables(completer):
 
 def test_complete_string_metamethod(completer):
     completer.lua.execute("txt = 'hello'")
+
+    res = autocomplete(completer, "txt:|")
+    assert "upper" in res["matches"]
+
     res = autocomplete(completer, "txt:up|")
     assert res["matches"] == ["upper"]
 

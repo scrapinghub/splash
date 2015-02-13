@@ -43,7 +43,7 @@ end
 
 
 --
--- Return all attributes of a global variable or its attribute.
+-- Return all attribute names of a global variable or its attribute.
 --
 function completer.attrs(names_chain, no_methods, only_methods)
   if #names_chain == 0 then
