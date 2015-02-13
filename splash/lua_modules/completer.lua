@@ -33,6 +33,9 @@ function completer.get_table_keys(tbl, value_ok)
   return res
 end
 
+--
+-- Return all string metatable.__index keys with values passing `value_ok` test.
+--
 function completer.get_metatable_keys(obj, value_ok)
   local mt = getmetatable(obj)
   if type(mt) ~= 'table' then return {} end
