@@ -96,7 +96,10 @@ class SplashKernel(Kernel):
         'mimetype': 'application/x-lua',
         'display_name': 'Splash',
         'language': 'lua',
-        'codemirror_mode': 'Lua',
+        'codemirror_mode': {
+            "version": 2,
+            "name": "text/x-lua",
+        },
         'file_extension': '.lua',
         'pygments_lexer': 'lua'
     }
