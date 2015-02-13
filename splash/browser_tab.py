@@ -117,6 +117,9 @@ class BrowserTab(QObject):
         web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, scroll_bars)
         web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, scroll_bars)
 
+        if self.visible:
+            web_page.settings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
         self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
