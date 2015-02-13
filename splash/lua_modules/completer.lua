@@ -26,11 +26,19 @@ end
 function completer.get_table_keys(tbl, value_ok)
   local res = {}
   for k, v in pairs(tbl) do
-    if type(k) == "string" and value_ok(v) then
+    if type(k) == "string" and value_ok(k, v) then
       res[#res+1] = k
     end
   end
   return res
+end
+
+function completer.get_metatable_keys(obj, value_ok)
+  local mt = getmetatable(obj)
+  if type(mt) ~= 'table' then return {} end
+  local index = mt.__index
+  if type(index) ~= 'table' then return {} end
+  return completer.get_table_keys(index, value_ok)
 end
 
 
@@ -49,7 +57,7 @@ function completer.attrs(names_chain, no_methods, only_methods)
 
   local tp = type(obj)
 
-  local function value_ok(v)
+  local function value_ok(k, v)
     local is_meth = type(v) == 'function'
     if is_meth and no_methods then return false end
     if not is_meth and only_methods then return false end
@@ -60,10 +68,19 @@ function completer.attrs(names_chain, no_methods, only_methods)
     return {}
   end
 
+  if tp == "string" then
+    return completer.get_metatable_keys(obj, value_ok)
+  end
+
   -- todo: strings, functions, ...?
 
   if tp == "table" then
-    return completer.get_table_keys(obj, value_ok)
+    local keys = completer.get_table_keys(obj, value_ok)
+    local mt_keys = completer.get_metatable_keys(obj, value_ok)
+    for idx, k in ipairs(mt_keys) do
+      keys[#keys+1] = k
+    end
+    return keys
   end
 
   return {}

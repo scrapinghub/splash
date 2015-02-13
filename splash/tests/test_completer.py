@@ -199,6 +199,12 @@ def test_complete_latter_local_variables(completer):
     assert res["matches"] == ["stats", "status", "string"]
 
 
+def test_complete_string_metamethod(completer):
+    completer.lua.execute("txt = 'hello'")
+    res = autocomplete(completer, "txt:up|")
+    assert res["matches"] == ["upper"]
+
+
 @pytest.mark.xfail
 def test_dont_complete_globals_inside_string(completer):
     res = autocomplete(completer, "x = 's|'")
