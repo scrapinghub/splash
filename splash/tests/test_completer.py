@@ -181,7 +181,6 @@ def test_complete_local_variables(completer):
     assert res["matches"] == ["stats", "status", "string"]
 
 
-@pytest.mark.xfail(reason="tokenizer bug?")
 def test_complete_local_variables_unicode(completer):
     res = autocomplete(completer, u"""
     привет = ""

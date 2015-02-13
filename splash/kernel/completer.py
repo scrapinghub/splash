@@ -22,6 +22,12 @@ class Completer(object):
         self._completer = self.lua.eval("require('completer')")
 
     def tokenize(self, lua_source, pad=0):
+        # Our lexer doesn't support unicode. To avoid exceptions,
+        # replace all non-ascii characters before the tokenization.
+        # This is not optimal, but Lua doesn't allow unicode identifiers,
+        # so non-ascii text usually is not interesting for the completion
+        # engine.
+        lua_source = lua_source.encode('ascii', 'replace')
         res = self._completer.tokenize(lua_source)
         tokens = [Tok(t["tp"], t["value"]) for t in res.values()]
         return [Tok("NA", "")] * pad + tokens
