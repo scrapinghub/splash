@@ -613,7 +613,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
             function main(splash) {
                 setTimeout(function () {
                     splash.resume("ok");
-                }, 500);
+                }, 100);
             }
         """)
         self.assertStatusCode(resp, 200)
@@ -635,7 +635,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                     splash.resume("ok");
                 }, 2500);
             }
-        """, timeout=0.5)
+        """, timeout=0.1)
         expected_error = 'JavaScript error: One shot callback timed out' \
                          ' while waiting for resume() or error().'
         self.assertStatusCode(resp, 200)
