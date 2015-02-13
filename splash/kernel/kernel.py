@@ -160,11 +160,7 @@ class SplashKernel(Kernel):
                 failure.raiseException()
             except (lupa.LuaSyntaxError, lupa.LuaError, ScriptError) as e:
                 tp, line_num, message = parse_lua_error(e)
-                line_num -= 2
-                if line_num-1 > code.count("\n") or line_num < 0:
-                    text = "<%s error> [input]:?: %s" % (tp, message)
-                else:
-                    text = "<%s error> [input]:%s: %s" % (tp, line_num, message)
+                text = "<%s error> [input]:%s: %s" % (tp, line_num, message)
             except Exception as e:
                 text = repr(e)
             reply = {
@@ -178,31 +174,20 @@ class SplashKernel(Kernel):
 
         try:
             try:
-                # XXX: 'function main' must be on 2nd line for exceptions
-                # to be displayed properly!
-                lua_source = """local repr = require("repr");
-                function main(splash)
-                    return repr(%s)
-                end
-                """ % code
+                # XXX: this ugly formatting is important for exception
+                # line numbers to be displayed properly!
+                lua_source = 'local repr = require("repr"); function main(splash) return repr(%s) end' % code
                 main_coro = self._get_main(lua_source)
             except lupa.LuaSyntaxError:
                 try:
                     lines = code.splitlines(False)
-
-                    lua_source = """local repr = require("repr");
-                    function main(splash)
-                        %s
+                    lua_source = '''local repr = require("repr"); function main(splash) %s
                         return repr(%s)
                     end
-                    """ % ("\n".join(lines[:-1]), lines[-1])
+                    ''' % ("\n".join(lines[:-1]), lines[-1])
                     main_coro = self._get_main(lua_source)
                 except lupa.LuaSyntaxError:
-                    lua_source = """
-                    function main(splash)
-                        %s
-                    end
-                    """ % code
+                    lua_source = "function main(splash) %s end" % code
                     main_coro = self._get_main(lua_source)
 
         except (lupa.LuaSyntaxError, lupa.LuaError) as e:
