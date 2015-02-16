@@ -60,7 +60,6 @@ class ObjectAttributeIndexed(object):
             self.__class__.__name__, self.prefix, self.names_chain, self.quote
         )
 
-
 class ObjectMethod(_AttrLookupMatch):
     pass
 
@@ -113,10 +112,10 @@ iden = token("iden")
 first_iden = iden + iden_start
 single_obj = first_iden >> match(Standalone)
 
-_index = p.skip(close_sq_brace) + tok_string + p.skip(open_sq_brace)
+_index = p.skip(close_sq_brace) + (tok_string | tok_number) + p.skip(open_sq_brace)
 dot_iden_or_index = _index | (iden + p.skip(dot))   # either .name or ["name"]
 
-# foo.bar.
+# foo[0]["bar"].baz
 _attr_chain = p.oneplus(dot_iden_or_index) + first_iden
 _obj = _attr_chain | first_iden
 _attr_chain_noprefix = p.pure("") + p.skip(dot) + _obj

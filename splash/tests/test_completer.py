@@ -119,6 +119,16 @@ def test_globals_attributes_nested(complete, configured_lua):
     assert complete("tbl[key].w|") == []    # not supported
 
 
+def test_int_index(complete, configured_lua):
+    configured_lua.execute("""
+    str = "hello"
+    arr = {'foo', 'bar', {egg=10, spam=20}}
+    """)
+    assert complete("arr[1].|") == complete("str.|")
+    assert complete("arr[2].|") == complete("str.|")
+    assert complete("arr[3].|") == ['egg', 'spam']
+
+
 @pytest.mark.xfail(reason="not implemented")
 def test_globals_attributes_dynamic_lookup(complete, configured_lua):
     configured_lua.execute("""
