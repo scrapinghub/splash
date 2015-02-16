@@ -38,7 +38,9 @@ class _AttrLookupMatch(_Match):
 
 
 class Standalone(_Match):
-    pass
+    @property
+    def prefix(self):
+        return self.value
 
 class SplashAttribute(_AttrLookupMatch):
     pass
