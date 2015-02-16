@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import functools
 
 import pytest
 lupa = pytest.importorskip("lupa")
 
 
-def autocomplete(completer, code):
+def _complete(completer, code):
     """
     Ask completer to complete the ``code``;
     cursor position is specified by | symbol.
@@ -15,203 +16,209 @@ def autocomplete(completer, code):
     res = completer.complete(code, cursor_pos)
     assert res["status"] == "ok"
     assert res["cursor_end"] == cursor_pos
-    return res
+    return res["matches"]
 
 
-def test_complete_keywords(completer):
-    res = autocomplete(completer, "fun|")
-    assert "function" in res["matches"]
-
-    res = autocomplete(completer, "while t| do")
-    assert "true" in res["matches"]
+@pytest.fixture()
+def complete(completer):
+    return functools.partial(_complete, completer)
 
 
-def test_complete_keywords_after_space(completer):
-    res = autocomplete(completer, "fun |")
-    assert res["matches"] == []
+def test_complete_keywords(complete):
+    assert "function" in complete("fun|")
+    assert "true" in  complete("while t| do")
 
 
-def test_dont_complete_keywords_as_attributes(completer):
-    res = autocomplete(completer, "x.fun|")
-    assert "function" not in res["matches"]
-
-    res = autocomplete(completer, "x:fun|")
-    assert "function" not in res["matches"]
+def test_complete_keywords_after_space(complete):
+    assert [] == complete("fun |")
 
 
-def test_complete_globals(completer):
-    res = autocomplete(completer, "x = tab|")
-    assert "table" in res["matches"]
-
-    res = autocomplete(completer, "x = s|")
-    assert "string" in res["matches"]
-    assert "select" in res["matches"]
-    assert "spoon" not in res["matches"]
-    assert all(m.startswith("s") for m in res["matches"])
+def test_dont_complete_keywords_as_attributes(complete):
+    assert "function" not in complete("x.fun|")
+    assert "function" not in complete("x:fun|")
 
 
-def test_complete_user_globals(completer):
-    completer.lua.execute("spoon = 5")
-    res = autocomplete(completer, "x = s|")
-    assert "string" in res["matches"]
-    assert "select" in res["matches"]
-    assert "spoon" in res["matches"]
+def test_complete_globals(complete):
+    res = complete("x = tab|")
+    assert "table" in res
+
+    res = complete("x = s|")
+    assert "string" in res
+    assert "select" in res
+    assert "spoon" not in res
+    assert all(m.startswith("s") for m in res)
 
 
-def test_dont_complete_globals_as_attributes(completer):
-    res = autocomplete(completer, "foo = x.s|")
-    assert "string" not in res["matches"]
+def test_complete_user_globals(complete, configured_lua):
+    configured_lua.execute("spoon = 5")
+    res = complete("x = s|")
+    assert "string" in res
+    assert "select" in res
+    assert "spoon" in res
 
 
-def test_no_completions_on_nothing(completer):
-    res = autocomplete(completer, "|")
-    assert res["matches"] == []
-
-    res = autocomplete(completer, " | ")
-    assert res["matches"] == []
+def test_dont_complete_globals_as_attributes(complete):
+    assert "string" not in complete("foo = x.s|")
 
 
-def test_globals_attributes(completer):
-    res = autocomplete(completer, "foo = string.|")
-    assert {'len', 'lower', 'reverse', 'upper'} <= set(res["matches"])
-    assert 'concat' not in res["matches"]
-
-    res = autocomplete(completer, "foo = string.l|")
-    assert res["matches"] == ["len", "lower"]
+def test_no_completions_on_nothing(complete):
+    assert complete("|") == []
+    assert complete(" | ") == []
 
 
-def test_globals_without_dot(completer):
-    res = autocomplete(completer, "foo = string|")
-    assert res["matches"] == []
+def test_globals_attributes(complete):
+    res = complete("foo = string.|")
+    assert {'len', 'lower', 'reverse', 'upper'} <= set(res)
+    assert 'concat' not in res
+
+    assert complete("foo = string.l|") == ["len", "lower"]
 
 
-def test_globals_without_dot_multiple(completer):
-    res = autocomplete(completer, "strings=""; foo = string|")
-    assert res["matches"] == ["strings"]
+def test_globals_attributes_index_notation(complete):
+    res = complete("foo = string['|")
+    assert {"len']", "lower']", "reverse']", "upper']"} <= set(res)
+    assert "concat']" not in res
+
+    res = complete('foo = string["|')
+    assert {'len"]', 'lower"]', 'reverse"]', 'upper"]'} <= set(res)
 
 
-def test_globals_attributes_nested_false_positive(completer):
-    res = autocomplete(completer, "foo = table.string.|")
-    assert res["matches"] == []
+def test_globals_attributes_index_notation_prefix(complete):
+    assert complete('foo = string["l|') == ['len"]', 'lower"]']
 
 
-def test_globals_attributes_nested(completer):
-    completer.lua.execute("""
+def test_globals_without_dot(complete):
+    assert complete("foo = string|") == []
+
+
+def test_globals_without_dot_multiple(complete):
+    assert complete("strings=""; foo = string|") == ["strings"]
+
+
+def test_globals_attributes_nested_false_positive(complete):
+    assert complete("foo = table.string.|") == []
+
+
+def test_globals_attributes_nested(complete, configured_lua):
+    configured_lua.execute("""
     weight = 20
+    key = "foo"
+    tbl={foo={width=10, heigth=5, nested={hello="world"}}}
+    """)
+    assert complete("tbl.foo.w|") == ["width"]
+    assert complete("tbl['foo'].w|") == ["width"]
+    assert complete('tbl["foo"].w|') == ["width"]
+    assert complete('tbl.foo.nested.|') == ["hello"]
+    assert complete('tbl["foo"].nested.|') == ["hello"]
+    assert complete('tbl["foo"]["nested"].|') == ["hello"]
+    assert complete('tbl[\'foo\']["nested"].|') == ["hello"]
+    assert complete('tbl[\'foo"].w|') == []
+    assert complete('tbl["foo\'].w|') == []
+    assert complete('tbl.bar.w|') == []
+    assert complete("tbl['bar'].w|") == []
+    assert complete("tbl[key].w|") == []    # not supported
+
+
+@pytest.mark.xfail(reason="not implemented")
+def test_globals_attributes_dynamic_lookup(complete, configured_lua):
+    configured_lua.execute("""
+    key = "foo"
     tbl={foo={width=10, heigth=5}}
     """)
-    res = autocomplete(completer, "tbl.foo.w|")
-    assert res["matches"] == ["width"]
+    assert complete("tbl[key].w|") == ["width"]    # not supported
 
 
-def test_globals_attributes_nested_method(completer):
-    completer.lua.execute("""
+def test_globals_attributes_nested_method(complete, configured_lua):
+    configured_lua.execute("""
     obj = {foo="bar"}
     function obj:hello()
         return "hello"
     end
     tbl = {prop=obj}
     """)
-    res = autocomplete(completer, "tbl.prop.|")
-    assert res["matches"] == ["foo", "hello"]
 
-    res = autocomplete(completer, "tbl.prop:|")
-    assert res["matches"] == ["hello"]
+    assert complete("tbl.prop.|") == ["foo", "hello"]
+    assert complete("tbl.prop:|") == ["hello"]
+    assert complete("tbl['prop'].|") == ["foo", "hello"]
+    assert complete("tbl[\"prop\"]:|") == ["hello"]
 
 
-def test_globals_attributes_nested_broken(completer):
-    completer.lua.execute("""
+def test_globals_attributes_nested_broken(complete, configured_lua):
+    configured_lua.execute("""
     tbl = {prop={foo="bar"}}
     """)
-    res = autocomplete(completer, "tbl:prop.|")
-    assert res["matches"] == []
-
-    res = autocomplete(completer, "tbl:prop:|")
-    assert res["matches"] == []
+    assert complete("tbl:prop.|") == []
+    assert complete("tbl:prop:|") == []
 
 
-def test_not_attributes(completer):
-    res = autocomplete(completer, "string..|")
-    assert res["matches"] == []
-
-    res = autocomplete(completer, "(:|")
-    assert res["matches"] == []
+def test_not_attributes(complete):
+    assert complete("string..|") == []
+    assert complete("(:|") == []
 
 
-def test_complete_array(completer):
-    completer.lua.execute("foo = {'x', 'y', z=5}")
-    res = autocomplete(completer, "foo.|")
-    assert res["matches"] == ["z"]
+def test_complete_array(complete, configured_lua):
+    configured_lua.execute("foo = {'x', 'y', z=5}")
+    assert complete("foo.|") == ["z"]
 
 
-def test_complete_methods(completer):
-    completer.lua.execute("""
+def test_complete_methods(complete, configured_lua):
+    configured_lua.execute("""
     tbl = {foo="bar"}
     function tbl:hello()
         return 123
     end
     """)
-    res = autocomplete(completer, "tbl:|")
-    assert res["matches"] == ["hello"]     # fixme: metamethods?
-
-    res = autocomplete(completer, "tbl.|")
-    assert res["matches"] == ["foo", "hello"]
+    assert complete("tbl:|") == ["hello"]     # fixme: metamethods?
+    assert complete("tbl.|") == ["foo", "hello"]
 
 
-def test_complete_function_result(completer):
-    completer.lua.execute("""
+def test_complete_function_result(complete, configured_lua):
+    configured_lua.execute("""
     function foo()
         return {bar="baz"}
     end
     """)
     # It is too hard for a completer to return a proper result,
     # but at least there shouldn't be spurious matches.
-    res = autocomplete(completer, "foo().b|")
-    assert res["matches"] == []
+    assert complete("foo().b|") == []
 
 
-def test_complete_local_variables(completer):
-    res = autocomplete(completer, """
+def test_complete_local_variables(complete):
+    res = complete("""
     status = "statue"
     stats = "sterling"
     x = st|
     """)
-    assert res["matches"] == ["stats", "status", "string"]
+    assert res == ["stats", "status", "string"]
 
 
-def test_complete_local_variables_unicode(completer):
-    res = autocomplete(completer, u"""
+def test_complete_local_variables_unicode(complete):
+    res = complete(u"""
     привет = ""
     пр|
     """)
-    assert res["matches"] == []   # unicode identifiers are not allowed in Lua
+    assert res == []   # unicode identifiers are not allowed in Lua
 
 
-def test_complete_latter_local_variables(completer):
-    res = autocomplete(completer, """
+def test_complete_latter_local_variables(complete):
+    res = complete("""
     x = st|
     status = "statue"
     stats = "sterling"
     """)
-    assert res["matches"] == ["stats", "status", "string"]
+    assert res == ["stats", "status", "string"]
 
 
-def test_complete_string_metamethod(completer):
-    completer.lua.execute("txt = 'hello'")
-
-    res = autocomplete(completer, "txt:|")
-    assert "upper" in res["matches"]
-
-    res = autocomplete(completer, "txt:up|")
-    assert res["matches"] == ["upper"]
+def test_complete_string_metamethod(complete, configured_lua):
+    configured_lua.execute("txt = 'hello'")
+    assert "upper" in complete("txt:|")
+    assert ["upper"] == complete("txt:up|")
 
 
 @pytest.mark.xfail
-def test_dont_complete_globals_inside_string(completer):
-    res = autocomplete(completer, "x = 's|'")
-    assert "string" not in res["matches"]
+def test_dont_complete_globals_inside_string(complete):
+    assert "string" not in complete("x = 's|'")
 
 
-def test_dont_complete_inside_identifier(completer):
-    res = autocomplete(completer, "loc|omotive")
-    assert res["matches"] == []
+def test_dont_complete_inside_identifier(complete):
+    assert complete("loc|omotive") == []

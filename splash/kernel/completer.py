@@ -7,6 +7,7 @@ from splash.kernel.lua_parser import (
     LuaParser,
     Standalone,
     ObjectAttribute,
+    ObjectAttributeIndexed,
     ObjectMethod,
     SplashAttribute,
     SplashMethod,
@@ -55,6 +56,12 @@ class Completer(object):
 
             if isinstance(m, ObjectAttribute):
                 matches += self.complete_any_attribute(names_chain, m.prefix)
+
+            if isinstance(m, ObjectAttributeIndexed):
+                matches += [
+                    "%s%s]" % (el, m.quote)
+                    for el in self.complete_any_attribute(names_chain, m.prefix)
+                ]
 
             elif isinstance(m, (ObjectMethod, SplashMethod)):
                 matches += self.complete_method(names_chain, m.prefix)
