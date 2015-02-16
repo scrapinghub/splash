@@ -24,6 +24,7 @@ RUN pip install \
             git+https://github.com/axiak/pyre2.git@382bb743f16722b582cc2bac8fc08ff121dec20e#egg=re2 \
             xvfbwrapper==0.2.4 \
             lupa==1.1 \
+            funcparserlib >= 0.3.6 \
             Pillow==2.7.0
 
 ADD . /app

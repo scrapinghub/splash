@@ -33,6 +33,7 @@ function completer.get_table_keys(tbl, value_ok)
   return res
 end
 
+
 --
 -- Return all string metatable.__index keys with values passing `value_ok` test.
 --

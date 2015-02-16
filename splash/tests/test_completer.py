@@ -4,8 +4,6 @@ from __future__ import absolute_import
 import pytest
 lupa = pytest.importorskip("lupa")
 
-from splash.kernel.completer import Tok
-
 
 def autocomplete(completer, code):
     """
@@ -217,27 +215,3 @@ def test_dont_complete_globals_inside_string(completer):
 def test_dont_complete_inside_identifier(completer):
     res = autocomplete(completer, "loc|omotive")
     assert res["matches"] == []
-
-
-def test_tokenize(completer):
-    code = """
-    function foo()
-        local x = 1.
-        local y = [[hello]]
-    end
-    """
-    assert completer.tokenize(code) == [
-        Tok(type=u'keyword', value=u'function'),
-        Tok(type=u'iden', value=u'foo'),
-        Tok(type=u'(', value=u'('),
-        Tok(type=u')', value=u')'),
-        Tok(type=u'keyword', value=u'local'),
-        Tok(type=u'iden', value=u'x'),
-        Tok(type=u'=', value=u'='),
-        Tok(type=u'number', value=1),
-        Tok(type=u'keyword', value=u'local'),
-        Tok(type=u'iden', value=u'y'),
-        Tok(type=u'=', value=u'='),
-        Tok(type=u'string', value=u'hello'),
-        Tok(type=u'keyword', value=u'end'),
-    ]

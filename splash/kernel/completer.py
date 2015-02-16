@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from collections import namedtuple
 import string
-import sys
-from splash.utils import dedupe
 
-Tok = namedtuple("Tok", "type value")
-SplashTok = Tok("iden", "splash")
+from splash.utils import dedupe
+from splash.kernel.lua_parser import (
+    LuaParser,
+    Standalone,
+    ObjectAttribute,
+    ObjectMethod,
+    SplashAttribute,
+    SplashMethod,
+)
 
 
 LUA_KEYWORDS = {
@@ -19,22 +23,8 @@ LUA_KEYWORDS = {
 class Completer(object):
     def __init__(self, lua):
         self.lua = lua
-        self._completer = self.lua.eval("require('completer')")
-
-    def tokenize(self, lua_source, pad=0):
-        # Our lexer doesn't support unicode. To avoid exceptions,
-        # replace all non-ascii characters before the tokenization.
-        # This is not optimal, but Lua doesn't allow unicode identifiers,
-        # so non-ascii text usually is not interesting for the completion
-        # engine.
-        lua_source = lua_source.encode('ascii', 'replace')
-        res = self._completer.tokenize(lua_source)
-        tokens = [Tok(t["tp"], t["value"]) for t in res.values()]
-        return [Tok("NA", "")] * pad + tokens
-
-    def _context(self, code, cursor_pos):
-        """ Return text on the same line, left to the cursor """
-        return code[:cursor_pos].split("\n")[-1]
+        self.completer = self.lua.eval("require('completer')")
+        self.parser = LuaParser(lua)
 
     def complete(self, code, cursor_pos):
         NO_SUGGESTIONS = {
@@ -44,122 +34,52 @@ class Completer(object):
             'metadata': {},
             'status': 'ok',
         }
-        next_char = code[cursor_pos:cursor_pos+1]
         prev_char = code[cursor_pos-1:cursor_pos]
 
         if prev_char in string.whitespace:
             return NO_SUGGESTIONS
 
-        if next_char and next_char not in string.whitespace+".,:;\"')([]/*+^-=&%{}<>~":
+        m = self.parser.parse(code, cursor_pos)
+        if m is None:
             return NO_SUGGESTIONS
 
         matches = []
-        prefix = ""
-        text = self._context(code, cursor_pos)
-        tokens = self.tokenize(text, pad=3)
-        types = [t.type for t in tokens]
-        prev2, prev, cur = tokens[-3:]
 
-        attr_chain = self._attr_chain(tokens)
+        if isinstance(m, Standalone):
+            matches += self.complete_keyword(m.value)
+            matches += self.complete_local_identifier(code, m.value)
+            matches += self.complete_global_variable(m.value)
 
-        # 'splash' object is special-cased: we know that its methods
-        # should be called only using splash:foo() syntax, so methods
-        # are not suggested for splash.foo().
-        # This may be changed if error handling changes - pcall could
-        # require writing "splash.foo".
-        if len(attr_chain) == 2 and types[-2:] == ['iden', '.'] and prev == SplashTok:
-            names_chain = self.lua.table_from([prev.value])
-            matches += self.complete_non_method(names_chain)
+        elif hasattr(m, 'names_chain'):
+            names_chain = self.lua.table_from(m.names_chain)
 
-        elif len(attr_chain) == 3 and types[-3:] == ['iden', '.', 'iden'] and prev2 == SplashTok:
-            prefix = cur.value
-            names_chain = self.lua.table_from([prev2.value])
-            matches += self.complete_non_method(names_chain, prefix)
+            if isinstance(m, ObjectAttribute):
+                matches += self.complete_any_attribute(names_chain, m.prefix)
 
-        elif attr_chain:
-            prefix = ""
-            lookup_type = "."
+            elif isinstance(m, (ObjectMethod, SplashMethod)):
+                matches += self.complete_method(names_chain, m.prefix)
 
-            if len(attr_chain) >= 2:
-                if attr_chain[-1].type == 'iden':
-                    prefix = attr_chain[-1].value
-                    attr_chain.pop()  # pop the prefix
-
-                lookup_type = attr_chain.pop().type
-                assert lookup_type in ".:"
-
-            names = [t.value for t in attr_chain if t.type == 'iden']
-            attr_chain = self.lua.table_from(names)
-
-            if lookup_type == ".":
-                matches += self.complete_any_attribute(attr_chain, prefix)
-            elif lookup_type == ":":
-                matches += self.complete_method(attr_chain, prefix)
-            else:
-                raise ValueError("invalid lookup_type")
-
-        if (prev.type not in '.:') and cur.type == 'iden':
-            # standalone identifier
-            prefix = cur.value
-            matches += self.complete_keyword(prefix)
-            matches += self.complete_local_identifier(code, prefix)
-            matches += self.complete_global_variable(prefix)
+            elif isinstance(m, SplashAttribute):
+                matches += self.complete_non_method(names_chain)
 
         return {
             'matches': list(dedupe(matches)),
             'cursor_end': cursor_pos,
-            'cursor_start': cursor_pos - len(prefix),
+            'cursor_start': cursor_pos - len(getattr(m, "prefix", "")),
             'metadata': {},
             'status': 'ok',
         }
 
-    def _attr_chain(self, tokens):
-        chain = []
-        state = "start"
-        for tok in reversed(tokens):
-            if tok.type in ".:":
-                if state == "dot":
-                    return []  # invalid chain: two consequent separators
-                state = "dot"
-                chain.append(tok)
-            elif tok.type == "iden":
-                if state == "iden":
-                    return []  # invalid chain: two consequent identifiers
-                state = "iden"
-                chain.append(tok)
-            else:
-                break
-
-        chain.reverse()
-
-        # no identifiers found => nothing to complete
-        if sum(1 for t in chain if t.type == 'iden') == 0:
-            return []
-
-        # not really a chain
-        if len(chain) == 1:
-            return []
-
-        # only a single : is allowed, near the end of the chain
-        if any(t.type == ":" for t in chain[:-2]):
-            return []
-
-        # leading "." means we're not completing an object attribute
-        if chain[0].type != "iden":
-            return []
-
-        return chain
-
     def complete_any_attribute(self, names_chain, prefix=""):
-        attrs = self._completer.attrs(names_chain, False, False)
+        attrs = self.completer.attrs(names_chain, False, False)
         return sorted_with_prefix(prefix, attrs.values())
 
     def complete_non_method(self, names_chain, prefix=""):
-        attrs = self._completer.attrs(names_chain, True, False)
+        attrs = self.completer.attrs(names_chain, True, False)
         return sorted_with_prefix(prefix, attrs.values())
 
     def complete_method(self, names_chain, prefix=""):
-        methods = self._completer.attrs(names_chain, False, True)
+        methods = self.completer.attrs(names_chain, False, True)
         return sorted_with_prefix(prefix, methods.values())
 
     def complete_keyword(self, prefix):
@@ -174,7 +94,7 @@ class Completer(object):
 
     def _local_identifiers(self, code):
         """ yield all Lua identifiers """
-        tokens = self.tokenize(code, pad=1)
+        tokens = self.parser.lexer.tokenize(code, pad=1)
         for idx, tok in enumerate(tokens[1:], start=1):
             prev = tokens[idx-1]
             if tok.type == 'iden' and prev.type not in '.:':

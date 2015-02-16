@@ -10,6 +10,7 @@ Pillow
 
 # for scripting support
 lupa >= 1.1
+funcparserlib >= 0.3.6
 
 # the following libraries are only required by tests
 pytest
