@@ -124,6 +124,7 @@ iden = token("iden")
 first_iden = iden + iden_start
 single_obj = first_iden >> match(Standalone)
 
+# ("hello"):len()
 _braced_constant = p.skip(close_rnd_brace) + (tok_string | tok_number) + p.skip(open_rnd_brace)
 _constant_method = iden + p.skip(colon) + _braced_constant
 _constant_method_noprefix = p.pure("") + p.skip(colon) + _braced_constant
@@ -159,8 +160,15 @@ _splash_attr = iden_nosplash + p.skip(dot) + tok_splash
 _splash_attr_noprefix = p.pure("") + p.skip(dot) + tok_splash
 splash_attr = (_splash_attr | _splash_attr_noprefix) >> match(SplashAttribute)
 
-splash_parser = splash_method | splash_attr
-lua_parser = (splash_parser | obj_method | obj_attr_indexed | obj_attr_chain | constant_method | single_obj)
+lua_parser = (
+      splash_method
+    | splash_attr
+    | obj_method
+    | obj_attr_indexed
+    | obj_attr_chain
+    | constant_method
+    | single_obj
+)
 
 # ========================= wrapper objects =================================
 
