@@ -11,6 +11,7 @@ from splash.kernel.lua_parser import (
     ObjectMethod,
     SplashAttribute,
     SplashMethod,
+    ConstantMethod,
 )
 
 
@@ -51,6 +52,9 @@ class Completer(object):
             matches += self.complete_local_identifier(code, m.value)
             matches += self.complete_global_variable(m.value)
 
+        elif isinstance(m, ConstantMethod):
+            matches += self.complete_obj_method(m.const, m.prefix)
+
         elif hasattr(m, 'names_chain'):
             names_chain = self.lua.table_from(m.names_chain)
 
@@ -87,6 +91,10 @@ class Completer(object):
 
     def complete_method(self, names_chain, prefix=""):
         methods = self.completer.attrs(names_chain, False, True)
+        return sorted_with_prefix(prefix, methods.values())
+
+    def complete_obj_method(self, value, prefix=""):
+        methods = self.completer.obj_attrs(value, False, True)
         return sorted_with_prefix(prefix, methods.values())
 
     def complete_keyword(self, prefix):

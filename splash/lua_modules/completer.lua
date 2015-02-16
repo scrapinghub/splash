@@ -47,18 +47,9 @@ end
 
 
 --
--- Return all attribute names of a global variable or its attribute.
+-- Return all attribute names of an object.
 --
-function completer.attrs(names_chain, no_methods, only_methods)
-  if #names_chain == 0 then
-    error("invalid attributes chain")
-  end
-
-  local obj = _G
-  for idx, attr in ipairs(names_chain) do
-    obj = obj[attr]
-  end
-
+function completer.obj_attrs(obj, no_methods, only_methods)
   local tp = type(obj)
 
   local function value_ok(k, v)
@@ -88,6 +79,23 @@ function completer.attrs(names_chain, no_methods, only_methods)
   end
 
   return {}
+end
+
+--
+-- Return all attribute names of a global variable or its attribute,
+-- resolving names lookup chain.
+--
+function completer.attrs(names_chain, no_methods, only_methods)
+  if #names_chain == 0 then
+    error("invalid attributes chain")
+  end
+
+  local obj = _G
+  for idx, attr in ipairs(names_chain) do
+    obj = obj[attr]
+  end
+
+  return completer.obj_attrs(obj, no_methods, only_methods)
 end
 
 

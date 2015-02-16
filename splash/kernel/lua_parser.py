@@ -63,6 +63,14 @@ class ObjectAttributeIndexed(object):
 class ObjectMethod(_AttrLookupMatch):
     pass
 
+class ConstantMethod(object):
+    def __init__(self, value):
+        self.prefix, self.const = value
+
+    def __repr__(self):
+        return "%s(prefix=%r const=%r)" % (
+            self.__class__.__name__, self.prefix, self.const)
+
 
 # ======================== processing functions =============================
 
@@ -100,6 +108,8 @@ double_quote = token("'")
 quote = (single_quote | double_quote)
 open_sq_brace = token("[")
 close_sq_brace = token("]")
+open_rnd_brace = token("(")
+close_rnd_brace = token(")")
 
 iden_start = p.skip(p.some(lambda t: t.type not in ".:"))
 
@@ -111,6 +121,11 @@ iden = token("iden")
 # as keywords
 first_iden = iden + iden_start
 single_obj = first_iden >> match(Standalone)
+
+_braced_constant = p.skip(close_rnd_brace) + (tok_string | tok_number) + p.skip(open_rnd_brace)
+_constant_method = iden + p.skip(colon) + _braced_constant
+_constant_method_noprefix = p.pure("") + p.skip(colon) + _braced_constant
+constant_method = (_constant_method | _constant_method_noprefix) >> flat >> match(ConstantMethod)
 
 _index = p.skip(close_sq_brace) + (tok_string | tok_number) + p.skip(open_sq_brace)
 dot_iden_or_index = _index | (iden + p.skip(dot))   # either .name or ["name"]
@@ -143,7 +158,7 @@ _splash_attr_noprefix = p.pure("") + p.skip(dot) + tok_splash
 splash_attr = (_splash_attr | _splash_attr_noprefix) >> match(SplashAttribute)
 
 splash_parser = splash_method | splash_attr
-lua_parser = (splash_parser | obj_method | obj_attr_indexed | obj_attr_chain | single_obj)
+lua_parser = (splash_parser | obj_method | obj_attr_indexed | obj_attr_chain | constant_method | single_obj)
 
 # ========================= wrapper objects =================================
 
