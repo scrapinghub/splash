@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Parser for a subset of Lua, useful for autocompletion.
-It takes ``Tok(name, value)`` namedtuples as an input.
 """
 from __future__ import absolute_import
 import string
@@ -10,6 +9,8 @@ from collections import namedtuple
 
 from funcparserlib import parser as p
 
+
+# ===================== Helper data structures ==============================
 
 Token = namedtuple("Token", "type value")
 
@@ -74,7 +75,7 @@ class ConstantMethod(object):
             self.__class__.__name__, self.prefix, self.const)
 
 
-# ======================== processing functions =============================
+# ======================== Processing functions =============================
 
 token_value = attrgetter("value")
 token_type = attrgetter("type")
@@ -94,7 +95,7 @@ def flat(seq):
 def match(cls):
     return lambda res: cls(res)
 
-# =============================== parser ====================================
+# =============================== Grammar ====================================
 
 # A partial parser for Lua.
 #
@@ -125,7 +126,7 @@ first_iden = iden + iden_start
 single_obj = first_iden >> match(Standalone)
 
 # ("hello"):len()
-_braced_constant = p.skip(close_rnd_brace) + (tok_string | tok_number) + p.skip(open_rnd_brace)
+_braced_constant = (p.skip(close_rnd_brace) + (tok_string | tok_number) + p.skip(open_rnd_brace))
 _constant_method = iden + p.skip(colon) + _braced_constant
 _constant_method_noprefix = p.pure("") + p.skip(colon) + _braced_constant
 constant_method = (_constant_method | _constant_method_noprefix) >> flat >> match(ConstantMethod)
@@ -170,7 +171,7 @@ lua_parser = (
     | single_obj
 )
 
-# ========================= wrapper objects =================================
+# ========================= Wrapper objects =================================
 
 class LuaLexer(object):
     def __init__(self, lua):
