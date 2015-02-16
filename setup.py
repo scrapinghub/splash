@@ -74,6 +74,7 @@ else:
         'psutil',
         'adblockparser',
         'xvfbwrapper',
+        'funcparserlib',
         'Pillow',
     ]
 
