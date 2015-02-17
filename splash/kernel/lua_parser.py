@@ -15,7 +15,13 @@ from funcparserlib import parser as p
 Token = namedtuple("Token", "type value")
 
 
-class _Match(object):
+class _BaseMatch(object):
+    @classmethod
+    def match(cls, p):
+        return p >> flat >> match(cls)
+
+
+class _Match(_BaseMatch):
     def __init__(self, value):
         self.value = value
 
@@ -52,7 +58,7 @@ class SplashMethod(_AttrLookupMatch):
 class ObjectAttribute(_AttrLookupMatch):
     pass
 
-class ObjectAttributeIndexed(object):
+class ObjectAttributeIndexed(_BaseMatch):
     def __init__(self, value):
         self.quote = value[1]
         self.prefix = value[0]
@@ -66,7 +72,7 @@ class ObjectAttributeIndexed(object):
 class ObjectMethod(_AttrLookupMatch):
     pass
 
-class ConstantMethod(object):
+class ConstantMethod(_BaseMatch):
     def __init__(self, value):
         self.prefix, self.const = value
 
@@ -85,6 +91,8 @@ def token(tp, check=lambda t: True):
 
 def flat(seq):
     res = []
+    if not isinstance(seq, (list, tuple)):
+        return seq
     for el in seq:
         if isinstance(el, (list, tuple)):
             res.extend([sub_el for sub_el in flat(el)])
@@ -123,13 +131,16 @@ iden = token("iden")
 # standalone names are parsed separately - we need e.g. to suggest them
 # as keywords
 first_iden = iden + iden_start
-single_obj = first_iden >> match(Standalone)
+single_obj = Standalone.match(first_iden)
 
-# ("hello"):len()
-_braced_constant = (p.skip(close_rnd_brace) + (tok_string | tok_number) + p.skip(open_rnd_brace))
-_constant_method = iden + p.skip(colon) + _braced_constant
-_constant_method_noprefix = p.pure("") + p.skip(colon) + _braced_constant
-constant_method = (_constant_method | _constant_method_noprefix) >> flat >> match(ConstantMethod)
+# ("hello"):len
+constant_method = ConstantMethod.match(
+    (iden | p.pure("")) +
+    p.skip(colon) +
+    p.skip(close_rnd_brace) +
+    (tok_string | tok_number) +
+    p.skip(open_rnd_brace)
+)
 
 _index = p.skip(close_sq_brace) + (tok_string | tok_number) + p.skip(open_sq_brace)
 dot_iden_or_index = _index | (iden + p.skip(dot))   # either .name or ["name"]
@@ -138,28 +149,36 @@ dot_iden_or_index = _index | (iden + p.skip(dot))   # either .name or ["name"]
 _attr_chain = p.oneplus(dot_iden_or_index) + first_iden
 _obj = _attr_chain | first_iden
 _attr_chain_noprefix = p.pure("") + p.skip(dot) + _obj
-obj_attr_chain = (_attr_chain | _attr_chain_noprefix) >> flat >> match(ObjectAttribute)
+obj_attr_chain = ObjectAttribute.match(_attr_chain | _attr_chain_noprefix)
 
 # foo["bar
-_indexed = quote + p.skip(open_sq_brace) + _obj
-_obj_attr_indexed_noprefix = p.pure("") + _indexed
-_obj_attr_indexed = iden + _indexed  # FIXME: spaces in keys
-obj_attr_indexed = (_obj_attr_indexed | _obj_attr_indexed_noprefix) >> flat >> match(ObjectAttributeIndexed)
+obj_attr_indexed = ObjectAttributeIndexed.match(
+    (iden | p.pure("")) +      # FIXME: spaces in keys
+    quote +
+    p.skip(open_sq_brace) +
+    _obj
+)
 
 # foo.bar:baz
-_obj_method = iden + p.skip(colon) + _obj
-_obj_method_noprefix = p.pure("") + p.skip(colon) + _obj
-obj_method = (_obj_method | _obj_method_noprefix) >> flat >> match(ObjectMethod)
+obj_method = ObjectMethod.match(
+    (iden | p.pure("")) +
+    p.skip(colon) +
+    _obj
+)
 
 # splash:meth
-_splash_method = iden_nosplash + p.skip(colon) + tok_splash
-_splash_method_noprefix = p.pure("") + p.skip(colon) + tok_splash
-splash_method = (_splash_method | _splash_method_noprefix) >> match(SplashMethod)
+splash_method = SplashMethod.match(
+    (iden_nosplash | p.pure("")) +
+    p.skip(colon) +
+    tok_splash
+)
 
 # splash.attr
-_splash_attr = iden_nosplash + p.skip(dot) + tok_splash
-_splash_attr_noprefix = p.pure("") + p.skip(dot) + tok_splash
-splash_attr = (_splash_attr | _splash_attr_noprefix) >> match(SplashAttribute)
+splash_attr = SplashAttribute.match(
+    (iden_nosplash | p.pure("")) +
+    p.skip(dot) +
+    tok_splash
+)
 
 lua_parser = (
       splash_method
