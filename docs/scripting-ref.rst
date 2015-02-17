@@ -20,7 +20,7 @@ splash:go
 Go to an URL. This is similar to entering an URL in a browser
 address bar, pressing Enter and waiting until page loads.
 
-**Signature:** ``ok, reason = splash.go{url, baseurl=nil, headers=nil}``
+**Signature:** ``ok, reason = splash:go{url, baseurl=nil, headers=nil}``
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ Error handling example:
 .. code-block:: lua
 
     local ok, reason = splash:go("http://example.com")
-    if not ok:
+    if not ok then
         if reason:sub(0,4) == 'http' then
             -- handle HTTP errors
         else
@@ -1043,7 +1043,7 @@ Clear all cookies.
 
 **Signature:** ``n_removed = splash:clear_cookies()``
 
-**Returns** a number of cookies deleted.
+**Returns:** a number of cookies deleted.
 
 To delete only specific cookies
 use :ref:`splash-delete-cookies`.
@@ -1063,7 +1063,7 @@ Delete matching cookies.
 * url - a string, optional. Only cookies that should be sent to this url
   will be deleted.
 
-**Returns** a number of cookies deleted.
+**Returns:** a number of cookies deleted.
 
 This function does nothing when both *name* and *url* are nil.
 To remove all cookies use :ref:`splash-clear-cookies` method.
