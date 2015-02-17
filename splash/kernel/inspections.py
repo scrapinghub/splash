@@ -8,9 +8,10 @@ import glob
 import json
 from splash.kernel.lua_parser import (
     LuaParser,
+    Standalone,
     SplashMethod,
     SplashMethodOpenBrace,
-    SplashAttribute
+    SplashAttribute,
 )
 
 
@@ -60,12 +61,13 @@ class Inspector(object):
         doc = None
 
         if isinstance(m, (SplashMethod, SplashMethodOpenBrace)):
-            name = "splash:" + m.prefix
-            doc = self.docs.get(name)
+            doc = self.docs.get("splash:" + m.prefix)
 
         elif isinstance(m, SplashAttribute):
-            name = "splash." + m.prefix
-            doc = self.docs.get(name)
+            doc = self.docs.get("splash." + m.prefix)
+
+        elif isinstance(m, Standalone) and m.value == "splash":
+            doc = self.docs.get("splash")
 
         if doc is None:
             return NO_RESULT
