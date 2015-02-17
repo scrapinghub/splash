@@ -82,10 +82,9 @@ function completer.obj_attrs(obj, no_methods, only_methods)
 end
 
 --
--- Return all attribute names of a global variable or its attribute,
--- resolving names lookup chain.
+-- Return an object given its lookup names chain.
 --
-function completer.attrs(names_chain, no_methods, only_methods)
+function completer.resolve_obj(names_chain)
   if #names_chain == 0 then
     error("invalid attributes chain")
   end
@@ -95,6 +94,15 @@ function completer.attrs(names_chain, no_methods, only_methods)
     obj = obj[attr]
   end
 
+  return obj
+end
+
+--
+-- Return all attribute names of a global variable or its attribute,
+-- resolving names lookup chain.
+--
+function completer.attrs(names_chain, no_methods, only_methods)
+  local obj = completer.resolve_obj(names_chain)
   return completer.obj_attrs(obj, no_methods, only_methods)
 end
 
