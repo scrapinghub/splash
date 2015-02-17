@@ -6,16 +6,21 @@ import pytest
 lupa = pytest.importorskip("lupa")
 
 
-def _complete(completer, code):
-    """
-    Ask completer to complete the ``code``;
-    cursor position is specified by | symbol.
-    """
+def code_and_cursor_pos(code):
     if "|" in code:
         cursor_pos = code.index("|")
     else:
         cursor_pos = len(code)
     code = code.replace("|", "")
+    return code, cursor_pos
+
+
+def _complete(completer, code):
+    """
+    Ask completer to complete the ``code``;
+    cursor position is specified by | symbol.
+    """
+    code, cursor_pos = code_and_cursor_pos(code)
     res = completer.complete(code, cursor_pos)
     assert res["status"] == "ok"
     assert res["cursor_end"] == cursor_pos
@@ -130,6 +135,8 @@ def test_int_index(complete, configured_lua):
     assert complete("arr[1].|") == complete("str.|")
     assert complete("arr[2].|") == complete("str.|")
     assert complete("arr[3].|") == ['egg', 'spam']
+    assert complete("arr[3].e|") == ['egg']
+    assert complete("arr[3]|") == []
 
 
 def test_constant_method(complete, configured_lua):

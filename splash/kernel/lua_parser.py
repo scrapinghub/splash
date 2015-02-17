@@ -9,21 +9,25 @@ from collections import namedtuple
 
 from funcparserlib import parser as p
 
-
 # ===================== Helper data structures ==============================
 
 Token = namedtuple("Token", "type value")
 
 
-class _BaseMatch(object):
+class _Match(object):
+    def __init__(self, value):
+        self.value = value
+
     @classmethod
     def match(cls, p):
         return p >> flat >> match(cls)
 
-
-class _Match(_BaseMatch):
-    def __init__(self, value):
-        self.value = value
+    def __eq__(self, other):
+        if other is None:
+            return False
+        if not isinstance(other, _Match):
+            raise TypeError("can't compare objects")
+        return self.value == other.value and self.__class__ == other.__class__
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.value)
@@ -58,8 +62,9 @@ class SplashMethod(_AttrLookupMatch):
 class ObjectAttribute(_AttrLookupMatch):
     pass
 
-class ObjectAttributeIndexed(_BaseMatch):
+class ObjectAttributeIndexed(_Match):
     def __init__(self, value):
+        super(ObjectAttributeIndexed, self).__init__(value)
         self.quote = value[1]
         self.prefix = value[0]
         self.names_chain = value[2:][::-1]
@@ -69,11 +74,15 @@ class ObjectAttributeIndexed(_BaseMatch):
             self.__class__.__name__, self.prefix, self.names_chain, self.quote
         )
 
+class ObjectIndexedComplete(_Match):
+    pass
+
 class ObjectMethod(_AttrLookupMatch):
     pass
 
-class ConstantMethod(_BaseMatch):
+class ConstantMethod(_Match):
     def __init__(self, value):
+        super(ConstantMethod, self).__init__(value)
         self.prefix, self.const = value
 
     def __repr__(self):
@@ -102,6 +111,7 @@ def flat(seq):
 
 def match(cls):
     return lambda res: cls(res)
+
 
 # =============================== Grammar ====================================
 
@@ -142,14 +152,30 @@ constant_method = ConstantMethod.match(
     p.skip(open_rnd_brace)
 )
 
-_index = p.skip(close_sq_brace) + (tok_string | tok_number) + p.skip(open_sq_brace)
-dot_iden_or_index = _index | (iden + p.skip(dot))   # either .name or ["name"]
+# ["foo"] or [42]
+constant_index_lookup = (
+    p.skip(close_sq_brace) +
+    (tok_string | tok_number) +
+    p.skip(open_sq_brace)
+)
+
+# either .name or ["name"]
+dot_or_index_lookup = constant_index_lookup | (iden + p.skip(dot))
 
 # foo[0]["bar"].baz
-_attr_chain = p.oneplus(dot_iden_or_index) + first_iden
+# TODO: cleanup this rule
+_attr_chain = p.oneplus(dot_or_index_lookup) + first_iden
 _obj = _attr_chain | first_iden
 _attr_chain_noprefix = p.pure("") + p.skip(dot) + _obj
 obj_attr_chain = ObjectAttribute.match(_attr_chain | _attr_chain_noprefix)
+
+# foo["bar"]
+obj_indexed_complete = ObjectIndexedComplete.match(
+    p.skip(close_sq_brace) +
+    (tok_string | tok_number) +
+    p.skip(open_sq_brace) +
+    _obj
+)
 
 # foo["bar
 obj_attr_indexed = ObjectAttributeIndexed.match(
@@ -184,6 +210,7 @@ lua_parser = (
       splash_method
     | splash_attr
     | obj_method
+    | obj_indexed_complete
     | obj_attr_indexed
     | obj_attr_chain
     | constant_method

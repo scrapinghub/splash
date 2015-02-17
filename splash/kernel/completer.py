@@ -8,6 +8,7 @@ from splash.kernel.lua_parser import (
     Standalone,
     ObjectAttribute,
     ObjectAttributeIndexed,
+    ObjectIndexedComplete,
     ObjectMethod,
     SplashAttribute,
     SplashMethod,
@@ -28,6 +29,9 @@ class Completer(object):
         self.completer = self.lua.eval("require('completer')")
         self.parser = LuaParser(lua)
 
+    def parse(self, code, cursor_pos):
+        return self.parser.parse(code, cursor_pos)
+
     def complete(self, code, cursor_pos):
         NO_SUGGESTIONS = {
             'matches': [],
@@ -41,7 +45,7 @@ class Completer(object):
         if prev_char in string.whitespace:
             return NO_SUGGESTIONS
 
-        m = self.parser.parse(code, cursor_pos)
+        m = self.parse(code, cursor_pos)
         if m is None:
             return NO_SUGGESTIONS
 
@@ -54,6 +58,9 @@ class Completer(object):
 
         elif isinstance(m, ConstantMethod):
             matches += self.complete_obj_method(m.const, m.prefix)
+
+        elif isinstance(m, ObjectIndexedComplete):
+            return NO_SUGGESTIONS
 
         elif hasattr(m, 'names_chain'):
             names_chain = self.lua.table_from(m.names_chain)
