@@ -213,7 +213,7 @@ class Splash(object):
         self.lua.add_allowed_object(self, self.attr_whitelist)
 
         wrapper = self.lua.eval("require('splash')")
-        self._wrapped = wrapper.create(self)
+        self._wrapped = wrapper.private_create(self)
 
     def init_dispatcher(self, return_func):
         """
@@ -331,7 +331,7 @@ class Splash(object):
         ))
 
     @command()
-    def jsfunc_private(self, func):
+    def private_jsfunc(self, func):
         return _WrappedJavascriptFunction(self, func)
 
     @command(async=True)

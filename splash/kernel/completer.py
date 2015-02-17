@@ -77,10 +77,13 @@ class Completer(object):
                     for el in self.complete_any_attribute(names_chain, m.prefix)
                 ]
 
-            elif isinstance(m, (ObjectMethod, SplashMethod)):
+            elif isinstance(m, ObjectMethod):
+                matches += self.complete_method(names_chain, m.prefix)
+
+            elif isinstance(m, SplashMethod):
                 matches += [
                     el for el in self.complete_method(names_chain, m.prefix)
-                    if "_private" not in el
+                    if "private" not in el
                 ]
 
             elif isinstance(m, SplashAttribute):
