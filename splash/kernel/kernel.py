@@ -19,6 +19,7 @@ from splash import defaults
 from splash.kernel.kernelbase import Kernel
 from splash.utils import BinaryCapsule
 from splash.kernel.completer import Completer
+from splash.kernel.inspections import Inspector
 
 
 def init_browser():
@@ -122,6 +123,7 @@ class SplashKernel(Kernel):
         self.lua.add_to_globals("splash", self.splash.get_wrapped())
         self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed) #, self.log_msg)
         self.completer = Completer(self.lua)
+        self.inspector = Inspector(self.lua)
         #
         # try:
         #     sys.stdout.write = self._print
@@ -210,6 +212,9 @@ class SplashKernel(Kernel):
 
     def do_complete(self, code, cursor_pos):
         return self.completer.complete(code, cursor_pos)
+
+    def do_inspect(self, code, cursor_pos, detail_level=0):
+        return self.inspector.help(code, cursor_pos, detail_level)
 
     def _publish_execute_result(self, parent, data, metadata, execution_count):
         msg = {

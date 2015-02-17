@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Autocompleter for Lua code.
+"""
 from __future__ import absolute_import
 import string
 

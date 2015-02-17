@@ -1004,6 +1004,8 @@ Replace all current cookies with the passed ``cookies``.
 * cookies - a Lua table with all cookies to set, in the same format as
   :ref:`splash-get-cookies` returns.
 
+**Returns:** nil.
+
 Example 1 - save and restore cookies:
 
 .. code-block:: lua
@@ -1106,6 +1108,8 @@ Set Content-Type of a result returned to a client.
 
 * content_type - a string with Content-Type header value.
 
+**Returns:** nil.
+
 If a table is returned by "main" function then
 ``splash:set_result_content_type`` has no effect: Content-Type of the result
 is set to ``application/json``.
@@ -1143,6 +1147,8 @@ Enable/disable images.
 **Parameters:**
 
 * enabled - ``true`` to enable images, ``false`` to disable them.
+
+**Returns:** nil.
 
 By default, images are enabled. Disabling of the images can save a lot
 of network traffic (usually around ~50%) and make rendering faster.
@@ -1192,6 +1198,8 @@ Set the browser viewport size.
 
 * width - integer, requested viewport width in pixels;
 * height - integer, requested viewport height in pixels.
+
+**Returns:** nil.
 
 This will change the size of the visible area and subsequent rendering
 commands, e.g., :ref:`splash-png`, will produce an image with the specified
@@ -1262,6 +1270,8 @@ Overwrite the User-Agent header for all further requests.
 
 * value - string, a value of User-Agent HTTP header.
 
+**Returns:** nil.
+
 .. _splash-set-custom-headers:
 
 splash:set_custom_headers
@@ -1274,6 +1284,8 @@ Set custom HTTP headers to send with each request.
 **Parameters:**
 
 * headers - a Lua table with HTTP headers.
+
+**Returns:** nil.
 
 Headers are merged with WebKit default headers, overwriting WebKit values
 in case of conflicts.

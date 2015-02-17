@@ -13,6 +13,7 @@ from splash.kernel.lua_parser import (
     ObjectIndexedComplete,
     ConstantMethod,
     SplashMethod,
+    SplashMethodOpenBrace,
     SplashAttribute,
 )
 from .test_completer import code_and_cursor_pos
@@ -79,15 +80,28 @@ def parse(completer):
     ["(42):fo", ConstantMethod(["fo", 42])],
     ["42:fo", None],
 
+    # empty
+    ["(", None],
+    [".", None],
+    ["", None],
+    ["  ", None],
+    ["45.", None],
+    ["45", None],
+
     # splash-specific parsing
     ["splash:", SplashMethod(["", "splash"])],
     ["splash:x", SplashMethod(["x", "splash"])],
+    ["splash:x(", SplashMethodOpenBrace(["(", "x", "splash"])],
+    ["splash:x{", SplashMethodOpenBrace(["{", "x", "splash"])],
+    ["splash:x {", SplashMethodOpenBrace(["{", "x", "splash"])],
+    ["splash:{", None],
     ["splash.foo:x", ObjectMethod(["x", "foo", "splash"])],
     ["foo.splash:x", ObjectMethod(["x", "splash", "foo"])],
     ["splash.", SplashAttribute(["", "splash"])],
     ["splash.x", SplashAttribute(["x", "splash"])],
     ["splash.foo.x", ObjectAttribute(["x", "foo", "splash"])],
     ["foo.splash.x", ObjectAttribute(["x", "splash", "foo"])],
+
 ])
 def test_parse(parse, code, result):
     assert parse(code) == result

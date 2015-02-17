@@ -47,6 +47,9 @@ setup_args = {
         'vendor/harviewer/webapp/har.js',
 
         'lua_modules/*.lua',
+        'lua_modules/vendor/*.lua',
+        'kernel/inspections/*.json',
+        'kernel/kernels/splash/*.json',
     ]},
     'classifiers': [
         'Programming Language :: Python',

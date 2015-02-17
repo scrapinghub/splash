@@ -34,13 +34,16 @@ class _Match(object):
 
 
 class _AttrLookupMatch(_Match):
+    prefix_index = 0
+
     @property
     def prefix(self):
-        return self.value[0]
+        return self.value[self.prefix_index]
 
     @property
     def names_chain(self):
-        return self.value[1:][::-1]
+        start = self.prefix_index + 1
+        return self.value[start:][::-1]
 
     def __repr__(self):
         return "%s(prefix=%r names_chain=%r)" % (
@@ -58,6 +61,13 @@ class SplashAttribute(_AttrLookupMatch):
 
 class SplashMethod(_AttrLookupMatch):
     pass
+
+class SplashMethodOpenBrace(_AttrLookupMatch):
+    prefix_index = 1
+
+    @property
+    def brace(self):
+        return self.value[0]
 
 class ObjectAttribute(_AttrLookupMatch):
     pass
@@ -95,8 +105,8 @@ class ConstantMethod(_Match):
 token_value = attrgetter("value")
 token_type = attrgetter("type")
 
-def token(tp, check=lambda t: True):
-    return p.some(lambda t: t.type == tp and check(t)) >> token_value
+def token(tp):
+    return p.some(lambda t: t.type == tp) >> token_value
 
 def flat(seq):
     res = []
@@ -135,8 +145,8 @@ close_rnd_brace = token(")")
 iden_start = p.skip(p.some(lambda t: t.type not in ".:"))
 
 tok_splash = (p.a(Token("iden", "splash")) + iden_start) >> token_value
-iden_nosplash = token("iden", lambda t: t.value != 'splash')
 iden = token("iden")
+opt_iden = iden | p.pure("")
 
 # standalone names are parsed separately - we need e.g. to suggest them
 # as keywords
@@ -145,7 +155,7 @@ single_obj = Standalone.match(first_iden)
 
 # ("hello"):len
 constant_method = ConstantMethod.match(
-    (iden | p.pure("")) +
+    opt_iden +
     p.skip(colon) +
     p.skip(close_rnd_brace) +
     (tok_string | tok_number) +
@@ -179,7 +189,7 @@ obj_indexed_complete = ObjectIndexedComplete.match(
 
 # foo["bar
 obj_attr_indexed = ObjectAttributeIndexed.match(
-    (iden | p.pure("")) +      # FIXME: spaces in keys
+    opt_iden +      # FIXME: spaces in keys
     quote +
     p.skip(open_sq_brace) +
     _obj
@@ -187,27 +197,37 @@ obj_attr_indexed = ObjectAttributeIndexed.match(
 
 # foo.bar:baz
 obj_method = ObjectMethod.match(
-    (iden | p.pure("")) +
+    opt_iden +
     p.skip(colon) +
     _obj
 )
 
 # splash:meth
 splash_method = SplashMethod.match(
-    (iden_nosplash | p.pure("")) +
+    opt_iden +
+    p.skip(colon) +
+    tok_splash
+)
+
+# splash:meth(
+# splash:meth{
+splash_method_open_brace = SplashMethodOpenBrace.match(
+    (token("(") | token("{")) +
+    iden +
     p.skip(colon) +
     tok_splash
 )
 
 # splash.attr
 splash_attr = SplashAttribute.match(
-    (iden_nosplash | p.pure("")) +
+    opt_iden +
     p.skip(dot) +
     tok_splash
 )
 
 lua_parser = (
       splash_method
+    | splash_method_open_brace
     | splash_attr
     | obj_method
     | obj_indexed_complete

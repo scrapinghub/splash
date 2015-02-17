@@ -5,7 +5,10 @@ include docs/make.bat
 include docs/conf.py
 include requirements.txt
 
+recursive-include scripts *.py
 recursive-include docs *.rst
-recursive-include splash/lua_modules *.lua
+recursive-include splash/lua_modules *.lua *.md *.rst *.txt
 recursive-include splash/tests *.txt *.js *.ini *.lua
 recursive-include splash/vendor/harviewer/webapp *.js *.html *.css *.gif *.png *.swf *.html
+recursive-include splash/kernel/inspections *.json
+recursive-include splash/kernel/kernels *.json
