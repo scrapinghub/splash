@@ -81,7 +81,10 @@ class Completer(object):
                 matches += self.complete_method(names_chain, m.prefix)
 
             elif isinstance(m, SplashAttribute):
-                matches += self.complete_non_method(names_chain)
+                matches += [
+                    el for el in self.complete_non_method(names_chain, m.prefix)
+                    if not el.startswith("_")
+                ]
 
         return {
             'matches': list(dedupe(matches)),

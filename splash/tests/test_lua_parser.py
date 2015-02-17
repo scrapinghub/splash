@@ -105,3 +105,9 @@ def parse(completer):
 ])
 def test_parse(parse, code, result):
     assert parse(code) == result
+
+
+def test_splash_attr(parse):
+    m = parse("splash.at")
+    assert m.prefix == "at"
+    assert m.names_chain == ["splash"]
