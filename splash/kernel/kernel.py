@@ -107,7 +107,6 @@ class SplashKernel(Kernel):
         'display_name': 'Splash',
         'language': 'lua',
         'codemirror_mode': {
-            "version": 2,
             "name": "text/x-lua",
         },
         'file_extension': '.lua',
@@ -116,8 +115,20 @@ class SplashKernel(Kernel):
     banner = "Splash kernel - write browser automation scripts interactively"
     help_links = [
         {
-            'text': "Splash Help",
+            'text': "Splash Tutorial",
+            'url': 'http://splash.readthedocs.org/en/latest/scripting-tutorial.html'
+        },
+        {
+            'text': "Splash Reference",
             'url': 'http://splash.readthedocs.org/en/latest/scripting-ref.html'
+        },
+        {
+            'text': "Programming in Lua",
+            'url': 'http://www.lua.org/pil/contents.html'
+        },
+        {
+            'text': "Lua 5.2 Manual",
+            'url': 'http://www.lua.org/manual/5.2/'
         },
     ]
 
