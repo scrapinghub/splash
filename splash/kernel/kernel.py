@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import os
+import sys
 
 import lupa
 from IPython.kernel.zmq.kernelapp import IPKernelApp
 from IPython.kernel.zmq.eventloops import loop_qt4
+from IPython.kernel.kernelspec import install_kernel_spec
 from twisted.internet import defer
 
 import splash
@@ -20,6 +23,12 @@ from splash.kernel.kernelbase import Kernel
 from splash.utils import BinaryCapsule
 from splash.kernel.completer import Completer
 from splash.kernel.inspections import Inspector
+
+
+def install(user=True):
+    """ Install IPython kernel specification """
+    folder = os.path.join(os.path.dirname(__file__), 'kernels', 'splash')
+    install_kernel_spec(folder, kernel_name="splash", user=user, replace=True)
 
 
 def init_browser():
