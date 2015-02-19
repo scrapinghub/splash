@@ -43,6 +43,8 @@ OS X + Docker
 .. _Boot2Docker: http://boot2docker.io/
 
 
+.. _manual-install-ubuntu:
+
 Ubuntu 12.04 (manual way)
 -------------------------
 
