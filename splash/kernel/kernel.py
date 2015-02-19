@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
-import sys
 
 import lupa
 from IPython.kernel.zmq.kernelapp import IPKernelApp
@@ -19,6 +18,7 @@ from splash.qtutils import init_qt_app
 from splash.render_options import RenderOptions
 from splash import network_manager
 from splash import defaults
+from splash import xvfb
 from splash.kernel.kernelbase import Kernel
 from splash.utils import BinaryCapsule
 from splash.kernel.completer import Completer
@@ -263,9 +263,10 @@ class SplashKernel(Kernel):
 
 
 def start():
-    # FIXME: logs go to nowhere
-    init_qt_app(verbose=False)
-    kernel = IPKernelApp.instance(kernel_class=SplashKernel)
-    kernel.initialize()
-    kernel.kernel.eventloop = loop_qt4
-    kernel.start()
+    with xvfb.autostart():
+        # FIXME: logs go to nowhere
+        init_qt_app(verbose=False)
+        kernel = IPKernelApp.instance(kernel_class=SplashKernel)
+        kernel.initialize()
+        kernel.kernel.eventloop = loop_qt4
+        kernel.start()

@@ -13,7 +13,7 @@ from __future__ import absolute_import
 import sys
 from .kernel import start, install
 
-if sys.argv[1] == 'install':
+if len(sys.argv) > 1 and sys.argv[1] == 'install':
     install()
 else:
     start()

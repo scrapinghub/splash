@@ -83,7 +83,9 @@ class Inspector(object):
 class _SplashDocs(object):
     def __init__(self, folder=None):
         if folder is None:
-            folder = os.path.join(os.path.dirname(__file__), "inspections")
+            folder = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "inspections")
+            )
 
         self.info = {}
         files = sorted(glob.glob(folder + "/*.json"))
