@@ -97,7 +97,7 @@ end
 local Splash = {}
 Splash.__index = Splash
 
-function Splash.create(py_splash)
+function Splash.private_create(py_splash)
   local self = {args=py_splash.args}
   setmetatable(self, Splash)
 
@@ -128,7 +128,7 @@ end
 -- It is required to handle errors properly.
 --
 function Splash:jsfunc(...)
-  local func = self:jsfunc_private(...)
+  local func = self:private_jsfunc(...)
   return unwraps_errors(func)
 end
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+import re
 import functools
 import datetime
 from twisted.python import log
@@ -74,15 +75,15 @@ def get_main_sandboxed(lua, script):
     Get "main" function and its (sandboxed) global environment
     from a ``script``.
     """
-    env = _execute_in_sandbox(lua, script)
+    env = run_in_sandbox(lua, script)
     main = env["main"]
     _check_main(main)
     return main, env
 
 
-def _execute_in_sandbox(lua, script):
+def run_in_sandbox(lua, script):
     """
-    Execute ``script`` in ``lua`` runtime using ``sandbox``.
+    Execute ``script`` in ``lua`` runtime using "sandbox" Lua module.
     Return a (sandboxed) global environment for the executed script.
 
     "sandbox" module should be importable in the environment.
@@ -233,3 +234,28 @@ def python2lua(lua, obj, max_depth=100):
         # }, max_depth)
 
     return obj
+
+
+_SYNTAX_ERROR_RE = re.compile('^error loading code: \[string "<python>"\]:(\d+):(.+)')
+_RUNTIME_ERROR_RE = re.compile('^unhandled Lua error: \[string "<python>"\]:(\d+):(.+)')
+_RERAISED_JS_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+JsError\(u?[\'"](.+)[\'"],\)$')
+_RERAISED_SCRIPT_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+Error\(u?[\'"](.+)[\'"],\)$')
+
+def parse_lua_error(e):
+    full_msg = str(e)
+    error_type = "syntax"
+    m = _SYNTAX_ERROR_RE.match(full_msg)
+    if not m:
+        error_type = "runtime"
+        m = _RUNTIME_ERROR_RE.match(full_msg)
+    if not m:
+        error_type = "js"
+        m = _RERAISED_JS_ERROR_RE.match(full_msg)
+    if not m:
+        error_type = "runtime"
+        m = _RERAISED_SCRIPT_ERROR_RE.match(full_msg)
+    if not m:
+        return "unknown", -1, full_msg
+    line_num = int(m.group(1))
+    error = m.group(2)
+    return error_type, line_num, error.strip()

@@ -223,8 +223,8 @@ class ErrorsTest(BaseLuaRenderTest):
 
     def test_return_multiple(self):
         resp = self.request_lua("function main(splash) return 'foo', 'bar' end")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("must return a single result", resp.text)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), ["foo", "bar"])
 
     def test_return_splash(self):
         resp = self.request_lua("function main(splash) return splash end")

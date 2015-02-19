@@ -25,6 +25,7 @@ Documentation
    api
    scripting-tutorial
    scripting-ref
+   kernel
    development
    changes
 

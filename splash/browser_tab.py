@@ -20,7 +20,7 @@ from splash.qtrender_png import render_qwebpage
 from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii)
 from splash.render_options import validate_size_str
-from splash.qwebpage import SplashQWebPage
+from splash.qwebpage import SplashQWebPage, SplashQWebView
 
 
 def skip_if_closing(meth):
@@ -55,14 +55,16 @@ class BrowserTab(QObject):
     """
 
     def __init__(self, network_manager, splash_proxy_factory, verbosity,
-                 render_options):
+                 render_options, visible=False):
         """ Create a new browser tab. """
         QObject.__init__(self)
         self.deferred = defer.Deferred()
         self.network_manager = network_manager
         self.verbosity = verbosity
+        self.visible = visible
         self._uid = render_options.get_uid()
         self._closing = False
+        self._closing_normally = False
         self._active_timers = set()
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
@@ -85,9 +87,14 @@ class BrowserTab(QObject):
         self._set_default_webpage_options(self.web_page)
         self._setup_webpage_events()
 
-        self.web_view = QWebView()
+        self.web_view = SplashQWebView()
         self.web_view.setPage(self.web_page)
         self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
+        self.web_view.onBeforeClose = self._on_before_close
+
+        if self.visible:
+            self.web_view.move(0, 0)
+            self.web_view.show()
 
         self.set_viewport(defaults.VIEWPORT_SIZE)
         # XXX: hack to ensure that default window size is not 640x480.
@@ -105,8 +112,13 @@ class BrowserTab(QObject):
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
         settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
-        web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, Qt.ScrollBarAlwaysOff)
-        web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, Qt.ScrollBarAlwaysOff)
+
+        scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
+        web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, scroll_bars)
+        web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, scroll_bars)
+
+        if self.visible:
+            web_page.settings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
@@ -123,7 +135,7 @@ class BrowserTab(QObject):
         self.deferred.callback(result)
         # self.deferred = None
 
-    def return_error(self, error=None):
+    def return_error(self, error):
         """ Return an error to the Pool. """
         if self._result_already_returned():
             self.logger.log("error: result is already returned", min_level=1)
@@ -302,13 +314,21 @@ class BrowserTab(QObject):
 
     def close(self):
         """ Destroy this tab """
+        self.logger.log("close is requested by a script", min_level=2)
         self._closing = True
+        self._closing_normally = True
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
-        self._cancel_all_timers()
+
+    def _on_before_close(self):
+        # self._closing = True
+        # self._cancel_all_timers()
+        # if not self._closing_normally:
+        #     self.return_error(Exception("Window is closed by user"))
+        return True  # don't close the window
 
     @skip_if_closing
     def _on_load_finished(self, ok):

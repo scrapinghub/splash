@@ -23,11 +23,14 @@ class BinaryCapsule(object):
     def __init__(self, data):
         self.data = data
 
+    def as_b64(self):
+        return base64.b64encode(self.data)
+
 
 class SplashJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, BinaryCapsule):
-            return base64.b64encode(o.data)
+            return o.as_b64()
         return super(SplashJSONEncoder, self).default(o)
 
 
@@ -81,3 +84,16 @@ def truncated(text, max_length=100, msg='...'):
         return text
     else:
         return text[:max_length] + msg
+
+
+def dedupe(it):
+    """
+    >>> list(dedupe([3,1,3,1,2]))
+    [3, 1, 2]
+    """
+    seen = set()
+    for el in it:
+        if el in seen:
+            continue
+        seen.add(el)
+        yield el

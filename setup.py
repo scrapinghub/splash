@@ -26,7 +26,7 @@ setup_args = {
     'maintainer_email': 'info@scrapinghub.com',
     'license': 'BSD',
     'scripts': ['bin/splash'],
-    'packages': ['splash', 'splash.har'],
+    'packages': ['splash', 'splash.har', 'splash.kernel'],
     'package_data': {'splash': [
         'vendor/harviewer/webapp/css/*.css',
         'vendor/harviewer/webapp/css/images/*.*',
@@ -47,6 +47,9 @@ setup_args = {
         'vendor/harviewer/webapp/har.js',
 
         'lua_modules/*.lua',
+        'lua_modules/vendor/*.lua',
+        'kernel/inspections/*.json',
+        'kernel/kernels/splash/*.json',
     ]},
     'classifiers': [
         'Programming Language :: Python',
@@ -74,6 +77,7 @@ else:
         'psutil',
         'adblockparser',
         'xvfbwrapper',
+        'funcparserlib',
         'Pillow',
     ]
 

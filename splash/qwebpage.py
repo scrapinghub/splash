@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import pprint
 from collections import namedtuple
 import sip
-from PyQt4.QtWebKit import QWebPage
+from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QByteArray
 from twisted.python import log
 from splash.cookies import SplashCookieJar
@@ -11,6 +11,23 @@ from splash.har.log import HarLog
 
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
+
+
+class SplashQWebView(QWebView):
+    """
+    QWebView subclass that handles 'close' requests.
+    """
+    onBeforeClose = None
+
+    def closeEvent(self, event):
+        dont_close = False
+        if self.onBeforeClose:
+            dont_close = self.onBeforeClose()
+
+        if dont_close:
+            event.ignore()
+        else:
+            event.accept()
 
 
 class SplashQWebPage(QWebPage):
