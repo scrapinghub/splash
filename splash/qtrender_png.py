@@ -3,8 +3,8 @@
 This module handles rendering QWebPage into PNG images.
 """
 
+import sys
 import array
-import struct
 from abc import ABCMeta, abstractmethod, abstractproperty
 from cStringIO import StringIO
 from math import ceil, floor
@@ -18,20 +18,13 @@ from splash import defaults
 # QPainter cannot render a region with any dimension greater than this value.
 QPAINTER_MAXSIZE = 32766
 
-# Brain-dead simple endianness detection needed because QImage stores
-# bytes in host-native order.
-#
-# XXX: do we care about big endian hosts?
-# XXX: is there a better way?
-_IS_LITTLE_ENDIAN = struct.pack('<i', 0x1122) == struct.pack('=i', 0x1122)
-
 
 def qimage_to_pil_image(qimage):
     """Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode)."""
     # In our case QImage uses 0xAARRGGBB format stored in host endian order,
     # we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences used by pillow.
     buf = qimage.bits().asstring(qimage.numBytes())
-    if not _IS_LITTLE_ENDIAN:
+    if sys.byteorder != "little":
         buf = swap_byte_order_i32(buf)
     # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
     # hence the 'BGRA' decoder argument.
