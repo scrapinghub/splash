@@ -36,3 +36,9 @@ def configured_lua():
 def completer(configured_lua):
     from splash.kernel.completer import Completer
     return Completer(configured_lua)
+
+
+@pytest.fixture()
+def inspector(configured_lua):
+    from splash.kernel.inspections import Inspector
+    return Inspector(configured_lua)

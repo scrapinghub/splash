@@ -30,6 +30,11 @@ def parse(completer):
     return functools.partial(_parse, completer)
 
 
+@pytest.fixture()
+def inspect_parse(inspector):
+    return functools.partial(_parse, inspector)
+
+
 @pytest.mark.parametrize(["code", "result"], [
     # standalone identifiers
     ["foo", Standalone("foo")],
@@ -91,9 +96,31 @@ def parse(completer):
     # splash-specific parsing
     ["splash:", SplashMethod(["", "splash"])],
     ["splash:x", SplashMethod(["x", "splash"])],
-    ["splash:x(", SplashMethodOpenBrace(["(", "x", "splash"])],
-    ["splash:x{", SplashMethodOpenBrace(["{", "x", "splash"])],
-    ["splash:x {", SplashMethodOpenBrace(["{", "x", "splash"])],
+    ["splash:x(", SplashMethodOpenBrace(["x", "splash"])],
+    ["splash:x{", SplashMethodOpenBrace(["x", "splash"])],
+    ["splash:x {", SplashMethodOpenBrace(["x", "splash"])],
+    ["splash:meth{foo=bar,", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{foo=bar, |x=5}", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{foo=bar,baz=5,", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{foo=bar,", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{['foo']='bar',", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{[1]='bar', ", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{'bar',", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{'bar',baz=2.1,", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{baz=false,", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{baz=2+3,", SplashMethodOpenBrace(["meth", "splash"])],
+    ["splash:meth{baz=#foo,", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo()]=func(2+3),", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo.bar()]=func.munc(2+3),", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo['bar']()]=func['munc'](2+3),", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo:bar()]=func:munc(2+3),", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo()]=func(-2+3),", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo()]=func(2+3)*2,", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo()*2]=func(2+3)*2,", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo 'x']=func{x=1},", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo.bar 'x']=func{x=1},", SplashMethodOpenBrace(["meth", "splash"])],
+    # ["splash:meth{[foo 5]=func 'bar',", SplashMethodOpenBrace(["meth", "splash"])],
+
     ["splash:{", None],
     ["splash.foo:x", ObjectMethod(["x", "foo", "splash"])],
     ["foo.splash:x", ObjectMethod(["x", "splash", "foo"])],
@@ -103,8 +130,8 @@ def parse(completer):
     ["foo.splash.x", ObjectAttribute(["x", "splash", "foo"])],
 
 ])
-def test_parse(parse, code, result):
-    assert parse(code) == result
+def test_inspect(inspect_parse, code, result):
+    assert inspect_parse(code) == result
 
 
 def test_splash_attr(parse):

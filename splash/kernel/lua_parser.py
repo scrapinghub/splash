@@ -63,11 +63,7 @@ class SplashMethod(_AttrLookupMatch):
     pass
 
 class SplashMethodOpenBrace(_AttrLookupMatch):
-    prefix_index = 1
-
-    @property
-    def brace(self):
-        return self.value[0]
+    pass
 
 class ObjectAttribute(_AttrLookupMatch):
     pass
@@ -142,11 +138,50 @@ close_sq_brace = token("]")
 open_rnd_brace = token("(")
 close_rnd_brace = token(")")
 
+tok_constant = p.some(lambda t: t.value in {'nil', 'true', 'false'})
 iden_start = p.skip(p.some(lambda t: t.type not in ".:"))
-
 tok_splash = (p.a(Token("iden", "splash")) + iden_start) >> token_value
 iden = token("iden")
 opt_iden = iden | p.pure("")
+
+# =========== Expressions parser
+# FIXME: it should be rewritten using full Lua 5.2 grammar.
+
+BINARY_OPS = set("+-*/^%><") | {"..", "==", "~=", ">=", "<=", "and", "or"}
+UNARY_OPS = {"not", "-", "#"}
+
+binary_op = p.some(lambda t: t.value in BINARY_OPS) >> token_value
+unary_op = p.some(lambda t: t.value in UNARY_OPS) >> token_value
+
+# expressions with binary and unary ops + parenthesis
+@p.with_forward_decls
+def value():
+    single_value = table | tok_number | tok_string | tok_constant | iden
+    return single_value | (close_rnd_brace + expr + open_rnd_brace)
+_term = value + p.skip(p.maybe(unary_op))
+expr = _term + p.many(binary_op + _term) >> flat
+
+# [expression]
+_index_lookup = p.skip(close_sq_brace) + expr + p.skip(open_sq_brace)
+
+# foo=expr
+# [foo]=expr
+_key = iden | _index_lookup
+_keyvalue = expr + token("=") + _key
+
+# foo=expr, ["bar"]=42,
+_table_sep = token(",") | token(";")
+table_parameters = (
+    p.maybe(_table_sep) +   # allow trailing comma/semicolon
+    (_keyvalue | expr) +
+    p.many(_table_sep + (_keyvalue | expr))
+)
+
+# table constructor, with and without closing }
+table_incomplete = (p.maybe(table_parameters) + token("{")) >> flat
+table = (token("}") + table_incomplete) >> flat
+
+# ======== end expression parser
 
 # standalone names are parsed separately - we need e.g. to suggest them
 # as keywords
@@ -211,12 +246,24 @@ splash_method = SplashMethod.match(
 
 # splash:meth(
 # splash:meth{
-splash_method_open_brace = SplashMethodOpenBrace.match(
-    (token("(") | token("{")) +
+# splash:meth{foo=bar,
+_splash_method_open_posargs = (
+    p.skip(token("(")) +
     iden +
     p.skip(colon) +
     tok_splash
 )
+_splash_method_open_named_args = (
+    p.skip(table_incomplete) +
+    iden +
+    p.skip(colon) +
+    tok_splash
+)
+splash_method_open_brace = SplashMethodOpenBrace.match(
+    _splash_method_open_posargs |
+    _splash_method_open_named_args
+)
+
 
 # splash.attr
 splash_attr = SplashAttribute.match(
@@ -260,11 +307,11 @@ class LuaParser(object):
     def __init__(self, lua):
         self.lexer = LuaLexer(lua)
 
-    def parse(self, code, cursor_pos=None):
+    def parse(self, code, cursor_pos=None, allow_inside=False):
         if cursor_pos is None:
             cursor_pos = len(code)
 
-        if self._token_split(code, cursor_pos):
+        if not allow_inside and self._token_split(code, cursor_pos):
             return
 
         context = code[:cursor_pos]

@@ -23,7 +23,7 @@ class Inspector(object):
         self.parser = LuaParser(lua)
 
     def parse(self, code, cursor_pos):
-        return self.parser.parse(code, cursor_pos)
+        return self.parser.parse(code, cursor_pos, allow_inside=True)
 
     def doc_repr(self, doc):
         if not doc.get("signature"):
