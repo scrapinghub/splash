@@ -19,7 +19,11 @@ To install Splash-Jupyter using Docker, run::
 
 Then start the container::
 
-    $ docker run -p 8888:8888 -t splash-jupyter
+    $ docker run -p 8888:8888 -it splash-jupyter
+
+.. note::
+
+    Without ``-it`` flags you won't be able to stop the container using Ctrl-C.
 
 If you're on Linux, Jupyter server with Splash kernel enabled
 will be available at http://0.0.0.0:8888.
@@ -33,10 +37,6 @@ to ``/notebooks``. For example, let's use current folder to store the
 notebooks::
 
     $ docker run -v `/bin/pwd`/notebooks:/notebooks -p 8888:8888 -it splash-jupyter
-
-.. note::
-
-    Without ``-it`` flags you won't be able to stop the container using Ctrl-C.
 
 Live Webkit window with web inspector is not available when Splash-Jupyter
 is executed from Docker. You can still use e.g. :ref:`splash-png` command
