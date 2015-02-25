@@ -152,10 +152,24 @@ Splash in Production
 
 In production you may want to daemonize Splash, start it on boot and restart
 on failures. Since Docker 1.2 an easy way to do this is to use ``--restart``
-and ``-d`` options together::
+and ``-d`` options together; another way to do that is to use standard tools
+like upstart, systemd or supervisor.
 
-    $ docker run -d -p 8050:8050 --restart=always scrapinghub/splash
+.. note::
 
-Another way to do that is to use standard tools like upstart,
-systemd or supervisor.
+    ``--restart`` option won't work without ``-d``.
 
+Please also take into account the memory usage: Splash uses an unbound
+in-memory cache and so it will eventually consume all RAM. A workaround is
+to restart the process when it uses too much memory; there is Splash
+``--maxrss`` option for that. You can also add Docker ``--memory`` option
+to the mix.
+
+In production it is a good idea to pin Splash version - instead of
+``scrapinghub/splash`` it is usually better to use something like
+``scrapinghub/splash:1.4``.
+
+The final command for starting a long-running Splash server which uses
+up to 4GB RAM and daemonizes & restarts itself could look like this::
+
+    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:1.4 --maxrss 4000
