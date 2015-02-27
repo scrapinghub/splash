@@ -1,12 +1,13 @@
-from splash.tests.stress import lua_runonce
-
-import re
-from urlparse import urlsplit
 import json
-from lxml import html
-import w3lib.html
+import re
 import subprocess
-from splash.file_server import serve_files
+from urlparse import urlsplit
+
+from lxml import html
+
+import w3lib.html
+from splash.benchmark.file_server import serve_files
+from splash.tests.stress import lua_runonce
 
 script_html = """
 function main(splash)
