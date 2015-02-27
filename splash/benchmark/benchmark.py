@@ -15,7 +15,7 @@ from glob import glob
 from multiprocessing.pool import ThreadPool
 
 import requests
-from splash.file_server import serve_files
+from splash.benchmark.file_server import serve_files
 from splash.tests.utils import SplashServer
 
 PORT = 8806
