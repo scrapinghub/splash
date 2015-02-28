@@ -46,9 +46,9 @@ Currently to enable live Webkit window you must install Splash
 in a "manual way" - see :ref:`manual-install-ubuntu`.
 
 1. Install IPython/Jupyter with notebook feature. Splash kernel requires
-   IPython >= 3.0.0rc1. This should work if IPython 3.x is not released yet::
+   IPython 3.x::
 
-       $ pip install ipython[notebook] --pre
+       $ pip install 'ipython[notebook] >= 3.0.0'
 
 2. Let IPython know about Splash kernel by running the following command::
 
