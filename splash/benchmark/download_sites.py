@@ -39,26 +39,33 @@ parser.add_argument('--sites-dir', default='sites',
 
 
 def preprocess_main_page(sites_dir, url):
+    """
+    This function does several things:
+    - strip javascript so that downloaded pages look exactly the same
+    - add baseurl to resolve relative links properly (if it is missing)
+    - add meta charset description (if it is missing)
+    """
     out = json.loads(lua_runonce(SCRIPT_HTML, url=url,
                                  splash_args=['--disable-lua-sandbox',
                                               '--disable-xvfb',
                                               '--max-timeout=600'],
                                  timeout=600.,))
     final_url = urlsplit(out['url'])._replace(query='', fragment='').geturl()
-    if not w3lib.html.get_base_url(out['html']):
-        out['html'] = w3lib.html.remove_tags_with_content(
-            out['html'], ('script',))
-        root = html.fromstring(out['html'], parser=html.HTMLParser(),
-                               base_url=final_url)
-        try:
-            head = root.xpath('./head')[0]
-        except IndexError:
-            head = html.Element('head')
-            root.insert(0, head)
+    # Ensure there are no scripts to be executed.
+    out['html'] = w3lib.html.remove_tags_with_content(out['html'], ('script',))
+    root = html.fromstring(out['html'], parser=html.HTMLParser(),
+                           base_url=final_url)
+    try:
+        head = root.xpath('./head')[0]
+    except IndexError:
+        head = html.Element('head')
+        root.insert(0, head)
+    if not head.xpath('./base/@href'):
         head.insert(0, html.Element('base', {'href': final_url}))
+    if not head.xpath('./meta/@charset'):
         head.insert(0, html.Element('meta', {'charset': 'utf-8'}))
-        out['html'] = html.tostring(root, encoding='utf-8',
-                                    doctype='<!DOCTYPE html>')
+    out['html'] = html.tostring(root, encoding='utf-8',
+                                doctype='<!DOCTYPE html>')
     filename = re.sub(r'[^\w]+', '_', url) + '.html'
     with open(os.path.join(sites_dir, filename), 'w') as f:
         f.write(out['html'])
