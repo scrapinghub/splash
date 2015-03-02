@@ -87,6 +87,8 @@ parser.add_argument('--request-count', type=int, default=10,
                     help='Benchmark request count')
 parser.add_argument('--sites-dir', type=str, default='sites',
                     help='Directory with downloaded sites')
+parser.add_argument('--splash-server', metavar='HOST:PORT',
+                    help='Use existing Splash instance available at HOST:PORT')
 
 
 def generate_requests(splash, args):
@@ -139,16 +141,36 @@ def invoke_request(invoke_args):
             'height': kwargs['params']['height']}
 
 
+class ExistingSplashWrapper(object):
+    """Wrapper for pre-existing Splash instance."""
+    def __init__(self, server):
+        self.server = server
+        if not self.server.startswith('http://'):
+            self.server = 'http://' + self.server
+
+    def url(self, endpoint):
+        return self.server + '/' + endpoint
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
 def main():
     log = logging.getLogger("benchmark")
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
 
-    splash = SplashServer(
-        logfile=SPLASH_LOG,
-        extra_args=['--disable-lua-sandbox',
-                    '--disable-xvfb',
-                    '--max-timeout=600'])
+    if args.splash_server:
+        splash = ExistingSplashWrapper(args.splash_server)
+    else:
+        splash = SplashServer(
+            logfile=SPLASH_LOG,
+            extra_args=['--disable-lua-sandbox',
+                        '--disable-xvfb',
+                        '--max-timeout=600'])
 
     with splash, serve_files(PORT, args.sites_dir):
         start_time = time()
