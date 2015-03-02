@@ -11,7 +11,6 @@ server and runs a series of requests via splash on those downloaded pages.
 import logging
 import os
 import random
-import shutil
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from glob import glob
 from multiprocessing.pool import ThreadPool
@@ -68,7 +67,7 @@ REQ_FACTORIES = [
 PORT = 8806
 #: Combinations of width & height to test.
 WIDTH_HEIGHT = [(None, None), (500, None), (None, 500), (500, 500)]
-#: Splash log filename.
+#: Splash log filename (set to None to put it to stdout).
 SPLASH_LOG = 'splash.log'
 #: This script is used to collect maxrss & cpu time from splash process.
 GET_PERF_STATS_SCRIPT = """
@@ -172,7 +171,7 @@ def main():
                         '--disable-xvfb',
                         '--max-timeout=600'])
 
-    with splash, serve_files(PORT, args.sites_dir):
+    with splash, serve_files(port=PORT, directory=args.sites_dir):
         start_time = time()
         results = parallel_map(invoke_request, generate_requests(splash, args),
                                args.thread_count)
