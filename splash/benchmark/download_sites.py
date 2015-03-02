@@ -1,4 +1,13 @@
+#!/usr/bin/env python
+
+"""
+Site downloader script for Splash benchmark suite.
+"""
+
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import errno
 import json
+import os
 import re
 import subprocess
 from urlparse import urlsplit
@@ -9,7 +18,7 @@ import w3lib.html
 from splash.benchmark.file_server import serve_files
 from splash.tests.stress import lua_runonce
 
-script_html = """
+SCRIPT_HTML = """
 function main(splash)
 splash:set_images_enabled(false)
 splash:go(splash.args.url)
@@ -18,24 +27,19 @@ return {url=splash:url(), html=splash:html()}
 end
 """
 
-script_png = """
-
-function main(splash)
-splash:go(splash.args.url)
-splash:wait(0.5)
-return splash:png()
-end
-"""
-
-
+#: This UA is used by httrack to mimic Splash requests when downloading sites.
 USERAGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.34 (KHTML, like Gecko) Qt/4.8.1 Safari/534.34"
-
 
 PORT = 8806
 
+parser = ArgumentParser(description=__doc__,
+                        formatter_class=ArgumentDefaultsHelpFormatter)
+parser.add_argument('--sites-dir', default='sites',
+                    help='Directory for downloaded sites')
 
-def preprocess_main_page(url):
-    out = json.loads(lua_runonce(script_html, url=url,
+
+def preprocess_main_page(sites_dir, url):
+    out = json.loads(lua_runonce(SCRIPT_HTML, url=url,
                                  splash_args=['--disable-lua-sandbox',
                                               '--disable-xvfb',
                                               '--max-timeout=600'],
@@ -56,13 +60,13 @@ def preprocess_main_page(url):
         out['html'] = html.tostring(root, encoding='utf-8',
                                     doctype='<!DOCTYPE html>')
     filename = re.sub(r'[^\w]+', '_', url) + '.html'
-    with open(filename, 'w') as f:
+    with open(os.path.join(sites_dir, filename), 'w') as f:
         f.write(out['html'])
     return filename
 
 
-def download_sites(sites):
-    local_files = [preprocess_main_page(s) for s in sites]
+def download_sites(sites_dir, sites):
+    local_files = [preprocess_main_page(sites_dir, s) for s in sites]
 
     local_urls = [
         'http://localhost:%(port)d/%(filename)s' % {
@@ -75,12 +79,20 @@ def download_sites(sites):
             '-%P',              # Try parsing links in non-href/src sections
             '-F', USERAGENT,    # Emulate splash UA
             '--depth=1']
-    subprocess.check_call(['httrack'] + args + local_urls)
+    subprocess.check_call(['httrack'] + args + local_urls, cwd=sites_dir)
 
 
-if __name__ == '__main__':
-    with serve_files(PORT):
-        download_sites([
+def main():
+    args = parser.parse_args()
+    try:
+        os.makedirs(args.sites_dir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+        elif not os.path.isdir(args.sites_dir):
+            raise RuntimeError("Not a directory: %s" % args.sites_dir)
+    with serve_files(PORT, args.sites_dir):
+        download_sites(args.sites_dir, [
             'http://www.wikipedia.org',
             'http://www.google.com',
             'http://www.reddit.com',
@@ -89,3 +101,7 @@ if __name__ == '__main__':
             # "http://blog.pinterest.com",
             # "http://imgur.com",
         ])
+
+
+if __name__ == '__main__':
+    main()
