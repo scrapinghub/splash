@@ -1,8 +1,20 @@
+#!/usr/bin/env python
+
+"""
+Simple static file server.
+"""
+
+import argparse
+import os
 import SimpleHTTPServer
 import SocketServer
 import subprocess
-import sys
 from contextlib import contextmanager
+
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('port', type=int, help='Port number to listen at')
+parser.add_argument('directory', type=str, help='Directory to serve')
 
 
 class ReusingTCPServer(SocketServer.TCPServer):
@@ -15,10 +27,10 @@ class RequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
 @contextmanager
-def serve_files(port):
+def serve_files(port, directory):
     """Serve files from current directory statically in a subprocess."""
     site_server = subprocess.Popen(['python', '-m', __name__,
-                                    str(port)])
+                                    str(port), directory])
     try:
         yield
     finally:
@@ -26,6 +38,7 @@ def serve_files(port):
 
 
 if __name__ == '__main__':
-    port = int(sys.argv[1])
-    server = ReusingTCPServer(("", port), RequestHandler)
+    args = parser.parse_args()
+    os.chdir(args.directory)
+    server = ReusingTCPServer(("", args.port), RequestHandler)
     server.serve_forever()

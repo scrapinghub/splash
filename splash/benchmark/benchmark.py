@@ -17,6 +17,7 @@ from glob import glob
 from multiprocessing.pool import ThreadPool
 from pprint import pformat
 from time import time
+import re
 
 import requests
 from splash.benchmark.file_server import serve_files
@@ -65,10 +66,9 @@ REQ_FACTORIES = [
 
 #: Port at which static pages will be served.
 PORT = 8806
-#: Static pages to be used in the benchmark.
-PAGES = glob('localhost_8806/*.html')
 #: Combinations of width & height to test.
 WIDTH_HEIGHT = [(None, None), (500, None), (None, 500), (500, 500)]
+#: Splash log filename.
 SPLASH_LOG = 'splash.log'
 #: This script is used to collect maxrss & cpu time from splash process.
 GET_PERF_STATS_SCRIPT = """
@@ -85,14 +85,24 @@ parser.add_argument('--thread-count', type=int, default=1,
                     help='Request thread count')
 parser.add_argument('--request-count', type=int, default=10,
                     help='Benchmark request count')
+parser.add_argument('--sites-dir', type=str, default='sites',
+                    help='Directory with downloaded sites')
 
 
 def generate_requests(splash, args):
     log = logging.getLogger('generate_requests')
     log.info("Using pRNG seed: %s", args.seed)
+
+    # Static pages (relative to sites_dir) to be used in the benchmark.
+    pages = [re.sub('^%s/' % args.sites_dir, '', v)
+             for v in glob(os.path.join(args.sites_dir, 'localhost_8806',
+                                        '*.html'))]
+    for p in pages:
+        log.info("Using page for benchmark: %s", p)
+
     rng = random.Random(args.seed)
     for i in xrange(args.request_count):
-        page = rng.choice(PAGES)
+        page = rng.choice(pages)
         width, height = rng.choice(WIDTH_HEIGHT)
         req_factory = rng.choice(REQ_FACTORIES)
         url = 'http://localhost:%d/%s' % (PORT, page)
@@ -140,7 +150,7 @@ def main():
                     '--disable-xvfb',
                     '--max-timeout=600'])
 
-    with splash, serve_files(PORT):
+    with splash, serve_files(PORT, args.sites_dir):
         start_time = time()
         results = parallel_map(invoke_request, generate_requests(splash, args),
                                args.thread_count)
