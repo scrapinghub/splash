@@ -22,13 +22,53 @@ import requests
 from splash.benchmark.file_server import serve_files
 from splash.tests.utils import SplashServer
 
+
+def make_render_png_req(splash, params):
+    """Prepare request for render.png endpoint."""
+    return {'url': splash.url('render.png'),
+            'params': params}
+
+
+def make_render_json_req(splash, params):
+    """Prepare request for render.json endpoint."""
+    json_params = params.copy()
+    json_params['png'] = 1
+    return {'url': splash.url('render.json'),
+            'params': json_params}
+
+
+def make_render_png_lua_req(splash, params):
+    """Prepare request for execute endpoint."""
+    lua_params = params.copy()
+    lua_params['lua_source'] = """
+function main(splash)
+  assert(splash:go(splash.args.url))
+  if splash.args.wait then
+    assert(splash:wait(splash.args.wait))
+  end
+  splash:set_result_content_type("image/png")
+  return splash:png{width=splash.args.width,
+                    height=splash.args.height,
+                    render_all=splash.args.render_all}
+end
+"""
+    return {'url': splash.url('execute'),
+            'params': lua_params}
+
+
+REQ_FACTORIES = [
+    make_render_png_req,
+    make_render_json_req,
+    make_render_png_lua_req,
+]
+
+
 #: Port at which static pages will be served.
 PORT = 8806
 #: Static pages to be used in the benchmark.
 PAGES = glob('localhost_8806/*.html')
 #: Combinations of width & height to test.
 WIDTH_HEIGHT = [(None, None), (500, None), (None, 500), (500, 500)]
-# XXX: add benchmark of different API endpoints.
 SPLASH_LOG = 'splash.log'
 #: This script is used to collect maxrss & cpu time from splash process.
 GET_PERF_STATS_SCRIPT = """
@@ -36,6 +76,7 @@ function main(splash)
   return splash:get_perf_stats()
 end
 """
+
 
 parser = ArgumentParser(description=__doc__,
                         formatter_class=ArgumentDefaultsHelpFormatter)
@@ -53,10 +94,12 @@ def generate_requests(splash, args):
     for i in xrange(args.request_count):
         page = rng.choice(PAGES)
         width, height = rng.choice(WIDTH_HEIGHT)
+        req_factory = rng.choice(REQ_FACTORIES)
         url = 'http://localhost:%d/%s' % (PORT, page)
-        yield (i + 1, args.request_count,
-               {'url': splash.url('render.png'),
-                'params': {'url': url, 'width': width, 'height': height}})
+        params = {'url': url, 'render_all': 1, 'wait': 0.1,
+                  'width': width, 'height': height}
+        log.debug("Req factory: %s, params: %s", req_factory, params)
+        yield (i + 1, args.request_count, req_factory(splash, params))
 
 
 def parallel_map(func, iterable, thread_count):
@@ -72,12 +115,15 @@ def invoke_request(invoke_args):
     req_no, total_reqs, kwargs = invoke_args
     log.info("Initiating request %d/%d: %s", req_no, total_reqs, kwargs)
     stime = time()
-    requests.get(**kwargs)
+    response = requests.get(**kwargs)
     etime = time()
+    if response.status_code != 200:
+        log.error("Non-OK response:\n%s", response.text)
     return {'start_time': stime,
             'end_time': etime,
             'duration': etime - stime,
             'endpoint': kwargs['url'],
+            'status': response.status_code,
             'site': kwargs['params']['url'],
             'width': kwargs['params']['width'],
             'height': kwargs['params']['height']}
