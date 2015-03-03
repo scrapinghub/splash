@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import functools
 
 import pytest
+lupa = pytest.importorskip("lupa")
 
 from splash.kernel.lua_parser import (
     Standalone,
