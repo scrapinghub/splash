@@ -1,6 +1,25 @@
 Changes
 =======
 
+dev (unreleased)
+----------------
+
+In this release we introduce :ref:`Splash-Jupyter <ipython-kernel>` - a
+web-based IDE for Splash Lua scripts with syntax highlighting, autocompletion
+and a connected live browser window. It is implemented as a kernel for
+Jupyter (IPython).
+
+Docker images for Splash 1.5 are optimized - download size is much smaller
+than in previous releases.
+
+Other changes:
+
+* :ref:`splash:go() <splash-go>` returned incorrect result after an
+  unsuccessful splash:go() call - this is fixed;
+* Lua ``main`` function can now return multiple results;
+* there are testing improvements and internal cleanups.
+
+
 1.4 (2015-02-10)
 ----------------
 
@@ -12,10 +31,11 @@ From version 1.4 Splash requires Pillow (built with PNG support) to work.
 
 There are backwards-incompatible changes in Splash scripts:
 
-* splash:set_viewport() is split into splash:set_viewport_size()
-  and splash:set_viewport_full();
-* old splash:runjs() method is renamed to splash:evaljs();
-* new splash:runjs() method just runs JavaScript code
+* splash:set_viewport() is split into
+  :ref:`splash:set_viewport_size() <splash-set-viewport-size>`
+  and :ref:`splash:set_viewport_full() <splash-set-viewport-full>`;
+* old splash:runjs() method is renamed to :ref:`splash:evaljs() <splash-evaljs>`;
+* new :ref:`splash:runjs <splash-runjs>` method just runs JavaScript code
   without returning the result of the last JS statement.
 
 To upgrade check all splash:runjs() usages: if the returned result is used
@@ -27,29 +47,41 @@ New scripting features:
 
 * it is now possible to write custom Lua plugins stored server-side;
 * a restricted version of Lua ``require`` is enabled in sandbox;
-* splash:autoload() method for setting JS to load on each request;
-* splash:wait_for_resume() method for interacting with async JS code;
-* splash:lock_navigation() and splash:unlock_navigation() methods;
-* splash:set_viewport() is split into splash:set_viewport_size()
-  and splash:set_viewport_full();
-* splash:get_viewport_size() method;
-* splash:http_get() method for sending HTTP GET requests without loading result
-  to the browser;
-* splash:set_content() method for setting page content from a string;
-* splash:get_cookies(), splash:add_cookie(), splash:clear_cookies(),
-  splash:delete_cookies() and splash:init_cookies() methods for working
+* :ref:`splash:autoload() <splash-autoload>` method for setting JS to load
+  on each request;
+* :ref:`splash:wait_for_resume() <splash-wait-for-resume>` method for
+  interacting with async JS code;
+* :ref:`splash:lock_navigation() <splash-lock-navigation>` and
+  :ref:`splash:unlock_navigation() <splash-unlock-navigation>` methods;
+* splash:set_viewport() is split into
+  :ref:`splash:set_viewport_size() <splash-set-viewport-size>`
+  and :ref:`splash:set_viewport_full() <splash-set-viewport-full>`;
+* :ref:`splash:get_viewport_size() <splash-get-viewport-size>` method;
+* :ref:`splash:http_get() <splash-http-get>` method for sending HTTP GET
+  requests without loading result to the browser;
+* :ref:`splash:set_content() <splash-set-content>` method for setting
+  page content from a string;
+* :ref:`splash:get_cookies() <splash-get-cookies>`,
+  :ref:`splash:add_cookie() <splash-add-cookie>`,
+  :ref:`splash:clear_cookies() <splash-clear-cookies>`,
+  :ref:`splash:delete_cookies() <splash-delete-cookies>` and
+  :ref:`splash:init_cookies() <splash-init-cookies>` methods for working
   with cookies;
-* splash:set_user_agent() method for setting User-Agent header;
-* splash:set_custom_headers() method for setting other HTTP headers;
-* splash:url() method for getting current URL;
-* splash:go() now accepts ``headers`` argument;
-* splash:evaljs() method, which is a splash:runjs() from Splash v1.3.1
-  with improved error handling (it raises an error in case of JavaScript
-  exceptions);
-* splash:runjs() method no longer returns the result of last computation;
-* splash:runjs() method handles JavaScript errors by returning ``ok, error``
-  pair;
-* splash:get_perf_stats() command for getting Splash resource usage.
+* :ref:`splash:set_user_agent() <splash-set-user-agent>` method for
+  setting User-Agent header;
+* :ref:`splash:set_custom_headers() <splash-set-custom-headers>` method for
+  setting other HTTP headers;
+* :ref:`splash:url() <splash-url>` method for getting current URL;
+* :ref:`splash:go() <splash-go>` now accepts ``headers`` argument;
+* :ref:`splash:evaljs() <splash-evaljs>` method, which is a
+  splash:runjs() from Splash v1.3.1 with improved error handling
+  (it raises an error in case of JavaScript exceptions);
+* :ref:`splash:runjs() <splash-runjs>` method no longer returns the result
+  of last computation;
+* :ref:`splash:runjs() <splash-runjs>` method handles JavaScript errors
+  by returning ``ok, error`` pair;
+* :ref:`splash:get_perf_stats() <splash-get-perf-stats>` method for
+  getting Splash resource usage.
 
 Other improvements:
 
