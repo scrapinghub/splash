@@ -1,7 +1,7 @@
 Changes
 =======
 
-dev (unreleased)
+1.5 (2015-03-03)
 ----------------
 
 In this release we introduce :ref:`Splash-Jupyter <ipython-kernel>` - a
