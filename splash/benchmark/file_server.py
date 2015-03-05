@@ -6,27 +6,35 @@ import argparse
 import os
 import subprocess
 import time
+import sys
 from contextlib import contextmanager
 
 from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.static import File
+from twisted.python.log import startLogging
 
 import requests
 
 parser = argparse.ArgumentParser("")
-parser.add_argument('--port', type=int)
-parser.add_argument('--directory', help='Directory to be served')
-
+parser.add_argument('--port', type=int, default=8806)
+parser.add_argument('--directory', help='Directory to be served', default='.')
+parser.add_argument('--logfile', default=sys.stderr, type=argparse.FileType(mode='w'), 
+                    help='File to write logs to')
 
 @contextmanager
 def serve_files(port, directory, logfile=None):
     """Serve files from specified directory statically in a subprocess."""
-    command = ['twistd',
-               '-n',    # don't daemonize
-               'web',   # start web component
+    # command = ['twistd',
+    #            '-n',    # don't daemonize
+    #            'web',   # start web component
+    #            '--port', str(int(port)),
+    #            '--path', os.path.abspath(directory), ]
+    # if logfile is not None:
+    #     command += ['--logfile', logfile]
+    command = ['python', __file__,
                '--port', str(int(port)),
-               '--path', os.path.abspath(directory), ]
+               '--directory', os.path.abspath(directory)]
     if logfile is not None:
         command += ['--logfile', logfile]
     site_server = subprocess.Popen(command)
@@ -46,6 +54,7 @@ def serve_files(port, directory, logfile=None):
 
 def main():
     args = parser.parse_args()
+    startLogging(args.logfile)
     resource = File(os.path.abspath(args.directory))
     site = Site(resource)
     reactor.listenTCP(args.port, site)

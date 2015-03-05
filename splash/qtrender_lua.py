@@ -497,7 +497,7 @@ class Splash(object):
         rss_mul = 1 if sys.platform == 'darwin' else 1024
         return {'maxrss': rusage.ru_maxrss * rss_mul,
                 'cputime': rusage.ru_utime + rusage.ru_stime,
-                'walltime': time.time()}
+                 'walltime': time.time()}
 
     def get_real_exception(self):
         if self._exceptions:
