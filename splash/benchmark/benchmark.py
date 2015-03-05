@@ -11,12 +11,13 @@ server and runs a series of requests via splash on those downloaded pages.
 import logging
 import os
 import random
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, FileType
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from pprint import pformat
 from time import time
 import re
+import sys
 
 import requests
 from splash.benchmark.file_server import serve_files
@@ -67,8 +68,9 @@ REQ_FACTORIES = [
 PORT = 8806
 #: Combinations of width & height to test.
 WIDTH_HEIGHT = [(None, None), (500, None), (None, 500), (500, 500)]
-#: Splash log filename (set to None to put it to stdout).
+#: Splash & fileserver log filenames (set to None to put it to stderr).
 SPLASH_LOG = 'splash.log'
+FILESERVER_LOG = 'fileserver.log'
 #: This script is used to collect maxrss & cpu time from splash process.
 GET_PERF_STATS_SCRIPT = """
 function main(splash)
@@ -88,6 +90,8 @@ parser.add_argument('--sites-dir', type=str, default='sites',
                     help='Directory with downloaded sites')
 parser.add_argument('--splash-server', metavar='HOST:PORT',
                     help='Use existing Splash instance available at HOST:PORT')
+parser.add_argument('--out-file', type=FileType(mode='w'), default=sys.stdout,
+                    help='Write detailed request information in this file')
 
 
 def generate_requests(splash, args):
@@ -95,9 +99,10 @@ def generate_requests(splash, args):
     log.info("Using pRNG seed: %s", args.seed)
 
     # Static pages (relative to sites_dir) to be used in the benchmark.
-    pages = [re.sub('^%s/' % args.sites_dir, '', v)
-             for v in glob(os.path.join(args.sites_dir, 'localhost_8806',
-                                        '*.html'))]
+    log.info("sites dir: %s", args.sites_dir)
+    sites_found = glob(os.path.join(args.sites_dir, 'localhost_8806', '*.html'))
+    log.info("sites found: %s", sites_found)
+    pages = [re.sub('^%s/' % args.sites_dir.rstrip('/'), '', v) for v in sites_found]
     for p in pages:
         log.info("Using page for benchmark: %s", p)
 
@@ -160,6 +165,7 @@ class ExistingSplashWrapper(object):
 def main():
     log = logging.getLogger("benchmark")
     args = parser.parse_args()
+    logging.getLogger('requests.packages.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.basicConfig(level=logging.DEBUG)
 
     if args.splash_server:
@@ -171,18 +177,28 @@ def main():
                         '--disable-xvfb',
                         '--max-timeout=600'])
 
-    with splash, serve_files(port=PORT, directory=args.sites_dir):
+    with splash, serve_files(port=PORT, directory=args.sites_dir, logfile=FILESERVER_LOG):
+        log.info("Servers are up, starting benchmark...")
+        start_res = requests.get(
+            splash.url('execute'),
+            params={'lua_source': GET_PERF_STATS_SCRIPT}).json()
         start_time = time()
         results = parallel_map(invoke_request, generate_requests(splash, args),
                                args.thread_count)
         end_time = time()
-        resources = requests.get(
+        end_res = requests.get(
             splash.url('execute'),
             params={'lua_source': GET_PERF_STATS_SCRIPT}).json()
 
-    log.info("Request stats:\n%s", pformat(dict(enumerate(results))))
-    log.info("Splash max RSS: %s B", resources['maxrss'])
-    log.info("Splash CPU time elapsed: %.2f sec", resources['cputime'])
+    log.info("Writing stats to %s", args.out_file.name)
+    args.out_file.write(pformat({
+                'maxrss': end_res['maxrss'],
+                'cputime': end_res['cputime'] - start_res['cputime'],
+                'walltime': end_time - start_time,
+                'requests': results}))
+    log.info("Splash max RSS: %s B", end_res['maxrss'])
+    log.info("Splash CPU time elapsed: %.2f sec",
+             end_res['cputime'] - start_res['cputime'])
     log.info("Wallclock time elapsed: %.2f sec", end_time - start_time)
 
 
