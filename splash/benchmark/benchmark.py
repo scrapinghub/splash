@@ -8,6 +8,7 @@ server and runs a series of requests via splash on those downloaded pages.
 
 """
 
+import json
 import logging
 import os
 import random
@@ -20,18 +21,16 @@ import re
 import sys
 
 import requests
-from splash.benchmark.file_server import serve_files
-from splash.tests.utils import SplashServer
 
 
 def make_render_png_req(splash, params):
-    """Prepare request for render.png endpoint."""
+    """Make PNG render request via render.png endpoint."""
     return {'url': splash.url('render.png'),
             'params': params}
 
 
 def make_render_json_req(splash, params):
-    """Prepare request for render.json endpoint."""
+    """Make PNG render request via JSON endpoint."""
     json_params = params.copy()
     json_params['png'] = 1
     return {'url': splash.url('render.json'),
@@ -39,7 +38,7 @@ def make_render_json_req(splash, params):
 
 
 def make_render_png_lua_req(splash, params):
-    """Prepare request for execute endpoint."""
+    """Make PNG render request via Lua execute endpoint."""
     lua_params = params.copy()
     lua_params['lua_source'] = """
 function main(splash)
@@ -57,11 +56,51 @@ end
             'params': lua_params}
 
 
-REQ_FACTORIES = [
-    make_render_png_req,
-    make_render_json_req,
-    make_render_png_lua_req,
-]
+def make_render_html_req(splash, params):
+    """Make HTML render request via render.html endpoint."""
+    return {'url': splash.url('render.html'),
+            'params': params}
+
+
+def make_render_html_json_req(splash, params):
+    """Make HTML render request via JSON endpoint."""
+    json_params = params.copy()
+    json_params['html'] = 1
+    return {'url': splash.url('render.json'),
+            'params': json_params}
+
+
+def make_render_html_lua_req(splash, params):
+    """Make HTML render request via Lua execute endpoint."""
+    lua_params = params.copy()
+    lua_params['lua_source'] = """
+function main(splash)
+  assert(splash:go(splash.args.url))
+  if splash.args.wait then
+    assert(splash:wait(splash.args.wait))
+  end
+  splash:set_result_content_type("text/html; charset=UTF-8")
+  return splash:html{}
+end
+"""
+    return {'url': splash.url('execute'),
+            'params': lua_params}
+
+
+#: Same resource may be rendered by various endpoints with slightly varying
+#: parameter combinations.  Request factories set those combinations up.
+REQ_FACTORIES = {
+    'png': [
+        make_render_png_req,
+        make_render_json_req,
+        make_render_png_lua_req,
+    ],
+    'html': [
+        make_render_html_req,
+        make_render_html_json_req,
+        make_render_html_lua_req,
+    ],
+}
 
 
 #: Port at which static pages will be served.
@@ -86,15 +125,20 @@ parser.add_argument('--thread-count', type=int, default=1,
                     help='Request thread count')
 parser.add_argument('--request-count', type=int, default=10,
                     help='Benchmark request count')
-parser.add_argument('--sites-dir', type=str, default='sites',
+parser.add_argument('--sites-dir', type=str, default='sites', required=True,
                     help='Directory with downloaded sites')
+parser.add_argument('--file-server', metavar='HOST:PORT',
+                    help='Use existing file server instance available at HOST:PORT')
 parser.add_argument('--splash-server', metavar='HOST:PORT',
                     help='Use existing Splash instance available at HOST:PORT')
 parser.add_argument('--out-file', type=FileType(mode='w'), default=sys.stdout,
                     help='Write detailed request information in this file')
+parser.add_argument('--render-type', choices=('html', 'png'), default='png',
+                    help=('Type of rendering to benchmark'
+                          ' (either "html" or "png")'))
 
 
-def generate_requests(splash, args):
+def generate_requests(splash, file_server, args):
     log = logging.getLogger('generate_requests')
     log.info("Using pRNG seed: %s", args.seed)
 
@@ -106,12 +150,14 @@ def generate_requests(splash, args):
     for p in pages:
         log.info("Using page for benchmark: %s", p)
 
+    request_factories = REQ_FACTORIES[args.render_type]
+
     rng = random.Random(args.seed)
     for i in xrange(args.request_count):
         page = rng.choice(pages)
         width, height = rng.choice(WIDTH_HEIGHT)
-        req_factory = rng.choice(REQ_FACTORIES)
-        url = 'http://localhost:%d/%s' % (PORT, page)
+        req_factory = rng.choice(request_factories)
+        url = file_server.url(page)
         params = {'url': url, 'render_all': 1, 'wait': 0.1,
                   'width': width, 'height': height}
         log.debug("Req factory: %s, params: %s", req_factory, params)
@@ -145,7 +191,7 @@ def invoke_request(invoke_args):
             'height': kwargs['params']['height']}
 
 
-class ExistingSplashWrapper(object):
+class ExistingServerWrapper(object):
     """Wrapper for pre-existing Splash instance."""
     def __init__(self, server):
         self.server = server
@@ -165,25 +211,36 @@ class ExistingSplashWrapper(object):
 def main():
     log = logging.getLogger("benchmark")
     args = parser.parse_args()
-    logging.getLogger('requests.packages.urllib3.connectionpool').setLevel(logging.WARNING)
+    (logging.getLogger('requests.packages.urllib3.connectionpool')
+     .setLevel(logging.WARNING))
     logging.basicConfig(level=logging.DEBUG)
 
     if args.splash_server:
-        splash = ExistingSplashWrapper(args.splash_server)
+        splash = ExistingServerWrapper(args.splash_server)
     else:
+        from splash.tests.utils import SplashServer
         splash = SplashServer(
             logfile=SPLASH_LOG,
             extra_args=['--disable-lua-sandbox',
                         '--disable-xvfb',
                         '--max-timeout=600'])
 
-    with splash, serve_files(port=PORT, directory=args.sites_dir, logfile=FILESERVER_LOG):
+    if args.file_server:
+        file_server = ExistingServerWrapper(args.file_server)
+    else:
+        from splash.benchmark.file_server import FileServerSubprocess
+        file_server = FileServerSubprocess(port=PORT,
+                                           path=args.sites_dir,
+                                           logfile=FILESERVER_LOG)
+
+    with splash, file_server:
         log.info("Servers are up, starting benchmark...")
         start_res = requests.get(
             splash.url('execute'),
             params={'lua_source': GET_PERF_STATS_SCRIPT}).json()
         start_time = time()
-        results = parallel_map(invoke_request, generate_requests(splash, args),
+        results = parallel_map(invoke_request,
+                               generate_requests(splash, file_server, args),
                                args.thread_count)
         end_time = time()
         end_res = requests.get(
@@ -191,11 +248,12 @@ def main():
             params={'lua_source': GET_PERF_STATS_SCRIPT}).json()
 
     log.info("Writing stats to %s", args.out_file.name)
-    args.out_file.write(pformat({
-                'maxrss': end_res['maxrss'],
-                'cputime': end_res['cputime'] - start_res['cputime'],
-                'walltime': end_time - start_time,
-                'requests': results}))
+    args.out_file.write(json.dumps(
+        {'maxrss': end_res['maxrss'],
+         'cputime': end_res['cputime'] - start_res['cputime'],
+         'walltime': end_time - start_time,
+         'requests': results},
+        indent=2))
     log.info("Splash max RSS: %s B", end_res['maxrss'])
     log.info("Splash CPU time elapsed: %.2f sec",
              end_res['cputime'] - start_res['cputime'])

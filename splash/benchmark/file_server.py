@@ -7,6 +7,7 @@ import os
 import subprocess
 import time
 import sys
+import logging
 from contextlib import contextmanager
 
 from twisted.internet import reactor
@@ -18,44 +19,64 @@ import requests
 
 parser = argparse.ArgumentParser("")
 parser.add_argument('--port', type=int, default=8806)
-parser.add_argument('--directory', help='Directory to be served', default='.')
-parser.add_argument('--logfile', default=sys.stderr, type=argparse.FileType(mode='w'), 
+parser.add_argument('--path', help='Path to be served', default='.')
+parser.add_argument('--logfile', default=sys.stderr,
+                    type=argparse.FileType(mode='w'),
                     help='File to write logs to')
 
-@contextmanager
-def serve_files(port, directory, logfile=None):
+
+class FileServerSubprocess(object):
+    logger = logging.getLogger('file_server')
+
     """Serve files from specified directory statically in a subprocess."""
-    # command = ['twistd',
-    #            '-n',    # don't daemonize
-    #            'web',   # start web component
-    #            '--port', str(int(port)),
-    #            '--path', os.path.abspath(directory), ]
-    # if logfile is not None:
-    #     command += ['--logfile', logfile]
-    command = ['python', __file__,
-               '--port', str(int(port)),
-               '--directory', os.path.abspath(directory)]
-    if logfile is not None:
-        command += ['--logfile', logfile]
-    site_server = subprocess.Popen(command)
-    try:
+    def __init__(self, port, path, logfile=None):
+        self.port = port
+        self.path = path
+        self.logfile = logfile
+        self.server = 'http://localhost:%d' % port
+
+    def url(self, endpoint):
+        return self.server + '/' + endpoint
+
+    def __enter__(self):
+        # command = ['twistd',
+        #            '-n',    # don't daemonize
+        #            'web',   # start web component
+        #            '--port', str(int(port)),
+        #            '--path', os.path.abspath(directory), ]
+        # if logfile is not None:
+        #     command += ['--logfile', logfile]
+        command = ['python', __file__,
+                   '--port', str(int(self.port)),
+                   '--path', os.path.abspath(self.path)]
+        if self.logfile is not None:
+            command += ['--logfile', self.logfile]
+        self.logger.info("Starting file server subprocess: %s", command)
+        self._site_server = subprocess.Popen(command)
         # It might take some time to bring up the server, wait for up to 10s.
         for i in xrange(100):
             try:
-                requests.get('http://localhost:%d' % port)
+                self.logger.info("Checking if file server is active")
+                requests.get(self.url(''))
+                break
             except requests.ConnectionError:
                 time.sleep(0.1)
-            else:
-                break
-        yield
-    finally:
-        site_server.terminate()
+        else:
+            msg = "File server subprocess startup timed out"
+            if self.logfile:
+                with open(self.logfile, 'r') as log_f:
+                    msg += ", logs:\n" + log_f.read()
+            raise RuntimeError(msg)
+
+    def __exit__(self, *args):
+        self._site_server.kill()
+        self._site_server.wait()
 
 
 def main():
     args = parser.parse_args()
     startLogging(args.logfile)
-    resource = File(os.path.abspath(args.directory))
+    resource = File(os.path.abspath(args.path))
     site = Site(resource)
     reactor.listenTCP(args.port, site)
     reactor.run()

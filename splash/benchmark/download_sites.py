@@ -10,12 +10,13 @@ import json
 import os
 import re
 import subprocess
+import logging
 from urlparse import urlsplit
 
 from lxml import html
 
 import w3lib.html
-from splash.benchmark.file_server import serve_files
+from splash.benchmark.file_server import FileServerSubprocess
 from splash.tests.stress import lua_runonce
 
 SCRIPT_HTML = """
@@ -91,6 +92,10 @@ def download_sites(sites_dir, sites):
 
 def main():
     args = parser.parse_args()
+    (logging.getLogger('requests.packages.urllib3.connectionpool')
+     .setLevel(logging.WARNING))
+    logging.basicConfig(level=logging.DEBUG)
+    logging.info("Starting site download suite")
     try:
         os.makedirs(args.sites_dir)
     except OSError as e:
@@ -98,7 +103,7 @@ def main():
             raise
         elif not os.path.isdir(args.sites_dir):
             raise RuntimeError("Not a directory: %s" % args.sites_dir)
-    with serve_files(PORT, args.sites_dir):
+    with FileServerSubprocess(port=PORT, path=args.sites_dir):
         download_sites(args.sites_dir, [
             'http://www.wikipedia.org',
             'http://www.google.com',
