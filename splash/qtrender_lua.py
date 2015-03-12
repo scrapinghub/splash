@@ -313,6 +313,14 @@ class Splash(object):
         except JsError as e:
             return None, e.args[0]
 
+	@command()
+	def enable_js(self):
+		self.tab.enable_js()
+
+	@command()
+	def disable_js(self):
+		self.tab.disable_js()
+
     @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
         cmd_id = next(self._command_ids)

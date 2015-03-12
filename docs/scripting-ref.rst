@@ -331,6 +331,44 @@ Compare:
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
 :ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
 
+.. _splash-enable_js:
+
+splash:enable_js
+------------
+
+Enables javascript for the browser.
+
+**Signature:** ``splash:enable_js()``
+
+Example:
+
+.. code-block:: lua
+
+    splash:enable_js()
+    assert(splash:go('https://www.whatismybrowser.com/is-javascript-enabled'))
+
+See also: :ref:`splash-disable_js`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
+:ref:`splash-evaljs`.
+
+.. _splash-enable_js:
+
+splash:disable_js
+------------
+
+Disables javascript for the browser.
+
+**Signature:** ``splash:disable_js()``
+
+Example:
+
+.. code-block:: lua
+
+    splash:disable_js()
+    assert(splash:go('https://www.whatismybrowser.com/is-javascript-enabled'))
+
+See also: :ref:`splash-enable_js`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
+:ref:`splash-evaljs`.
+
 .. _splash-runjs:
 
 splash:runjs
