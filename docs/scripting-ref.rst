@@ -339,6 +339,32 @@ Compare:
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
 :ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
 
+.. _splash-disablejs:
+
+splash:disablejs
+-------------
+
+Disable execution of JavaSript code embedded in the page.
+
+**Signature:** ``splash:disablejs()``
+
+Should be called before ``splash:go(...)``.
+
+See also: :ref:`splash-enablejs`.
+
+.. _splash-enablejs:
+
+splash:enablejs
+-------------
+
+Enable execution of JavaSript code embedded in the page.
+
+**Signature:** ``splash:enablejs()``
+
+JavaScript execution is enabled by default.
+
+See also: :ref:`splash-disablejs`.
+
 .. _splash-runjs:
 
 splash:runjs

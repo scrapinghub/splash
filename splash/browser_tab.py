@@ -101,6 +101,14 @@ class BrowserTab(QObject):
         self.web_view.resize(
             QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
 
+    def enable_js(self):
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.JavascriptEnabled, True)
+
+    def disable_js(self):
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.JavascriptEnabled, False)
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.

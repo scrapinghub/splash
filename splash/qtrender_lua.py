@@ -344,6 +344,14 @@ class Splash(object):
         self.tab.stop_loading()
 
     @command()
+    def enable_js(self):
+        self.tab.enable_js()
+
+    @command()
+    def disable_js(self):
+        self.tab.disable_js()
+
+    @command()
     def evaljs(self, snippet):
         return self.tab.evaljs(snippet)
 

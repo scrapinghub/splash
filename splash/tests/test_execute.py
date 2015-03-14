@@ -332,6 +332,47 @@ class ErrorsTest(BaseLuaRenderTest):
         self.assertEqual(data["ok"], False)
 
 
+class EnableDisableJSTest(BaseLuaRenderTest):
+
+    def test_disablejs(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:disable_js()
+            splash:set_content([[
+                <html>
+                    <head></head>
+                    <body>
+                        js disabled
+                        <script>document.body.innerHTML = "js enabled";</script>
+                    </body>
+                </html>
+            ]])
+            return splash:html()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertIn(u'js disabled', resp.text)
+
+    def test_enablejs(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:disable_js()
+            splash:enable_js()
+            splash:set_content([[
+                <html>
+                    <head></head>
+                    <body>
+                        js disabled
+                        <script>document.body.innerHTML = "js enabled";</script>
+                    </body>
+                </html>
+            ]])
+            return splash:html()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn(u'js disabled', resp.text)
+
 
 class EvaljsTest(BaseLuaRenderTest):
 
