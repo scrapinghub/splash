@@ -2037,8 +2037,8 @@ class SetContentTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         img = Image.open(StringIO(resp.content))
         self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
-        
-	def test_enable_js(self):
+
+    def test_enable_js(self):
         script = """
         function main(splash)
             splash:disable_js()
