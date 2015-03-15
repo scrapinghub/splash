@@ -16,7 +16,6 @@ from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
-from .mockserver import JsBG
 from .. import defaults
 
 
