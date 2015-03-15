@@ -16,6 +16,7 @@ from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
+from .mockserver import JsBG
 from .. import defaults
 
 
@@ -2016,6 +2017,47 @@ class SetContentTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         img = Image.open(StringIO(resp.content))
         self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
+
+    def test_disable_js(self):
+        script = """
+        function main(splash)
+            splash:disable_js()
+            splash:set_content{
+                data = [[
+                    <html><body bgcolor="#FFFFFF">
+                        <script> document.body.style.backgroundColor = "#000000"; </script>
+                    </body></html>
+                ]],
+                baseurl = splash.args.base,
+            }
+            return splash:png()
+        end
+        """
+        resp = self.request_lua(script, {"base": self.mockurl("")})
+        self.assertStatusCode(resp, 200)
+        img = Image.open(StringIO(resp.content))
+        self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
+        
+	def test_enable_js(self):
+        script = """
+        function main(splash)
+            splash:disable_js()
+			splash:enable_js()
+            splash:set_content{
+                data = [[
+                    <html><body bgcolor="#FFFFFF">
+                        <script> document.body.style.backgroundColor = "#000000"; </script>
+                    </body></html>
+                ]],
+                baseurl = splash.args.base,
+            }
+            return splash:png()
+        end
+        """
+        resp = self.request_lua(script, {"base": self.mockurl("")})
+        self.assertStatusCode(resp, 200)
+        img = Image.open(StringIO(resp.content))
+        self.assertEqual((0,0,0,255), img.getpixel((10, 10)))
 
     def test_url(self):
         resp = self.request_lua("""
