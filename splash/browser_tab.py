@@ -548,6 +548,16 @@ class BrowserTab(QObject):
         js_source = "%s;undefined" % js_source
         self.evaljs(js_source, handle_errors=handle_errors)
 
+    def enable_js(self):
+        """ Enables Javascript """
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.JavascriptEnabled, True)
+
+    def disable_js(self):
+        """ Disables Javascript """
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.JavascriptEnabled, False)
+
     def wait_for_resume(self, js_source, callback, errback, timeout):
         """
         Run some Javascript asynchronously.
