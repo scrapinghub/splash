@@ -338,40 +338,63 @@ class EnableDisableJSTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
             splash:disable_js()
-            splash:set_content([[
-                <html>
-                    <head></head>
-                    <body>
-                        js disabled
-                        <script>document.body.innerHTML = "js enabled";</script>
-                    </body>
-                </html>
-            ]])
-            return splash:html()
+            splash:go(splash.args.url)
+            local html = splash:html()
+            return html
         end
-        """)
+        """, {
+            'url': self.mockurl('jsrender'),
+        })
         self.assertStatusCode(resp, 200)
-        self.assertIn(u'js disabled', resp.text)
+        self.assertIn(u'Before', resp.text)
 
     def test_enablejs(self):
         resp = self.request_lua("""
         function main(splash)
             splash:disable_js()
             splash:enable_js()
-            splash:set_content([[
-                <html>
-                    <head></head>
-                    <body>
-                        js disabled
-                        <script>document.body.innerHTML = "js enabled";</script>
-                    </body>
-                </html>
-            ]])
-            return splash:html()
+            splash:go(splash.args.url)
+            local html = splash:html()
+            return html
         end
-        """)
+        """, {
+            'url': self.mockurl('jsrender'),
+        })
         self.assertStatusCode(resp, 200)
-        self.assertNotIn(u'js disabled', resp.text)
+        self.assertIn(u'After', resp.text)
+
+    def test_disablejs_after_splash_go(self):
+        # disable_js doesn't work when called after splash.go(...)
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:disable_js()
+            local html = splash:html()
+            return html
+        end
+        """, {
+            'url': self.mockurl('jsrender'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn(u'Before', resp.text)
+
+    def test_multiple(self):
+        # disable_js disables javascript for the next splash:go(...)
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:disable_js()
+            local html_1 = splash:html()
+            splash:go(splash.args.url)
+            return {html_1=html_1, html_2=splash:html()}
+        end
+        """, {
+            'url': self.mockurl('jsrender')
+        })
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn(u'After', data['html_1'])
+        self.assertIn(u'Before', data['html_2'])
 
 
 class EvaljsTest(BaseLuaRenderTest):
