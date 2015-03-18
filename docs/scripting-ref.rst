@@ -339,31 +339,16 @@ Compare:
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
 :ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
 
-.. _splash-disable_js:
+.. _splash-js-enabled:
 
-splash:disable_js
+splash.js_enabled
 -----------------
 
-Disable execution of JavaSript code embedded in the page.
+Enable or disable execution of JavaSript code embedded in the page.
 
-**Signature:** ``splash:disable_js()``
-
-Should be called before ``splash:go(...)``.
-
-See also: :ref:`splash-enable_js`.
-
-.. _splash-enable_js:
-
-splash:enable_js
-----------------
-
-Enable execution of JavaSript code embedded in the page.
-
-**Signature:** ``splash:enable_js()``
+**Signature:** ``splash.js_enabled = true/false``
 
 JavaScript execution is enabled by default.
-
-See also: :ref:`splash-disable_js`.
 
 .. _splash-runjs:
 
@@ -1205,22 +1190,14 @@ Example:
          ]]
      end
 
-.. _splash-set-images-enabled:
+.. _splash-images-enabled:
 
-splash:set_images_enabled
--------------------------
+splash.images_enabled
+---------------------
 
 Enable/disable images.
 
-**Signature:** ``splash:set_images_enabled(enabled)``
-
-**Parameters:**
-
-* enabled - ``true`` to enable images, ``false`` to disable them.
-
-**Returns:** nil.
-
-**Async:** no.
+**Signature:** ``splash.images_enabled = true/false``
 
 By default, images are enabled. Disabling of the images can save a lot
 of network traffic (usually around ~50%) and make rendering faster.
@@ -1240,7 +1217,7 @@ Example:
 .. code-block:: lua
 
      function main(splash)
-         splash:set_images_enabled(false)
+         splash.images_enabled = false
          assert(splash:go("http://example.com"))
          return {png=splash:png()}
      end

@@ -26,7 +26,7 @@ function Splash:go_and_wait(args)
     error("non-zero 'wait' is required when rendering whole page")
   end
 
-  self:set_images_enabled(self.args.images)
+  self.images_enabled = self.args.images
 
   -- if viewport is 'full' it should be set only after waiting
   if args.viewport ~= nil and args.viewport ~= "full" then

@@ -337,7 +337,8 @@ class EnableDisableJSTest(BaseLuaRenderTest):
     def test_disablejs(self):
         resp = self.request_lua("""
         function main(splash)
-            splash:disable_js()
+            assert(splash.js_enabled==true)
+            splash.js_enabled = false
             splash:go(splash.args.url)
             local html = splash:html()
             return html
@@ -351,8 +352,7 @@ class EnableDisableJSTest(BaseLuaRenderTest):
     def test_enablejs(self):
         resp = self.request_lua("""
         function main(splash)
-            splash:disable_js()
-            splash:enable_js()
+            splash.js_enabled = true
             splash:go(splash.args.url)
             local html = splash:html()
             return html
@@ -361,14 +361,13 @@ class EnableDisableJSTest(BaseLuaRenderTest):
             'url': self.mockurl('jsrender'),
         })
         self.assertStatusCode(resp, 200)
-        self.assertIn(u'After', resp.text)
+        self.assertNotIn(u'Before', resp.text)
 
     def test_disablejs_after_splash_go(self):
-        # disable_js doesn't work when called after splash.go(...)
         resp = self.request_lua("""
         function main(splash)
             splash:go(splash.args.url)
-            splash:disable_js()
+            splash.js_enabled = false
             local html = splash:html()
             return html
         end
@@ -379,11 +378,10 @@ class EnableDisableJSTest(BaseLuaRenderTest):
         self.assertNotIn(u'Before', resp.text)
 
     def test_multiple(self):
-        # disable_js disables javascript for the next splash:go(...)
         resp = self.request_lua("""
         function main(splash)
             splash:go(splash.args.url)
-            splash:disable_js()
+            splash.js_enabled = false
             local html_1 = splash:html()
             splash:go(splash.args.url)
             return {html_1=html_1, html_2=splash:html()}
@@ -393,8 +391,57 @@ class EnableDisableJSTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertIn(u'After', data['html_1'])
+        self.assertNotIn(u'Before', data['html_1'])
         self.assertIn(u'Before', data['html_2'])
+
+
+class ImageRenderTest(BaseLuaRenderTest):
+
+    def test_disable_images_attr(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.images_enabled = false
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 0)
+
+    def test_disable_images_method(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_images_enabled(false)
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 0)
+
+    def test_enable_images_attr(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.images_enabled = false
+            splash.images_enabled = true
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 50)
+
+    def test_enable_images_method(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_images_enabled(false)
+            splash:set_images_enabled(true)
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 50)
 
 
 class EvaljsTest(BaseLuaRenderTest):
