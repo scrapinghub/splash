@@ -57,7 +57,8 @@ wait : float : optional
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
   :ref:`wait <arg-wait>` is also required for PNG rendering when doing
-  full-page rendering (see :ref:`render_all <arg-render-all>`).
+  full-page rendering (see :ref:`render_all <arg-render-all>`). Maximum 
+  allowed value for wait is 10 seconds.
 
 .. _arg-proxy:
 
