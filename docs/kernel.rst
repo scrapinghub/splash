@@ -19,7 +19,7 @@ To install Splash-Jupyter using Docker, run::
 
 Then start the container::
 
-    $ docker run -p 8888:8888 -it splash-jupyter
+    $ docker run -p 8888:8888 -it scrapinghub/splash-jupyter
 
 .. note::
 
