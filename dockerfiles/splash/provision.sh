@@ -21,6 +21,8 @@ EOF
 prepare_install () {
     # Prepare docker image for installation of packages, docker images are
     # usually stripped and aptitude doesn't work immediately.
+    #
+    # python-software-properties contains "add-apt-repository" command for PPA conf
     sed 's/main$/main universe/' -i /etc/apt/sources.list && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
@@ -30,6 +32,7 @@ prepare_install () {
 
 install_deps () {
     # Install package dependencies.
+    # ppa:pi-rho/security is a repo for libre2
     add-apt-repository -y ppa:pi-rho/security && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \

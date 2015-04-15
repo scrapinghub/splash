@@ -4,9 +4,6 @@ ENV DEBIAN_FRONTEND noninteractive
 # Install, use dev tools, and then clean up in one RUN transaction
 # to minimize image size.
 
-# software-properties-common contains "add-apt-repository" command for PPA conf
-# ppa:pi-rho/security is a repo for libre2
-
 ADD ./dockerfiles/splash/provision.sh /tmp/provision.sh
 
 RUN /tmp/provision.sh \
