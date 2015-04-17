@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND noninteractive
 # Install, use dev tools, and then clean up in one RUN transaction
 # to minimize image size.
 
-ADD ./dockerfiles/splash/provision.sh /tmp/provision.sh
+ADD dockerfiles/splash/provision.sh /tmp/provision.sh
 
 RUN /tmp/provision.sh \
     prepare_install \
