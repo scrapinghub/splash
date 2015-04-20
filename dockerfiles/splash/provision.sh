@@ -65,15 +65,15 @@ install_python_deps () {
     # Install python-level dependencies.
     pip install -U pip && \
     /usr/local/bin/pip install --no-cache-dir \
-        Twisted==15.0.0 \
+        Twisted==15.1.0 \
         qt4reactor==1.6 \
         psutil==2.2.1 \
-        adblockparser==0.3 \
+        adblockparser==0.4 \
         https://github.com/axiak/pyre2/archive/master.zip#egg=re2 \
         xvfbwrapper==0.2.4 \
         lupa==1.1 \
         funcparserlib==0.3.6 \
-        Pillow==2.7.0
+        Pillow==2.8.1
 }
 
 remove_builddeps () {

@@ -3,7 +3,7 @@
 twisted
 qt4reactor
 psutil
-adblockparser >= 0.2
+adblockparser >= 0.4
 -e git+https://github.com/axiak/pyre2.git#egg=re2
 xvfbwrapper
 Pillow
