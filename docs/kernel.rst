@@ -1,4 +1,4 @@
-.. _ipython-kernel:
+.. _splash-jupyter:
 
 Splash and IPython (Jupyter)
 ============================

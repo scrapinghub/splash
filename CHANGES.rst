@@ -4,7 +4,7 @@ Changes
 1.5 (2015-03-03)
 ----------------
 
-In this release we introduce :ref:`Splash-Jupyter <ipython-kernel>` - a
+In this release we introduce :ref:`Splash-Jupyter <splash-jupyter>` - a
 web-based IDE for Splash Lua scripts with syntax highlighting, autocompletion
 and a connected live browser window. It is implemented as a kernel for
 Jupyter (IPython).

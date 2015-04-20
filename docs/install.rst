@@ -182,7 +182,7 @@ then execute the following command from Splash source root::
 
     $ docker build -t my-local-splash .
 
-To build :ref:`Splash-Jupyter <ipython-kernel>` Docker image use this command::
+To build :ref:`Splash-Jupyter <splash-jupyter>` Docker image use this command::
 
     $ docker build -t my-local-splash-jupyter -f  dockerfiles/splash-jupyter/Dockerfile .
 
