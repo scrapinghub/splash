@@ -173,3 +173,20 @@ The final command for starting a long-running Splash server which uses
 up to 4GB RAM and daemonizes & restarts itself could look like this::
 
     $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:1.4 --maxrss 4000
+
+Building Local Docker Images
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To build your own Docker image, checkout Splash `source code`_ using git,
+then execute the following command from Splash source root::
+
+    $ docker build -t my-local-splash .
+
+To build :ref:`Splash-Jupyter <ipython-kernel>` Docker image use this command::
+
+    $ docker build -t my-local-splash-jupyter -f  dockerfiles/splash-jupyter/Dockerfile .
+
+You may have to change FROM line in :file:`dockerfiles/splash-jupyter/Dockerfile`
+if you want it to be based on your local Splash Docker container.
+
+.. _source code: https://github.com/scrapinghub/splash
