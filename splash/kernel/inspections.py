@@ -39,6 +39,9 @@ class Inspector(object):
         if doc.get('returns'):
             parts += ["Returns: " + doc["returns"]]
 
+        if doc.get('async'):
+            parts += ["Async: " + doc["async"]]
+
         if doc.get('details'):
             parts += [doc["details"]]
 

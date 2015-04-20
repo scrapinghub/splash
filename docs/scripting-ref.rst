@@ -34,6 +34,8 @@ address bar, pressing Enter and waiting until page loads.
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
 
+**Async:** yes, unless the navigation is locked.
+
 Three types of errors are reported (``ok`` can be ``nil`` in 3 cases):
 
 1. There is nothing to render. This can happen if a host doesn't exist,
@@ -115,6 +117,8 @@ processing the webpage.
 stopped prematurely, and ``reason`` contains a string with a reason.
 Possible reasons are ``"error"`` and ``"redirect"``.
 
+**Async:** yes.
+
 Usage example:
 
 .. code-block:: lua
@@ -161,6 +165,8 @@ Convert JavaScript function to a Lua callable.
 
 **Returns:** a function that can be called from Lua to execute JavaScript
 code in page context.
+
+**Async:** no.
 
 Example:
 
@@ -278,6 +284,8 @@ last statement.
 converted from JavaScript to Lua data types. In case of syntax errors or
 JavaScript exceptions an error is raised.
 
+**Async:** no.
+
 JavaScript → Lua conversion rules are the same as for
 :ref:`splash:jsfunc <js-lua-conversion-rules>`.
 
@@ -347,6 +355,8 @@ Run JavaScript code in page context.
 **Returns:** ``ok, error`` pair. When the execution is successful
 ``ok`` is True. In case of JavaScript errors ``ok`` is ``nil``,
 and ``error`` contains the error string.
+
+**Async:** no.
 
 Example:
 
@@ -426,6 +436,8 @@ that has the value passed to ``splash.resume(…)``. The ``result`` table also
 contains any additional key/value pairs set by ``splash.set(…)``. In case of
 timeout or JavaScript errors ``result`` is ``nil`` and ``error`` contains an
 error message string.
+
+**Async:** yes.
 
 Examples:
 
@@ -632,6 +644,8 @@ Set JavaScript to load automatically on each page load.
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil, error happened and
 ``reason`` contains an error description.
 
+**Async:** yes, but only when an URL of a remote resource is passed.
+
 :ref:`splash-autoload` allows to execute JavaScript code at each page load.
 :ref:`splash-autoload` doesn't doesn't execute the passed
 JavaScript code itself. To execute some code once, *after* page is loaded
@@ -700,6 +714,8 @@ the result to the browser window.
 
 **Returns:** a Lua table with the response in `HAR response`_ format.
 
+**Async:** yes.
+
 Example:
 
 .. code-block:: lua
@@ -742,6 +758,8 @@ Set the content of the current page and wait until the page loads.
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
 
+**Async:** yes.
+
 Example:
 
 .. code-block:: lua
@@ -762,6 +780,8 @@ Return a HTML snapshot of a current page (as a string).
 **Signature:** ``html = splash:html()``
 
 **Returns:** contents of a current page (as a string).
+
+**Async:** no.
 
 Example:
 
@@ -825,6 +845,8 @@ Return a `width x height` screenshot of a current page in PNG format.
   or ``'vector'``
 
 **Returns:** PNG screenshot data.
+
+**Async:** no.
 
 Without arguments ``splash:png()`` will take a snapshot of the current viewport.
 
@@ -890,6 +912,8 @@ splash:har
 **Returns:** information about pages loaded, events happened,
 network requests sent and responses received in HAR_ format.
 
+**Async:** no.
+
 If your script returns the result of ``splash:har()`` in a top-level
 ``"har"`` key then Splash UI will give you a nice diagram with network
 information (similar to "Network" tabs in Firefox or Chrome developer tools):
@@ -913,6 +937,8 @@ splash:history
 
 **Returns:** information about requests/responses for the pages loaded, in
 `HAR entries`_ format.
+
+**Async:** no.
 
 ``splash:history`` doesn't return information about related resources
 like images, scripts, stylesheets or AJAX requests. If you need this
@@ -944,6 +970,8 @@ splash:url
 
 **Returns:** the current URL.
 
+**Async:** no.
+
 .. _splash-get-cookies:
 
 splash:get_cookies
@@ -953,6 +981,8 @@ splash:get_cookies
 
 **Returns:** CookieJar contents - an array with all cookies available
 for the script. The result is returned in `HAR cookies`_ format.
+
+**Async:** no.
 
 .. _HAR cookies: http://www.softwareishard.com/blog/har-12-spec/#cookies
 
@@ -980,6 +1010,8 @@ Add a cookie.
 
 **Signature:** ``cookies = splash:add_cookie{name, value, path=nil, domain=nil, expires=nil, httpOnly=nil, secure=nil}``
 
+**Async:** no.
+
 Example:
 
 .. code-block:: lua
@@ -1005,6 +1037,8 @@ Replace all current cookies with the passed ``cookies``.
   :ref:`splash-get-cookies` returns.
 
 **Returns:** nil.
+
+**Async:** no.
 
 Example 1 - save and restore cookies:
 
@@ -1047,6 +1081,8 @@ Clear all cookies.
 
 **Returns:** a number of cookies deleted.
 
+**Async:** no.
+
 To delete only specific cookies
 use :ref:`splash-delete-cookies`.
 
@@ -1067,6 +1103,8 @@ Delete matching cookies.
 
 **Returns:** a number of cookies deleted.
 
+**Async:** no.
+
 This function does nothing when both *name* and *url* are nil.
 To remove all cookies use :ref:`splash-clear-cookies` method.
 
@@ -1079,6 +1117,8 @@ Lock navigation.
 
 **Signature:** ``splash:lock_navigation()``
 
+**Async:** no.
+
 After calling this method the navigation away from the current page is no
 longer permitted - the page is locked to the current URL.
 
@@ -1090,6 +1130,8 @@ splash:unlock_navigation
 Unlock navigation.
 
 **Signature:** ``splash:unlock_navigation()``
+
+**Async:** no.
 
 After calling this method the navigation away from the page becomes
 permitted. Note that the pending navigation requests suppressed
@@ -1109,6 +1151,8 @@ Set Content-Type of a result returned to a client.
 * content_type - a string with Content-Type header value.
 
 **Returns:** nil.
+
+**Async:** no.
 
 If a table is returned by "main" function then
 ``splash:set_result_content_type`` has no effect: Content-Type of the result
@@ -1150,6 +1194,8 @@ Enable/disable images.
 
 **Returns:** nil.
 
+**Async:** no.
+
 By default, images are enabled. Disabling of the images can save a lot
 of network traffic (usually around ~50%) and make rendering faster.
 Note that this option can affect the JavaScript code inside page:
@@ -1184,6 +1230,8 @@ Get the browser viewport size.
 
 **Returns:** two numbers: width and height of the viewport in pixels.
 
+**Async:** no.
+
 
 .. _splash-set-viewport-size:
 
@@ -1200,6 +1248,8 @@ Set the browser viewport size.
 * height - integer, requested viewport height in pixels.
 
 **Returns:** nil.
+
+**Async:** no.
 
 This will change the size of the visible area and subsequent rendering
 commands, e.g., :ref:`splash-png`, will produce an image with the specified
@@ -1237,6 +1287,8 @@ Resize browser viewport to fit the whole page.
 
 **Returns:** two numbers: width and height the viewport is set to, in pixels.
 
+**Async:** no.
+
 ``splash:set_viewport_full`` should be called only after page is loaded, and
 some time passed after that (use :ref:`splash-wait`). This is an unfortunate
 restriction, but it seems that this is the only way to make automatic resizing
@@ -1272,6 +1324,8 @@ Overwrite the User-Agent header for all further requests.
 
 **Returns:** nil.
 
+**Async:** no.
+
 .. _splash-set-custom-headers:
 
 splash:set_custom_headers
@@ -1286,6 +1340,8 @@ Set custom HTTP headers to send with each request.
 * headers - a Lua table with HTTP headers.
 
 **Returns:** nil.
+
+**Async:** no.
 
 Headers are merged with WebKit default headers, overwriting WebKit values
 in case of conflicts.
@@ -1316,6 +1372,8 @@ Return performance-related statistics.
 **Signature:** ``stats = splash:get_perf_stats()``
 
 **Returns:** a table that can be useful for performance analysis.
+
+**Async:** no.
 
 As of now, this table contains:
 

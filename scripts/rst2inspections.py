@@ -30,7 +30,10 @@ def _parse_doc(doc):
     m = re.search(r"Returns:\*\*((.|[\n\r])+?)\n\n", content, re.MULTILINE)
     res['returns'] = m.group(1).strip() if m else None
 
-    m = re.search(r"(?:.|[\n\r])*:\*\*(?:.|[\n\r])+?\n\n((?:.|[\n\r])+)", content, re.MULTILINE)
+    m = re.search(r"Async:\*\*((.|[\n\r])+?)\n\n", content, re.MULTILINE)
+    res['async'] = m.group(1).strip() if m else None
+
+    m = re.search(r"(?:.|[\n\r])*:\*\*(?:.|[\n\r])+?\n\n?((?:.|[\n\r])+)", content, re.MULTILINE)
     res['details'] = m.group(1).strip() if m else None
 
     m = re.search(r"Parameters:\*\*((.|[\n\r])+?)\*\*Returns:", content, re.MULTILINE)
