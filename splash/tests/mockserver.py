@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
@@ -214,7 +215,7 @@ class Delay(Resource):
             request.finish()
 
 
-class SlowImage(Resource):
+class SlowGif(Resource):
     """ 1x1 black gif that loads n seconds """
 
     isLeaf = True
@@ -235,7 +236,7 @@ class SlowImage(Resource):
             request.finish()
 
 
-class HtmlWithImage(Resource):
+class ShowImage(Resource):
     isLeaf = True
 
     def render_GET(self, request):
@@ -628,8 +629,8 @@ class Root(Resource):
         self.putChild("red-green", RedGreenPage())
         self.putChild("baseurl", BaseUrl())
         self.putChild("delay", Delay())
-        self.putChild("slow.gif", SlowImage())
-        self.putChild("show-image", HtmlWithImage())
+        self.putChild("slow.gif", SlowGif())
+        self.putChild("show-image", ShowImage())
         self.putChild("iframes", IframeResource(http_port))
         self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
         self.putChild("external", ExternalResource())
