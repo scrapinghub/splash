@@ -85,6 +85,7 @@ class BaseScriptRunner(object):
 
     def dispatch(self, cmd_id, *args):
         """ Execute the script """
+        args = args or None
         args_repr = truncated("{!r}".format(args), max_length=400, msg="...[long arguments truncated]")
         self.log("[lua] dispatch cmd_id={}, args={}".format(cmd_id, args_repr))
 
