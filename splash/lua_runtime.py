@@ -72,7 +72,7 @@ class SplashLuaRuntime(object):
         Return a restricted Lua runtime.
         Currently it only allows accessing attributes of this object.
         """
-        attribute_handlers=(self._attr_getter, self._attr_setter)
+        attribute_handlers = (self._attr_getter, self._attr_setter)
         runtime = get_new_runtime(attribute_handlers=attribute_handlers)
         self._setup_lua_paths(runtime, lua_package_path)
         return runtime

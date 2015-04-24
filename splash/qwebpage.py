@@ -38,7 +38,8 @@ class SplashQWebPage(QWebPage):
     * logs JS console messages;
     * handles alert and confirm windows;
     * returns additional info about render errors;
-    * logs HAR events.
+    * logs HAR events;
+    * stores options for various Splash components.
     """
     error_info = None
     custom_user_agent = None
@@ -51,6 +52,9 @@ class SplashQWebPage(QWebPage):
         self.verbosity = verbosity
         self.har_log = HarLog()
         self.cookiejar = SplashCookieJar(self)
+        self.callbacks = {
+            'on_request': [],
+        }
 
         self.mainFrame().urlChanged.connect(self.onUrlChanged)
         self.mainFrame().titleChanged.connect(self.onTitleChanged)

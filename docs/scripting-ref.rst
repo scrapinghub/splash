@@ -1382,6 +1382,36 @@ As of now, this table contains:
 * ``maxrss`` - (int) high water mark number of bytes of RAM consumed by splash
   process
 
+.. _splash-on-request:
+
+splash:on_request
+-----------------
+
+Register a function to be called before each HTTP request.
+
+**Signature:** ``splash:on_request(callback)``
+
+**Returns:** TODO: a number with callback id which can be used to remove the callback.
+
+**Async:** no.
+
+Example 1 - log all URLs requested:
+
+.. code-block:: lua
+
+    function main(splash)
+        local urls = {}
+        splash:on_request(function(request)
+            urls[#urls+1] = request.url
+        end)
+        assert(splash:go(splash.args.url))
+        return urls
+    end
+
+
+Named arguments are not supported for this function.
+
+
 .. _splash-args:
 
 splash.args

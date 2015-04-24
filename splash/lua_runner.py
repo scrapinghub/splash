@@ -41,7 +41,6 @@ class BaseScriptRunner(object):
     """
     __metaclass__ = abc.ABCMeta
     _START_CMD = '__START__'
-    _waiting_for_result_id = None
 
     def __init__(self, lua, log, sandboxed):
         """
@@ -52,6 +51,9 @@ class BaseScriptRunner(object):
         self.log = log
         self.sandboxed = sandboxed
         self.lua = lua
+        self.coro = None
+        self.result = None
+        self._waiting_for_result_id = None
 
     def start(self, coro_func, coro_args):
         """

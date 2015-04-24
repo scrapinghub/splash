@@ -312,6 +312,14 @@ class BrowserTab(QObject):
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
 
+    def register_callback(self, event, callback):
+        """ Register a callback for an event """
+        self.web_page.callbacks[event].append(callback)
+
+    # def remove_callback(self, event, callback):
+    #     """ Unregister a callback for an event """
+    #     self.web_page.callbacks[event].remove(callback)
+
     def close(self):
         """ Destroy this tab """
         self.logger.log("close is requested by a script", min_level=2)

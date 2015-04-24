@@ -86,6 +86,17 @@ local function yields_result(func)
   end
 end
 
+--
+-- A decorator that fixes an issue with passing callbacks from Lua to Python
+-- by putting the callback to a table provided by the caller.
+-- See https://github.com/scoder/lupa/pull/49
+--
+local function sets_callback(func, storage)
+  return function(cb, ...)
+    storage[1] = cb
+    return func(...)
+  end
+end
 
 --
 -- Lua wrapper for Splash Python object.
@@ -103,7 +114,13 @@ function Splash.private_create(py_splash)
 
   -- Create Lua splash:<...> methods from Python Splash object:
   for key, opts in pairs(py_splash.commands) do
-    local command = drops_self_argument(py_splash[key])
+    local command = py_splash[key]
+    
+    if opts.sets_callback then
+      command = sets_callback(command, py_splash.tmp_storage)
+    end
+    
+    command = drops_self_argument(command)
 
     if opts.returns_error_flag then
       command = unwraps_errors(command)
@@ -116,7 +133,7 @@ function Splash.private_create(py_splash)
     if opts.can_raise_async then
       command = raises_async(command)
     end
-
+    
     self[key] = command
   end
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from datetime import datetime
+import traceback
 from contextlib import contextmanager
 
 from PyQt4.QtNetwork import (
@@ -38,7 +39,6 @@ def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
     )
     manager.setCache(None)
     return manager
-
 
 
 class ProxiedQNetworkAccessManager(QNetworkAccessManager):
@@ -84,52 +84,27 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._handle_custom_headers(request)
         self._handle_request_cookies(request)
 
-        har_entry = self._harEntry(request, create=True)
-        if har_entry is not None:
-            if outgoingData is None:
-                bodySize = -1
-            else:
-                bodySize = outgoingData.size()
-            har_entry.update({
-                '_tmp': {
-                    'start_time': start_time,
-                    'request_start_sending_time': start_time,
-                    'request_sent_time': start_time,
-                    'response_start_time': start_time,
-
-                    # 'outgoingData': outgoingData,
-                    'state': self.REQUEST_CREATED,
-                },
-                "startedDateTime": har.format_datetime(start_time),
-                "request": {
-                    "method": OPERATION_NAMES.get(operation, '?'),
-                    "url": unicode(request.url().toString()),
-                    "httpVersion": "HTTP/1.1",
-                    "cookies": har_qt.request_cookies2har(request),
-                    "queryString": har_qt.querystring2har(request.url()),
-                    "headers": har_qt.headers2har(request),
-
-                    "headersSize" : har_qt.headers_size(request),
-                    "bodySize": bodySize,
-                },
-                "response": {
-                    "bodySize": -1,
-                },
-                "cache": {},
-                "timings": {
-                    "blocked": -1,
-                    "dns": -1,
-                    "connect": -1,
-                    "ssl": -1,
-
-                    "send": 0,
-                    "wait": 0,
-                    "receive": 0,
-                },
-                "time": 0,
-            })
-
         with self._proxyApplied(request):
+            callbacks = self._getWebPageAttribute(request, "callbacks")
+            if callbacks and 'on_request' in callbacks:
+                for cb in callbacks["on_request"]:
+                    try:
+                        cb(request)
+                    except:
+                        # Unhandled exceptions in createRequest method cause
+                        # segfaults, so we log all errors.
+                        self.log("error in on_resource_requested callback", min_level=1)
+                        self.log(traceback.format_exc(), min_level=1)
+
+            har_entry = self._harEntry(request, create=True)
+            if har_entry is not None:
+                har_entry.update(self._initialHarData(
+                    start_time=start_time,
+                    operation=operation,
+                    request=request,
+                    outgoingData=outgoingData
+                ))
+
             reply = super(ProxiedQNetworkAccessManager, self).createRequest(
                 operation, request, outgoingData
             )
@@ -164,6 +139,49 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         request.setAttribute(self._REQUEST_ID, self._next_id)
         self._next_id += 1
         return request
+
+    def _initialHarData(self, start_time, operation, request, outgoingData):
+        """ Return initial values for HAR entry """
+        _size = outgoingData.size() if outgoingData is not None else -1
+        return {
+            '_tmp': {
+                'start_time': start_time,
+                'request_start_sending_time': start_time,
+                'request_sent_time': start_time,
+                'response_start_time': start_time,
+
+                # 'outgoingData': outgoingData,
+                'state': self.REQUEST_CREATED,
+            },
+            "startedDateTime": har.format_datetime(start_time),
+            "request": {
+                "method": OPERATION_NAMES.get(operation, '?'),
+                "url": unicode(request.url().toString()),
+                "httpVersion": "HTTP/1.1",
+                "cookies": har_qt.request_cookies2har(request),
+                "queryString": har_qt.querystring2har(request.url()),
+                "headers": har_qt.headers2har(request),
+
+                "headersSize" : har_qt.headers_size(request),
+                "bodySize": _size,
+            },
+            "response": {
+                "bodySize": -1,
+            },
+            "cache": {},
+            "timings": {
+                "blocked": -1,
+                "dns": -1,
+                "connect": -1,
+                "ssl": -1,
+
+                "send": 0,
+                "wait": 0,
+                "receive": 0,
+            },
+            "time": 0,
+        }
+
 
     def _handle_custom_headers(self, request):
         if self._getWebPageAttribute(request, "skip_custom_headers"):

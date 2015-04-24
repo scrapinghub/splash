@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import json
 import functools
 import itertools
@@ -37,11 +37,20 @@ class AsyncBrowserCommand(AsyncCommand):
         return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
 
 
-def command(async=False, can_raise_async=False, table_argument=False):
+def command(async=False, can_raise_async=False, table_argument=False,
+            sets_callback=False):
     """ Decorator for marking methods as commands available to Lua """
+
+    if sets_callback:
+        table_argument = True
+
     def decorator(meth):
         if not table_argument:
             meth = lupa.unpacks_lua_table_method(meth)
+
+        if sets_callback:
+            meth = first_argument_from_storage(meth)
+
         meth = exceptions_as_return_values(
             can_raise(
                 emits_lua_objects(meth)
@@ -50,6 +59,7 @@ def command(async=False, can_raise_async=False, table_argument=False):
         meth._is_command = True
         meth._is_async = async
         meth._can_raise_async = can_raise_async
+        meth._sets_callback = sets_callback
         return meth
     return decorator
 
@@ -67,6 +77,21 @@ def emits_lua_objects(meth):
             return tuple(py2lua(r) for r in res)
         else:
             return py2lua(res)
+    return wrapper
+
+
+def first_argument_from_storage(meth):
+    """
+    Methods decorated with ``first_argument_from_storage`` decorator
+    take a value from self.tmp_storage and use it
+    as a first argument. It is a workaround for Lupa issue
+    (see https://github.com/scoder/lupa/pull/49).
+    """
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        arg = self.tmp_storage[1]
+        del self.tmp_storage[1]
+        return meth(self, arg, *args, **kwargs)
     return wrapper
 
 
@@ -174,7 +199,7 @@ class Splash(object):
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
-    _attribute_whitelist = ['commands', 'args']
+    _attribute_whitelist = ['commands', 'args', 'tmp_storage']
 
     def __init__(self, lua, tab, render_options=None):
         """
@@ -207,8 +232,10 @@ class Splash(object):
                     'is_async': getattr(value, '_is_async'),
                     'returns_error_flag': getattr(value, '_returns_error_flag', False),
                     'can_raise_async': getattr(value, '_can_raise_async', False),
+                    'sets_callback': getattr(value, '_sets_callback', False),
                 })
         self.commands = self.lua.python2lua(commands)
+        self.tmp_storage = self.lua.table_from({})
         self.attr_whitelist.extend(self._attribute_whitelist)
         self.lua.add_allowed_object(self, self.attr_whitelist)
 
@@ -256,12 +283,15 @@ class Splash(object):
         cmd_id = next(self._command_ids)
 
         def success():
-            code = self.tab.last_http_status()
-            if code and 400 <= code < 600:
-                # return HTTP errors as errors
-                self._return(cmd_id, None, "http%d" % code)
-            else:
-                self._return(cmd_id, True)
+            try:
+                code = self.tab.last_http_status()
+                if code and 400 <= code < 600:
+                    # return HTTP errors as errors
+                    self._return(cmd_id, None, "http%d" % code)
+                else:
+                    self._return(cmd_id, True)
+            except Exception as e:
+                self._return(cmd_id, None, "internal_error")
 
         def error():
             self._return(cmd_id, None, "error")
@@ -491,13 +521,26 @@ class Splash(object):
 
     @command()
     def get_perf_stats(self):
-        """Return performance-related statistics."""
+        """ Return performance-related statistics. """
         rusage = resource.getrusage(resource.RUSAGE_SELF)
         # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
         rss_mul = 1 if sys.platform == 'darwin' else 1024
         return {'maxrss': rusage.ru_maxrss * rss_mul,
                 'cputime': rusage.ru_utime + rusage.ru_stime,
                 'walltime': time.time()}
+
+    @command(sets_callback=True)
+    def on_request(self, callback):
+        """
+        Register a Lua callback to be called when a resource is requested.
+        """
+        def py_callback(request):
+            request_wrapped = self.lua.python2lua({
+                'url': unicode(request.url().toString())
+            })
+            callback(request_wrapped)
+        self.tab.register_callback("on_request", py_callback)
+        return True
 
     def get_real_exception(self):
         if self._exceptions:
