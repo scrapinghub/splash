@@ -9,7 +9,7 @@ import base64
 from PyQt4.QtCore import Qt, QVariant
 from PyQt4.QtNetwork import QNetworkRequest
 
-from splash.qtutils import REQUEST_ERRORS_SHORT
+from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
 
 
 def _header_pairs(request_or_reply):
@@ -137,3 +137,17 @@ def reply2har(reply, include_content=False, binary_content=False):
             res["content"]["size"] = len(data)
 
     return res
+
+
+def request2har(request, operation, outgoing_data=None):
+    """ Serialize QNetworkRequest to HAR. """
+    return {
+        "method": OPERATION_NAMES.get(operation, '?'),
+        "url": unicode(request.url().toString()),
+        "httpVersion": "HTTP/1.1",
+        "cookies": request_cookies2har(request),
+        "queryString": querystring2har(request.url()),
+        "headers": headers2har(request),
+        "headersSize": headers_size(request),
+        "bodySize": outgoing_data.size() if outgoing_data is not None else -1,
+    }

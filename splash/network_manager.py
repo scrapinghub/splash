@@ -142,7 +142,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _initialHarData(self, start_time, operation, request, outgoingData):
         """ Return initial values for HAR entry """
-        _size = outgoingData.size() if outgoingData is not None else -1
         return {
             '_tmp': {
                 'start_time': start_time,
@@ -154,17 +153,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 'state': self.REQUEST_CREATED,
             },
             "startedDateTime": har.format_datetime(start_time),
-            "request": {
-                "method": OPERATION_NAMES.get(operation, '?'),
-                "url": unicode(request.url().toString()),
-                "httpVersion": "HTTP/1.1",
-                "cookies": har_qt.request_cookies2har(request),
-                "queryString": har_qt.querystring2har(request.url()),
-                "headers": har_qt.headers2har(request),
-
-                "headersSize" : har_qt.headers_size(request),
-                "bodySize": _size,
-            },
+            "request": har_qt.request2har(request, operation, outgoingData),
             "response": {
                 "bodySize": -1,
             },
