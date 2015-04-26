@@ -25,6 +25,8 @@ LUA_KEYWORDS = {
     'return', 'then', 'true', 'until', 'while'
 }
 
+DONT_SUGGEST_METHODS = {'_create'}
+
 
 class Completer(object):
     def __init__(self, lua):
@@ -83,7 +85,7 @@ class Completer(object):
             elif isinstance(m, SplashMethod):
                 matches += [
                     el for el in self.complete_method(names_chain, m.prefix)
-                    if "private" not in el
+                    if el not in DONT_SUGGEST_METHODS
                 ]
 
             elif isinstance(m, SplashAttribute):

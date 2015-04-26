@@ -239,7 +239,7 @@ class Splash(object):
         self.lua.add_allowed_object(self, self.attr_whitelist)
 
         wrapper = self.lua.eval("require('splash')")
-        self._wrapped = wrapper.private_create(self)
+        self._wrapped = wrapper._create(self)
 
     def init_dispatcher(self, return_func):
         """

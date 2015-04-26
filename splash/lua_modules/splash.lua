@@ -108,7 +108,10 @@ end
 local Splash = {}
 Splash.__index = Splash
 
-function Splash.private_create(py_splash)
+local private = {}
+local PRIVATE_PREFIX = "private_"
+
+function Splash._create(py_splash)
   local self = {args=py_splash.args}
   setmetatable(self, Splash)
 
@@ -134,18 +137,23 @@ function Splash.private_create(py_splash)
       command = raises_async(command)
     end
 
-    self[key] = command
+    if key:find("^" .. PRIVATE_PREFIX) ~= nil then
+      local short_key = key:sub(PRIVATE_PREFIX:len()+1)
+      private[short_key] = command
+    else
+      self[key] = command
+    end
   end
 
   return self
 end
 
 --
--- Create jsfunc method from jsfunc_private.
+-- Create jsfunc method from private_jsfunc.
 -- It is required to handle errors properly.
 --
 function Splash:jsfunc(...)
-  local func = self:private_jsfunc(...)
+  local func = private.jsfunc(self, ...)
   return unwraps_errors(func)
 end
 

@@ -931,26 +931,23 @@ class JsfuncTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
 
-    def test_jsfunc_private_attributes(self):
+    def test_private_jsfunc_not_available(self):
         resp = self.request_lua("""
         function main(splash)
-            local func = splash:jsfunc_private("function(){return 123}")
+            return {ok = splash.private_jsfunc == nil}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json()['ok'], True)
+
+    def test_private_jsfunc_attributes(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:private_jsfunc("function(){return 123}")
             return func.source
         end
         """)
         self.assertStatusCode(resp, 400)
-
-    # see https://github.com/scoder/lupa/pull/46
-    @pytest.mark.xfail
-    def test_jsfunc_private_attributes_error_message(self):
-        resp = self.request_lua("""
-        function main(splash)
-            local func = splash:jsfunc_private("function(){return 123}")
-            return func.source
-        end
-        """)
-        self.assertNotIn("str()", resp.text)
-        self.assertIn("error reading Python attribute/item", resp.text)
 
 
 class WaitTest(BaseLuaRenderTest):
