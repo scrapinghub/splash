@@ -6,7 +6,6 @@ import itertools
 import resource
 import time
 import sys
-from twisted.internet import defer
 
 import lupa
 

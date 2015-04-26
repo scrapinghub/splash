@@ -89,7 +89,7 @@ end
 --
 -- A decorator that fixes an issue with passing callbacks from Lua to Python
 -- by putting the callback to a table provided by the caller.
--- See https://github.com/scoder/lupa/pull/49
+-- See https://github.com/scoder/lupa/pull/49 for more.
 --
 local function sets_callback(func, storage)
   return function(cb, ...)
