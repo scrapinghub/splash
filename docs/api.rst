@@ -831,11 +831,22 @@ Other Endpoints
 
 .. _http-gc:
 
-/_gc
-~~~~
+_gc
+~~~
 
 To reclaim some RAM send a POST request to the ``/_gc`` endpoint::
 
     curl -X POST http://localhost:8050/_gc
 
 It runs the Python garbage collector and clears internal WebKit caches.
+
+.. _http-debug:
+
+_debug
+~~~~~~
+
+To get debug information about Splash instance (max RSS used, number of used
+file descriptors, active requests, request queue length, counts of alive
+objects) send a GET request to the ``/_debug`` endpoint::
+
+    curl http://localhost:8050/_debug

@@ -231,19 +231,26 @@ class DebugResource(Resource):
 
     isLeaf = True
 
-    def __init__(self, pool):
+    def __init__(self, pool, warn=False):
         Resource.__init__(self)
         self.pool = pool
+        self.warn = warn
 
     def render_GET(self, request):
         request.setHeader("content-type", "application/json")
-        return json.dumps({
+        info = {
             "leaks": get_leaks(),
             "active": [self.get_repr(r) for r in self.pool.active],
             "qsize": len(self.pool.queue.pending),
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "fds": get_num_fds(),
-        })
+        }
+        if self.warn:
+            info['WARNING'] = "/debug endpoint is deprecated. " \
+                              "Please use /_debug instead."
+            # info['leaks'] = get_leaks()
+
+        return json.dumps(info)
 
     def get_repr(self, render):
         if hasattr(render, 'url'):
@@ -572,8 +579,12 @@ class Root(Resource):
         self.putChild("render.png", RenderPngResource(pool, max_timeout))
         self.putChild("render.json", RenderJsonResource(pool, max_timeout))
         self.putChild("render.har", RenderHarResource(pool, max_timeout))
-        self.putChild("debug", DebugResource(pool))
+
+        self.putChild("_debug", DebugResource(pool))
         self.putChild("_gc", ClearCachesResource())
+
+        # backwards compatibility
+        self.putChild("debug", DebugResource(pool, warn=True))
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
             self.putChild("execute", ExecuteLuaScriptResource(

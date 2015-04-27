@@ -40,7 +40,8 @@ def get_num_fds():
     return proc.get_num_fds()
 
 
-def get_leaks():
+def get_alive():
+    """ Return counts of alive objects. """
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
         'QWebView', 'QWebPage', 'QWebFrame',
@@ -53,14 +54,18 @@ def get_leaks():
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
         '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
     ))
-    leaks = defaultdict(int)
-    gc.collect()
+    counts = defaultdict(int)
     for o in gc.get_objects():
         if not inspect.isclass(o):
             cname = type(o).__name__
             if cname in relevant_types:
-                leaks[cname] += 1
-    return leaks
+                counts[cname] += 1
+    return dict(counts)
+
+
+def get_leaks():
+    gc.collect()
+    return get_alive()
 
 
 def get_ru_maxrss():

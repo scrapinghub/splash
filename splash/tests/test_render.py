@@ -844,5 +844,5 @@ class TestTestSetup(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
 
     def test_splashserver_works(self):
-        r = requests.get('http://localhost:%s/debug' % self.ts.splashserver.portnum)
+        r = requests.get('http://localhost:%s/_debug' % self.ts.splashserver.portnum)
         self.assertEqual(r.status_code, 200)
