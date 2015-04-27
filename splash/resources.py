@@ -4,6 +4,7 @@ exposed to the user).
 """
 from __future__ import absolute_import
 import os
+import gc
 import time
 import json
 import types
@@ -23,6 +24,7 @@ from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
+from splash.qtutils import clear_caches
 
 if lua_is_supported():
     from splash.qtrender_lua import LuaRender
@@ -247,6 +249,20 @@ class DebugResource(Resource):
         if hasattr(render, 'url'):
             return render.url
         return render.tab.url
+
+
+class ClearCachesResource(Resource):
+    isLeaf = True
+    content_type = "application/json"
+
+    def render_POST(self, request):
+        clear_caches()
+        unreachable = gc.collect()
+        return json.dumps({
+            "status": "ok",
+            "pyobjects_collected": unreachable
+        })
+
 
 BOOTSTRAP_THEME = 'simplex'
 CODEMIRROR_OPTIONS = """{
@@ -557,6 +573,7 @@ class Root(Resource):
         self.putChild("render.json", RenderJsonResource(pool, max_timeout))
         self.putChild("render.har", RenderHarResource(pool, max_timeout))
         self.putChild("debug", DebugResource(pool))
+        self.putChild("_gc", ClearCachesResource())
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
             self.putChild("execute", ExecuteLuaScriptResource(

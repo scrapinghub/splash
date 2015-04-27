@@ -13,6 +13,7 @@ from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
                           QRegExp, QString, QUrl, QVariant)
 from PyQt4.QtGui import QApplication
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
+from PyQt4.QtWebKit import QWebSettings
 from twisted.python import log
 
 from splash.utils import truncated
@@ -230,3 +231,7 @@ class WrappedSignal(object):
     def disconnect(self, callback_id):
         cb = self.callbacks.pop(callback_id)
         self.signal.disconnect(cb)
+
+
+def clear_caches():
+    QWebSettings.clearMemoryCaches()

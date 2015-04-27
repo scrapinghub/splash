@@ -57,7 +57,7 @@ wait : float : optional
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
   :ref:`wait <arg-wait>` is also required for PNG rendering when doing
-  full-page rendering (see :ref:`render_all <arg-render-all>`). Maximum 
+  full-page rendering (see :ref:`render_all <arg-render-all>`). Maximum
   allowed value for wait is 10 seconds.
 
 .. _arg-proxy:
@@ -825,3 +825,17 @@ To disable Splash proxy mode run splash server with ``--disable-proxy`` option::
 
     python -m splash.server --disable-proxy
 
+
+Other Endpoints
+---------------
+
+.. _http-gc:
+
+/_gc
+~~~~
+
+To reclaim some RAM send a POST request to the ``/_gc`` endpoint::
+
+    curl -X POST http://localhost:8050/_gc
+
+It runs the Python garbage collector and clears internal WebKit caches.
