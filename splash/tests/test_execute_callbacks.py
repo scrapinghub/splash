@@ -3,10 +3,11 @@ from __future__ import absolute_import
 import base64
 from io import BytesIO
 from PIL import Image
+from splash.tests.test_proxy import BaseHtmlProxyTest
 from .test_execute import BaseLuaRenderTest
 
 
-class OnRequestTest(BaseLuaRenderTest):
+class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_request_log(self):
         resp = self.request_lua("""
         function main(splash)
@@ -70,3 +71,27 @@ class OnRequestTest(BaseLuaRenderTest):
         """, {'url': url, 'new_url': new_url})
         self.assertStatusCode(resp, 200)
         self.assertIn('After', resp.content)
+
+    def test_set_proxy(self):
+        proxy_port = self.ts.mock_proxy_port
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            local html_1 = splash:html()
+
+            splash:on_request(function(request)
+                request:set_proxy{
+                    host="0.0.0.0",
+                    port=splash.args.proxy_port
+                }
+            end)
+
+            assert(splash:go(splash.args.url))
+            local html_2 = splash:html()
+            return html_1, html_2
+        end
+        """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        self.assertStatusCode(resp, 200)
+        html_1, html_2 = resp.json()
+        self.assertNotProxied(html_1)
+        self.assertProxied(html_2)

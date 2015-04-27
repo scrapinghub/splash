@@ -96,6 +96,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                         self.log("error in on_resource_requested callback", min_level=1)
                         self.log(traceback.format_exc(), min_level=1)
 
+            if hasattr(request, 'custom_proxy'):
+                self.setProxy(request.custom_proxy)
+
             har_entry = self._harEntry(request, create=True)
             if har_entry is not None:
                 har_entry.update(self._initialHarData(

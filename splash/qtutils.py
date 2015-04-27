@@ -12,7 +12,7 @@ import time
 from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
                           QRegExp, QString, QUrl, QVariant)
 from PyQt4.QtGui import QApplication
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply
+from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from twisted.python import log
 
 from splash.utils import truncated
@@ -143,6 +143,17 @@ def set_request_url(request, url):
 def drop_request(request):
     """ Drop the request """
     set_request_url(request, "")  # hack: set invalid URL
+
+
+def create_proxy(host, port, username=None, password=None):
+    """ Create a new QNetworkProxy object """
+    port = int(port)
+    if username is not None and password is not None:
+        proxy = QNetworkProxy(QNetworkProxy.HttpProxy,
+                              host, port, username, password)
+    else:
+        proxy = QNetworkProxy(QNetworkProxy.HttpProxy, host, port)
+    return proxy
 
 
 def request_repr(request, operation=None):

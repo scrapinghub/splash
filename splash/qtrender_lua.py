@@ -4,6 +4,7 @@ import json
 import functools
 import itertools
 import resource
+import contextlib
 import time
 import sys
 
@@ -21,7 +22,12 @@ from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
 from splash.utils import truncated, BinaryCapsule
-from splash.qtutils import REQUEST_ERRORS_SHORT, drop_request, set_request_url
+from splash.qtutils import (
+    REQUEST_ERRORS_SHORT,
+    drop_request,
+    set_request_url,
+    create_proxy
+)
 from splash.lua_runtime import SplashLuaRuntime
 
 
@@ -541,8 +547,7 @@ class Splash(object):
         Register a Lua callback to be called when a resource is requested.
         """
         def py_callback(request, operation, outgoing_data):
-            req = _WrappedRequest(self.lua, request, operation, outgoing_data)
-            with self.lua.object_allowed(req, req.attr_whitelist):
+            with wrapped_request(self.lua, request, operation, outgoing_data) as req:
                 callback(req)
         self.tab.register_callback("on_request", py_callback)
         return True
@@ -569,6 +574,20 @@ class Splash(object):
         return meth(**cmd.kwargs)
 
 
+@contextlib.contextmanager
+def wrapped_request(lua, request, operation, outgoing_data):
+    """
+    Context manager which returns a wrapped QNetworkRequest
+    suitable for using in Lua code.
+    """
+    req = _WrappedRequest(lua, request, operation, outgoing_data)
+    try:
+        with lua.object_allowed(req, req.attr_whitelist):
+            yield req
+    finally:
+        req.clear()
+
+
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
 
@@ -583,14 +602,30 @@ class _WrappedRequest(object):
         commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
         self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
+        self._exceptions = []
+
+    def clear(self):
+        self.request = None
+        self.lua = None
 
     @command()
     def abort(self):
+        if self.request is None:
+            raise ValueError("request is used outside a callback")
         drop_request(self.request)
 
     @command()
     def set_url(self, url):
+        if self.request is None:
+            raise ValueError("request is used outside a callback")
         set_request_url(self.request, url)
+
+    @command()
+    def set_proxy(self, host, port, username=None, password=None):
+        if self.request is None:
+            raise ValueError("request is used outside a callback")
+        proxy = create_proxy(host, port, username, password)
+        self.request.custom_proxy = proxy
 
 
 class SplashScriptRunner(BaseScriptRunner):
