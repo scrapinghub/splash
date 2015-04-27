@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import os
 import weakref
+import contextlib
 
 from splash.lua import lua2python, python2lua, get_new_runtime
 
@@ -41,6 +42,20 @@ class SplashLuaRuntime(object):
     def add_allowed_object(self, obj, attr_whitelist):
         """ Add a Python object to a list of objects the runtime can access """
         self._allowed_object_attrs[obj] = attr_whitelist
+
+    def remove_allowed_object(self, obj):
+        """ Remove an object from a list of objects the runtime can access """
+        if obj in self._allowed_object_attrs:
+            del self._allowed_object_attrs[obj]
+
+    @contextlib.contextmanager
+    def object_allowed(self, obj, attr_whitelist):
+        """ Temporarily enable an access to a Python object """
+        self.add_allowed_object(obj, attr_whitelist)
+        try:
+            yield
+        finally:
+            self.remove_allowed_object(obj)
 
     def lua2python(self, *args, **kwargs):
         kwargs.setdefault("binary", True)

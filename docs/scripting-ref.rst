@@ -1408,8 +1408,18 @@ Example 1 - log all URLs requested:
         return urls
     end
 
+:ref:`splash-on-request` callback receives a single ``request`` argument.
+``request`` contains the following fields in `HAR request`_ format:
 
-Named arguments are not supported for this function.
+* url - requested URL;
+* method - HTTP method name in upper case, e.g. "GET";
+* cookies - a table with request cookies in `HAR cookies`_ format;
+* headers - a table with request headers in `HAR headers`_ format;
+* queryString - a table with parsed GET parameters in `HAR queryString`_ format;
+
+.. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
+.. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
+.. _HAR queryString: http://www.softwareishard.com/blog/har-12-spec/#queryString
 
 
 .. _splash-args:

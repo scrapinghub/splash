@@ -18,7 +18,7 @@ from splash.lua_runner import (
 )
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
-from splash.har.qt import reply2har
+from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
 from splash.utils import truncated, BinaryCapsule
 from splash.qtutils import REQUEST_ERRORS_SHORT
@@ -529,15 +529,14 @@ class Splash(object):
                 'walltime': time.time()}
 
     @command(sets_callback=True)
-    def on_request(self, callback):
+    def private_on_request(self, callback):
         """
         Register a Lua callback to be called when a resource is requested.
         """
-        def py_callback(request):
-            request_wrapped = self.lua.python2lua({
-                'url': unicode(request.url().toString())
-            })
-            callback(request_wrapped)
+        def py_callback(request, operation, outgoing_data):
+            req = _WrappedRequest(self.lua, request, operation, outgoing_data)
+            with self.lua.object_allowed(req, req._attribute_whitelist):
+                callback(req)
         self.tab.register_callback("on_request", py_callback)
         return True
 
@@ -561,6 +560,19 @@ class Splash(object):
         """ Execute _AsyncCommand """
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
+
+
+class _WrappedRequest(object):
+    """ QNetworkRequest wrapper for Lua """
+
+    _attribute_whitelist = ['info']
+
+    def __init__(self, lua, request, operation, outgoing_data):
+        self._request = request
+        self._lua = lua
+        self.info = self._lua.python2lua(
+            request2har(request, operation, outgoing_data)
+        )
 
 
 class SplashScriptRunner(BaseScriptRunner):

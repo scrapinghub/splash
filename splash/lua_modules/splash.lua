@@ -158,4 +158,17 @@ function Splash:jsfunc(...)
 end
 
 
+--
+-- Pass wrapped `request` object to `on_request` callback.
+--
+local Request = require("./request") 
+
+function Splash:on_request(cb)
+  private.on_request(self, function(py_request)
+    local req = Request._create(py_request)
+    return cb(req)
+  end)
+end
+
+
 return Splash

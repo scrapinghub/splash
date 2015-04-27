@@ -89,7 +89,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             if callbacks and 'on_request' in callbacks:
                 for cb in callbacks["on_request"]:
                     try:
-                        cb(request)
+                        cb(request, operation, outgoingData)
                     except:
                         # Unhandled exceptions in createRequest method cause
                         # segfaults, so we log all errors.
