@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+import weakref
+import contextlib
 
 from splash.lua import lua2python, python2lua, get_new_runtime
 
@@ -19,7 +21,7 @@ class SplashLuaRuntime(object):
         self._sandboxed = sandboxed
         self._lua = self._create_runtime(lua_package_path)
         self._setup_lua_sandbox(lua_sandbox_allowed_modules)
-        self._allowed_object_attrs = {}
+        self._allowed_object_attrs = weakref.WeakKeyDictionary()
 
     def add_to_globals(self, name, value):
         code = "function(%s_) %s = %s_ end" % (name, name, name)
@@ -40,6 +42,20 @@ class SplashLuaRuntime(object):
     def add_allowed_object(self, obj, attr_whitelist):
         """ Add a Python object to a list of objects the runtime can access """
         self._allowed_object_attrs[obj] = attr_whitelist
+
+    def remove_allowed_object(self, obj):
+        """ Remove an object from a list of objects the runtime can access """
+        if obj in self._allowed_object_attrs:
+            del self._allowed_object_attrs[obj]
+
+    @contextlib.contextmanager
+    def object_allowed(self, obj, attr_whitelist):
+        """ Temporarily enable an access to a Python object """
+        self.add_allowed_object(obj, attr_whitelist)
+        try:
+            yield
+        finally:
+            self.remove_allowed_object(obj)
 
     def lua2python(self, *args, **kwargs):
         kwargs.setdefault("binary", True)
@@ -72,7 +88,7 @@ class SplashLuaRuntime(object):
         Return a restricted Lua runtime.
         Currently it only allows accessing attributes of this object.
         """
-        attribute_handlers=(self._attr_getter, self._attr_setter)
+        attribute_handlers = (self._attr_getter, self._attr_setter)
         runtime = get_new_runtime(attribute_handlers=attribute_handlers)
         self._setup_lua_paths(runtime, lua_package_path)
         return runtime

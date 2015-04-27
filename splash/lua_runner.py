@@ -41,7 +41,6 @@ class BaseScriptRunner(object):
     """
     __metaclass__ = abc.ABCMeta
     _START_CMD = '__START__'
-    _waiting_for_result_id = None
 
     def __init__(self, lua, log, sandboxed):
         """
@@ -52,6 +51,9 @@ class BaseScriptRunner(object):
         self.log = log
         self.sandboxed = sandboxed
         self.lua = lua
+        self.coro = None
+        self.result = None
+        self._waiting_for_result_id = None
 
     def start(self, coro_func, coro_args):
         """
@@ -85,6 +87,7 @@ class BaseScriptRunner(object):
 
     def dispatch(self, cmd_id, *args):
         """ Execute the script """
+        args = args or None
         args_repr = truncated("{!r}".format(args), max_length=400, msg="...[long arguments truncated]")
         self.log("[lua] dispatch cmd_id={}, args={}".format(cmd_id, args_repr))
 

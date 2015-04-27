@@ -76,7 +76,7 @@ those redirects use :ref:`splash-wait`.
 ``headers`` argument allows to add or replace default HTTP headers for the
 initial request. To set custom headers for all further requests
 (including requests to related resources) use
-:ref:`splash-set-custom-headers`.
+:ref:`splash-set-custom-headers` or :ref:`splash-on-request`.
 
 Custom headers example:
 
@@ -1343,6 +1343,10 @@ Set custom HTTP headers to send with each request.
 
 **Async:** no.
 
+.. note::
+
+    Named arguments are not supported for this function.
+
 Headers are merged with WebKit default headers, overwriting WebKit values
 in case of conflicts.
 
@@ -1360,7 +1364,7 @@ Example:
         ["Header-2"] = "Value 2",
      })
 
-Named arguments are not supported for this function.
+See also: :ref:`splash-on-request`.
 
 .. _splash-get-perf-stats:
 
@@ -1381,6 +1385,111 @@ As of now, this table contains:
 * ``cputime`` - (float) number of cpu seconds consumed by splash process
 * ``maxrss`` - (int) high water mark number of bytes of RAM consumed by splash
   process
+
+.. _splash-on-request:
+
+splash:on_request
+-----------------
+
+Register a function to be called before each HTTP request.
+
+**Signature:** ``splash:on_request(callback)``
+
+**Returns:** nil.
+
+**Async:** no.
+
+.. note::
+
+    `splash:on_request` method doesn't support named arguments.
+
+:ref:`splash-on-request` callback receives a single ``request`` argument.
+``request`` contains the following fields:
+
+* ``url`` - requested URL;
+* ``method`` - HTTP method name in upper case, e.g. "GET";
+* ``info`` - a table with request data in `HAR request`_ format
+  (`url` and `method` values are duplicated here).
+
+.. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
+.. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
+.. _HAR queryString: http://www.softwareishard.com/blog/har-12-spec/#queryString
+
+These fields are for information only; changing them doesn't change
+the request to be sent. To change or drop the request before sending use
+one of the ``request`` methods:
+
+* ``request:abort()`` - drop the request;
+* ``request:set_url(url)`` - change request URL to a specified value;
+* ``request:set_proxy{host, port, username=nil, password=nil}`` - set an
+  HTTP proxy server to use for this request. Omit ``username`` and ``password``
+  arguments if a proxy doesn't need auth.
+* ``request:set_header(name, value)`` - set an HTTP header for this request.
+  See also: :ref:`splash-set-custom-headers`.
+
+A callback passed to :ref:`splash-on-request` can't call Splash
+async methods like :ref:`splash-wait` or :ref:`splash-go`.
+
+Example 1 - log all URLs requested:
+
+.. code-block:: lua
+
+    function main(splash)
+        local urls = {}
+        splash:on_request(function(request)
+            urls[#urls+1] = request.url
+        end)
+        assert(splash:go(splash.args.url))
+        return urls
+    end
+
+Example 2 - to log full request data use ``request.info`` attribute;
+don't store ``request`` objects directly:
+
+.. code-block:: lua
+
+    function main(splash)
+        local entries = {}
+        splash:on_request(function(request)
+            entries[#entries+1] = request.info
+        end)
+        assert(splash:go(splash.args.url))
+        return entries
+    end
+
+Example 3 - drop all requests to resources containing ".css" in their URLs:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        if string.find(request.url, ".css") ~= nil then
+            request.abort()
+        end
+    end)
+
+Example 4 - replace a resource:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        if request.url == 'http://example.com/script.js' then
+            request:set_url('http://mydomain.com/myscript.js')
+        end
+    end)
+
+Example 5 - set a custom proxy server, with credentials passed in an HTTP
+request to Splash:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        request:set_proxy{
+            host = "0.0.0.0",
+            port = 8990,
+            username = splash.args.username,
+            password = splash.args.password,
+        }
+    end)
 
 .. _splash-args:
 

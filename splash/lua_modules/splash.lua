@@ -86,6 +86,17 @@ local function yields_result(func)
   end
 end
 
+--
+-- A decorator that fixes an issue with passing callbacks from Lua to Python
+-- by putting the callback to a table provided by the caller.
+-- See https://github.com/scoder/lupa/pull/49 for more.
+--
+local function sets_callback(func, storage)
+  return function(cb, ...)
+    storage[1] = cb
+    return func(...)
+  end
+end
 
 --
 -- Lua wrapper for Splash Python object.
@@ -97,13 +108,22 @@ end
 local Splash = {}
 Splash.__index = Splash
 
-function Splash.private_create(py_splash)
+local private = {}
+local PRIVATE_PREFIX = "private_"
+
+function Splash._create(py_splash)
   local self = {args=py_splash.args}
   setmetatable(self, Splash)
 
   -- Create Lua splash:<...> methods from Python Splash object:
   for key, opts in pairs(py_splash.commands) do
-    local command = drops_self_argument(py_splash[key])
+    local command = py_splash[key]
+
+    if opts.sets_callback then
+      command = sets_callback(command, py_splash.tmp_storage)
+    end
+
+    command = drops_self_argument(command)
 
     if opts.returns_error_flag then
       command = unwraps_errors(command)
@@ -117,19 +137,60 @@ function Splash.private_create(py_splash)
       command = raises_async(command)
     end
 
-    self[key] = command
+    if key:find("^" .. PRIVATE_PREFIX) ~= nil then
+      local short_key = key:sub(PRIVATE_PREFIX:len()+1)
+      private[short_key] = command
+    else
+      self[key] = command
+    end
   end
 
   return self
 end
 
 --
--- Create jsfunc method from jsfunc_private.
+-- Create jsfunc method from private_jsfunc.
 -- It is required to handle errors properly.
 --
 function Splash:jsfunc(...)
-  local func = self:private_jsfunc(...)
+  local func = private.jsfunc(self, ...)
   return unwraps_errors(func)
+end
+
+--
+-- Pass wrapped `request` object to `on_request` callback.
+--
+local Request = {}
+Request.__index = Request
+
+function Request._create(py_request)
+  local self = {info=py_request.info}
+  setmetatable(self, Request)
+  
+  -- copy informational fields to the top level
+  for key, value in pairs(py_request.info) do
+    self[key] = value
+  end
+  
+  for key, opts in pairs(py_request.commands) do
+    local command = py_request[key]
+    command = drops_self_argument(command)
+
+    if opts.returns_error_flag then
+      command = unwraps_errors(command)
+    end
+
+    self[key] = command
+  end
+  
+  return self
+end
+
+function Splash:on_request(cb)
+  private.on_request(self, function(py_request)
+    local req = Request._create(py_request)
+    return cb(req)
+  end)
 end
 
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import json
 import functools
 import itertools
 import resource
+import contextlib
 import time
 import sys
-from twisted.internet import defer
 
 import lupa
 
@@ -19,10 +19,15 @@ from splash.lua_runner import (
 )
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
-from splash.har.qt import reply2har
+from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
 from splash.utils import truncated, BinaryCapsule
-from splash.qtutils import REQUEST_ERRORS_SHORT
+from splash.qtutils import (
+    REQUEST_ERRORS_SHORT,
+    drop_request,
+    set_request_url,
+    create_proxy
+)
 from splash.lua_runtime import SplashLuaRuntime
 
 
@@ -37,11 +42,20 @@ class AsyncBrowserCommand(AsyncCommand):
         return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
 
 
-def command(async=False, can_raise_async=False, table_argument=False):
+def command(async=False, can_raise_async=False, table_argument=False,
+            sets_callback=False):
     """ Decorator for marking methods as commands available to Lua """
+
+    if sets_callback:
+        table_argument = True
+
     def decorator(meth):
         if not table_argument:
             meth = lupa.unpacks_lua_table_method(meth)
+
+        if sets_callback:
+            meth = first_argument_from_storage(meth)
+
         meth = exceptions_as_return_values(
             can_raise(
                 emits_lua_objects(meth)
@@ -50,6 +64,7 @@ def command(async=False, can_raise_async=False, table_argument=False):
         meth._is_command = True
         meth._is_async = async
         meth._can_raise_async = can_raise_async
+        meth._sets_callback = sets_callback
         return meth
     return decorator
 
@@ -67,6 +82,21 @@ def emits_lua_objects(meth):
             return tuple(py2lua(r) for r in res)
         else:
             return py2lua(res)
+    return wrapper
+
+
+def first_argument_from_storage(meth):
+    """
+    Methods decorated with ``first_argument_from_storage`` decorator
+    take a value from self.tmp_storage and use it
+    as a first argument. It is a workaround for Lupa issue
+    (see https://github.com/scoder/lupa/pull/49).
+    """
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        arg = self.tmp_storage[1]
+        del self.tmp_storage[1]
+        return meth(self, arg, *args, **kwargs)
     return wrapper
 
 
@@ -114,6 +144,24 @@ def exceptions_as_return_values(meth):
             return False, repr(e)
     wrapper._returns_error_flag = True
     return wrapper
+
+
+def get_commands(obj):
+    """
+    Inspect a Python object and get a dictionary of all its commands
+    which was made available to Lua using @command decorator.
+    """
+    commands = {}
+    for name in dir(obj):
+        value = getattr(obj, name)
+        if is_command(value):
+            commands[name] = {
+                'is_async': getattr(value, '_is_async'),
+                'returns_error_flag': getattr(value, '_returns_error_flag', False),
+                'can_raise_async': getattr(value, '_can_raise_async', False),
+                'sets_callback': getattr(value, '_sets_callback', False),
+            }
+    return commands
 
 
 class _WrappedJavascriptFunction(object):
@@ -174,7 +222,7 @@ class Splash(object):
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
-    _attribute_whitelist = ['commands', 'args']
+    _attribute_whitelist = ['commands', 'args', 'tmp_storage']
 
     def __init__(self, lua, tab, render_options=None):
         """
@@ -197,23 +245,14 @@ class Splash(object):
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        self.attr_whitelist = []
-        commands = {}
-        for name in dir(self):
-            value = getattr(self, name)
-            if is_command(value):
-                self.attr_whitelist.append(name)
-                commands[name] = self.lua.table_from({
-                    'is_async': getattr(value, '_is_async'),
-                    'returns_error_flag': getattr(value, '_returns_error_flag', False),
-                    'can_raise_async': getattr(value, '_can_raise_async', False),
-                })
+        commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
-        self.attr_whitelist.extend(self._attribute_whitelist)
+        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
         self.lua.add_allowed_object(self, self.attr_whitelist)
+        self.tmp_storage = self.lua.table_from({})
 
         wrapper = self.lua.eval("require('splash')")
-        self._wrapped = wrapper.private_create(self)
+        self._wrapped = wrapper._create(self)
 
     def init_dispatcher(self, return_func):
         """
@@ -256,12 +295,15 @@ class Splash(object):
         cmd_id = next(self._command_ids)
 
         def success():
-            code = self.tab.last_http_status()
-            if code and 400 <= code < 600:
-                # return HTTP errors as errors
-                self._return(cmd_id, None, "http%d" % code)
-            else:
-                self._return(cmd_id, True)
+            try:
+                code = self.tab.last_http_status()
+                if code and 400 <= code < 600:
+                    # return HTTP errors as errors
+                    self._return(cmd_id, None, "http%d" % code)
+                else:
+                    self._return(cmd_id, True)
+            except Exception as e:
+                self._return(cmd_id, None, "internal_error")
 
         def error():
             self._return(cmd_id, None, "error")
@@ -491,13 +533,24 @@ class Splash(object):
 
     @command()
     def get_perf_stats(self):
-        """Return performance-related statistics."""
+        """ Return performance-related statistics. """
         rusage = resource.getrusage(resource.RUSAGE_SELF)
         # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
         rss_mul = 1 if sys.platform == 'darwin' else 1024
         return {'maxrss': rusage.ru_maxrss * rss_mul,
                 'cputime': rusage.ru_utime + rusage.ru_stime,
                 'walltime': time.time()}
+
+    @command(sets_callback=True)
+    def private_on_request(self, callback):
+        """
+        Register a Lua callback to be called when a resource is requested.
+        """
+        def py_callback(request, operation, outgoing_data):
+            with wrapped_request(self.lua, request, operation, outgoing_data) as req:
+                callback(req)
+        self.tab.register_callback("on_request", py_callback)
+        return True
 
     def get_real_exception(self):
         if self._exceptions:
@@ -519,6 +572,71 @@ class Splash(object):
         """ Execute _AsyncCommand """
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
+
+
+@contextlib.contextmanager
+def wrapped_request(lua, request, operation, outgoing_data):
+    """
+    Context manager which returns a wrapped QNetworkRequest
+    suitable for using in Lua code.
+    """
+    req = _WrappedRequest(lua, request, operation, outgoing_data)
+    try:
+        with lua.object_allowed(req, req.attr_whitelist):
+            yield req
+    finally:
+        req.clear()
+
+
+def _requires_request(meth):
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        if self.request is None:
+            raise ValueError("request is used outside a callback")
+        return meth(self, *args, **kwargs)
+    return wrapper
+
+
+class _WrappedRequest(object):
+    """ QNetworkRequest wrapper for Lua """
+
+    _attribute_whitelist = ['info', 'commands']
+
+    def __init__(self, lua, request, operation, outgoing_data):
+        self.request = request
+        self.lua = lua
+        self.info = self.lua.python2lua(
+            request2har(request, operation, outgoing_data)
+        )
+        commands = get_commands(self)
+        self.commands = self.lua.python2lua(commands)
+        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
+        self._exceptions = []
+
+    def clear(self):
+        self.request = None
+        self.lua = None
+
+    @command()
+    @_requires_request
+    def abort(self):
+        drop_request(self.request)
+
+    @command()
+    @_requires_request
+    def set_url(self, url):
+        set_request_url(self.request, url)
+
+    @command()
+    @_requires_request
+    def set_proxy(self, host, port, username=None, password=None):
+        proxy = create_proxy(host, port, username, password)
+        self.request.custom_proxy = proxy
+
+    @command()
+    @_requires_request
+    def set_header(self, name, value):
+        self.request.setRawHeader(name, value)
 
 
 class SplashScriptRunner(BaseScriptRunner):

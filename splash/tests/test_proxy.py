@@ -8,6 +8,7 @@ from splash.proxy import _BlackWhiteSplashProxyFactory, ProfilesSplashProxyFacto
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import TestServers
 
+
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
     def _factory(self, **kwargs):

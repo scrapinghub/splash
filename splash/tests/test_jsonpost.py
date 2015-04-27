@@ -87,8 +87,8 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             self.assertIn("'custom-header2': 'some-val2'", r.text)
             self.assertIn("'user-agent': 'Mozilla'", r.text)
 
-            # Connection header is handled correctly - this is not a proxy request,
-            # so don't remove it
+            # This is not a proxy request, so Splash shouldn't remove
+            # "Connection" header.
             self.assertIn("connection", r.text.lower())
             self.assertIn("custom-header3", r.text.lower())
             self.assertIn("foo", r.text.lower())

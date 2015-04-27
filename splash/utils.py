@@ -43,9 +43,10 @@ def get_num_fds():
 def get_leaks():
     relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
-        'QWebView', 'QWebPage', 'QWebFrame', 'QNetworkRequest', 'QNetworkReply',
+        'QWebView', 'QWebPage', 'QWebFrame',
+        'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
-        'SplashCookieJar', 'OneShotCallbackProxy',
+        'SplashCookieJar', 'OneShotCallbackProxy', '_WrappedRequest',
         'BrowserTab', '_SplashHttpClient',
         'JavascriptConsole', 'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
