@@ -1395,6 +1395,38 @@ Register a function to be called before each HTTP request.
 
 **Async:** no.
 
+.. note::
+
+    `splash:on_request` method doesn't support named arguments.
+
+:ref:`splash-on-request` callback receives a single ``request`` argument.
+``request`` contains the following fields:
+
+* url - requested URL;
+* method - HTTP method name in upper case, e.g. "GET";
+* cookies - a table with request cookies in `HAR cookies`_ format;
+* headers - a table with request headers in `HAR headers`_ format;
+* queryString - a table with parsed GET parameters in `HAR queryString`_ format;
+* info - a table with request data in `HAR request`_ format:
+  `url`, `method`, `cookies`, `headers` and `queryString` are duplicated here;
+
+.. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
+.. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
+.. _HAR queryString: http://www.softwareishard.com/blog/har-12-spec/#queryString
+
+These fields are for information only; changing them doesn't change
+the request to be sent. To change or drop the request before sending use
+one of the ``request`` methods:
+
+* ``request:abort()`` - drop the request;
+* ``request:set_url(url)`` - change request URL to a specified value;
+* ``request:set_proxy{host, port, username=nil, password=nil}`` - set an
+  HTTP proxy server to use for this request. Omit ``username`` and ``password``
+  arguments if a proxy doesn't need auth.
+
+A callback passed to :ref:`splash-on-request` can't call Splash
+async methods like :ref:`splash-wait` or :ref:`splash-go`.
+
 Example 1 - log all URLs requested:
 
 .. code-block:: lua
@@ -1408,19 +1440,53 @@ Example 1 - log all URLs requested:
         return urls
     end
 
-:ref:`splash-on-request` callback receives a single ``request`` argument.
-``request`` contains the following fields in `HAR request`_ format:
+Example 2 - to log full request data use ``request.info`` attribute;
+don't store ``request`` objects directly:
 
-* url - requested URL;
-* method - HTTP method name in upper case, e.g. "GET";
-* cookies - a table with request cookies in `HAR cookies`_ format;
-* headers - a table with request headers in `HAR headers`_ format;
-* queryString - a table with parsed GET parameters in `HAR queryString`_ format;
+.. code-block:: lua
 
-.. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
-.. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
-.. _HAR queryString: http://www.softwareishard.com/blog/har-12-spec/#queryString
+    function main(splash)
+        local entries = {}
+        splash:on_request(function(request)
+            entries[#entries+1] = request.info
+        end)
+        assert(splash:go(splash.args.url))
+        return entries
+    end
 
+Example 3 - drop all requests to resources containing ".css" in their URLs:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        if string.find(request.url, ".css") ~= nil then
+            request.abort()
+        end
+    end)
+
+Example 4 - replace a resource:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        if request.url == 'http://example.com/script.js' then
+            request:set_url('http://mydomain.com/myscript.js')
+        end
+    end)
+
+Example 5 - set a custom proxy server, with credentials passed in an HTTP
+request to Splash:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        request:set_proxy{
+            host = "0.0.0.0",
+            port = 8990,
+            username = splash.args.username,
+            password = splash.args.password,
+        }
+    end)
 
 .. _splash-args:
 
