@@ -53,3 +53,20 @@ class OnRequestTest(BaseLuaRenderTest):
         urls = [e['request']['url'] for e in data['har']['log']['entries']]
         self.assertTrue(any('show-image' in url for url in urls), urls)
         self.assertFalse(any('.gif' in url for url in urls), urls)
+
+    def test_set_url(self):
+        url = self.mockurl("http-redirect?code=302")
+        new_url = self.mockurl("jsrender")
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(request)
+                if request.url == splash.args.url then
+                    request:set_url(splash.args.new_url)
+                end
+            end)
+            splash:go(splash.args.url)
+            return splash:html()
+        end
+        """, {'url': url, 'new_url': new_url})
+        self.assertStatusCode(resp, 200)
+        self.assertIn('After', resp.content)

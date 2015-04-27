@@ -135,10 +135,14 @@ def qurl2ascii(url):
     return url
 
 
+def set_request_url(request, url):
+    """ Set an URL for a QNetworkRequest """
+    request.setUrl(QUrl(url))
+
+
 def drop_request(request):
     """ Drop the request """
-    # hack: set invalid URL
-    request.setUrl(QUrl(''))
+    set_request_url(request, "")  # hack: set invalid URL
 
 
 def request_repr(request, operation=None):

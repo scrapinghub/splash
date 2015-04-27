@@ -21,7 +21,7 @@ from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
 from splash.utils import truncated, BinaryCapsule
-from splash.qtutils import REQUEST_ERRORS_SHORT, drop_request
+from splash.qtutils import REQUEST_ERRORS_SHORT, drop_request, set_request_url
 from splash.lua_runtime import SplashLuaRuntime
 
 
@@ -587,6 +587,10 @@ class _WrappedRequest(object):
     @command()
     def abort(self):
         drop_request(self.request)
+
+    @command()
+    def set_url(self, url):
+        set_request_url(self.request, url)
 
 
 class SplashScriptRunner(BaseScriptRunner):
