@@ -21,7 +21,7 @@ from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
 from splash.utils import truncated, BinaryCapsule
-from splash.qtutils import REQUEST_ERRORS_SHORT
+from splash.qtutils import REQUEST_ERRORS_SHORT, drop_request
 from splash.lua_runtime import SplashLuaRuntime
 
 
@@ -542,7 +542,7 @@ class Splash(object):
         """
         def py_callback(request, operation, outgoing_data):
             req = _WrappedRequest(self.lua, request, operation, outgoing_data)
-            with self.lua.object_allowed(req, req._attribute_whitelist):
+            with self.lua.object_allowed(req, req.attr_whitelist):
                 callback(req)
         self.tab.register_callback("on_request", py_callback)
         return True
@@ -572,14 +572,21 @@ class Splash(object):
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
 
-    _attribute_whitelist = ['info']
+    _attribute_whitelist = ['info', 'commands']
 
     def __init__(self, lua, request, operation, outgoing_data):
-        self._request = request
-        self._lua = lua
-        self.info = self._lua.python2lua(
+        self.request = request
+        self.lua = lua
+        self.info = self.lua.python2lua(
             request2har(request, operation, outgoing_data)
         )
+        commands = get_commands(self)
+        self.commands = self.lua.python2lua(commands)
+        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
+
+    @command()
+    def abort(self):
+        drop_request(self.request)
 
 
 class SplashScriptRunner(BaseScriptRunner):

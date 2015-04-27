@@ -157,11 +157,34 @@ function Splash:jsfunc(...)
   return unwraps_errors(func)
 end
 
-
 --
 -- Pass wrapped `request` object to `on_request` callback.
 --
-local Request = require("./request") 
+local Request = {}
+Request.__index = Request
+
+function Request._create(py_request)
+  local self = {info=py_request.info}
+  setmetatable(self, Request)
+  
+  -- copy informational fields to the top level
+  for key, value in pairs(py_request.info) do
+    self[key] = value
+  end
+  
+  for key, opts in pairs(py_request.commands) do
+    local command = py_request[key]
+    command = drops_self_argument(command)
+
+    if opts.returns_error_flag then
+      command = unwraps_errors(command)
+    end
+
+    self[key] = command
+  end
+  
+  return self
+end
 
 function Splash:on_request(cb)
   private.on_request(self, function(py_request)
