@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+import weakref
 
 from splash.lua import lua2python, python2lua, get_new_runtime
 
@@ -19,7 +20,7 @@ class SplashLuaRuntime(object):
         self._sandboxed = sandboxed
         self._lua = self._create_runtime(lua_package_path)
         self._setup_lua_sandbox(lua_sandbox_allowed_modules)
-        self._allowed_object_attrs = {}
+        self._allowed_object_attrs = weakref.WeakKeyDictionary()
 
     def add_to_globals(self, name, value):
         code = "function(%s_) %s = %s_ end" % (name, name, name)
