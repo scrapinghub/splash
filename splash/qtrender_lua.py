@@ -140,6 +140,24 @@ def exceptions_as_return_values(meth):
     return wrapper
 
 
+def get_commands(obj):
+    """
+    Inspect a Python object and get a dictionary of all its commands
+    which was made available to Lua using @command decorator.
+    """
+    commands = {}
+    for name in dir(obj):
+        value = getattr(obj, name)
+        if is_command(value):
+            commands[name] = {
+                'is_async': getattr(value, '_is_async'),
+                'returns_error_flag': getattr(value, '_returns_error_flag', False),
+                'can_raise_async': getattr(value, '_can_raise_async', False),
+                'sets_callback': getattr(value, '_sets_callback', False),
+            }
+    return commands
+
+
 class _WrappedJavascriptFunction(object):
     """
     JavaScript functions wrapper. It allows to call JS functions
@@ -221,22 +239,11 @@ class Splash(object):
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        self.attr_whitelist = []
-        commands = {}
-        for name in dir(self):
-            value = getattr(self, name)
-            if is_command(value):
-                self.attr_whitelist.append(name)
-                commands[name] = self.lua.table_from({
-                    'is_async': getattr(value, '_is_async'),
-                    'returns_error_flag': getattr(value, '_returns_error_flag', False),
-                    'can_raise_async': getattr(value, '_can_raise_async', False),
-                    'sets_callback': getattr(value, '_sets_callback', False),
-                })
+        commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
-        self.tmp_storage = self.lua.table_from({})
-        self.attr_whitelist.extend(self._attribute_whitelist)
+        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
         self.lua.add_allowed_object(self, self.attr_whitelist)
+        self.tmp_storage = self.lua.table_from({})
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
