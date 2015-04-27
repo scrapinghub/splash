@@ -1391,7 +1391,7 @@ Register a function to be called before each HTTP request.
 
 **Signature:** ``splash:on_request(callback)``
 
-**Returns:** TODO: a number with callback id which can be used to remove the callback.
+**Returns:** nil.
 
 **Async:** no.
 
@@ -1402,13 +1402,10 @@ Register a function to be called before each HTTP request.
 :ref:`splash-on-request` callback receives a single ``request`` argument.
 ``request`` contains the following fields:
 
-* url - requested URL;
-* method - HTTP method name in upper case, e.g. "GET";
-* cookies - a table with request cookies in `HAR cookies`_ format;
-* headers - a table with request headers in `HAR headers`_ format;
-* queryString - a table with parsed GET parameters in `HAR queryString`_ format;
-* info - a table with request data in `HAR request`_ format:
-  `url`, `method`, `cookies`, `headers` and `queryString` are duplicated here;
+* ``url`` - requested URL;
+* ``method`` - HTTP method name in upper case, e.g. "GET";
+* ``info`` - a table with request data in `HAR request`_ format
+  (`url` and `method` values are duplicated here).
 
 .. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
 .. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
