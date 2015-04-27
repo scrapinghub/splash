@@ -95,3 +95,20 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         html_1, html_2 = resp.json()
         self.assertNotProxied(html_1)
         self.assertProxied(html_2)
+
+    def test_request_outside_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local req = nil
+            splash:on_request(function(request)
+                req = request
+            end)
+            assert(splash:go(splash.args.url))
+            req:abort()
+            return "ok"
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 400)
+        self.assertErrorLineNumber(resp, 8)
+        self.assertIn("request is used outside a callback", resp.content)
+
