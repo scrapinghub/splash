@@ -76,7 +76,7 @@ those redirects use :ref:`splash-wait`.
 ``headers`` argument allows to add or replace default HTTP headers for the
 initial request. To set custom headers for all further requests
 (including requests to related resources) use
-:ref:`splash-set-custom-headers`.
+:ref:`splash-set-custom-headers` or :ref:`splash-on-request`.
 
 Custom headers example:
 
@@ -1343,6 +1343,10 @@ Set custom HTTP headers to send with each request.
 
 **Async:** no.
 
+.. note::
+
+    Named arguments are not supported for this function.
+
 Headers are merged with WebKit default headers, overwriting WebKit values
 in case of conflicts.
 
@@ -1360,7 +1364,7 @@ Example:
         ["Header-2"] = "Value 2",
      })
 
-Named arguments are not supported for this function.
+See also: :ref:`splash-on-request`.
 
 .. _splash-get-perf-stats:
 
@@ -1420,6 +1424,8 @@ one of the ``request`` methods:
 * ``request:set_proxy{host, port, username=nil, password=nil}`` - set an
   HTTP proxy server to use for this request. Omit ``username`` and ``password``
   arguments if a proxy doesn't need auth.
+* ``request:set_header(name, value)`` - set an HTTP header for this request.
+  See also: :ref:`splash-set-custom-headers`.
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.

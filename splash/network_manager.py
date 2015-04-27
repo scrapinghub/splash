@@ -13,7 +13,7 @@ from PyQt4.QtNetwork import (
 from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
 
-from splash.qtutils import qurl2ascii, OPERATION_NAMES, REQUEST_ERRORS
+from splash.qtutils import qurl2ascii, REQUEST_ERRORS
 from splash import har
 from splash.har import qt as har_qt
 from splash.request_middleware import (
@@ -173,7 +173,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             },
             "time": 0,
         }
-
 
     def _handle_custom_headers(self, request):
         if self._getWebPageAttribute(request, "skip_custom_headers"):

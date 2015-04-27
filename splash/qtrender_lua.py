@@ -588,6 +588,15 @@ def wrapped_request(lua, request, operation, outgoing_data):
         req.clear()
 
 
+def _requires_request(meth):
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        if self.request is None:
+            raise ValueError("request is used outside a callback")
+        return meth(self, *args, **kwargs)
+    return wrapper
+
+
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
 
@@ -609,23 +618,25 @@ class _WrappedRequest(object):
         self.lua = None
 
     @command()
+    @_requires_request
     def abort(self):
-        if self.request is None:
-            raise ValueError("request is used outside a callback")
         drop_request(self.request)
 
     @command()
+    @_requires_request
     def set_url(self, url):
-        if self.request is None:
-            raise ValueError("request is used outside a callback")
         set_request_url(self.request, url)
 
     @command()
+    @_requires_request
     def set_proxy(self, host, port, username=None, password=None):
-        if self.request is None:
-            raise ValueError("request is used outside a callback")
         proxy = create_proxy(host, port, username, password)
         self.request.custom_proxy = proxy
+
+    @command()
+    @_requires_request
+    def set_header(self, name, value):
+        self.request.setRawHeader(name, value)
 
 
 class SplashScriptRunner(BaseScriptRunner):

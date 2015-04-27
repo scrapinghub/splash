@@ -112,3 +112,18 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertErrorLineNumber(resp, 8)
         self.assertIn("request is used outside a callback", resp.content)
 
+    def test_set_header(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(request)
+                request:set_header("User-Agent", "Mozilla")
+                request:set_header{name="Custom-header", value="some-val"}
+            end)
+            splash:go(splash.args.url)
+            return splash:html()
+        end
+        """, {'url': self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+
+        self.assertIn("'custom-header': 'some-val'", resp.text)
+        self.assertIn("'user-agent': 'Mozilla'", resp.text)
