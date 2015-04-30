@@ -2,11 +2,11 @@
 Splash - A javascript rendering service
 =======================================
 
-.. image:: https://travis-ci.org/scrapinghub/splash.svg?branch=master
+.. image:: https://img.shields.io/travis/scrapinghub/splash.svg
    :alt: Build Status
    :target: https://travis-ci.org/scrapinghub/splash
 
-.. image:: https://badges.gitter.im/Join%20Chat.svg
+.. image:: https://img.shields.io/badge/GITTER-join%20chat-green.svg
    :alt: Join the chat at https://gitter.im/scrapinghub/splash
    :target: https://gitter.im/scrapinghub/splash
 
