@@ -2,8 +2,13 @@
 Splash - A javascript rendering service
 =======================================
 
-.. image:: https://secure.travis-ci.org/scrapinghub/splash.png?branch=master
-   :target: http://travis-ci.org/scrapinghub/splash
+.. image:: https://travis-ci.org/scrapinghub/splash.svg?branch=master
+   :alt: Build Status
+   :target: https://travis-ci.org/scrapinghub/splash
+
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+   :alt: Join the chat at https://gitter.im/scrapinghub/splash
+   :target: https://gitter.im/scrapinghub/splash
 
 Splash is a javascript rendering service with an HTTP API. It's a lightweight
 browser with an HTTP API, implemented in Python using Twisted and QT.
