@@ -26,3 +26,8 @@ Commercial support is also available by `Scrapinghub`_.
 
 .. _create a question issue: https://github.com/scrapinghub/splash/issues/new?labels=question
 .. _Scrapinghub: http://scrapinghub.com
+
+
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+   :alt: Join the chat at https://gitter.im/scrapinghub/splash
+   :target: https://gitter.im/scrapinghub/splash?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
