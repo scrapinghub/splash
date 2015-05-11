@@ -106,7 +106,7 @@ viewport : string : optional
 
 images : integer : optional
     Whether to download images. Possible values are
-    ``1`` (download images) and ``0`` (don't downoad images). Default is 1.
+    ``1`` (download images) and ``0`` (don't download images). Default is 1.
 
     Note that cached images may be displayed even if this parameter is 0.
     You can also use `Request Filters`_ to strip unwanted contents based on URL.
