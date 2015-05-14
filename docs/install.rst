@@ -85,7 +85,7 @@ Splash Versions
 ``docker pull scrapinghub/splash`` will give you the latest stable Splash
 release. To obtain the latest development version use
 ``docker pull scrapinghub/splash:master``. Specific Splash versions
-are also available, e.g. ``docker pull scrapinghub/splash:1.2.1``.
+are also available, e.g. ``docker pull scrapinghub/splash:1.5``.
 
 Customizing Dockerized Splash
 -----------------------------
@@ -167,12 +167,12 @@ to the mix.
 
 In production it is a good idea to pin Splash version - instead of
 ``scrapinghub/splash`` it is usually better to use something like
-``scrapinghub/splash:1.4``.
+``scrapinghub/splash:1.6``.
 
 The final command for starting a long-running Splash server which uses
 up to 4GB RAM and daemonizes & restarts itself could look like this::
 
-    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:1.4 --maxrss 4000
+    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:1.6 --maxrss 4000
 
 Building Local Docker Images
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
