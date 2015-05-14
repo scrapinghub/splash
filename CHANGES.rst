@@ -1,6 +1,22 @@
 Changes
 =======
 
+1.6 (2015-05-15)
+----------------
+
+The main new feature in Splash 1.6 is :ref:`splash-on-request` function
+which allows to process individual outgoing requests: log, abort,
+change them.
+
+Other improvements:
+
+* a new :ref:`http-gc` endpoint which allows to clear QWebKit caches;
+* Docker images are updated with more recent package versions;
+* HTTP arguments validation is improved;
+* serving Splash UI under HTTPS is fixed.
+* documentation improvements and typo fixes.
+
+
 1.5 (2015-03-03)
 ----------------
 
