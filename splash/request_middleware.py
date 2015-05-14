@@ -169,7 +169,7 @@ class AdblockRulesRegistry(object):
             if self.verbosity >= 2:
                 log.msg("%d rule(s) loaded for filter %s" % (filters_num, name))
 
-            if not rules.uses_re2 and  filters_num > self.RE2_WARN_THRESHOLD:
+            if not rules.uses_re2 and filters_num > self.RE2_WARN_THRESHOLD:
                 log.msg('WARNING: a filter %s with %d rules loaded, but '
                         'pyre2 library is not installed. Matching may become '
                         'slow; installing https://github.com/axiak/pyre2 is '

@@ -69,7 +69,7 @@ install_python_deps () {
         qt4reactor==1.6 \
         psutil==2.2.1 \
         adblockparser==0.4 \
-        https://github.com/axiak/pyre2/archive/master.zip#egg=re2 \
+        re2==0.2.21 \
         xvfbwrapper==0.2.4 \
         lupa==1.1 \
         funcparserlib==0.3.6 \

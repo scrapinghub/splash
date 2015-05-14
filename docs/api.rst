@@ -648,7 +648,7 @@ Unsupported rules are silently discarded.
     of rules and don't use re2. With re2 matching becomes very fast.
 
     Make sure you are not using re2==0.2.20 installed from PyPI (it is broken);
-    use the latest version from github.
+    use the latest version.
 
 .. _adblockparser: https://github.com/scrapinghub/adblockparser
 .. _EasyList: https://easylist.adblockplus.org/en/
