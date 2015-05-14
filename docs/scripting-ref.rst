@@ -1343,10 +1343,6 @@ Set custom HTTP headers to send with each request.
 
 **Async:** no.
 
-.. note::
-
-    Named arguments are not supported for this function.
-
 Headers are merged with WebKit default headers, overwriting WebKit values
 in case of conflicts.
 
@@ -1363,6 +1359,10 @@ Example:
         ["Header-1"] = "Value 1",
         ["Header-2"] = "Value 2",
      })
+
+.. note::
+
+    Named arguments are not supported for this function.
 
 See also: :ref:`splash-on-request`.
 
@@ -1398,10 +1398,6 @@ Register a function to be called before each HTTP request.
 **Returns:** nil.
 
 **Async:** no.
-
-.. note::
-
-    `splash:on_request` method doesn't support named arguments.
 
 :ref:`splash-on-request` callback receives a single ``request`` argument.
 ``request`` contains the following fields:
@@ -1490,6 +1486,11 @@ request to Splash:
             password = splash.args.password,
         }
     end)
+
+.. note::
+
+    `splash:on_request` method doesn't support named arguments.
+
 
 .. _splash-args:
 
