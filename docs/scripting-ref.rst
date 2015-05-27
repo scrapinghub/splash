@@ -492,7 +492,7 @@ You can return booleans, numbers, strings, arrays, or objects.
             }
         ]])
 
-        -- result is {value=[1, 2, 'red', 'blue']}
+        -- result is {value={1, 2, 'red', 'blue'}}
         -- error is nil
 
     end
