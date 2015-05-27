@@ -4,13 +4,13 @@ from datetime import datetime
 import traceback
 from contextlib import contextmanager
 
-from PyQt4.QtNetwork import (
+from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
     QNetworkCookieJar
 )
-from PyQt4.QtWebKit import QWebFrame
+from PyQt5.QtWebKitWidgets import QWebFrame
 from twisted.python import log
 
 from splash.qtutils import qurl2ascii, REQUEST_ERRORS
@@ -207,7 +207,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _getRequestId(self, request=None):
         if request is None:
             request = self.sender().request()
-        return request.attribute(self._REQUEST_ID).toPyObject()
+        return request.attribute(self._REQUEST_ID)
 
     def _harEntry(self, request=None, create=False):
         """

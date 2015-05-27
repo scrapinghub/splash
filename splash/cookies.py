@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from PyQt4.QtCore import QDateTime, Qt, QUrl
-from PyQt4.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
+from PyQt5.QtCore import QDateTime, Qt, QUrl
+from PyQt5.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
 
 
 class SplashCookieJar(QNetworkCookieJar):
@@ -22,7 +22,7 @@ class SplashCookieJar(QNetworkCookieJar):
         # based on QNetworkReplyImplPrivate::metaDataChanged C++ code
         if not _should_save_cookies(reply.request()):
             return
-        cookies = reply.header(QNetworkRequest.SetCookieHeader).toPyObject()
+        cookies = reply.header(QNetworkRequest.SetCookieHeader)
         if not cookies:
             return
         self.setCookiesFromUrl(cookies, reply.url())
@@ -103,20 +103,20 @@ class SplashCookieJar(QNetworkCookieJar):
 def _should_send_cookies(request):
     """ Return True if cookies should be sent for a request """
     # based on QNetworkAccessManager::createRequest() C++ code
-    attr, ok = request.attribute(
+    attr = request.attribute(
         QNetworkRequest.CookieLoadControlAttribute,
         QNetworkRequest.Automatic
-    ).toInt()
+    )
     return attr == QNetworkRequest.Automatic
 
 
 def _should_save_cookies(request):
     """ Return True if cookies should be saved for a request """
     # based on QNetworkReplyImplPrivate::metaDataChanged() C++ code
-    attr, ok = request.attribute(
+    attr = request.attribute(
         QNetworkRequest.CookieSaveControlAttribute,
         QNetworkRequest.Automatic
-    ).toInt()
+    )
     return attr == QNetworkRequest.Automatic
 
 

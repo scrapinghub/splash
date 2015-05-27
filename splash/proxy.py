@@ -13,7 +13,7 @@ import re
 import os
 import ConfigParser
 
-from PyQt4.QtNetwork import QNetworkProxy
+from PyQt5.QtNetwork import QNetworkProxy
 
 from splash.render_options import BadOption
 from splash.qtutils import create_proxy
