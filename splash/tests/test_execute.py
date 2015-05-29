@@ -332,6 +332,117 @@ class ErrorsTest(BaseLuaRenderTest):
         self.assertEqual(data["ok"], False)
 
 
+class EnableDisableJSTest(BaseLuaRenderTest):
+
+    def test_disablejs(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash.js_enabled==true)
+            splash.js_enabled = false
+            splash:go(splash.args.url)
+            local html = splash:html()
+            return html
+        end
+        """, {
+            'url': self.mockurl('jsrender'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertIn(u'Before', resp.text)
+
+    def test_enablejs(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.js_enabled = true
+            splash:go(splash.args.url)
+            local html = splash:html()
+            return html
+        end
+        """, {
+            'url': self.mockurl('jsrender'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn(u'Before', resp.text)
+
+    def test_disablejs_after_splash_go(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash.js_enabled = false
+            local html = splash:html()
+            return html
+        end
+        """, {
+            'url': self.mockurl('jsrender'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn(u'Before', resp.text)
+
+    def test_multiple(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash.js_enabled = false
+            local html_1 = splash:html()
+            splash:go(splash.args.url)
+            return {html_1=html_1, html_2=splash:html()}
+        end
+        """, {
+            'url': self.mockurl('jsrender')
+        })
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertNotIn(u'Before', data['html_1'])
+        self.assertIn(u'Before', data['html_2'])
+
+
+class ImageRenderTest(BaseLuaRenderTest):
+
+    def test_disable_images_attr(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.images_enabled = false
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 0)
+
+    def test_disable_images_method(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_images_enabled(false)
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 0)
+
+    def test_enable_images_attr(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.images_enabled = false
+            splash.images_enabled = true
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 50)
+
+    def test_enable_images_method(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_images_enabled(false)
+            splash:set_images_enabled(true)
+            splash:go(splash.args.url)
+            local res = splash:evaljs("document.getElementById('foo').clientHeight")
+            return {res=res}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertEqual(resp.json()['res'], 50)
+
 
 class EvaljsTest(BaseLuaRenderTest):
 

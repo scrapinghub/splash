@@ -69,6 +69,19 @@ def command(async=False, can_raise_async=False, table_argument=False,
     return decorator
 
 
+def lua_property(name):
+    """ Decorator for marking methods that make attributes available to Lua """
+    def decorator(meth):
+        def setter(method):
+            meth._setter_method = method.__name__
+            return method
+        meth._is_lua_property = True
+        meth._name = name
+        meth.lua_setter = setter
+        return meth
+    return decorator
+
+
 def emits_lua_objects(meth):
     """
     This decorator makes method convert results to
@@ -103,6 +116,11 @@ def first_argument_from_storage(meth):
 def is_command(meth):
     """ Return True if method is an exposed Lua command """
     return getattr(meth, '_is_command', False)
+
+
+def is_lua_property(meth):
+    """ Return True if method is exposed to an Lua attribute """
+    return getattr(meth, '_is_lua_property', False)
 
 
 def can_raise(meth):
@@ -164,6 +182,24 @@ def get_commands(obj):
     return commands
 
 
+def get_lua_properties(obj):
+    """
+    Inspect a Python object and get a dictionary of all lua properties, their
+    getter and setter methods which were made available to Lua using
+    @lua_property and @<getter_method_name>.lua_setter decorators.
+    """
+    lua_properties = {}
+    for name in dir(obj):
+        value = getattr(obj, name)
+        if is_lua_property(value):
+            setter_method = getattr(value, '_setter_method')
+            lua_properties[setter_method] = {
+                'name': getattr(value, '_name'),
+                'getter_method': name,
+            }
+    return lua_properties
+
+
 class _WrappedJavascriptFunction(object):
     """
     JavaScript functions wrapper. It allows to call JS functions
@@ -222,7 +258,8 @@ class Splash(object):
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
-    _attribute_whitelist = ['commands', 'args', 'tmp_storage']
+    _attribute_whitelist = ['commands', 'args', 'tmp_storage',
+                            'lua_properties']
 
     def __init__(self, lua, tab, render_options=None):
         """
@@ -247,7 +284,17 @@ class Splash(object):
 
         commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
-        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
+
+        lua_properties = get_lua_properties(self)
+        self.lua_properties = self.lua.python2lua(lua_properties)
+        lua_attr_getters = [
+            lua_properties[attr]['getter_method'] for attr in lua_properties]
+
+        self.attr_whitelist = (list(commands.keys()) +
+                               list(lua_properties.keys()) +
+                               lua_attr_getters +
+                               self._attribute_whitelist)
+
         self.lua.add_allowed_object(self, self.attr_whitelist)
         self.tmp_storage = self.lua.table_from({})
 
@@ -259,6 +306,14 @@ class Splash(object):
         :param callable return_func: function that continues the script
         """
         self._return = return_func
+
+    @lua_property('js_enabled')
+    def get_js_enabled(self):
+        return self.tab.get_js_enabled()
+
+    @get_js_enabled.lua_setter
+    def set_js_enabled(self, value):
+        self.tab.set_js_enabled(value)
 
     @command(async=True)
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
@@ -518,6 +573,11 @@ class Splash(object):
     def set_viewport_full(self):
         return tuple(self.tab.set_viewport('full'))
 
+    @lua_property('images_enabled')
+    def get_images_enabled(self):
+        return self.tab.get_images_enabled()
+
+    @get_images_enabled.lua_setter
     @command()
     def set_images_enabled(self, enabled):
         if enabled is not None:

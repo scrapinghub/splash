@@ -242,7 +242,7 @@ class ShowImage(Resource):
     def render_GET(self, request):
         token = random.random()  # prevent caching
         return """<html><body>
-        <img width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
+        <img id='foo' width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
         </body></html>
         """ % token
 

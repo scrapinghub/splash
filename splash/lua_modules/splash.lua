@@ -106,13 +106,16 @@ end
 -- error handling.
 --
 local Splash = {}
-Splash.__index = Splash
 
 local private = {}
 local PRIVATE_PREFIX = "private_"
 
 function Splash._create(py_splash)
-  local self = {args=py_splash.args}
+  local self = {
+    args=py_splash.args,
+    _setters={},
+    _getters={}
+  }
   setmetatable(self, Splash)
 
   -- Create Lua splash:<...> methods from Python Splash object:
@@ -145,6 +148,14 @@ function Splash._create(py_splash)
     end
   end
 
+  -- Set attribute handler functions
+  for key, opts in pairs(py_splash.lua_properties) do
+    local func = drops_self_argument(py_splash[key])
+    self._getters[opts.name] = drops_self_argument(
+                                            py_splash[opts.getter_method])
+    self._setters[opts.name] = func
+  end
+
   return self
 end
 
@@ -166,12 +177,12 @@ Request.__index = Request
 function Request._create(py_request)
   local self = {info=py_request.info}
   setmetatable(self, Request)
-  
+
   -- copy informational fields to the top level
   for key, value in pairs(py_request.info) do
     self[key] = value
   end
-  
+
   for key, opts in pairs(py_request.commands) do
     local command = py_request[key]
     command = drops_self_argument(command)
@@ -182,7 +193,7 @@ function Request._create(py_request)
 
     self[key] = command
   end
-  
+
   return self
 end
 
@@ -193,5 +204,20 @@ function Splash:on_request(cb)
   end)
 end
 
+function Splash:__newindex( index, value )
+  if self._setters[index] then
+    self._setters[index](self, value)
+  else
+    rawset(Splash, index, value)
+  end
+end
+
+function Splash:__index(index)
+  if self._getters[index] then
+    return self._getters[index](self)
+  else
+    return rawget(Splash, index)
+  end
+end
 
 return Splash

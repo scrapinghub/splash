@@ -101,6 +101,14 @@ class BrowserTab(QObject):
         self.web_view.resize(
             QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
 
+    def set_js_enabled(self, val):
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.JavascriptEnabled, val)
+
+    def get_js_enabled(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(QWebSettings.JavascriptEnabled)
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.
@@ -155,7 +163,12 @@ class BrowserTab(QObject):
         self.web_page.custom_headers = headers
 
     def set_images_enabled(self, enabled):
-        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages, enabled)
+        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,
+                                              enabled)
+
+    def get_images_enabled(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(QWebSettings.AutoLoadImages)
 
     def set_viewport(self, size, raise_if_empty=False):
         """
