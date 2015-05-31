@@ -11,7 +11,6 @@ from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
 
-
 def install_qtreactor(verbose):
     init_qt_app(verbose)
     import qt4reactor
@@ -63,6 +62,10 @@ def parse_opts():
         help="proxy port to listen to (default: %default)")
     op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
         help="comma-separated list of allowed URI schemes (defaut: %default)")
+    op.add_option('--allowed-content-types', default=",".join(defaults.ALLOWED_CONTENT_TYPES),
+        help="comma-separated list of mime types that will be allowed (Can use wildcards) (defaut: %default)")
+    op.add_option('--forbidden-content-types', default=",".join(defaults.FORBIDDEN_CONTENT_TYPES),
+        help="comma-separated list of mime types that will be blocked (Can use wildcards) (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
     op.add_option("--disable-xvfb", action="store_true", default=False,
@@ -246,6 +249,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
+                          allowed_content_types=None, forbidden_content_types=None,
                           ui_enabled=True,
                           lua_enabled=True,
                           lua_sandbox_enabled=True,
@@ -256,7 +260,9 @@ def default_splash_server(portnum, max_timeout, slots=None,
     manager = network_manager.create_default(
         filters_path=filters_path,
         verbosity=verbosity,
-        allowed_schemes=allowed_schemes
+        allowed_schemes=allowed_schemes,
+        allowed_content_types=allowed_content_types,
+        forbidden_content_types=forbidden_content_types,
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
@@ -364,6 +370,8 @@ def main():
             proxy_portnum=opts.proxy_portnum,
             filters_path=opts.filters_path,
             allowed_schemes=opts.allowed_schemes,
+            allowed_content_types=opts.allowed_content_types,
+            forbidden_content_types=opts.forbidden_content_types,
             ui_enabled=not opts.disable_ui,
             lua_enabled=not opts.disable_lua,
             lua_sandbox_enabled=not opts.disable_lua_sandbox,

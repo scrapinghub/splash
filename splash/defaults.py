@@ -74,5 +74,8 @@ CACHE_PATH = '.splash-cache'
 ALLOWED_SCHEMES = ['http', 'https', 'data', 'ftp', 'sftp', 'ws', 'wss']
 JS_CROSS_DOMAIN_ENABLED = False
 
+ALLOWED_CONTENT_TYPES = ('*/*',)
+FORBIDDEN_CONTENT_TYPES = ()
+
 # logging
 VERBOSITY = 1
