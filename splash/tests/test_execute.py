@@ -885,7 +885,7 @@ class RunjsTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "err": "SyntaxError: Parse error",
+            "err": "SyntaxError: Unexpected token '('",
         })
 
     def test_runjs_exception(self):
@@ -1537,7 +1537,7 @@ class CookiesTest(BaseLuaRenderTest):
             splash:delete_cookies{url="http://example.com"}
             local c7 = splash:get_cookies()
 
-            splash:delete_cookies{url="http://localhost"}
+            splash:delete_cookies{url="http://localhost/"}
             local c8 = splash:get_cookies()
 
             splash:init_cookies(c2)
@@ -2130,7 +2130,7 @@ class SetContentTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
             "html": "<html><head></head><body><h1>Hello</h1></body></html>",
-            "url": "about:blank",
+            "url": "",
         })
 
     def test_unicode(self):
