@@ -1124,7 +1124,7 @@ class WaitTest(BaseLuaRenderTest):
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"reason": "error"})  # ok is nil
+        self.assertEqual(resp.json(), {"reason": "network3"})  # ok is nil
 
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror_nocancel(self):
@@ -1324,7 +1324,7 @@ class GoTest(BaseLuaRenderTest):
     def test_go_error(self):
         data = self.go_status("non-existing")
         self.assertEqual(data.get('ok', False), False)
-        self.assertEqual(data["reason"], "error")
+        self.assertEqual(data["reason"], "network301")
 
     def test_go_multiple(self):
         resp = self.request_lua("""

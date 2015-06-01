@@ -9,7 +9,7 @@ import weakref
 import uuid
 from PyQt4.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
 from PyQt4.QtNetwork import QNetworkRequest
-from PyQt4.QtWebKit import QWebPage, QWebSettings, QWebView
+from PyQt4.QtWebKit import QWebPage, QWebSettings
 from twisted.internet import defer
 from twisted.python import log
 
@@ -353,6 +353,10 @@ class BrowserTab(QObject):
 
     @skip_if_closing
     def _on_load_finished(self, ok):
+        """
+        This callback is called for all web_page.mainFrame()
+        loadFinished events.
+        """
         if self.web_page.maybe_redirect(ok):
             self.logger.log("Redirect or other non-fatal error detected", min_level=2)
             return
@@ -414,11 +418,10 @@ class BrowserTab(QObject):
         elif self.web_page.error_loading(ok):
             # XXX: maybe return a meaningful error page instead of generic
             # error message?
-            errback()
-            # errback(RenderError())
+            errback(self.web_page.error_info)
         else:
-            errback()
-            # errback(RenderError())
+            # XXX: it means ok=False. When does it happen?
+            errback(self.web_page.error_info)
 
     def wait(self, time_ms, callback, onredirect=None, onerror=None):
         """
@@ -466,7 +469,7 @@ class BrowserTab(QObject):
         try:
             if callable(errback):
                 self.logger.log("calling timer errback", min_level=2)
-                errback()
+                errback(self.web_page.error_info)
         finally:
             timer.deleteLater()
 
