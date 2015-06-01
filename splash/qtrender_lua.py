@@ -260,6 +260,7 @@ class Splash(object):
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args', 'tmp_storage',
                             'lua_properties']
+    _result_headers = []
 
     def __init__(self, lua, tab, render_options=None):
         """
@@ -551,6 +552,14 @@ class Splash(object):
         self._result_content_type = content_type
 
     @command()
+    def set_result_header(self, name, value):
+        if not all([isinstance(h, basestring) for h in [name, value]]):
+            raise ScriptError("splash:set_result_header() arguments must be strings")
+
+        header = (name, value)
+        self._result_headers.append(header)
+
+    @command()
     def set_user_agent(self, value):
         if not isinstance(value, basestring):
             raise ScriptError("splash:set_user_agent() argument must be a string")
@@ -623,6 +632,9 @@ class Splash(object):
         if self._result_content_type is None:
             return None
         return str(self._result_content_type)
+
+    def result_headers(self):
+        return self._result_headers
 
     def get_wrapped(self):
         """ Return a Lua wrapper for this object. """
@@ -715,7 +727,7 @@ class SplashScriptRunner(BaseScriptRunner):
         super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
 
     def on_result(self, result):
-        self.return_result((result, self.splash.result_content_type()))
+        self.return_result((result, self.splash.result_content_type(), self.splash.result_headers()))
 
     def on_async_command(self, cmd):
         self.splash.run_async_command(cmd)

@@ -105,8 +105,10 @@ class BaseRenderResource(_ValidatingResource):
             data = json.dumps(data, cls=SplashJSONEncoder)
             return self._writeOutput(data, request, "application/json")
 
-        if isinstance(data, tuple) and len(data) == 2:
-            data, content_type = data
+        if isinstance(data, tuple) and len(data) == 3:
+            data, content_type, headers = data
+            for header in headers:
+                request.setHeader(str(header[0]), str(header[1]))
             return self._writeOutput(data, request, content_type)
 
         if isinstance(data, (bool, int, long, float, types.NoneType)):
