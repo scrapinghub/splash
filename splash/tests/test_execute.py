@@ -1124,7 +1124,7 @@ class WaitTest(BaseLuaRenderTest):
             {'url': self.mockurl("jsredirect-non-existing")}
         )
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"reason": "error"})  # ok is nil
+        self.assertEqual(resp.json(), {"reason": "network3"})  # ok is nil
 
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_wait_onerror_nocancel(self):
@@ -1272,15 +1272,24 @@ class GoTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         return resp.json()
 
+    def _geturl(self, code, empty=False):
+        if empty:
+            path = "getrequest?code=%s&empty=1" % code
+        else:
+            path = "getrequest?code=%s" % code
+        return self.mockurl(path)
+
     def assertGoStatusCodeError(self, code):
-        data = self.go_status(self.mockurl("getrequest?code=%s" % code))
-        self.assertNotIn("ok", data)
-        self.assertEqual(data["reason"], "http%s" % code)
+        for empty in [False, True]:
+            data = self.go_status(self._geturl(code, empty))
+            self.assertNotIn("ok", data)
+            self.assertEqual(data["reason"], "http%s" % code)
 
     def assertGoNoError(self, code):
-        data = self.go_status(self.mockurl("getrequest?code=%s" % code))
-        self.assertTrue(data["ok"])
-        self.assertNotIn("reason", data)
+        for empty in [False, True]:
+            data = self.go_status(self._geturl(code, empty))
+            self.assertTrue(data["ok"])
+            self.assertNotIn("reason", data)
 
     def test_go_200(self):
         self.assertGoNoError(200)
@@ -1315,7 +1324,7 @@ class GoTest(BaseLuaRenderTest):
     def test_go_error(self):
         data = self.go_status("non-existing")
         self.assertEqual(data.get('ok', False), False)
-        self.assertEqual(data["reason"], "error")
+        self.assertEqual(data["reason"], "network301")
 
     def test_go_multiple(self):
         resp = self.request_lua("""

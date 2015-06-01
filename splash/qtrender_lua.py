@@ -326,11 +326,11 @@ class Splash(object):
         def success():
             self._return(cmd_id, True)
 
-        def redirect():
+        def redirect(error_info):
             self._return(cmd_id, None, 'redirect')
 
-        def error():
-            self._return(cmd_id, None, 'error')
+        def error(error_info):
+            self._return(cmd_id, None, self._error_info_to_lua(error_info))
 
         return AsyncBrowserCommand(cmd_id, "wait", dict(
             time_ms = time*1000,
@@ -360,8 +360,8 @@ class Splash(object):
             except Exception as e:
                 self._return(cmd_id, None, "internal_error")
 
-        def error():
-            self._return(cmd_id, None, "error")
+        def error(error_info):
+            self._return(cmd_id, None, self._error_info_to_lua(error_info))
 
         return AsyncBrowserCommand(cmd_id, "go", dict(
             url=url,
@@ -489,8 +489,8 @@ class Splash(object):
         def success():
             self._return(cmd_id, True)
 
-        def error():
-            self._return(cmd_id, None, "error")
+        def error(error_info):
+            self._return(cmd_id, None, self._error_info_to_lua(error_info))
 
         return AsyncBrowserCommand(cmd_id, "set_content", dict(
             data=data,
@@ -611,6 +611,11 @@ class Splash(object):
                 callback(req)
         self.tab.register_callback("on_request", py_callback)
         return True
+
+    def _error_info_to_lua(self, error_info):
+        if error_info is None:
+            return "error"
+        return "%s%s" % (error_info.type.lower(), error_info.code)
 
     def get_real_exception(self):
         if self._exceptions:
