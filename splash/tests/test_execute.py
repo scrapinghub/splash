@@ -1272,15 +1272,24 @@ class GoTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         return resp.json()
 
+    def _geturl(self, code, empty=False):
+        if empty:
+            path = "getrequest?code=%s&empty=1" % code
+        else:
+            path = "getrequest?code=%s" % code
+        return self.mockurl(path)
+
     def assertGoStatusCodeError(self, code):
-        data = self.go_status(self.mockurl("getrequest?code=%s" % code))
-        self.assertNotIn("ok", data)
-        self.assertEqual(data["reason"], "http%s" % code)
+        for empty in [False, True]:
+            data = self.go_status(self._geturl(code, empty))
+            self.assertNotIn("ok", data)
+            self.assertEqual(data["reason"], "http%s" % code)
 
     def assertGoNoError(self, code):
-        data = self.go_status(self.mockurl("getrequest?code=%s" % code))
-        self.assertTrue(data["ok"])
-        self.assertNotIn("reason", data)
+        for empty in [False, True]:
+            data = self.go_status(self._geturl(code, empty))
+            self.assertTrue(data["ok"])
+            self.assertNotIn("reason", data)
 
     def test_go_200(self):
         self.assertGoNoError(200)
