@@ -107,8 +107,9 @@ class BaseRenderResource(_ValidatingResource):
 
         if isinstance(data, tuple) and len(data) == 3:
             data, content_type, headers = data
-            for header in headers:
-                request.setHeader(str(header[0]), str(header[1]))
+
+            for name, value in headers:
+                request.setHeader(name, value)
             return self._writeOutput(data, request, content_type)
 
         if isinstance(data, (bool, int, long, float, types.NoneType)):

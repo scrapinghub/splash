@@ -202,11 +202,23 @@ class ResultHeaderTest(BaseLuaRenderTest):
     def test_bad_result_header_set(self):
         resp = self.request_lua("""
         function main(splash)
-            splash:set_result_header({}, [])
+            splash:set_result_header({}, {})
             return "hi!"
         end
         """)
         self.assertStatusCode(resp, 400)
+        self.assertErrorLineNumber(resp, 3)
+
+    def test_unicode_headers_raise_bad_request(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_result_header("paweł", "kiść")
+            return "hi!"
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertIn("must be ascii", resp.text)
 
 
 class ErrorsTest(BaseLuaRenderTest):

@@ -260,7 +260,6 @@ class Splash(object):
     _result_content_type = None
     _attribute_whitelist = ['commands', 'args', 'tmp_storage',
                             'lua_properties']
-    _result_headers = []
 
     def __init__(self, lua, tab, render_options=None):
         """
@@ -301,6 +300,8 @@ class Splash(object):
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
+
+        self._result_headers = []
 
     def init_dispatcher(self, return_func):
         """
@@ -555,6 +556,12 @@ class Splash(object):
     def set_result_header(self, name, value):
         if not all([isinstance(h, basestring) for h in [name, value]]):
             raise ScriptError("splash:set_result_header() arguments must be strings")
+
+        try:
+            name = name.decode('utf-8').encode('ascii')
+            value = value.decode('utf-8').encode('ascii')
+        except UnicodeEncodeError:
+            raise ScriptError("splash:set_result_header() arguments must be ascii")
 
         header = (name, value)
         self._result_headers.append(header)
