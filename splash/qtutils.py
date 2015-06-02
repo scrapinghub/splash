@@ -10,7 +10,7 @@ import time
 
 
 from PyQt5.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
-                          QRegExp, QUrl, QVariant)
+                          QUrl, QVariant)
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from PyQt5.QtWebKit import QWebSettings
@@ -177,13 +177,6 @@ def qt2py(obj, max_depth=100):
 
     if isinstance(obj, QDateTime):
         return obj.toPyDateTime()
-
-    if isinstance(obj, QRegExp):
-        return {
-            "_jstype": "RegExp",
-            "pattern": unicode(obj.pattern()),
-            "caseSensitive": bool(obj.caseSensitivity()),
-        }
 
     if isinstance(obj, dict):
         return {

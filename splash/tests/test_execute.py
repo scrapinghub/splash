@@ -591,27 +591,6 @@ class EvaljsTest(BaseLuaRenderTest):
             "string"
         )
 
-    def test_regexp(self):
-        self.assertEvaljsResult(
-            '/my-regexp/i',
-            {
-                u'_jstype': u'RegExp',
-                'caseSensitive': False,
-                'pattern': u'my-regexp'
-            },
-            'table'
-        )
-
-        self.assertEvaljsResult(
-            '/my-regexp/',
-            {
-                u'_jstype': u'RegExp',
-                'caseSensitive': True,
-                'pattern': u'my-regexp'
-            },
-            'table'
-        )
-
     def test_syntax_error(self):
         self.assertEvaljsError("x--4", ["JsError", "SyntaxError"])
 
