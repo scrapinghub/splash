@@ -1194,6 +1194,9 @@ Example:
          ]]
      end
 
+See also: :ref:`splash-set-result-header` which allows to set any custom
+response header, not only Content-Type.
+
 
 .. _splash-set-result-header:
 
@@ -1214,16 +1217,42 @@ Set header of result response returned to splash client.
 **Async:** no.
 
 This function **does not** set HTTP headers for responses
-returned by :ref:`splash-go`; this function is for setting
-headers of splash response sent to client.
+returned by :ref:`splash-go` or requests initiated by :ref:`splash-go`;
+this function is for setting headers of splash response sent to client.
 
-Example:
+Example 1, set 'foo=bar' header:
 
 .. code-block:: lua
 
      function main(splash)
          splash:set_result_header("foo", "bar")
          return "hello"
+     end
+
+Example 2, measure the time needed to build PNG screenshot and return it
+result in an HTTP header:
+
+.. code-block:: lua
+
+     function main(splash)
+
+         -- this function measures the time code takes to execute and returns
+         -- it in an HTTP header
+         function timeit(header_name, func)
+             local start_time = splash:get_perf_stats().walltime
+             local result = func()  -- it won't work for multiple returned values!
+             local end_time = splash:get_perf_stats().walltime
+             splash:set_result_header(header_name, tostring(end_time - start_time))
+             return result
+         end
+
+         -- rendering script
+         assert(splash:go(splash.args.url))
+         local screenshot = timeit("X-Render-Time", function()
+            return splash:png()
+         end)
+         splash:set_result_content_type("image/png")
+         return screenshot
      end
 
 
