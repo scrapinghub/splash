@@ -2,6 +2,7 @@
 -- Lua autocompletion utilities for IPython kernel
 --
 local lexer = require('vendor/lexer')
+-- local inspect = require('vendor/inspect')
 local completer = {}
 
 
@@ -41,8 +42,15 @@ function completer.get_metatable_keys(obj, value_ok)
   local mt = getmetatable(obj)
   if type(mt) ~= 'table' then return {} end
   local index = mt.__index
-  if type(index) ~= 'table' then return {} end
-  return completer.get_table_keys(index, value_ok)
+  if type(index) == 'table' then
+    return completer.get_table_keys(index, value_ok)
+  elseif type(index) == 'function' then
+    -- Assume index function eventually gets values from metatable itself.
+    -- This is not always correct, but that's better than nothing.
+    return completer.get_table_keys(mt, value_ok)
+  else
+    return {}
+  end
 end
 
 

@@ -34,7 +34,7 @@ def complete(completer):
 
 def test_complete_keywords(complete):
     assert "function" in complete("fun|")
-    assert "true" in  complete("while t| do")
+    assert "true" in complete("while t| do")
 
 
 def test_complete_keywords_after_space(complete):
@@ -249,3 +249,48 @@ def test_dont_complete_globals_inside_string(complete):
 
 def test_dont_complete_inside_identifier(complete):
     assert complete("loc|omotive") == []
+
+
+def test_complete_metamethods(complete, configured_lua):
+    configured_lua.execute("""
+    Animal = {}
+    Animal.__index = Animal
+    function Animal._create(name)
+        local self = {name=name}
+        setmetatable(self, Animal)
+        return self
+    end
+    function Animal:jump() end
+    animal = Animal._create("dog")
+    """)
+    assert ["name"] == complete("animal.n|")
+    assert ["jump"] == complete("animal.j|")
+    assert ["jump", "name", "_create"] == complete("animal.|")
+    assert ["jump", "_create"] == complete("animal:|")
+
+
+def test_complete_metamethods_index_as_function(complete, configured_lua):
+    # When __index is a function, Splash completing engine assumes
+    # that it eventually uses rawget.
+    configured_lua.execute("""
+    Animal = {}
+    function Animal._create(name)
+        local self = {name=name}
+        setmetatable(self, Animal)
+        return self
+    end
+    function Animal:jump() end
+    function Animal:__index(index)
+      if index == "foo" then
+        return 123
+      else
+        return rawget(Animal, index)
+      end
+    end
+    animal = Animal._create("cat")
+    """)
+    assert [] == complete("animal.f|")  # can't support it
+    assert ["name"] == complete("animal.n|")
+    assert ["jump"] == complete("animal.j|")
+    assert ["jump", "name", "_create"] == complete("animal.|")
+    assert ["jump", "_create"] == complete("animal:|")
