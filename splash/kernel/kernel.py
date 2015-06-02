@@ -170,7 +170,7 @@ class SplashKernel(Kernel):
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         def success(res):
-            result, content_type = res
+            result, content_type, headers = res
             reply = {
                 'status': 'ok',
                 'execution_count': self.execution_count,
