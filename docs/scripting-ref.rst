@@ -1194,6 +1194,39 @@ Example:
          ]]
      end
 
+
+.. _splash-set-result-header:
+
+splash:set_result_header
+------------------------
+
+Set header of result response returned to splash client.
+
+**Signature:** ``splash:set_result_header(name, value)``
+
+**Parameters:**
+
+* name of response header
+* value of response header
+
+**Returns:** nil.
+
+**Async:** no.
+
+This function **does not** set HTTP headers for responses
+returned by :ref:`splash-go`; this function is for setting
+headers of splash response sent to client.
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash:set_result_header("foo", "bar")
+         return "hello"
+     end
+
+
 .. _splash-images-enabled:
 
 splash.images_enabled

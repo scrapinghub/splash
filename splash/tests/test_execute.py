@@ -187,6 +187,40 @@ class ResultContentTypeTest(BaseLuaRenderTest):
         self.assertIn("argument must be a string", resp.text)
 
 
+class ResultHeaderTest(BaseLuaRenderTest):
+    def test_result_header_set(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_result_header("foo", "bar")
+            return "hi!"
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertIn("foo", resp.headers)
+        self.assertEqual(resp.headers.get("foo"), "bar")
+
+    def test_bad_result_header_set(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_result_header({}, {})
+            return "hi!"
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertErrorLineNumber(resp, 3)
+
+    def test_unicode_headers_raise_bad_request(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_result_header("paweł", "kiść")
+            return "hi!"
+        end
+        """)
+        self.assertStatusCode(resp, 400)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertIn("must be ascii", resp.text)
+
+
 class ErrorsTest(BaseLuaRenderTest):
 
     def test_syntax_error(self):
