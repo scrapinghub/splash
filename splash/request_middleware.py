@@ -79,9 +79,7 @@ class ContentTypeMiddleware(object):
     receiving the response headers if the content type of the response is not
     in the whitelist or it's in the blacklist. Both lists support wildcards.
     """
-    def __init__(self, whitelist=('*/*',), blacklist=(), verbosity=0):
-        self.whitelist = set(map(ContentTypeMiddleware.split_mime, whitelist))
-        self.blacklist = set(map(ContentTypeMiddleware.split_mime, blacklist))
+    def __init__(self, verbosity=0):
         self.verbosity = verbosity
 
     @staticmethod
@@ -105,19 +103,21 @@ class ContentTypeMiddleware(object):
             return None
         return parts[0], parts[1]
 
-    def process(self, reply):
+    def process(self, reply, render_options):
         content_type = reply.header(QNetworkRequest.ContentTypeHeader)
         if not content_type.isValid():
             return
 
         mimetype = self.split_mime(str(content_type.toString()))
-
         if mimetype is None:
             return
 
-        blacklisted = self.contains(self.blacklist, mimetype)
-        whitelisted = self.contains(self.whitelist, mimetype)
-        if blacklisted or not whitelisted:
+        allowed = render_options.get_allowed_content_types()
+        forbidden = render_options.get_forbidden_content_types()
+        whitelist = set(map(ContentTypeMiddleware.split_mime, allowed))
+        blacklist = set(map(ContentTypeMiddleware.split_mime, forbidden))
+
+        if self.contains(blacklist, mimetype) or not self.contains(whitelist, mimetype):
             if self.verbosity >= 2:
                 request_str = request_repr(reply, reply.operation())
                 msg = "Dropping %s because of Content Type" % request_str

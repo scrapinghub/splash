@@ -27,16 +27,17 @@ from splash.request_middleware import (
 )
 from splash import defaults
 
-def create_default(**config):
-    for opt in 'verbosity', 'allowed_content_types', 'forbidden_content_types', 'allowed_schemes':
-        if config.get(opt) is None:
-            config[opt] = getattr(defaults, opt.upper())
-
-    for option_name in 'allowed_content_types', 'forbidden_content_types', 'allowed_schemes':
-        if isinstance(config.get(option_name), basestring):
-            config[option_name] = filter(None, config[option_name].split(','))
-
-    manager = SplashQNetworkAccessManager(**config)
+def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
+    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    if allowed_schemes is None:
+        allowed_schemes = defaults.ALLOWED_SCHEMES
+    else:
+        allowed_schemes = allowed_schemes.split(',')
+    manager = SplashQNetworkAccessManager(
+        filters_path=filters_path,
+        allowed_schemes=allowed_schemes,
+        verbosity=verbosity
+    )
     manager.setCache(None)
     return manager
 
@@ -344,8 +345,7 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
     adblock_rules = None
 
-    def __init__(self, filters_path, allowed_schemes, verbosity,
-                 allowed_content_types, forbidden_content_types):
+    def __init__(self, filters_path, allowed_schemes, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
 
         self.request_middlewares = []
@@ -367,15 +367,14 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
                 AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
             )
 
-        if len(forbidden_content_types) > 0 or tuple(allowed_content_types) != ('*/*',):
-            self.response_middlewares.append(
-                ContentTypeMiddleware(allowed_content_types, forbidden_content_types, verbosity)
-            )
+        self.response_middlewares.append(ContentTypeMiddleware(self.verbosity))
 
     def run_response_middlewares(self):
         reply = self.sender()
-        for middleware in self.response_middlewares:
-            middleware.process(reply)
+        render_options = self._getRenderOptions(reply.request())
+        if render_options:
+            for middleware in self.response_middlewares:
+                middleware.process(reply, render_options)
         reply.metaDataChanged.disconnect(self.run_response_middlewares)
 
     def createRequest(self, operation, request, outgoingData=None):
@@ -383,9 +382,8 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         if render_options:
             for filter in self.request_middlewares:
                 request = filter.process(request, render_options, operation, outgoingData)
+
         reply = super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
-
-        if len(self.response_middlewares):
+        if render_options:
             reply.metaDataChanged.connect(self.run_response_middlewares)
-
         return reply
