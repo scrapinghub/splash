@@ -137,20 +137,26 @@ class Completer(object):
                 yield tok.value
 
 
-def sorted_with_prefix(prefix, it, drop_exact=True):
+def sorted_with_prefix(prefix, it, drop_exact=True, drop_special=True):
     """
     >>> sorted_with_prefix("foo", ["fooZ", "fooAA", "fox"])
     ['fooAA', 'fooZ']
+    >>> sorted_with_prefix("", ["fooZ", "fooAA", "_f", "__f", "fox"])
+    ['fooAA', 'fooZ', 'fox', '_f']
+    >>> sorted_with_prefix("", ["fooZ", "fooAA", "_f", "__f", "fox"], drop_special=False)
+    ['fooAA', 'fooZ', 'fox', '_f', '__f']
     """
+    key = lambda name: (name.startswith("__"), name.startswith("_"), name)
     return sorted([
         el for el in it
         if el.startswith(prefix) and (not drop_exact or el != prefix)
-    ])
+           and (not drop_special or not el.startswith("__"))
+    ], key=key)
 
 
 # XXX: how to print debug messages in IPython kernels???
 def _pp(*args):
-    txt ="\n" + "\n".join(map(repr,args)) + "\n"
+    txt = "\n" + "\n".join(map(repr, args)) + "\n"
     raise Exception(txt)
 
 

@@ -160,6 +160,25 @@ function Splash._create(py_splash)
 end
 
 --
+-- Apply attribute handlers.
+--
+function Splash:__newindex( index, value )
+  if self._setters[index] then
+    self._setters[index](self, value)
+  else
+    rawset(Splash, index, value)
+  end
+end
+
+function Splash:__index(index)
+  if self._getters[index] then
+    return self._getters[index](self)
+  else
+    return rawget(Splash, index)
+  end
+end
+
+--
 -- Create jsfunc method from private_jsfunc.
 -- It is required to handle errors properly.
 --
@@ -204,20 +223,5 @@ function Splash:on_request(cb)
   end)
 end
 
-function Splash:__newindex( index, value )
-  if self._setters[index] then
-    self._setters[index](self, value)
-  else
-    rawset(Splash, index, value)
-  end
-end
-
-function Splash:__index(index)
-  if self._getters[index] then
-    return self._getters[index](self)
-  else
-    return rawget(Splash, index)
-  end
-end
 
 return Splash

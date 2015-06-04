@@ -128,8 +128,8 @@ class DefaultRenderScript(RenderScript):
                 onerror=self.on_goto_load_error,
             )
 
-    def on_goto_load_error(self):
-        self.return_error(RenderError())
+    def on_goto_load_error(self, error_info):
+        self.return_error(RenderError(repr(error_info)))
 
     @stop_on_error
     def _loadFinishedOK(self):

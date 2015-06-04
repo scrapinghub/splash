@@ -36,15 +36,20 @@ page load; ``reason`` provides an information about error type.
 
 **Async:** yes, unless the navigation is locked.
 
-Three types of errors are reported (``ok`` can be ``nil`` in 3 cases):
+Four types of errors are reported (``ok`` can be ``nil`` in 4 cases):
 
-1. There is nothing to render. This can happen if a host doesn't exist,
-   server dropped connection, etc. In this case ``reason`` is ``"error"``.
+1. There is a network error: a host doesn't exist, server dropped connection,
+   etc. In this case ``reason`` is ``"network<code>"``. A list of possible
+   error codes can be found in `Qt docs`_. For example, ``"network3"`` means
+   a DNS error (invalid hostname).
 2. Server returned a response with 4xx or 5xx HTTP status code.
    ``reason`` is ``"http<code>"`` in this case, i.e. for
    HTTP 404 Not Found ``reason`` is ``"http404"``.
 3. Navigation is locked (see :ref:`splash-lock-navigation`); ``reason``
    is ``"navigation_locked"``.
+4. If Splash can't decide what caused the error, just ``"error"`` is returned.
+
+.. _Qt docs: http://doc.qt.io/qt-5/qnetworkreply.html#NetworkError-enum
 
 Error handling example:
 
@@ -111,11 +116,10 @@ processing the webpage.
 * cancel_on_error - if true (default) and an error which prevents page
   from being rendered happened while waiting (e.g. an internal WebKit error
   or a network error like a redirect to a non-resolvable host)
-  then ``splash:wait`` stops earlier and returns ``nil, "error"``.
+  then ``splash:wait`` stops earlier and returns ``nil, "<error string>"``.
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is ``nil`` then the timer was
 stopped prematurely, and ``reason`` contains a string with a reason.
-Possible reasons are ``"error"`` and ``"redirect"``.
 
 **Async:** yes.
 
@@ -1189,6 +1193,68 @@ Example:
             </note>
          ]]
      end
+
+See also: :ref:`splash-set-result-header` which allows to set any custom
+response header, not only Content-Type.
+
+
+.. _splash-set-result-header:
+
+splash:set_result_header
+------------------------
+
+Set header of result response returned to splash client.
+
+**Signature:** ``splash:set_result_header(name, value)``
+
+**Parameters:**
+
+* name of response header
+* value of response header
+
+**Returns:** nil.
+
+**Async:** no.
+
+This function **does not** set HTTP headers for responses
+returned by :ref:`splash-go` or requests initiated by :ref:`splash-go`;
+this function is for setting headers of splash response sent to client.
+
+Example 1, set 'foo=bar' header:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash:set_result_header("foo", "bar")
+         return "hello"
+     end
+
+Example 2, measure the time needed to build PNG screenshot and return it
+result in an HTTP header:
+
+.. code-block:: lua
+
+     function main(splash)
+
+         -- this function measures the time code takes to execute and returns
+         -- it in an HTTP header
+         function timeit(header_name, func)
+             local start_time = splash:get_perf_stats().walltime
+             local result = func()  -- it won't work for multiple returned values!
+             local end_time = splash:get_perf_stats().walltime
+             splash:set_result_header(header_name, tostring(end_time - start_time))
+             return result
+         end
+
+         -- rendering script
+         assert(splash:go(splash.args.url))
+         local screenshot = timeit("X-Render-Time", function()
+            return splash:png()
+         end)
+         splash:set_result_content_type("image/png")
+         return screenshot
+     end
+
 
 .. _splash-images-enabled:
 

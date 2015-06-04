@@ -360,6 +360,9 @@ class GetResource(Resource):
     def render_GET(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
+        empty_body = bool(request.args.get('empty', [''])[0])
+        if empty_body:
+            return ""
         headers = request.getAllHeaders()
         payload = request.args
         return """
