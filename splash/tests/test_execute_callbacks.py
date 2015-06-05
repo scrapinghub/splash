@@ -116,7 +116,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         resp = self.request_lua("""
         function main(splash)
             splash:on_request(function(request)
-                request:set_header("User-Agent", "Mozilla")
+                request:set_header("User-Agent", "Fooozilla")
                 request:set_header{name="Custom-header", value="some-val"}
             end)
             splash:go(splash.args.url)
@@ -126,4 +126,4 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertStatusCode(resp, 200)
 
         self.assertIn("'custom-header': 'some-val'", resp.text)
-        self.assertIn("'user-agent': 'Mozilla'", resp.text)
+        self.assertIn("'user-agent': 'Fooozilla'", resp.text)
