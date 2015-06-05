@@ -23,8 +23,8 @@ from splash.request_middleware import (
     AllowedSchemesMiddleware,
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
-    ContentTypeMiddleware,
 )
+from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
@@ -382,7 +382,6 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         if render_options:
             for filter in self.request_middlewares:
                 request = filter.process(request, render_options, operation, outgoingData)
-
         reply = super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
         if render_options:
             reply.metaDataChanged.connect(self.run_response_middlewares)
