@@ -198,6 +198,7 @@ class GetCookie(Resource):
         value = request.getCookie(getarg(request, "key")) or ""
         return value
 
+
 class Delay(Resource):
     """ Accept the connection; write the response after ``n`` seconds. """
     isLeaf = True
@@ -212,6 +213,7 @@ class Delay(Resource):
         request.write("Response delayed for %0.3f seconds\n" % n)
         if not request._disconnected:
             request.finish()
+
 
 class SlowGif(Resource):
     """ 1x1 black gif that loads n seconds """
@@ -642,6 +644,7 @@ class GzipRoot(Resource):
                 )
         except ImportError:
             pass
+
 
 class Root(Resource):
 
