@@ -22,6 +22,14 @@ class ContentTypeMiddleware(object):
 
     @staticmethod
     def contains(mime_set, mime):
+        """
+        >>> ContentTypeMiddleware.contains({'*/*'}, 'any/thing')
+        True
+        >>> ContentTypeMiddleware.contains(set(), 'any/thing')
+        False
+        >>> ContentTypeMiddleware.contains({'text/css', 'image/*'}, 'image/png')
+        True
+        """
         for pattern in mime_set:
             if fnmatch.fnmatch(mime, pattern):
                 return True
@@ -30,7 +38,9 @@ class ContentTypeMiddleware(object):
     @staticmethod
     def clean_mime(mime):
         """
-        Remove attributes from a mime string: 'text/html; charset=utf-8' -> 'text/html'
+        Remove attributes from a mime string:
+        >>> ContentTypeMiddleware.clean_mime(' text/html; charset=utf-8\t ')
+        'text/html'
         """
         separator = mime.find(';')
         if separator > 0:
@@ -43,9 +53,6 @@ class ContentTypeMiddleware(object):
             return
 
         mimetype = self.clean_mime(str(content_type.toString()))
-        if mimetype is None:
-            return
-
         allowed = render_options.get_allowed_content_types()
         forbidden = render_options.get_forbidden_content_types()
         whitelist = set(map(ContentTypeMiddleware.clean_mime, allowed))

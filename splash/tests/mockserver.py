@@ -198,7 +198,6 @@ class GetCookie(Resource):
         value = request.getCookie(getarg(request, "key")) or ""
         return value
 
-
 class Delay(Resource):
     """ Accept the connection; write the response after ``n`` seconds. """
     isLeaf = True
@@ -213,7 +212,6 @@ class Delay(Resource):
         request.write("Response delayed for %0.3f seconds\n" % n)
         if not request._disconnected:
             request.finish()
-
 
 class SlowGif(Resource):
     """ 1x1 black gif that loads n seconds """
@@ -573,6 +571,37 @@ class CP1251Resource(Resource):
                 '''.strip().encode('cp1251')
 
 
+class Subresources(Resource):
+    """ Embedded css and image """
+    def render_GET(self, request):
+        return """<html><head>
+                <link rel="stylesheet" href="style.css?_rnd={0}" />
+            </head>
+            <body>
+            <img id="image" src="img.gif?_rnd={0}"
+                 onload="window.imageLoaded = true;"
+                 onerror="window.imageLoaded = false;"/>
+            </body>
+        </html>""".format(random.randint(0, 1<<31))
+
+    def getChild(self, name, request):
+        if name == "style.css":
+            return self.StyleSheet()
+        if name == "img.gif":
+            return self.Image()
+        return self
+
+    class StyleSheet(Resource):
+        def render_GET(self, request):
+            request.setHeader("Content-Type", "text/css; charset=utf-8")
+            print "Request Style!"
+            return "body { background-color: red; }"
+    class Image(Resource):
+        def render_GET(self, request):
+            request.setHeader("Content-Type", "image/gif")
+            return base64.decodestring('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
+
+
 class InvalidContentTypeResource(Resource):
     def render_GET(self, request):
         request.setHeader("Content-Type", "ABRACADABRA: text/html; charset=windows-1251")
@@ -614,7 +643,6 @@ class GzipRoot(Resource):
         except ImportError:
             pass
 
-
 class Root(Resource):
 
     def __init__(self, http_port, https_port, proxy_port):
@@ -645,6 +673,7 @@ class Root(Resource):
         self.putChild("eggspam.js", EggSpamScript()),
         self.putChild("very-long-green-page", VeryLongGreenPage())
         self.putChild("rgb-stripes", RgbStripesPage())
+        self.putChild("subresources", Subresources())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-to", JsRedirectTo())
