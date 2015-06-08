@@ -1,11 +1,9 @@
 from .test_render import BaseRenderTest
 import json
-import random
 
 class ContentTypeTest(BaseRenderTest):
     """Tests the content type middleware """
     endpoint = 'render.json'
-    _nocache = 0
 
     def _request(self, allowed_ctypes='*/*', forbidden_ctypes=''):
         js_source = """
