@@ -371,11 +371,11 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
 
     def run_response_middlewares(self):
         reply = self.sender()
+        reply.metaDataChanged.disconnect(self.run_response_middlewares)
         render_options = self._getRenderOptions(reply.request())
         if render_options:
             for middleware in self.response_middlewares:
                 middleware.process(reply, render_options)
-        reply.metaDataChanged.disconnect(self.run_response_middlewares)
 
     def createRequest(self, operation, request, outgoingData=None):
         render_options = self._getRenderOptions(request)
