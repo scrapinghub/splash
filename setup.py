@@ -73,7 +73,7 @@ else:
     setup_args['zip_safe'] = False
     setup_args['install_requires'] = [
         'Twisted',
-        'qt4reactor',
+        'qt5reactor-fork',
         'psutil',
         'adblockparser',
         'xvfbwrapper',

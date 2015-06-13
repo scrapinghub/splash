@@ -51,8 +51,7 @@ before_install:
     # Builds Complete
     - popd
     # pip installs
-    - pip install psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib
-    - pip install git+https://github.com/sunu/qt5reactor
+    - pip install psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib qt5reactor-fork
     - "if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow twisted service_identity lupa; fi"
 
 install:
