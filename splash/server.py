@@ -6,7 +6,7 @@ import resource
 import traceback
 import signal
 import functools
-from psutil import phymem_usage
+
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
@@ -222,11 +222,11 @@ def splash_server(portnum, slots, network_manager, max_timeout,
 def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
     from twisted.python import log
-    from splash.utils import get_ru_maxrss
+    from splash.utils import get_ru_maxrss, get_total_phymem
 
     # Support maxrss as a ratio of total physical memory
     if 0.0 < maxrss < 1.0:
-        maxrss = phymem_usage().total * maxrss / (1024 ** 2)
+        maxrss = get_total_phymem() * maxrss / (1024 ** 2)
 
     def check_maxrss():
         if get_ru_maxrss() > maxrss * (1024 ** 2):

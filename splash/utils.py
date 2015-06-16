@@ -37,7 +37,10 @@ class SplashJSONEncoder(json.JSONEncoder):
 PID = os.getpid()
 def get_num_fds():
     proc = psutil.Process(PID)
-    return proc.get_num_fds()
+    try:
+        return proc.num_fds()
+    except AttributeError:  # psutil < 2.0
+        return proc.get_num_fds()
 
 
 def get_alive():
@@ -75,6 +78,14 @@ def get_ru_maxrss():
         # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
         size *= 1024
     return size
+
+
+def get_total_phymem():
+    """ Return the total amount of physical memory available. """
+    try:
+        return psutil.virtual_memory().total
+    except AttributeError: # psutil < 2.0
+        return psutil.phymem_usage().total
 
 
 def truncated(text, max_length=100, msg='...'):
