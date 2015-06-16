@@ -61,7 +61,6 @@ class AllowedSchemesMiddleware(object):
             drop_request(request)
         return request
 
-
 class RequestLoggingMiddleware(object):
     """ Request middleware for logging requests """
     def process(self, request, render_options, operation, data):

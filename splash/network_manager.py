@@ -8,6 +8,7 @@ from PyQt4.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
+    QNetworkReply,
     QNetworkCookieJar
 )
 from PyQt4.QtWebKit import QWebFrame
@@ -23,8 +24,8 @@ from splash.request_middleware import (
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
 )
+from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
-
 
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
@@ -233,8 +234,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             return setattr(web_frame.page(), attribute, value)
 
     def _handleError(self, error_id):
-        error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
-        self.log("Download error %d: %s ({url})" % (error_id, error_msg), self.sender(), min_level=2)
+        if error_id != QNetworkReply.OperationCanceledError:
+            error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
+            self.log('Download error %d: %s ({url})' % (error_id, error_msg),
+                     self.sender(), min_level=2)
 
     def _handleFinished(self):
         reply = self.sender()
@@ -331,7 +334,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         msg = msg.format(url=url)
         log.msg(msg, system='network-manager')
 
-
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
     This QNetworkAccessManager provides:
@@ -347,6 +349,8 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
 
         self.request_middlewares = []
+        self.response_middlewares = []
+
         if self.verbosity >= 2:
             self.request_middlewares.append(RequestLoggingMiddleware())
 
@@ -363,9 +367,22 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
                 AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
             )
 
+        self.response_middlewares.append(ContentTypeMiddleware(self.verbosity))
+
+    def run_response_middlewares(self):
+        reply = self.sender()
+        reply.metaDataChanged.disconnect(self.run_response_middlewares)
+        render_options = self._getRenderOptions(reply.request())
+        if render_options:
+            for middleware in self.response_middlewares:
+                middleware.process(reply, render_options)
+
     def createRequest(self, operation, request, outgoingData=None):
         render_options = self._getRenderOptions(request)
         if render_options:
             for filter in self.request_middlewares:
                 request = filter.process(request, render_options, operation, outgoingData)
-        return super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
+        reply = super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
+        if render_options:
+            reply.metaDataChanged.connect(self.run_response_middlewares)
+        return reply

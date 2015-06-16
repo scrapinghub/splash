@@ -218,6 +218,18 @@ class RenderOptions(object):
         if allowed_domains is not None:
             return allowed_domains.split(',')
 
+    def get_allowed_content_types(self):
+        content_types = self.get("allowed_content_types", default=['*/*'])
+        if isinstance(content_types, basestring):
+            content_types = filter(None, content_types.split(','))
+        return content_types
+
+    def get_forbidden_content_types(self):
+        content_types = self.get("forbidden_content_types", default=[])
+        if isinstance(content_types, basestring):
+            content_types = filter(None, content_types.split(','))
+        return content_types
+
     def get_common_params(self, js_profiles_path):
         wait = self.get_wait()
         return {

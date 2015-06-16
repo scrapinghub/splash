@@ -11,7 +11,6 @@ from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
 
-
 def install_qtreactor(verbose):
     init_qt_app(verbose)
     import qt4reactor
@@ -256,7 +255,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
     manager = network_manager.create_default(
         filters_path=filters_path,
         verbosity=verbosity,
-        allowed_schemes=allowed_schemes
+        allowed_schemes=allowed_schemes,
     )
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
