@@ -249,7 +249,6 @@ Array           table
 ``undefined``   ``nil``
 ``null``        ``""`` (an empty string)
 Date            string: date's ISO8601 representation, e.g. ``1958-05-21T10:12:00Z``
-RegExp          table ``{_jstype='RegExp', caseSensitive=true/false, pattern='my-regexp'}``
 function        an empty table ``{}`` (don't rely on it)
 ==============  =================
 
