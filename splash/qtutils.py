@@ -9,11 +9,11 @@ import sys
 import time
 
 
-from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
-                          QRegExp, QString, QUrl, QVariant)
-from PyQt4.QtGui import QApplication
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
-from PyQt4.QtWebKit import QWebSettings
+from PyQt5.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
+                          QUrl, QVariant)
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
+from PyQt5.QtWebKit import QWebSettings
 from twisted.python import log
 
 from splash.utils import truncated
@@ -29,7 +29,7 @@ OPERATION_NAMES = {
 OPERATION_QT_CONSTANTS = {v:k for k,v in OPERATION_NAMES.items()}
 
 
-# See: http://pyqt.sourceforge.net/Docs/PyQt4/qnetworkreply.html#NetworkError-enum
+# See: http://pyqt.sourceforge.net/Docs/PyQt5/qnetworkreply.html#NetworkError-enum
 REQUEST_ERRORS = {
     QNetworkReply.NoError : 'no error condition. Note: When the HTTP protocol returns a redirect no error will be reported. You can check if there is a redirect with the QNetworkRequest::RedirectionTargetAttribute attribute.',
     QNetworkReply.ConnectionRefusedError : 'the remote server refused the connection (the server is not accepting requests)',
@@ -175,18 +175,8 @@ def qt2py(obj, max_depth=100):
 
     # print(obj, obj.__class__)
 
-    if isinstance(obj, QString):
-        return unicode(obj)
-
     if isinstance(obj, QDateTime):
         return obj.toPyDateTime()
-
-    if isinstance(obj, QRegExp):
-        return {
-            "_jstype": "RegExp",
-            "pattern": unicode(obj.pattern()),
-            "caseSensitive": bool(obj.caseSensitivity()),
-        }
 
     if isinstance(obj, dict):
         return {

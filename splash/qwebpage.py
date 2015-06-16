@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import pprint
 from collections import namedtuple
 import sip
-from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtCore import QByteArray
+from PyQt5.QtWebKitWidgets import QWebPage, QWebView
+from PyQt5.QtCore import QByteArray
 from twisted.python import log
 from splash.cookies import SplashCookieJar
 from splash.har.log import HarLog

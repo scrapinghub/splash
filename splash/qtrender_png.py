@@ -10,8 +10,8 @@ from cStringIO import StringIO
 from math import ceil, floor
 
 from PIL import Image
-from PyQt4.QtCore import QBuffer, QPoint, QRect, QSize, Qt
-from PyQt4.QtGui import QImage, QPainter, QRegion
+from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
+from PyQt5.QtGui import QImage, QPainter, QRegion
 
 from splash import defaults
 
@@ -23,7 +23,7 @@ def qimage_to_pil_image(qimage):
     """Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode)."""
     # In our case QImage uses 0xAARRGGBB format stored in host endian order,
     # we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences used by pillow.
-    buf = qimage.bits().asstring(qimage.numBytes())
+    buf = qimage.bits().asstring(qimage.byteCount())
     if sys.byteorder != "little":
         buf = swap_byte_order_i32(buf)
     # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
@@ -45,7 +45,7 @@ def render_qwebpage(web_page, logger=None, width=None, height=None,
     """
     Render QWebPage into a WrappedImage.
 
-    :type web_page: PyQt4.QtWebKit.QWebPage
+    :type web_page: PyQt5.QtWebKit.QWebPage
     :type logger: splash.browser_tab._BrowserTabLogger
     :type width: int
     :type height: int

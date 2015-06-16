@@ -4,8 +4,8 @@ from collections import namedtuple
 from datetime import datetime
 
 import splash
-from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-from PyQt4.QtWebKit import qWebKitVersion
+from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+from PyQt5.QtWebKit import qWebKitVersion
 
 from .utils import get_duration, format_datetime, without_private
 

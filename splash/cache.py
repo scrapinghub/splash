@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from PyQt4.QtNetwork import QNetworkDiskCache
+from PyQt5.QtNetwork import QNetworkDiskCache
 from twisted.python import log
 from splash import defaults
 
