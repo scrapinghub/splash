@@ -127,3 +127,23 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
         self.assertIn("'custom-header': 'some-val'", resp.text)
         self.assertIn("'user-agent': 'Fooozilla'", resp.text)
+
+
+class OnResponseTest(BaseLuaRenderTest, BaseHtmlProxyTest):
+    def test_on_response_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_response_headers(function(response)
+                response.set_header("Server", "splash")
+            end)
+            res = splash:http_get("http://httpbin.org/headers")
+            return res
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json().get("headers")
+        hs = {}
+        for h in headers:
+            hs[h["name"]] = h["value"]
+
+        # self.assertEqual(hs.get("Server"), "splash")

@@ -223,5 +223,15 @@ function Splash:on_request(cb)
   end)
 end
 
+local Response = {}
+Response.__index = Response
+
+function Splash:on_response_headers(cb)
+    private.on_response_headers(self, function (response)
+        local res = Response._modify_headers(response)
+        return cb(res)
+    end)
+end
+
 
 return Splash

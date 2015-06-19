@@ -628,6 +628,12 @@ class Splash(object):
         self.tab.register_callback("on_request", py_callback)
         return True
 
+    @command(sets_callback=True)
+    def private_on_response_headers(self, callback):
+        py_callback = lambda a,b,c: ()
+        self.tab.register_callback("on_response_headers", py_callback)
+        return True
+
     def _error_info_to_lua(self, error_info):
         if error_info is None:
             return "error"
