@@ -12,6 +12,7 @@ prepare_install -- prepare image for installation
 install_deps -- install system-level dependencies
 install_builddeps -- install system-level build-dependencies
 install_python_deps -- install python-level dependencies
+install_msfonts - agree with EULA and install Microsoft fonts
 remove_builddeps -- remove build-dependencies
 remove_extra -- remove files that are unnecessary to run Splash
 
@@ -74,6 +75,15 @@ install_python_deps () {
         lupa==1.1 \
         funcparserlib==0.3.6 \
         Pillow==2.8.1
+}
+
+install_msfonts() {
+    # Agree with EULA and install Microsoft fonts
+    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu precise multiverse" && \
+    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu precise-updates multiverse" && \
+    apt-get update && \
+    echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections && \
+    apt-get install -y ttf-mscorefonts-installer
 }
 
 remove_builddeps () {
