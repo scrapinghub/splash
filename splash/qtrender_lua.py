@@ -630,8 +630,12 @@ class Splash(object):
 
     @command(sets_callback=True)
     def private_on_response_headers(self, callback):
-        py_callback = lambda a,b,c: ()
-        self.tab.register_callback("on_response_headers", py_callback)
+
+        def res_callback(reply):
+            with wrapped_response(self.lua, reply) as res:
+                callback(res)
+
+        self.tab.register_callback("on_response_headers", res_callback)
         return True
 
     def _error_info_to_lua(self, error_info):
@@ -727,6 +731,39 @@ class _WrappedRequest(object):
     @_requires_request
     def set_header(self, name, value):
         self.request.setRawHeader(name, value)
+
+
+@contextlib.contextmanager
+def wrapped_response(lua, reply):
+    """
+    Context manager which returns a wrapped QNetworkRequest
+    suitable for using in Lua code.
+    """
+    res = _WrappedResponse(lua, reply)
+    try:
+        with lua.object_allowed(res, res.attr_whitelist):
+            yield res
+    finally:
+        pass
+
+
+class _WrappedResponse(object):
+    _attribute_whitelist = ['headers', 'commands', "response"]
+
+    def __init__(self, lua, response):
+        self.lua = lua
+        self.response = response
+        commands = get_commands(self)
+        self.commands = self.lua.python2lua(commands)
+        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
+        self._exceptions = []
+
+    @command()
+    def set_header(self, name, value):
+        self.response.setRawHeader(name, value)
+        # doesn't work because
+        # lupa._lupa.LuaError: [string "..."]:4: RuntimeError('no access to protected functions or signals for objects not created from Python',)
+        # need to find some other way
 
 
 class SplashScriptRunner(BaseScriptRunner):

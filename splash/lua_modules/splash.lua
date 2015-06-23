@@ -226,9 +226,26 @@ end
 local Response = {}
 Response.__index = Response
 
+function Response._create(py_reply)
+    local self = {response=py_reply.response}
+    setmetatable(self, Request)
+    
+    for key, opts in pairs(py_reply.commands) do
+        local command = py_reply[key]
+        command = drops_self_argument(command)
+
+        if opts.returns_error_flag then
+            command = unwraps_errors(command)
+        end
+        self[key] = command
+    end
+    
+    return self
+end
+
 function Splash:on_response_headers(cb)
     private.on_response_headers(self, function (response)
-        local res = Response._modify_headers(response)
+        local res = Response._create(response)
         return cb(res)
     end)
 end

@@ -134,7 +134,7 @@ class OnResponseTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         resp = self.request_lua("""
         function main(splash)
             splash:on_response_headers(function(response)
-                response.set_header("Server", "splash")
+                response:set_header("Server", "splash")
             end)
             res = splash:http_get("http://httpbin.org/headers")
             return res

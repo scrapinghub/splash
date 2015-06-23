@@ -27,6 +27,7 @@ from splash.request_middleware import (
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 
+
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
     if allowed_schemes is None:
@@ -241,6 +242,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleFinished(self):
         reply = self.sender()
+
         har_entry = self._harEntry()
         if har_entry is not None:
             har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
@@ -267,7 +269,14 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleMetaData(self):
         reply = self.sender()
+        # reply.setRawHeader("foo", "bar")
         self._handle_reply_cookies(reply)
+
+        callbacks = self._getWebPageAttribute(reply.request(), "callbacks")
+
+        if callbacks and "on_response_headers" in callbacks:
+            for cb in callbacks["on_response_headers"]:
+                cb(reply)
 
         har_entry = self._harEntry()
         if har_entry is not None:
@@ -333,6 +342,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         msg = msg.format(url=url)
         log.msg(msg, system='network-manager')
+
 
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
