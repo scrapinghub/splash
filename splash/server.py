@@ -6,7 +6,10 @@ import resource
 import traceback
 import signal
 import functools
-
+try:
+    from psutil import phymem_usage
+except ImportError:
+    from psutil import virtual_memory as phymem_usage
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
@@ -86,11 +89,12 @@ def parse_opts():
 def start_logging(opts):
     import twisted
     from twisted.python import log
-    from twisted.python.logfile import DailyLogFile
-    if opts.logfile:
-        logfile = DailyLogFile.fromFullPath(opts.logfile)
-    else:
-        logfile = sys.stderr
+    # TODO: fix this.
+    # from twisted.python.logfile import DailyLogFile
+    # if opts.logfile:
+    #     logfile = DailyLogFile.fromFullPath(opts.logfile)
+    # else:
+    logfile = sys.stderr
     flo = log.startLogging(logfile)
 
     if twisted.version.major >= 13:  # add microseconds to log
@@ -183,6 +187,7 @@ def splash_server(portnum, slots, network_manager, max_timeout,
         js_profiles_path=js_profiles_path,
         verbosity=verbosity,
     )
+
 
     if not lua.is_supported() and lua_enabled:
         lua_enabled = False

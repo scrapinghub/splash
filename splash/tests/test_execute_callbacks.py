@@ -125,5 +125,5 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-        self.assertIn("'custom-header': 'some-val'", resp.text)
-        self.assertIn("'user-agent': 'Fooozilla'", resp.text)
+        self.assertIn("u'custom-header': u'some-val'", resp.text)
+        self.assertIn("u'user-agent': u'Mozilla'", resp.text)

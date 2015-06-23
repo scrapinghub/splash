@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import os
 import optparse
-import urllib
+try:
+    from urllib import unquote
+except ImportError:
+    from urllib.parse import unquote
 import base64
 import random
 from twisted.web.server import Site, NOT_DONE_YET
@@ -12,10 +15,14 @@ from twisted.web import proxy, http
 from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
 
+from splash.compat import _PY3
+from splash.utils import bytes_to_unicode
+
 
 _REQUIRED = object()
 
-def getarg(request, name, default=_REQUIRED, type=str):
+
+def getarg(request, name, default=_REQUIRED, type=bytes):
     value = request.args.get(name, [None])[0]
     if value is not None:
         if type is not None:
@@ -39,10 +46,12 @@ def _html_resource(html):
             self.https_port = https_port
 
         def render(self, request):
-            return self.template % dict(
+            response = self.template % dict(
                 http_port=self.http_port,
                 https_port=self.https_port
             )
+            # Twisted wants response to be bytes
+            return response.encode('utf-8')
 
     return HtmlResource
 
@@ -144,7 +153,7 @@ EggSpamScript = _html_resource("function egg(){return 'spam';}")
 class BaseUrl(Resource):
 
     def render_GET(self, request):
-        return """
+        return b"""
 <html>
 <body>
 <p id="p1">Before</p>
@@ -165,7 +174,7 @@ class BaseUrl(Resource):
 
         def render_GET(self, request):
             request.setHeader("Content-Type", "application/javascript")
-            return 'document.getElementById("p1").innerHTML="After";'
+            return b'document.getElementById("p1").innerHTML="After";'
 
 
 class SetCookie(Resource):
@@ -176,17 +185,17 @@ class SetCookie(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        key = getarg(request, "key")
-        value = getarg(request, "value")
-        next_url = urllib.unquote(getarg(request, "next", ""))
-        request.addCookie(key, value)
+        key = getarg(request, b"key")
+        value = getarg(request, b"value")
+        next_url = unquote(getarg(request, b"next", b"").decode('utf-8'))
+        request.addCookie(str(key.decode('utf-8')), str(value.decode('utf-8')))
         if next_url:
-            return """
+            return (u"""
             <html><body>
             Redirecting now..
             <script> window.location = '%s'; </script>
             </body></html>
-            """ % next_url
+            """ % next_url).encode('utf-8')
         else:
             return "ok"
 
@@ -195,7 +204,7 @@ class GetCookie(Resource):
     """ Return a cookie with key=key """
     isLeaf = False
     def render_GET(self, request):
-        value = request.getCookie(getarg(request, "key")) or ""
+        value = request.getCookie(getarg(request, b"key")) or b""
         return value
 
 
@@ -209,8 +218,9 @@ class Delay(Resource):
         d.addCallback(self._delayedRender)
         return NOT_DONE_YET
 
-    def _delayedRender(self, (request, n)):
-        request.write("Response delayed for %0.3f seconds\n" % n)
+    def _delayedRender(self, request_info):
+        request, n = request_info
+        request.write(b"Response delayed for %0.3f seconds\n" % n)
         if not request._disconnected:
             request.finish()
 
@@ -221,14 +231,15 @@ class SlowGif(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        request.setHeader("Content-Type", "image/gif")
-        request.write("GIF89a")
+        request.setHeader(b"Content-Type", b"image/gif")
+        request.write(b"GIF89a")
         n = getarg(request, "n", 1, type=float)
         d = deferLater(reactor, n, lambda: (request, n))
         d.addCallback(self._delayedRender)
         return NOT_DONE_YET
 
-    def _delayedRender(self, (request, n)):
+    def _delayedRender(self, request_info):
+        request, n = request_info
         # write 1px black gif
         gif_data = b'AQABAIAAAAAAAAAAACH5BAAAAAAALAAAAAABAAEAAAICTAEAOw=='
         request.write(base64.decodestring(gif_data))
@@ -241,25 +252,25 @@ class ShowImage(Resource):
 
     def render_GET(self, request):
         token = random.random()  # prevent caching
-        return """<html><body>
+        return (u"""<html><body>
         <img id='foo' width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
         </body></html>
-        """ % token
+        """ % token).encode('utf-8')
 
 
 class IframeResource(Resource):
 
     def __init__(self, http_port):
         Resource.__init__(self)
-        self.putChild("1.html", self.IframeContent1())
-        self.putChild("2.html", self.IframeContent2())
-        self.putChild("3.html", self.IframeContent3())
-        self.putChild("4.html", self.IframeContent4())
-        self.putChild("5.html", self.IframeContent5())
-        self.putChild("6.html", self.IframeContent6())
-        self.putChild("script.js", self.ScriptJs())
-        self.putChild("script2.js", self.OtherDomainScript())
-        self.putChild("nested.html", self.NestedIframeContent())
+        self.putChild(b"1.html", self.IframeContent1())
+        self.putChild(b"2.html", self.IframeContent2())
+        self.putChild(b"3.html", self.IframeContent3())
+        self.putChild(b"4.html", self.IframeContent4())
+        self.putChild(b"5.html", self.IframeContent5())
+        self.putChild(b"6.html", self.IframeContent6())
+        self.putChild(b"script.js", self.ScriptJs())
+        self.putChild(b"script2.js", self.OtherDomainScript())
+        self.putChild(b"nested.html", self.NestedIframeContent())
         self.http_port = http_port
 
     def render(self, request):
@@ -337,9 +348,9 @@ class PostResource(Resource):
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
-        headers = request.getAllHeaders()
-        payload = request.content.getvalue() if request.content is not None else ''
-        return """
+        headers = bytes_to_unicode(request.getAllHeaders())
+        payload = bytes_to_unicode(request.content.getvalue()) if request.content is not None else u''
+        return (u"""
 <html>
 <body>
 <p id="p1">From POST</p>
@@ -351,21 +362,21 @@ class PostResource(Resource):
 </p>
 </body>
 </html>
-""" % (headers, payload)
+""" % (headers, payload)).encode('utf-8')
 
 
 class GetResource(Resource):
     """ Return a HTML file with all HTTP headers and all GET arguments """
 
     def render_GET(self, request):
-        code = request.args.get('code', [200])[0]
+        code = request.args.get(b'code', [200])[0]
         request.setResponseCode(int(code))
-        empty_body = bool(request.args.get('empty', [''])[0])
+        empty_body = bool(request.args.get(b'empty', [b''])[0])
         if empty_body:
-            return ""
-        headers = request.getAllHeaders()
-        payload = request.args
-        return """
+            return b""
+        headers = bytes_to_unicode(request.getAllHeaders())
+        payload = bytes_to_unicode(request.args)
+        return (u"""
 <html>
 <body>
 <p id="p1">GET request</p>
@@ -377,7 +388,7 @@ class GetResource(Resource):
 </p>
 </body>
 </html>
-""" % (headers, payload)
+""" % (headers, payload)).encode('utf-8')
 
 
 ExternalIFrameResource = _html_resource("""
@@ -539,11 +550,11 @@ RgbStripesPage = _html_resource("""
 
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
-        code = request.args['code'][0]
+        code = request.args[b'code'][0].decode('utf-8')
         url = '/getrequest?http_code=%s' % code
         request.setResponseCode(int(code))
-        request.setHeader(b"location", url)
-        return "%s redirect to %s" % (code, url)
+        request.setHeader(b"location", url.encode('utf-8'))
+        return ("%s redirect to %s" % (code, url)).encode('utf-8')
 
 
 class JsRedirectTo(Resource):
@@ -551,7 +562,7 @@ class JsRedirectTo(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        next_url = urllib.unquote(getarg(request, "url"))
+        next_url = unquote(getarg(request, "url"))
         return """
         <html><body>
         Redirecting now..
@@ -622,11 +633,11 @@ class Index(Resource):
             "<li><a href='%s'>%s</a></li>" % (path, path)
             for (path, child) in self.rootChildren.items() if path
         ])
-        return """
+        return (u"""
         <html>
         <body><ul>%s</ul></body>
         </html>
-        """ % links
+        """ % links).encode('utf-8')
 
 
 class GzipRoot(Resource):
@@ -651,54 +662,54 @@ class Root(Resource):
     def __init__(self, http_port, https_port, proxy_port):
         Resource.__init__(self)
         self.log = []
-        self.putChild("postrequest", PostResource())
-        self.putChild("getrequest", GetResource())
 
-        self.putChild("jsrender", JsRender())
-        self.putChild("jsalert", JsAlert())
-        self.putChild("jsconfirm", JsConfirm())
-        self.putChild("jsinterval", JsInterval())
-        self.putChild("jsviewport", JsViewport())
-        self.putChild("tall", TallPage())
-        self.putChild("red-green", RedGreenPage())
-        self.putChild("baseurl", BaseUrl())
-        self.putChild("delay", Delay())
-        self.putChild("slow.gif", SlowGif())
-        self.putChild("show-image", ShowImage())
-        self.putChild("iframes", IframeResource(http_port))
-        self.putChild("externaliframe", ExternalIFrameResource(https_port=https_port))
-        self.putChild("external", ExternalResource())
-        self.putChild("cp1251", CP1251Resource())
-        self.putChild("cp1251-invalid", InvalidContentTypeResource())
-        self.putChild("bad-related", BadRelatedResource())
-        self.putChild("set-cookie", SetCookie()),
-        self.putChild("get-cookie", GetCookie()),
-        self.putChild("eggspam.js", EggSpamScript()),
-        self.putChild("very-long-green-page", VeryLongGreenPage())
-        self.putChild("rgb-stripes", RgbStripesPage())
-        self.putChild("subresources", Subresources())
+        self.putChild(b"postrequest", PostResource())
+        self.putChild(b"getrequest", GetResource())
 
-        self.putChild("jsredirect", JsRedirect())
-        self.putChild("jsredirect-to", JsRedirectTo())
-        self.putChild("jsredirect-slowimage", JsRedirectSlowImage())
-        self.putChild("jsredirect-onload", JsRedirectOnload())
-        self.putChild("jsredirect-timer", JsRedirectTimer())
-        self.putChild("jsredirect-chain", JsRedirectToJsRedirect())
-        self.putChild("jsredirect-target", JsRedirectTarget())
-        self.putChild("jsredirect-infinite", JsRedirectInfinite())
-        self.putChild("jsredirect-infinite2", JsRedirectInfinite2())
-        self.putChild("jsredirect-non-existing", JsRedirectToNonExisting())
+        self.putChild(b"jsrender", JsRender())
+        self.putChild(b"jsalert", JsAlert())
+        self.putChild(b"jsconfirm", JsConfirm())
+        self.putChild(b"jsinterval", JsInterval())
+        self.putChild(b"jsviewport", JsViewport())
+        self.putChild(b"tall", TallPage())
+        self.putChild(b"red-green", RedGreenPage())
+        self.putChild(b"baseurl", BaseUrl())
+        self.putChild(b"delay", Delay())
+        self.putChild(b"slow.gif", SlowGif())
+        self.putChild(b"show-image", ShowImage())
+        self.putChild(b"iframes", IframeResource(http_port))
+        self.putChild(b"externaliframe", ExternalIFrameResource(https_port=https_port))
+        self.putChild(b"external", ExternalResource())
+        self.putChild(b"cp1251", CP1251Resource())
+        self.putChild(b"cp1251-invalid", InvalidContentTypeResource())
+        self.putChild(b"bad-related", BadRelatedResource())
+        self.putChild(b"set-cookie", SetCookie()),
+        self.putChild(b"get-cookie", GetCookie()),
+        self.putChild(b"eggspam.js", EggSpamScript()),
+        self.putChild(b"very-long-green-page", VeryLongGreenPage())
+        self.putChild(b"rgb-stripes", RgbStripesPage())
 
-        self.putChild("meta-redirect0", MetaRedirect0())
-        self.putChild("meta-redirect-slowload", MetaRedirectSlowLoad())
-        self.putChild("meta-redirect-slowload2", MetaRedirectSlowLoad2())
-        self.putChild("meta-redirect1", MetaRedirect1())
-        self.putChild("meta-redirect-target", MetaRedirectTarget())
-        self.putChild("http-redirect", HttpRedirectResource())
+        self.putChild(b"jsredirect", JsRedirect())
+        self.putChild(b"jsredirect-to", JsRedirectTo())
+        self.putChild(b"jsredirect-slowimage", JsRedirectSlowImage())
+        self.putChild(b"jsredirect-onload", JsRedirectOnload())
+        self.putChild(b"jsredirect-timer", JsRedirectTimer())
+        self.putChild(b"jsredirect-chain", JsRedirectToJsRedirect())
+        self.putChild(b"jsredirect-target", JsRedirectTarget())
+        self.putChild(b"jsredirect-infinite", JsRedirectInfinite())
+        self.putChild(b"jsredirect-infinite2", JsRedirectInfinite2())
+        self.putChild(b"jsredirect-non-existing", JsRedirectToNonExisting())
 
-        self.putChild("", Index(self.children))
+        self.putChild(b"meta-redirect0", MetaRedirect0())
+        self.putChild(b"meta-redirect-slowload", MetaRedirectSlowLoad())
+        self.putChild(b"meta-redirect-slowload2", MetaRedirectSlowLoad2())
+        self.putChild(b"meta-redirect1", MetaRedirect1())
+        self.putChild(b"meta-redirect-target", MetaRedirectTarget())
+        self.putChild(b"http-redirect", HttpRedirectResource())
 
-        self.putChild("gzip", GzipRoot(self.children))
+        self.putChild(b"", Index(self.children))
+
+        self.putChild(b"gzip", GzipRoot(self.children))
 
 
 def cert_path():
@@ -711,14 +722,14 @@ def ssl_factory():
 
 class ProxyClient(proxy.ProxyClient):
     def handleResponsePart(self, buffer):
-        buffer = buffer.replace('</body>', ' PROXY_USED</body>')
+        buffer = buffer.replace(b'</body>', b' PROXY_USED</body>')
         proxy.ProxyClient.handleResponsePart(self, buffer)
 
 class ProxyClientFactory(proxy.ProxyClientFactory):
     protocol = ProxyClient
 
 class ProxyRequest(proxy.ProxyRequest):
-    protocols = {'http': ProxyClientFactory}
+    protocols = {b'http': ProxyClientFactory}
 
 class Proxy(proxy.Proxy):
     requestFactory = ProxyRequest
@@ -738,8 +749,8 @@ def run(port_num, sslport_num, proxyport_num, verbose=True):
         h = port.getHost()
         s = sslport.getHost()
         p = proxyport.getHost()
-        print "Mock server running at http://%s:%d (http), https://%s:%d (https) and http://%s:%d (proxy)" % \
-            (h.host, h.port, s.host, s.port, p.host, p.port)
+        print("Mock server running at http://%s:%d (http), https://%s:%d (https) and http://%s:%d (proxy)" %
+              (h.host, h.port, s.host, s.port, p.host, p.port))
 
     if verbose:
         import sys

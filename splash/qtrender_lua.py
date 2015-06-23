@@ -21,7 +21,7 @@ from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
-from splash.utils import truncated, BinaryCapsule
+from splash.utils import truncated, BinaryCapsule, bytes_to_unicode
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -29,6 +29,10 @@ from splash.qtutils import (
     create_proxy
 )
 from splash.lua_runtime import SplashLuaRuntime
+from splash.compat import _PY3
+
+if _PY3:
+    basestring = (str, bytes)
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -220,8 +224,9 @@ class _WrappedJavascriptFunction(object):
     @emits_lua_objects
     def __call__(self, *args):
         args = self.lua.lua2python(args)
-        args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
-        func_text = json.dumps([self.source], ensure_ascii=False, encoding='utf8')[1:-1]
+        args = bytes_to_unicode(args)
+        args_text = json.dumps(args, ensure_ascii=False)[1:-1]
+        func_text = json.dumps([self.source], ensure_ascii=False)[1:-1]
         wrapper_script = """
         (function(func_text){
             try{
@@ -470,12 +475,13 @@ class Splash(object):
         else:
             # load JS from a remote resource
             cmd_id = next(self._command_ids)
+
             def callback(reply):
                 if reply.error():
                     reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
                     self._return(cmd_id, None, reason)
                 else:
-                    source = bytes(reply.readAll())
+                    source = bytes(reply.readAll()).decode('utf-8')
                     self.tab.autoload(source)
                     self._return(cmd_id, True)
 
@@ -533,17 +539,21 @@ class Splash(object):
     @command()
     def add_cookie(self, name, value, path=None, domain=None, expires=None,
                    httpOnly=None, secure=None):
-        cookie = dict(name=name, value=value)
+        name = name.encode('utf-8')
+        value = value.encode('utf-8')
+        cookie = dict()
+        cookie[b'name'] = name
+        cookie[b'value'] = value
         if path is not None:
-            cookie["path"] = path
+            cookie[b"path"] = path.encode('utf-8')
         if domain is not None:
-            cookie["domain"] = domain
+            cookie[b"domain"] = domain.encode('utf-8')
         if expires is not None:
-            cookie["expires"] = expires
+            cookie[b"expires"] = expires.encode('utf-8')
         if httpOnly is not None:
-            cookie["httpOnly"] = httpOnly
+            cookie[b"httpOnly"] = httpOnly
         if secure is not None:
-            cookie["secure"] = secure
+            cookie[b"secure"] = secure
         return self.tab.add_cookie(cookie)
 
     @command()
@@ -558,8 +568,12 @@ class Splash(object):
             raise ScriptError("splash:set_result_header() arguments must be strings")
 
         try:
-            name = name.decode('utf-8').encode('ascii')
-            value = value.decode('utf-8').encode('ascii')
+            try:
+                name = name.decode('utf-8').encode('ascii')
+                value = value.decode('utf-8').encode('ascii')
+            except AttributeError:
+                name = name.encode('ascii')
+                value = value.encode('ascii')
         except UnicodeEncodeError:
             raise ScriptError("splash:set_result_header() arguments must be ascii")
 
@@ -783,8 +797,8 @@ class LuaRender(RenderScript):
 
         try:
             main_coro = self.get_main(lua_source)
-        except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
-            raise ScriptError("lua_source: " + repr(e))
+        except Exception as e:
+            raise ScriptError(u"lua_source: " + repr(e))
 
         self.runner.start(
             main_coro=main_coro,

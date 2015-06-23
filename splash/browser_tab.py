@@ -24,6 +24,11 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+
 
 def skip_if_closing(meth):
     @functools.wraps(meth)
@@ -548,7 +553,7 @@ class BrowserTab(QObject):
         if not handle_errors:
             return qt2py(frame.evaluateJavaScript(js_source))
 
-        escaped = json.dumps([js_source], ensure_ascii=False, encoding='utf8')[1:-1]
+        escaped = json.dumps([js_source], ensure_ascii=False)[1:-1]
         wrapped = """
         (function(script_text){
             try{

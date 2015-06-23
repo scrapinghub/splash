@@ -10,7 +10,7 @@ class HttpRedirectTest(BaseRenderTest):
     def assertRedirectedResponse(self, resp, code):
         self.assertStatusCode(resp, 200)
         self.assertIn("GET request", resp.text)
-        self.assertIn("{'http_code': ['%s']}" % code, resp.text)
+        self.assertIn("{u'http_code': [u'%s']}" % code, resp.text)
 
     def assertHttpRedirectWorks(self, code):
         resp = self.request({"url": self.mockurl("http-redirect?code=%s" % code)})

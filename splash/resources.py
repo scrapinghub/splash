@@ -21,7 +21,7 @@ from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
 from splash.lua import is_supported as lua_is_supported
-from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
+from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder, bytes_to_unicode
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
 from splash.qtutils import clear_caches
@@ -38,7 +38,7 @@ class _ValidatingResource(Resource):
             return Resource.render(self, request)
         except BadOption as e:
             request.setResponseCode(400)
-            return str(e) + "\n"
+            return str(e).encode('utf-8') + b"\n"
 
 
 class BaseRenderResource(_ValidatingResource):
@@ -54,7 +54,7 @@ class BaseRenderResource(_ValidatingResource):
         self.max_timeout = max_timeout
 
     def render_GET(self, request):
-        #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
+        # log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
 
         request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
@@ -64,6 +64,7 @@ class BaseRenderResource(_ValidatingResource):
 
         timeout = render_options.get_timeout()
         wait_time = render_options.get_wait()
+
 
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
@@ -82,10 +83,11 @@ class BaseRenderResource(_ValidatingResource):
             # TODO: pass http method to RenderScript explicitly.
             return self.render_GET(request)
 
-        content_type = request.getHeader('content-type')
-        if not any(ct in content_type for ct in ['application/javascript', 'application/json']):
+        content_type = request.getHeader(b'content-type')
+
+        if not any(ct in content_type.decode('utf-8') for ct in ['application/javascript', 'application/json']):
             request.setResponseCode(415)
-            request.write("Request content-type not supported\n")
+            request.write(b"Request content-type not supported\n")
             return
 
         return self.render_GET(request)
@@ -102,6 +104,7 @@ class BaseRenderResource(_ValidatingResource):
             content_type = self.content_type
 
         if isinstance(data, (dict, list)):
+            data = bytes_to_unicode(data)
             data = json.dumps(data, cls=SplashJSONEncoder)
             return self._writeOutput(data, request, "application/json")
 
@@ -112,15 +115,24 @@ class BaseRenderResource(_ValidatingResource):
                 request.setHeader(name, value)
             return self._writeOutput(data, request, content_type)
 
-        if isinstance(data, (bool, int, long, float, types.NoneType)):
+        # TODO: long?
+        if data is None or isinstance(data, (bool, int, float)):
             return self._writeOutput(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
             return self._writeOutput(data.data, request, content_type)
 
-        request.setHeader("content-type", content_type)
+        request.setHeader(b"content-type", content_type)
 
         self._logStats(request)
+        try:
+            # Twisted expects bytes on Python 3
+            data = data.encode('utf-8')
+        except AttributeError:
+            # Already bytes on py3. Let it pass.
+            pass
+        except UnicodeDecodeError:
+            pass
         request.write(data)
 
     def _logStats(self, request):
@@ -135,18 +147,18 @@ class BaseRenderResource(_ValidatingResource):
             "qsize": len(self.pool.queue.pending),
             "_id": id(request),
         }
-        log.msg(json.dumps(stats), system="stats")
+        log.msg(json.dumps(bytes_to_unicode(stats)), system="stats")
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
         request.setResponseCode(504)
-        request.write("Timeout exceeded rendering page\n")
+        request.write(b"Timeout exceeded rendering page\n")
         #log.msg("_timeoutError: %s" % id(request))
 
     def _renderError(self, failure, request):
         failure.trap(RenderError)
         request.setResponseCode(502)
-        request.write("Error rendering page\n")
+        request.write(b"Error rendering page\n")
         #log.msg("_renderError: %s" % id(request))
 
     def _internalError(self, failure, request):
@@ -158,7 +170,7 @@ class BaseRenderResource(_ValidatingResource):
     def _badRequest(self, failure, request):
         failure.trap(BadOption)
         request.setResponseCode(400)
-        request.write(str(failure.value) + "\n")
+        request.write(str(failure.value).encode('utf-8') + b"\n")
 
     def _finishRequest(self, _, request):
         if not request._disconnected:
@@ -191,11 +203,11 @@ class ExecuteLuaScriptResource(BaseRenderResource):
 
     def _getRender(self, request, options):
         params = dict(
-            proxy = options.get_proxy(),
-            lua_source = options.get_lua_source(),
-            sandboxed = self.sandboxed,
-            lua_package_path = self.lua_package_path,
-            lua_sandbox_allowed_modules = self.lua_sandbox_allowed_modules,
+            proxy=options.get_proxy(),
+            lua_source=options.get_lua_source(),
+            sandboxed=self.sandboxed,
+            lua_package_path=self.lua_package_path,
+            lua_sandbox_allowed_modules=self.lua_sandbox_allowed_modules,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -566,9 +578,9 @@ class DemoUI(_ValidatingResource):
 class Root(Resource):
     HARVIEWER_PATH = os.path.join(
         os.path.dirname(__file__),
-        'vendor',
-        'harviewer',
-        'webapp',
+        u'vendor',
+        u'harviewer',
+        u'webapp',
     )
 
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
@@ -578,19 +590,19 @@ class Root(Resource):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
-        self.putChild("render.html", RenderHtmlResource(pool, max_timeout))
-        self.putChild("render.png", RenderPngResource(pool, max_timeout))
-        self.putChild("render.json", RenderJsonResource(pool, max_timeout))
-        self.putChild("render.har", RenderHarResource(pool, max_timeout))
+        self.putChild(b"render.html", RenderHtmlResource(pool, max_timeout))
+        self.putChild(b"render.png", RenderPngResource(pool, max_timeout))
+        self.putChild(b"render.json", RenderJsonResource(pool, max_timeout))
+        self.putChild(b"render.har", RenderHarResource(pool, max_timeout))
 
-        self.putChild("_debug", DebugResource(pool))
-        self.putChild("_gc", ClearCachesResource())
+        self.putChild(b"_debug", DebugResource(pool))
+        self.putChild(b"_gc", ClearCachesResource())
 
         # backwards compatibility
-        self.putChild("debug", DebugResource(pool, warn=True))
+        self.putChild(b"debug", DebugResource(pool, warn=True))
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
-            self.putChild("execute", ExecuteLuaScriptResource(
+            self.putChild(b"execute", ExecuteLuaScriptResource(
                 pool=pool,
                 is_proxy_request=False,
                 sandboxed=lua_sandbox_enabled,
@@ -600,7 +612,7 @@ class Root(Resource):
             ))
 
         if self.ui_enabled:
-            self.putChild("_harviewer", File(self.HARVIEWER_PATH))
+            self.putChild(b"_harviewer", File(self.HARVIEWER_PATH))
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
                 lua_enabled=self.lua_enabled,
@@ -608,7 +620,7 @@ class Root(Resource):
             ))
 
     def getChild(self, name, request):
-        if name == "" and self.ui_enabled:
+        if name == b"" and self.ui_enabled:
             return self
         return Resource.getChild(self, name, request)
 

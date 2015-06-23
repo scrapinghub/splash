@@ -18,6 +18,11 @@ from twisted.python import log
 
 from splash.utils import truncated
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+
 
 OPERATION_NAMES = {
     QNetworkAccessManager.HeadOperation: 'HEAD',

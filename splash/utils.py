@@ -5,10 +5,16 @@ import gc
 import sys
 import json
 import base64
+import collections
 import inspect
 import resource
 from collections import defaultdict
 import psutil
+
+from splash.compat import _PY3
+
+if _PY3:
+    basestring = (str, bytes)
 
 
 _REQUIRED = object()
@@ -30,8 +36,22 @@ class BinaryCapsule(object):
 class SplashJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, BinaryCapsule):
+            print("yup")
             return o.as_b64()
         return super(SplashJSONEncoder, self).default(o)
+
+
+def bytes_to_unicode(data):
+    if isinstance(data, bytes):
+        return data.decode('utf-8')
+    elif isinstance(data, dict):
+        return dict(list(map(bytes_to_unicode, list(data.items()))))
+    elif isinstance(data, (list, tuple)):
+        return type(data)(list(map(bytes_to_unicode, data)))
+    elif isinstance(data, BinaryCapsule):
+        return bytes_to_unicode(data.as_b64())
+    else:
+        return data
 
 
 PID = os.getpid()
@@ -88,7 +108,7 @@ def get_total_phymem():
         return psutil.phymem_usage().total
 
 
-def truncated(text, max_length=100, msg='...'):
+def truncated(text, max_length=100, msg=b'...'):
     """
     >>> truncated("hello world!", 5)
     'hello...'

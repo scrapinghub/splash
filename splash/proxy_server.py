@@ -5,7 +5,7 @@ the Splash Proxy an user gets a rendered DOM snapshot instead of a raw HTML.
 Not to be confused with Splash support for proxying outgoing requests
 (see :mod:`splash.proxy`).
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod
 from twisted.python import log, failure
@@ -133,7 +133,7 @@ class SplashProxyRequest(http.Request):
             self.render(resource)
 
         except Exception as e:
-            print e
+            print(e)
             self.processingFailed(failure.Failure())
 
     def render(self, resource):

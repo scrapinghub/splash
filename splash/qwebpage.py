@@ -8,6 +8,11 @@ from twisted.python import log
 from splash.cookies import SplashCookieJar
 from splash.har.log import HarLog
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 

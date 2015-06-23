@@ -4,6 +4,11 @@ import json
 import urllib
 import requests
 from . import test_render, test_har, test_request_filters, test_runjs
+from ..compat import _PY3
+from ..utils import bytes_to_unicode
+
+if _PY3:
+    basestring = (str, bytes)
 
 
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
@@ -12,7 +17,7 @@ class JsonPostRequestHandler(test_render.DirectRequestHandler):
         assert not isinstance(query, basestring)
         endpoint = endpoint or self.endpoint
         url = "http://%s/%s" % (self.host, endpoint)
-        data = json.dumps(query, encoding='utf8')
+        data = json.dumps(bytes_to_unicode(query))
         _headers = {'content-type': 'application/json'}
         _headers.update(headers or {})
         return requests.post(url, data=data, headers=_headers)
@@ -83,9 +88,9 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
         for r in [r1, r2]:
             self.assertStatusCode(r, 200)
-            self.assertIn("'x-custom-header1': 'some-val1'", r.text)
-            self.assertIn("'custom-header2': 'some-val2'", r.text)
-            self.assertIn("'user-agent': 'Mozilla'", r.text)
+            self.assertIn("u'x-custom-header1': u'some-val1'", r.text)
+            self.assertIn("u'custom-header2': u'some-val2'", r.text)
+            self.assertIn("u'user-agent': u'Mozilla'", r.text)
 
             # This is not a proxy request, so Splash shouldn't remove
             # "Connection" header.
@@ -121,7 +126,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "headers": headers,
         })
         self.assertStatusCode(r, 200)
-        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("u'user-agent': u'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
         headers = {
@@ -135,7 +140,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         self.assertStatusCode(r, 200)
 
         # this is not a proxy request - don't remove headers
-        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("u'user-agent': u'Mozilla123'", r.text)
         self.assertIn("mozilla123", r.text.lower())
 
     def test_user_agent_after_redirect(self):
@@ -147,7 +152,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "wait": 0.1,
         })
         self.assertStatusCode(r, 200)
-        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("u'user-agent': u'Mozilla123'", r.text)
 
     def test_cookie(self):
         r = self.request({

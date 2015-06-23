@@ -11,6 +11,11 @@ from PyQt5.QtNetwork import QNetworkRequest
 
 from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+
 
 def _header_pairs(request_or_reply):
     if hasattr(request_or_reply, 'rawHeaderPairs'):
@@ -114,7 +119,11 @@ def reply2har(reply, include_content=False, binary_content=False):
 
     status_text = reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
     if status_text is not None:
-        res["statusText"] = bytes(status_text).decode('latin1')
+        try:
+            res["statusText"] = bytes(status_text, 'latin1')
+        except TypeError:
+            res["statusText"] = bytes(status_text).decode('latin1')
+
     else:
         res["statusText"] = REQUEST_ERRORS_SHORT.get(reply.error(), "?")
 

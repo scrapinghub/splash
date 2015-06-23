@@ -34,11 +34,11 @@ class SplashCookieJar(QNetworkCookieJar):
         """
         all_cookies = self.allCookies()
         if url is None:
-            new_cookies = [c for c in all_cookies if bytes(c.name()) != name]
+            new_cookies = [c for c in all_cookies if bytes(c.name()) != name.encode('utf-8')]
         else:
             remove_cookies = self.cookiesForUrl(QUrl(url))
             if name is not None:
-                remove_cookies = [c for c in remove_cookies if bytes(c.name()) == name]
+                remove_cookies = [c for c in remove_cookies if bytes(c.name()) == name.encode('utf-8')]
             to_remove = {self._cookie_fp(c) for c in remove_cookies}
             new_cookies = [
                 c for c in all_cookies if self._cookie_fp(c) not in to_remove
@@ -78,23 +78,23 @@ class SplashCookieJar(QNetworkCookieJar):
     @classmethod
     def har_cookie2qt(cls, cookie):
         qcookie = QNetworkCookie()
-        qcookie.setName(cookie["name"])
-        qcookie.setValue(cookie["value"])
+        qcookie.setName(cookie[b"name"])
+        qcookie.setValue(cookie[b"value"])
 
-        if 'domain' in cookie:
-            qcookie.setDomain(cookie["domain"])
+        if b'domain' in cookie:
+            qcookie.setDomain(cookie[b"domain"].decode('utf-8'))
 
-        if 'httpOnly' in cookie:
-            qcookie.setHttpOnly(cookie["httpOnly"])
+        if b'httpOnly' in cookie:
+            qcookie.setHttpOnly(cookie[b"httpOnly"])
 
-        if 'secure' in cookie:
-            qcookie.setSecure(cookie["secure"])
+        if b'secure' in cookie:
+            qcookie.setSecure(cookie[b"secure"])
 
-        if 'path' in cookie:
-            qcookie.setPath(cookie["path"])
+        if b'path' in cookie:
+            qcookie.setPath(cookie[b"path"].decode('utf-8'))
 
-        if cookie.get('expires'):
-            expires = QDateTime.fromString(cookie["expires"], Qt.ISODate)
+        if cookie.get(b'expires'):
+            expires = QDateTime.fromString(cookie[b"expires"].decode('utf-8'), Qt.ISODate)
             qcookie.setExpirationDate(expires)
 
         return qcookie

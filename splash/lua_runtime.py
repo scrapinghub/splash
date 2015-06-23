@@ -6,6 +6,12 @@ import contextlib
 
 from splash.lua import lua2python, python2lua, get_new_runtime
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+    basestring = (str, bytes)
+
 
 class SplashLuaRuntime(object):
     """

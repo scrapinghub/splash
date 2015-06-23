@@ -6,7 +6,8 @@ This module handles rendering QWebPage into PNG images.
 import sys
 import array
 from abc import ABCMeta, abstractmethod, abstractproperty
-from cStringIO import StringIO
+from io import BytesIO
+
 from math import ceil, floor
 
 from PIL import Image
@@ -414,7 +415,7 @@ class WrappedPillowImage(WrappedImage):
         self.img = self.img.crop((left, top, right, bottom))
 
     def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
-        buf = StringIO()
+        buf = BytesIO()
         self.img.save(buf, 'png', compress_level=complevel)
         return buf.getvalue()
 

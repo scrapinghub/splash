@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from base64 import standard_b64decode
 import json
 import unittest
-from cStringIO import StringIO
+from io import BytesIO
 import numbers
 import time
 
@@ -18,12 +18,17 @@ from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
 from .. import defaults
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
-    endpoint = 'execute'
+    endpoint = u'execute'
 
     def request_lua(self, code, query=None):
-        q = {"lua_source": code}
+        q = {u"lua_source": code}
         q.update(query or {})
         return self.request(q)
 
@@ -35,7 +40,7 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
 class MainFunctionTest(BaseLuaRenderTest):
 
     def test_return_json(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
           local obj = {key="value"}
           return {
@@ -50,14 +55,14 @@ class MainFunctionTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.headers['content-type'], 'application/json')
+        self.assertEqual(resp.headers[u'content-type'], u'application/json')
         self.assertEqual(resp.json(), {
-            "mystatus": "ok",
-            "number": 5,
-            "float": -0.5,
-            "obj": {"key": "value"},
-            "bool": True,
-            "bool2": False,
+            u"mystatus": u"ok",
+            u"number": 5,
+            u"float": -0.5,
+            u"obj": {u"key": u"value"},
+            u"bool": True,
+            u"bool2": False,
         })
 
     def test_unicode(self):
@@ -66,8 +71,8 @@ class MainFunctionTest(BaseLuaRenderTest):
         """.encode('utf8'))
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.headers['content-type'], 'application/json')
-        self.assertEqual(resp.json(), {"key": u"значение"})
+        self.assertEqual(resp.headers[u'content-type'], u'application/json')
+        self.assertEqual(resp.json(), {u"key": u"значение"})
 
     def test_unicode_direct(self):
         resp = self.request_lua(u"""
@@ -77,52 +82,52 @@ class MainFunctionTest(BaseLuaRenderTest):
         """.encode('utf8'))
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, u"привет")
-        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+        self.assertEqual(resp.headers[u'content-type'], u'text/plain; charset=utf-8')
 
     def test_number(self):
-        resp = self.request_lua("function main(splash) return 1 end")
+        resp = self.request_lua(u"function main(splash) return 1 end")
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "1")
-        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+        self.assertEqual(resp.text, u"1")
+        self.assertEqual(resp.headers[u'content-type'], u'text/plain; charset=utf-8')
 
     def test_number_float(self):
-        resp = self.request_lua("function main(splash) return 1.5 end")
+        resp = self.request_lua(u"function main(splash) return 1.5 end")
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "1.5")
-        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+        self.assertEqual(resp.text, u"1.5")
+        self.assertEqual(resp.headers[u'content-type'], u'text/plain; charset=utf-8')
 
     def test_bool(self):
-        resp = self.request_lua("function main(splash) return true end")
+        resp = self.request_lua(u"function main(splash) return true end")
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "True")
-        self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
+        self.assertEqual(resp.text, u"True")
+        self.assertEqual(resp.headers[u'content-type'], u'text/plain; charset=utf-8')
 
     def test_empty(self):
-        resp = self.request_lua("function main(splash) end")
+        resp = self.request_lua(u"function main(splash) end")
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "")
 
-        resp = self.request_lua("function main() end")
+        resp = self.request_lua(u"function main() end")
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "")
 
     def test_no_main(self):
-        resp = self.request_lua("x=1")
+        resp = self.request_lua(u"x=1")
         self.assertStatusCode(resp, 400)
-        self.assertIn("function is not found", resp.text)
+        self.assertIn(u"function is not found", resp.text)
 
     def test_bad_main(self):
-        resp = self.request_lua("main=1")
+        resp = self.request_lua(u"main=1")
         self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
+        self.assertIn(u"is not a function", resp.text)
 
     def test_ugly_main(self):
-        resp = self.request_lua("main={coroutine=123}")
+        resp = self.request_lua(u"main={coroutine=123}")
         self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
+        self.assertIn(u"is not a function", resp.text)
 
     def test_nasty_main(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         main = {coroutine=function()
           return {
             send=function() end,
@@ -131,7 +136,7 @@ class MainFunctionTest(BaseLuaRenderTest):
         end}
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
+        self.assertIn(u"is not a function", resp.text)
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):
@@ -882,7 +887,7 @@ class RunjsTest(BaseLuaRenderTest):
 
 class JsfuncTest(BaseLuaRenderTest):
     def assertJsfuncResult(self, source, arguments, result):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc([[%s]])
             return func(%s)
@@ -895,31 +900,31 @@ class JsfuncTest(BaseLuaRenderTest):
             self.assertEqual(resp.text, result)
 
     def test_Math(self):
-        self.assertJsfuncResult("Math.pow", "5, 2", "25")
+        self.assertJsfuncResult(u"Math.pow", u"5, 2", u"25")
 
     def test_helloworld(self):
         self.assertJsfuncResult(
-            "function(s) {return 'Hello, ' + s;}",
-            "'world!'",
-            "Hello, world!"
+            u"function(s) {return 'Hello, ' + s;}",
+            u"'world!'",
+            u"Hello, world!"
         )
 
     def test_object_argument(self):
         self.assertJsfuncResult(
-            "function(obj) {return obj.foo;}",
-            "{foo='bar'}",
-            "bar",
+            u"function(obj) {return obj.foo;}",
+            u"{foo='bar'}",
+            u"bar",
         )
 
     def test_object_result(self):
         self.assertJsfuncResult(
-            "function(obj) {return obj.foo;}",
-            "{foo={x=5, y=10}}",
-            {"x": 5, "y": 10},
+            u"function(obj) {return obj.foo;}",
+            u"{foo={x=5, y=10}}",
+            {u"x": 5, u"y": 10},
         )
 
     def test_object_result_pass(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func1 = splash:jsfunc("function(){return {foo:{x:5}}}")
             local func2 = splash:jsfunc("function(obj){return obj.foo}")
@@ -928,31 +933,31 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"x": 5})
+        self.assertEqual(resp.json(), {u"x": 5})
 
     def test_bool(self):
-        is5 = "function(num){return num==5}"
-        self.assertJsfuncResult(is5, "5", "True")
-        self.assertJsfuncResult(is5, "6", "False")
+        is5 = u"function(num){return num==5}"
+        self.assertJsfuncResult(is5, u"5", u"True")
+        self.assertJsfuncResult(is5, u"6", u"False")
 
     def test_undefined_result(self):
-        self.assertJsfuncResult("function(){}", "", "None")
+        self.assertJsfuncResult(u"function(){}", u"", u"None")
 
     def test_undefined_argument(self):
-        self.assertJsfuncResult("function(foo){return foo}", "", "None")
+        self.assertJsfuncResult(u"function(foo){return foo}", u"", u"None")
 
     def test_throw_string(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){throw 'ABC'}")
             return func()
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call: u'ABC'", resp.text)
+        self.assertIn(u"error during JS function call: u'ABC'", resp.text)
 
     def test_throw_pcall(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){throw 'ABC'}")
             local ok, res = pcall(func)
@@ -961,21 +966,21 @@ class JsfuncTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertEqual(data["ok"], False)
-        self.assertIn("error during JS function call: u'ABC'", data["res"])
+        self.assertEqual(data[u"ok"], False)
+        self.assertIn(u"error during JS function call: u'ABC'", data[u"res"])
 
     def test_throw_error(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){throw new Error('ABC')}")
             return func()
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call: u'Error: ABC'", resp.text)
+        self.assertIn(u"error during JS function call: u'Error: ABC'", resp.text)
 
     def test_throw_error_pcall(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){throw new Error('ABC')}")
             local ok, res = pcall(func)
@@ -984,41 +989,41 @@ class JsfuncTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertEqual(data["ok"], False)
-        self.assertIn("error during JS function call: u'Error: ABC'", data["res"])
+        self.assertEqual(data[u"ok"], False)
+        self.assertIn(u"error during JS function call: u'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){")
             return func()
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call", resp.text)
-        self.assertIn("SyntaxError", resp.text)
+        self.assertIn(u"error during JS function call", resp.text)
+        self.assertIn(u"SyntaxError", resp.text)
 
     def test_js_syntax_error_brace(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc('); window.alert("hello")')
             return func()
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call", resp.text)
-        self.assertIn("SyntaxError", resp.text)
+        self.assertIn(u"error during JS function call", resp.text)
+        self.assertIn(u"SyntaxError", resp.text)
 
     def test_array_result(self):
         self.assertJsfuncResult(
-            "function(){return [1, 2, 'foo']}",
-            "",
-            [1, 2, "foo"]
+            u"function(){return [1, 2, 'foo']}",
+            u"",
+            [1, 2, u"foo"]
         )
 
     def test_array_result_processed(self):
         # XXX: note that index is started from 1
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){return [1, 2, 'foo']}")
             local arr = func()
@@ -1027,27 +1032,27 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"arr": [1, 2, "foo"], "first": 1, "tp": "table"})
+        self.assertEqual(resp.json(), {u"arr": [1, 2, u"foo"], u"first": 1, u"tp": u"table"})
 
     def test_array_argument(self):
         # XXX: note that index is started from 1
         self.assertJsfuncResult(
-            "function(arr){return arr[1]}",
-            "{5, 6, 'foo'}",
-            "5",
+            u"function(arr){return arr[1]}",
+            u"{5, 6, 'foo'}",
+            u"5",
         )
 
     # this doesn't work because table is passed as an object
     @pytest.mark.xfail
     def test_array_length(self):
         self.assertJsfuncResult(
-            "function(arr){return arr.length}",
-            "{5, 6, 'foo'}",
-            "3",
+            u"function(arr){return arr.length}",
+            u"{5, 6, 'foo'}",
+            u"3",
         )
 
     def test_jsfunc_attributes(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:jsfunc("function(){return 123}")
             return func.source
@@ -1056,16 +1061,16 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
 
     def test_private_jsfunc_not_available(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             return {ok = splash.private_jsfunc == nil}
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json()['ok'], True)
+        self.assertEqual(resp.json()[u'ok'], True)
 
     def test_private_jsfunc_attributes(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local func = splash:private_jsfunc("function(){return 123}")
             return func.source
@@ -1249,7 +1254,7 @@ class JsonPostArgsTest(ArgsTest):
         self.assertArgsPassed({"headers": headers})
 
     def test_access_headers(self):
-        func = """
+        func = u"""
         function main(splash)
           local ua = "Unknown"
           if splash.args.headers then
@@ -1276,7 +1281,7 @@ class JsonPostArgsTest(ArgsTest):
 class GoTest(BaseLuaRenderTest):
 
     def go_status(self, url):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local ok, reason = splash:go(splash.args.url)
             return {ok=ok, reason=reason}
@@ -1340,7 +1345,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertEqual(data["reason"], "network301")
 
     def test_go_multiple(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:go(splash.args.url_1)
             local html_1 = splash:html()
@@ -1353,11 +1358,11 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertIn("{'foo': ['1']}", data['html_1'])
-        self.assertIn("{'bar': ['2']}", data['html_2'])
+        self.assertIn("{u'foo': [u'1']}", data['html_1'])
+        self.assertIn("{u'bar': [u'2']}", data['html_2'])
 
     def test_go_404_then_good(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local ok1, err1 = splash:go(splash.args.url_1)
             local html_1 = splash:html()
@@ -1382,7 +1387,7 @@ class GoTest(BaseLuaRenderTest):
 
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_go_bad_then_good(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:go("--non-existing-host")
             local ok, err = splash:go(splash.args.url)
@@ -1393,7 +1398,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {"ok": True})
 
     def test_go_headers_cookie(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             assert(splash:go{splash.args.url, headers={
                 ["Cookie"] = "foo=bar; egg=spam"
@@ -1405,7 +1410,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("spam", resp.text)
 
     def test_go_headers(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             assert(splash:go{splash.args.url, headers={
                 ["Custom-Header"] = "Header Value",
@@ -1425,7 +1430,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertNotIn("'Header Value'", data["res2"])
 
     def test_set_custom_headers(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:set_custom_headers({
                 ["Header-1"] = "Value 1",
@@ -1482,18 +1487,18 @@ class SetUserAgentTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertIn("Mozilla", data["res1"])
-        self.assertNotIn("Mozilla", data["res2"])
-        self.assertNotIn("Mozilla", data["res3"])
+        self.assertIn(u"Mozilla", data["res1"])
+        self.assertNotIn(u"Mozilla", data["res2"])
+        self.assertNotIn(u"Mozilla", data["res3"])
 
-        self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-        self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-        self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+        self.assertNotIn("u'user-agent': u'Foozilla'", data["res1"])
+        self.assertIn("u'user-agent': u'Foozilla'", data["res2"])
+        self.assertIn("u'user-agent': u'Foozilla'", data["res3"])
 
 
 class CookiesTest(BaseLuaRenderTest):
     def test_cookies(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             local function cookies_after(url)
                 splash:go(url)
@@ -1548,7 +1553,6 @@ class CookiesTest(BaseLuaRenderTest):
             'httpOnly': False,
             'secure': False
         }
-
         self.assertEqual(data["c0"], [])
         self.assertEqual(data["c1"], [cookie1])
         self.assertEqual(data["c2"], [cookie1, cookie2])
@@ -1561,7 +1565,7 @@ class CookiesTest(BaseLuaRenderTest):
         self.assertEqual(data["c9"], data["c2"])
 
     def test_add_cookie(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:add_cookie("baz", "egg")
             splash:add_cookie{"spam", "egg", domain="example.com"}
@@ -1588,7 +1592,7 @@ class CookiesTest(BaseLuaRenderTest):
         ])
 
     def test_init_cookies(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:init_cookies({
                 {name="baz", value="egg"},
@@ -1952,7 +1956,7 @@ class AutoloadTest(BaseLuaRenderTest):
         self.assertEqual(data, {"foo1": "bar", "foo2": "spam", "foo3": "bar"})
 
     def test_autoload_remote(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             assert(splash:autoload(splash.args.eggspam_url))
             assert(splash:go(splash.args.url))
@@ -2138,13 +2142,13 @@ class SetContentTest(BaseLuaRenderTest):
         """
         resp = self.request_lua(script, {"base": self.mockurl("")})
         self.assertStatusCode(resp, 200)
-        img = Image.open(StringIO(resp.content))
+        img = Image.open(BytesIO(resp.content))
         self.assertEqual((0,0,0,255), img.getpixel((10, 10)))
 
         # the same, but with a bad base URL
         resp = self.request_lua(script, {"base": ""})
         self.assertStatusCode(resp, 200)
-        img = Image.open(StringIO(resp.content))
+        img = Image.open(BytesIO(resp.content))
         self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
 
     def test_url(self):
@@ -2166,8 +2170,8 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         end
         """
         out = self.request_lua(func).json()
-        self.assertItemsEqual(out.keys(),
-                              ['walltime', 'cputime', 'maxrss'])
+        self.assertEqual(list(out.keys()).sort(),
+                              ['walltime', 'cputime', 'maxrss'].sort())
         self.assertIsInstance(out['cputime'], numbers.Real)
         self.assertIsInstance(out['walltime'], numbers.Real)
         self.assertIsInstance(out['maxrss'], numbers.Integral)
@@ -2323,7 +2327,7 @@ end
         self.assertEqual(out, {'width': w, 'height': 2000})
 
     def test_render_all_restores_viewport_size(self):
-        script = """
+        script = u"""
         function main(splash)
         assert(splash:go(splash.args.url))
         assert(splash:wait(0.1))
@@ -2338,7 +2342,7 @@ end
         self.assertEqual(out['before'], {'1': w, '2': h})
         self.assertEqual(out['after'], {'1': w, '2': h})
         # 2000px is hardcoded in that html
-        img = Image.open(StringIO(standard_b64decode(out['png'])))
+        img = Image.open(BytesIO(standard_b64decode(out['png'])))
         self.assertEqual(img.size, (w, 2000))
 
     def test_set_viewport_size_changes_contents_size_immediately(self):

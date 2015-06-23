@@ -7,9 +7,17 @@ various conditions. They should be used with
 from __future__ import absolute_import
 import re
 import os
-import urlparse
+try:
+    from urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 from twisted.python import log
 from splash.qtutils import request_repr, drop_request
+
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
 
 
 class AllowedDomainsMiddleware(object):
@@ -105,7 +113,7 @@ class AdblockMiddleware(object):
 
     def _url_and_adblock_options(self, request, render_options):
         url = unicode(request.url().toString())
-        domain = urlparse.urlsplit(render_options.get_url()).netloc
+        domain = urlsplit(render_options.get_url()).netloc
         options = {'domain': domain}
         return url, options
 
@@ -154,7 +162,7 @@ class AdblockRulesRegistry(object):
             if self.verbosity >= 1:
                 log.msg("Loading filter %s" % name)
 
-            with open(fpath, 'rt') as f:
+            with open(fpath, 'rb') as f:
                 lines = [line.decode('utf8').strip() for line in f]
 
             rules = adblockparser.AdblockRules(

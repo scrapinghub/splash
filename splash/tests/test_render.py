@@ -4,7 +4,8 @@ import json
 import base64
 import urllib
 from functools import wraps
-from cStringIO import StringIO
+
+from io import BytesIO
 
 import pytest
 import requests
@@ -38,14 +39,15 @@ def skip_proxy(func):
 
 class DirectRequestHandler(object):
 
-    endpoint = "render.html"
+    endpoint = u"render.html"
 
     def __init__(self, ts):
         self.ts = ts
 
     @property
     def host(self):
-        return "localhost:%s" % self.ts.splashserver.portnum
+        print(u"localhost:%s" % self.ts.splashserver.portnum)
+        return u"localhost:%s" % self.ts.splashserver.portnum
 
     def request(self, query, endpoint=None, headers=None):
         url, params = self._url_and_params(endpoint, query)
@@ -58,10 +60,10 @@ class DirectRequestHandler(object):
     def _url_and_params(self, endpoint, query):
         endpoint = endpoint if endpoint is not None else self.endpoint
         if isinstance(query, dict):
-            url = "http://%s/%s" % (self.host, endpoint)
+            url = u"http://%s/%s" % (self.host, endpoint)
             params = query
         else:
-            url = "http://%s/%s?%s" % (self.host, endpoint, query)
+            url = u"http://%s/%s?%s" % (self.host, endpoint, query)
             params = None
         return url, params
 
@@ -69,7 +71,7 @@ class DirectRequestHandler(object):
 @pytest.mark.usefixtures("class_ts")
 class BaseRenderTest(unittest.TestCase):
 
-    endpoint = "render.html"
+    endpoint = u"render.html"
     request_handler = DirectRequestHandler
     use_gzip = False
 
@@ -101,7 +103,7 @@ class BaseRenderTest(unittest.TestCase):
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         self.assertEqual(img.format, "PNG")
         if width is not None:
             self.assertEqual(img.size[0], width)
@@ -113,7 +115,7 @@ class BaseRenderTest(unittest.TestCase):
 
     def assertBoxColor(self, response, box, etalon):
         assert len(etalon) == 4  # RGBA components
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         extrema = img.crop(box).getextrema()
         for (color_name, (min_val, max_val)) in zip(self.COLOR_NAMES, extrema):
             self.assertEqual(
@@ -229,7 +231,7 @@ class RenderHtmlTest(Base.RenderTest):
         self.assertIn('300x400', r.text)
 
     def test_nonascii_url(self):
-        nonascii_value =  u'тест'.encode('utf8')
+        nonascii_value =  u'тест'
         url = self.mockurl('getrequest') + '?param=' + nonascii_value
         r = self.request({'url': url})
         self.assertStatusCode(r, 200)
@@ -408,7 +410,7 @@ class RenderPngTest(Base.RenderTest):
                         "Split is not sharp")
 
     def assertPixelColor(self, response, x, y, color):
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         self.assertEqual(color, img.getpixel((x, y)))
 
 

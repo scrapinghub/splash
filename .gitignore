@@ -12,3 +12,4 @@ _trial_temp
 .splash-cache*
 .coverage
 notebooks
+env*

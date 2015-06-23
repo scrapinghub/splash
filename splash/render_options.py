@@ -2,7 +2,14 @@
 from __future__ import absolute_import
 import os
 import json
+from io import StringIO
 from splash import defaults
+
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
+    basestring = (str, bytes)
 
 
 class BadOption(Exception):
@@ -28,21 +35,23 @@ class RenderOptions(object):
 
         # 1. GET / POST data
         data = {key: values[0] for key, values in request.args.items()}
-        if request.method == 'POST':
-            content_type = request.getHeader('content-type')
+        if request.method == b'POST':
+            content_type = request.getHeader(b'content-type')
             if content_type:
                 request.content.seek(0)
 
                 # 2. application/json POST data
-                if 'application/json' in content_type:
+                if 'application/json' in content_type.decode('utf-8'):
                     try:
-                        data.update(json.load(request.content, encoding='utf8'))
+                        content = request.content.read()
+                        data.update(json.load(
+                            StringIO(content.decode('utf-8')), encoding='utf8'))
                     except ValueError as e:
                         raise BadOption("Invalid JSON: '{}'".format(e.message))
 
                 # 3. js_source from application/javascript POST requests
-                if 'application/javascript' in content_type:
-                    data['js_source'] = request.content.read()
+                if 'application/javascript' in content_type.decode('utf-8'):
+                    data[b'js_source'] = request.content.read()
                 request.content.seek(0)
 
         # 4. handle proxy requests
@@ -64,13 +73,19 @@ class RenderOptions(object):
 
     def get(self, name, default=_REQUIRED, type=str, range=None):
         value = self.data.get(name)
+        if value is None and isinstance(name, bytes):
+            # In case of json post data the keys are unicode
+            value = self.data.get(name.decode('utf-8'))
         if value is not None:
             if type is not None:
                 if type is str and isinstance(value, unicode):
-                    value = value.encode('utf8')
+                    value = value.encode('utf-8')
                 else:
                     try:
-                        value = type(value)
+                        # If value is Python 3 byte string, we don't want it
+                        # to be converted into unicode
+                        if not (type is str and isinstance(value, bytes)):
+                            value = type(value)
                     except ValueError:
                         raise BadOption("Argument %r is not of expected value" % (name))
             if range is not None and not (range[0] <= value <= range[1]):
@@ -94,7 +109,7 @@ class RenderOptions(object):
         return self.get('uid')
 
     def get_url(self):
-        return self._get_url("url")
+        return self._get_url(b"url")
 
     def get_baseurl(self):
         return self._get_url("baseurl", default=None)
@@ -142,7 +157,7 @@ class RenderOptions(object):
         return result
 
     def get_lua_source(self):
-        return self.get("lua_source")
+        return self.get(b"lua_source")
 
     def get_js_profile(self, js_profiles_path):
         js_profile = self.get("js", default=None)
@@ -189,8 +204,8 @@ class RenderOptions(object):
         return viewport
 
     def get_filters(self, pool=None, adblock_rules=None):
-        filter_names = self.get('filters', '')
-        filter_names = [f for f in filter_names.split(',') if f]
+        filter_names = self.get(b'filters', b'')
+        filter_names = [f for f in filter_names.decode('utf-8').split(',') if f]
 
         if pool is None and adblock_rules is None:  # skip validation
             return filter_names
