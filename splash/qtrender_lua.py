@@ -748,11 +748,12 @@ def wrapped_response(lua, reply):
 
 
 class _WrappedResponse(object):
-    _attribute_whitelist = ['headers', 'commands', "response"]
+    _attribute_whitelist = ['commands', "response"]
 
     def __init__(self, lua, response):
         self.lua = lua
         self.response = response
+        self.headers = dict([(str(k), str(v)) for k, v in response.rawHeaderPairs()])
         commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
         self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
@@ -761,6 +762,10 @@ class _WrappedResponse(object):
     @command()
     def abort(self):
         self.response.abort()
+
+    @command()
+    def get_header(self, name):
+        return self.headers.get(name)
 
 
 class SplashScriptRunner(BaseScriptRunner):
