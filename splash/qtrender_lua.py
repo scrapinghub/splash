@@ -759,11 +759,8 @@ class _WrappedResponse(object):
         self._exceptions = []
 
     @command()
-    def set_header(self, name, value):
-        self.response.setRawHeader(name, value)
-        # doesn't work because
-        # lupa._lupa.LuaError: [string "..."]:4: RuntimeError('no access to protected functions or signals for objects not created from Python',)
-        # need to find some other way
+    def abort(self):
+        self.response.abort()
 
 
 class SplashScriptRunner(BaseScriptRunner):

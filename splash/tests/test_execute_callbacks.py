@@ -130,20 +130,15 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
 
 class OnResponseTest(BaseLuaRenderTest, BaseHtmlProxyTest):
-    def test_on_response_headers(self):
+    def test_abort_on_response_headers(self):
         resp = self.request_lua("""
         function main(splash)
-            splash:on_response_headers(function(response)
-                response:set_header("Server", "splash")
+            splash:on_response_headers(function(response, request)
+                request:abort()
             end)
-            res = splash:http_get("http://httpbin.org/headers")
+            res = splash:http_get(splash.args.url)
             return res
         end
-        """, {'url': self.mockurl("show-image")})
+        """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
-        headers = resp.json().get("headers")
-        hs = {}
-        for h in headers:
-            hs[h["name"]] = h["value"]
-
-        # self.assertEqual(hs.get("Server"), "splash")
+        self.assertFalse(resp.json().get("content").get("text"))

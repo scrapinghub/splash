@@ -276,7 +276,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         if callbacks and "on_response_headers" in callbacks:
             for cb in callbacks["on_response_headers"]:
-                cb(reply)
+                try:
+                    cb(reply)
+                except:
+                    self.log("error in on_response_headers callback", min_level=1)
+                    self.log(traceback.format_exc(), min_level=1)
 
         har_entry = self._harEntry()
         if har_entry is not None:
