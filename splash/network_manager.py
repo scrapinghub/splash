@@ -118,6 +118,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
             reply.error.connect(self._handleError)
             reply.finished.connect(self._handleFinished)
+            # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
             reply.metaDataChanged.connect(self._handleMetaData)
             reply.downloadProgress.connect(self._handleDownloadProgress)
 
@@ -242,7 +243,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleFinished(self):
         reply = self.sender()
-
         har_entry = self._harEntry()
         if har_entry is not None:
             har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
@@ -268,8 +268,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
+        """Signal emitted before response body is reader, after
+        first bytes of response are read (e.g. we get response headers).
+        """
         reply = self.sender()
-        # reply.setRawHeader("foo", "bar")
         self._handle_reply_cookies(reply)
 
         callbacks = self._getWebPageAttribute(reply.request(), "callbacks")

@@ -228,7 +228,6 @@ Response.__index = Response
 
 function Response._create(py_reply)
     local self = {response=py_reply.response}
-    setmetatable(self, Request)
     
     for key, opts in pairs(py_reply.commands) do
         local command = py_reply[key]

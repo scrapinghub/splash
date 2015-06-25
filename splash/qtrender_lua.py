@@ -632,6 +632,8 @@ class Splash(object):
     def private_on_response_headers(self, callback):
 
         def res_callback(reply):
+            # TODO do we need request as another argument here?
+            # can it be useful to have request in Lua callback?
             with wrapped_response(self.lua, reply) as res:
                 callback(res)
 
@@ -693,6 +695,8 @@ def _requires_request(meth):
 
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
+    # TODO perhaps refactor common parts
+    # of wrapped response and wrapped request into common object?
 
     _attribute_whitelist = ['info', 'commands']
 
@@ -736,15 +740,12 @@ class _WrappedRequest(object):
 @contextlib.contextmanager
 def wrapped_response(lua, reply):
     """
-    Context manager which returns a wrapped QNetworkRequest
+    Context manager which returns a wrapped QNetworkReply
     suitable for using in Lua code.
     """
     res = _WrappedResponse(lua, reply)
-    try:
-        with lua.object_allowed(res, res.attr_whitelist):
-            yield res
-    finally:
-        pass
+    with lua.object_allowed(res, res.attr_whitelist):
+        yield res
 
 
 class _WrappedResponse(object):
