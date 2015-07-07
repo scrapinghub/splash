@@ -51,7 +51,7 @@ def get_alive():
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
         'SplashCookieJar', 'OneShotCallbackProxy', '_WrappedRequest',
-        'BrowserTab', '_SplashHttpClient',
+        '_WrappedResponse', 'BrowserTab', '_SplashHttpClient',
         'JavascriptConsole', 'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',

@@ -693,6 +693,15 @@ def _requires_request(meth):
     return wrapper
 
 
+def _requires_response(meth):
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        if self.response is None:
+            raise ValueError("response is used outside callback")
+        return meth(self, *args, **kwargs)
+    return wrapper
+
+
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
     # TODO perhaps refactor common parts
@@ -744,8 +753,11 @@ def wrapped_response(lua, reply):
     suitable for using in Lua code.
     """
     res = _WrappedResponse(lua, reply)
-    with lua.object_allowed(res, res.attr_whitelist):
-        yield res
+    try:
+        with lua.object_allowed(res, res.attr_whitelist):
+            yield res
+    finally:
+        res.clear()
 
 
 class _WrappedResponse(object):
@@ -760,7 +772,13 @@ class _WrappedResponse(object):
         self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
         self._exceptions = []
 
+    def clear(self):
+        self.response = None
+        self.headers = None
+        self.lua = None
+
     @command()
+    @_requires_response
     def abort(self):
         self.response.abort()
 
@@ -844,4 +862,3 @@ class LuaRender(RenderScript):
         else:
             main, env = get_main(self.lua, lua_source)
         return self.lua.create_coroutine(main)
-

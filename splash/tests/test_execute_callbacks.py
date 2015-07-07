@@ -129,7 +129,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertIn("'user-agent': 'Fooozilla'", resp.text)
 
 
-class OnResponseTest(BaseLuaRenderTest, BaseHtmlProxyTest):
+class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_get_header(self):
         resp = self.request_lua("""
         function main(splash)
@@ -159,3 +159,18 @@ class OnResponseTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
         self.assertFalse(resp.json().get("content").get("text"))
+
+    def test_response_used_outside_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res = nil
+            splash:on_response_headers(function(response)
+                res = response
+            end)
+            splash:http_get(splash.args.url)
+            res:abort()
+            return "ok"
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("response is used outside callback", resp.text)
