@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from urllib import urlencode
 import base64
 from io import BytesIO
 from PIL import Image
@@ -174,3 +175,25 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 400)
         self.assertIn("response is used outside callback", resp.text)
+
+    def test_get_headers(self):
+        headers = {
+            "Foo": "bar",
+            "X-Proxy-Something": "1234",
+            "X-Content-Type-Options": "nosniff"
+        }
+        mocked_url = self.mockurl("set-header?" + urlencode(headers))
+        resp = self.request_lua("""
+        function main(splash)
+            local headers = nil
+            splash:on_response_headers(function(response)
+                headers = response.get_headers()
+                response.abort()
+            end)
+            splash:http_get(splash.args.url)
+            return headers
+        end""", {"url": mocked_url})
+        result = resp.json()
+        for k, v in headers.iteritems():
+            self.assertIn(k, result)
+            self.assertEqual(result[k], headers[k])

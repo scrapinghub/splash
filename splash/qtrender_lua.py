@@ -693,15 +693,6 @@ def _requires_request(meth):
     return wrapper
 
 
-def _requires_response(meth):
-    @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
-        if self.response is None:
-            raise ValueError("response is used outside callback")
-        return meth(self, *args, **kwargs)
-    return wrapper
-
-
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
     # TODO perhaps refactor common parts
@@ -744,6 +735,15 @@ class _WrappedRequest(object):
     @_requires_request
     def set_header(self, name, value):
         self.request.setRawHeader(name, value)
+
+
+def _requires_response(meth):
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        if self.response is None:
+            raise ValueError("response is used outside callback")
+        return meth(self, *args, **kwargs)
+    return wrapper
 
 
 @contextlib.contextmanager

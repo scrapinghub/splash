@@ -598,11 +598,19 @@ class Subresources(Resource):
             request.setHeader("Content-Type", "text/css; charset=utf-8")
             print "Request Style!"
             return "body { background-color: red; }"
+
     class Image(Resource):
         def render_GET(self, request):
             request.setHeader("Content-Type", "image/gif")
             return base64.decodestring('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
+
+class SetHeadersResource(Resource):
+    def render_GET(self, request):
+        for k, values in request.args.iteritems():
+            for v in values:
+                request.setHeader(k, v)
+        return ""
 
 class InvalidContentTypeResource(Resource):
     def render_GET(self, request):
@@ -677,6 +685,7 @@ class Root(Resource):
         self.putChild("very-long-green-page", VeryLongGreenPage())
         self.putChild("rgb-stripes", RgbStripesPage())
         self.putChild("subresources", Subresources())
+        self.putChild("set-header", SetHeadersResource())
 
         self.putChild("jsredirect", JsRedirect())
         self.putChild("jsredirect-to", JsRedirectTo())
