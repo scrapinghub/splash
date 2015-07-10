@@ -136,7 +136,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         function main(splash)
             local header_value = nil
             splash:on_response_headers(function(response)
-                header_value = response:get_header('Content-Type')
+                header_value = response.headers['Content-Type']
             end)
             res = splash:http_get(splash.args.url)
             return header_value
@@ -150,7 +150,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         resp = self.request_lua("""
         function main(splash)
             splash:on_response_headers(function(response)
-                if response:get_header('Content-Type') == 'text/html' then
+                if response.headers['Content-Type'] == 'text/html' then
                     response:abort()
                 end
             end)

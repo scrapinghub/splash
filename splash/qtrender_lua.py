@@ -761,12 +761,15 @@ def wrapped_response(lua, reply):
 
 
 class _WrappedResponse(object):
-    _attribute_whitelist = ['commands', "response"]
+    _attribute_whitelist = ['commands', "headers", "response"]
 
     def __init__(self, lua, response):
         self.lua = lua
         self.response = response
-        self.headers = {str(k): str(v) for k, v in response.rawHeaderPairs()}
+        # according to specs HTTP response headers should not contain unicode
+        # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
+        _headers = {str(k): str(v) for k, v in response.rawHeaderPairs()}
+        self.headers = self.lua.python2lua(_headers)
         commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
         self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
@@ -781,16 +784,6 @@ class _WrappedResponse(object):
     @_requires_response
     def abort(self):
         self.response.abort()
-
-    @command()
-    @_requires_response
-    def get_header(self, name):
-        return self.headers.get(name)
-
-    @command()
-    @_requires_response
-    def get_headers(self):
-        return self.headers
 
 
 class SplashScriptRunner(BaseScriptRunner):

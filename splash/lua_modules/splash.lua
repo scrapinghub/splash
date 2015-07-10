@@ -227,7 +227,11 @@ local Response = {}
 Response.__index = Response
 
 function Response._create(py_reply)
-    local self = {response=py_reply.response}
+    local self = {headers=py_reply.headers}
+
+    for key, value in pairs(py_reply.headers) do 
+        self[key] = value
+    end
     
     for key, opts in pairs(py_reply.commands) do
         local command = py_reply[key]
