@@ -229,15 +229,17 @@ Response.__index = Response
 function Response._create(py_reply)
     local self = {
         headers=py_reply.headers,
-        url=py_reply.url,
-        status=py_reply.status,
         info=py_reply.info
     }
 
     setmetatable(self, Response)
 
-    for key, value in pairs(py_reply.headers) do 
-        self[key] = value
+    -- take some keys from py_reply.info 
+    -- but not all (we don't want mess har headers with response headers)
+    local keys_from_info = {"status", "url", "method", "ok"}
+
+    for key, value in pairs(keys_from_info) do 
+        self[value] = py_reply.info[value]
     end
     
     for key, opts in pairs(py_reply.commands) do

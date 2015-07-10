@@ -196,6 +196,8 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
         result = resp.json()
 
+        self.assertStatusCode(resp, 200)
+
         for k, v in headers.iteritems():
             self.assertIn(k, result)
             self.assertEqual(result[k], headers[k])
@@ -205,11 +207,18 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             "Foo": "bar",
         }
         mocked_url = self.mockurl("set-header?" + urlencode(headers))
-        allowed_attrs = {"url": unicode, "status": int, "info": dict}
+        some_attrs = {
+            "url": (unicode, mocked_url),
+            "status": (int, 200),
+            "info": (dict, {}),
+            "method": (unicode, "GET"),
+            "ok": (bool, True),
+        }
+
         resp = self.request_lua("""
         function main(splash)
             local all_attrs = {}
-            local attr_names = {"url", "status", "info"}
+            local attr_names = {"url", "status", "info", "method", "ok"}
             splash:on_response_headers(function(response)
                 for key, value in pairs(attr_names) do
                     all_attrs[value] = response[value]
@@ -218,7 +227,11 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             splash:http_get(splash.args.url)
             return all_attrs
         end""", {"url": mocked_url})
+        self.assertStatusCode(resp, 200)
         result = resp.json()
-        for k, v in allowed_attrs.iteritems():
+
+        for k, v in some_attrs.iteritems():
             self.assertIn(k, result)
-            self.assertIsInstance(result[k], v)
+            self.assertIsInstance(result[k], v[0])
+            if v[1]:
+                self.assertEqual(result[k], v[1], "{} should equal {}".format(k, v[1]))

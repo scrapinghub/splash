@@ -763,7 +763,7 @@ def wrapped_response(lua, reply):
 
 class _WrappedResponse(object):
     _attribute_whitelist = [
-        'commands', "headers", "response", "url", "status", "info"
+        'commands', "headers", "response",  "info"
     ]
 
     def __init__(self, lua, response):
@@ -773,17 +773,11 @@ class _WrappedResponse(object):
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
         _headers = {str(k): str(v) for k, v in response.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
-        url = response.url().toString()
-        self.url = self.lua.python2lua(unicode(url))
         self.info = self.lua.python2lua(reply2har(response))
-        status = response.attribute(QNetworkRequest.HttpStatusCodeAttribute)
-        self.status = self.lua.python2lua(status.toInt()[0])
         commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
         self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
         self._exceptions = []
-        # TODO add HTTP method to wrapped response (reply.operation() returns integer)
-        # and we probably prefer string not integer
 
     def clear(self):
         self.response = None
