@@ -227,7 +227,14 @@ local Response = {}
 Response.__index = Response
 
 function Response._create(py_reply)
-    local self = {headers=py_reply.headers}
+    local self = {
+        headers=py_reply.headers,
+        url=py_reply.url,
+        status=py_reply.status,
+        info=py_reply.info
+    }
+
+    setmetatable(self, Response)
 
     for key, value in pairs(py_reply.headers) do 
         self[key] = value

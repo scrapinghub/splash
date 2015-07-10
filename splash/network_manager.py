@@ -268,8 +268,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
-        """Signal emitted before response body is reader, after
-        first bytes of response are read (e.g. we get response headers).
+        """Signal emitted before reading response body, after getting headers
         """
         reply = self.sender()
         self._handle_reply_cookies(reply)
