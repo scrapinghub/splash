@@ -70,7 +70,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         end
         """, {'url': url, 'new_url': new_url})
         self.assertStatusCode(resp, 200)
-        self.assertIn('After', resp.content)
+        self.assertIn('After', resp.content.decode('utf-8'))
 
     def test_set_proxy(self):
         proxy_port = self.ts.mock_proxy_port
@@ -110,7 +110,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 400)
         self.assertErrorLineNumber(resp, 8)
-        self.assertIn("request is used outside a callback", resp.content)
+        self.assertIn("request is used outside a callback", resp.content.decode('utf-8'))
 
     def test_set_header(self):
         resp = self.request_lua("""

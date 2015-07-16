@@ -274,7 +274,7 @@ class IframeResource(Resource):
         self.http_port = http_port
 
     def render(self, request):
-        return """
+        return ("""
 <html>
 <head>
     <script src="/iframes/script.js"></script>
@@ -312,7 +312,7 @@ window.onload = function(){
 
 </body>
 </html>
-""" % self.http_port
+""" % self.http_port).encode('utf-8')
 
     IframeContent1 = _html_resource("<html><body>iframes work IFRAME_1_OK</body></html>")
     IframeContent2 = _html_resource("""
@@ -331,15 +331,15 @@ window.onload = function(){
     class ScriptJs(Resource):
         isLeaf = True
         def render(self, request):
-            request.setHeader("Content-Type", "application/javascript")
+            request.setHeader(b"Content-Type", b"application/javascript")
             iframe_html = " SAME_DOMAIN <iframe src='/iframes/6.html'>js iframe created by document.write in external script doesn't work</iframe>"
-            return '''document.write("%s");''' % iframe_html
+            return ('''document.write("%s");''' % iframe_html).encode('utf-8')
 
     class OtherDomainScript(Resource):
         isLeaf = True
         def render(self, request):
-            request.setHeader("Content-Type", "application/javascript")
-            return "document.write(' OTHER_DOMAIN ');"
+            request.setHeader(b"Content-Type", b"application/javascript")
+            return "document.write(' OTHER_DOMAIN ');".encode('utf-8')
 
 
 class PostResource(Resource):

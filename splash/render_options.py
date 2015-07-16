@@ -51,7 +51,7 @@ class RenderOptions(object):
 
                 # 3. js_source from application/javascript POST requests
                 if 'application/javascript' in content_type.decode('utf-8'):
-                    data[b'js_source'] = request.content.read()
+                    data[b'js_source'] = request.content.read().decode('utf-8')
                 request.content.seek(0)
 
         # 4. handle proxy requests
@@ -61,14 +61,14 @@ class RenderOptions(object):
                 for name, values in request.requestHeaders.getAllRawHeaders()
                 for value in values
             ]
-            data.setdefault('headers', headers)
-            data.setdefault('http_method', request.method)
+            data.setdefault(b'headers', headers)
+            data.setdefault(b'http_method', request.method)
 
             request.content.seek(0)
-            data.setdefault('body', request.content.read())
+            data.setdefault(b'body', request.content.read())
             request.content.seek(0)
 
-        data['uid'] = id(request)
+        data[b'uid'] = id(request)
         return cls(data, max_timeout)
 
     def get(self, name, default=_REQUIRED, type=str, range=None):
@@ -106,35 +106,39 @@ class RenderOptions(object):
         return url
 
     def get_uid(self):
-        return self.get('uid')
+        return self.get(b'uid')
 
     def get_url(self):
         return self._get_url(b"url")
 
     def get_baseurl(self):
-        return self._get_url("baseurl", default=None)
+        return self._get_url(b"baseurl", default=None)
 
     def get_wait(self):
-        return self.get("wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
+        return self.get(b"wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
         default = min(self.max_timeout, defaults.TIMEOUT)
-        return self.get("timeout", default, type=float, range=(0, self.max_timeout))
+        return self.get(b"timeout", default, type=float, range=(0, self.max_timeout))
 
     def get_images(self):
-        return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
+        return self._get_bool(b"images", defaults.AUTOLOAD_IMAGES)
 
     def get_proxy(self):
-        return self.get("proxy", default=None)
+        return self.get(b"proxy", default=None)
 
     def get_js_source(self):
-        return self.get("js_source", default=None)
+        # we want js_source to be unicode, not bytes.
+        val = self.get(b"js_source", default=None)
+        if val:
+            return val.decode('utf-8')
+        return val
 
     def get_width(self):
-        return self.get("width", None, type=int, range=(1, defaults.MAX_WIDTH))
+        return self.get(b"width", None, type=int, range=(1, defaults.MAX_WIDTH))
 
     def get_height(self):
-        return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
+        return self.get(b"height", None, type=int, range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
         scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
@@ -145,13 +149,16 @@ class RenderOptions(object):
         return scale_method
 
     def get_http_method(self):
-        return self.get("http_method", "GET")
+        val = self.get(b"http_method", "GET")
+        if val != "GET":
+            val = val.decode("utf-8")
+        return val
 
     def get_body(self):
-        return self.get("body", None)
+        return self.get(b"body", None)
 
     def get_render_all(self, wait=None):
-        result = self._get_bool("render_all", False)
+        result = self._get_bool(b"render_all", False)
         if result == 1 and wait == 0:
             raise BadOption("Pass non-zero 'wait' to render full webpage")
         return result
@@ -160,13 +167,13 @@ class RenderOptions(object):
         return self.get(b"lua_source")
 
     def get_js_profile(self, js_profiles_path):
-        js_profile = self.get("js", default=None)
+        js_profile = self.get(b"js", default=None)
         if not js_profile:
             return js_profile
 
         if js_profiles_path is None:
             raise BadOption('Javascript profiles are not enabled')
-        profile_dir = os.path.join(js_profiles_path, js_profile)
+        profile_dir = os.path.join(js_profiles_path, js_profile.decode('utf-8'))
         if not profile_dir.startswith(js_profiles_path + os.path.sep):
             # security check fails
             raise BadOption('Javascript profile does not exist')
@@ -175,7 +182,7 @@ class RenderOptions(object):
         return profile_dir
 
     def get_headers(self):
-        headers = self.get("headers", default=None, type=None)
+        headers = self.get(b"headers", default=None, type=None)
 
         if headers is None:
             return headers
@@ -191,8 +198,9 @@ class RenderOptions(object):
         return headers
 
     def get_viewport(self, wait=None):
-        viewport = self.get("viewport", defaults.VIEWPORT_SIZE)
-
+        viewport = self.get(b"viewport", defaults.VIEWPORT_SIZE)
+        if isinstance(viewport, bytes):
+            viewport = viewport.decode('utf-8')
         if viewport == 'full':
             if wait == 0:
                 raise BadOption("Pass non-zero 'wait' to render full webpage")
@@ -229,9 +237,9 @@ class RenderOptions(object):
         return filter_names
 
     def get_allowed_domains(self):
-        allowed_domains = self.get("allowed_domains", default=None)
+        allowed_domains = self.get(b"allowed_domains", default=None)
         if allowed_domains is not None:
-            return allowed_domains.split(',')
+            return allowed_domains.decode('utf-8').split(',')
 
     def get_allowed_content_types(self):
         content_types = self.get("allowed_content_types", default=['*/*'])
@@ -269,13 +277,13 @@ class RenderOptions(object):
 
     def get_include_params(self):
         return dict(
-            html = self._get_bool("html", defaults.DO_HTML),
-            iframes = self._get_bool("iframes", defaults.DO_IFRAMES),
-            png = self._get_bool("png", defaults.DO_PNG),
-            script = self._get_bool("script", defaults.SHOW_SCRIPT),
-            console = self._get_bool("console", defaults.SHOW_CONSOLE),
-            history = self._get_bool("history", defaults.SHOW_HISTORY),
-            har = self._get_bool("har", defaults.SHOW_HAR),
+            html = self._get_bool(b"html", defaults.DO_HTML),
+            iframes = self._get_bool(b"iframes", defaults.DO_IFRAMES),
+            png = self._get_bool(b"png", defaults.DO_PNG),
+            script = self._get_bool(b"script", defaults.SHOW_SCRIPT),
+            console = self._get_bool(b"console", defaults.SHOW_CONSOLE),
+            history = self._get_bool(b"history", defaults.SHOW_HISTORY),
+            har = self._get_bool(b"har", defaults.SHOW_HAR),
         )
 
 
