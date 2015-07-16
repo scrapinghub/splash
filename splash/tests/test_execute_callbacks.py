@@ -211,14 +211,13 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             "url": (unicode, mocked_url),
             "status": (int, 200),
             "info": (dict, {}),
-            "method": (unicode, "GET"),
             "ok": (bool, True),
         }
 
         resp = self.request_lua("""
         function main(splash)
             local all_attrs = {}
-            local attr_names = {"url", "status", "info", "method", "ok"}
+            local attr_names = {"url", "status", "info", "ok", "request"}
             splash:on_response_headers(function(response)
                 for key, value in pairs(attr_names) do
                     all_attrs[value] = response[value]
@@ -235,3 +234,27 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             self.assertIsInstance(result[k], v[0])
             if v[1]:
                 self.assertEqual(result[k], v[1], "{} should equal {}".format(k, v[1]))
+
+    def test_request_in_callback(self):
+        mocked_url = self.mockurl("set-header?" + urlencode({"alfa": "beta"}))
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_response_headers(function(response)
+                req_info = {}
+                for key, value in pairs(response.request) do
+                    req_info[key] = response.request[key]
+                end
+            end)
+            splash:on_request(function(request)
+                request:set_header("hello", "world")
+            end)
+            splash:http_get(splash.args.url)
+            return req_info
+        end""", {"url": mocked_url})
+        self.assertStatusCode(resp, 200)
+        resp = resp.json()
+        for elem in ["method", "url", "headers"]:
+            self.assertIn(elem, resp)
+        self.assertEqual(resp["url"], mocked_url)
+        self.assertEqual(resp["method"], "GET")
+        self.assertEqual(resp["headers"], {"hello": "world"})

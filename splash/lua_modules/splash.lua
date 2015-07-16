@@ -229,16 +229,24 @@ Response.__index = Response
 function Response._create(py_reply)
     local self = {
         headers=py_reply.headers,
-        info=py_reply.info
+        info=py_reply.info,
+        request=py_reply.request
     }
 
     setmetatable(self, Response)
+    
+    -- convert har headers to something more convenient
+    _request_headers = {}
+    for name, value in pairs(py_reply.request["headers"]) do
+        _request_headers[value["name"]] = value["value"]
+    end
+    py_reply.request["headers"] = _request_headers
 
     -- take some keys from py_reply.info 
     -- but not all (we don't want mess har headers with response headers)
-    local keys_from_info = {"status", "url", "method", "ok"}
+    local keys_from_reply_info = {"status", "url", "ok"}
 
-    for key, value in pairs(keys_from_info) do 
+    for key, value in pairs(keys_from_reply_info) do 
         self[value] = py_reply.info[value]
     end
     

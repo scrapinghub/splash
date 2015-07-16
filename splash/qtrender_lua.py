@@ -633,8 +633,6 @@ class Splash(object):
     def private_on_response_headers(self, callback):
 
         def res_callback(reply):
-            # TODO do we need request as another argument here?
-            # can it be useful to have request in Lua callback?
             with wrapped_response(self.lua, reply) as res:
                 callback(res)
 
@@ -763,25 +761,29 @@ def wrapped_response(lua, reply):
 
 class _WrappedResponse(object):
     _attribute_whitelist = [
-        'commands', "headers", "response",  "info"
+        'commands', "headers", "response",  "info", "request"
     ]
 
-    def __init__(self, lua, response):
+    def __init__(self, lua, reply):
         self.lua = lua
-        self.response = response
+        self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
-        _headers = {str(k): str(v) for k, v in response.rawHeaderPairs()}
+        _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
-        self.info = self.lua.python2lua(reply2har(response))
+        self.info = self.lua.python2lua(reply2har(reply))
         commands = get_commands(self)
         self.commands = self.lua.python2lua(commands)
         self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
         self._exceptions = []
+        self.request = self.lua.python2lua(
+            request2har(reply.request(), reply.operation())
+        )
 
     def clear(self):
         self.response = None
         self.lua = None
+        self.request = None
 
     @command()
     @_requires_response

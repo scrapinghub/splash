@@ -94,8 +94,10 @@ def reply2har(reply, include_content=False, binary_content=False):
             "mimeType": "",
         },
         "headersSize" : headers_size(reply),
-        "ok": not reply.error(),  # non-standard but useful
-        "method": OPERATION_NAMES.get(reply.operation(), '?'),
+        # non-standard but useful
+        "ok": not reply.error(),
+        # non-standard, useful because reply url may not equal request url
+        # in case of redirect
         "url": unicode(reply.url().toString())
     }
 

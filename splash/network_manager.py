@@ -280,6 +280,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 try:
                     cb(reply)
                 except:
+                    # TODO unhandled exceptions in lua callbacks
+                    # should we raise errors here?
+                    # https://github.com/scrapinghub/splash/issues/161
                     self.log("error in on_response_headers callback", min_level=1)
                     self.log(traceback.format_exc(), min_level=1)
 
