@@ -3,13 +3,13 @@ from __future__ import absolute_import
 import os
 import json
 from io import StringIO
+
+import six
+
 from splash import defaults
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
-    basestring = (str, bytes)
+unicode = six.text_type
+basestring = six.string_types
 
 
 class BadOption(Exception):

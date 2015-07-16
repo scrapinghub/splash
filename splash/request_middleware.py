@@ -7,17 +7,14 @@ various conditions. They should be used with
 from __future__ import absolute_import
 import re
 import os
-try:
-    from urlparse import urlsplit
-except ImportError:
-    from urllib.parse import urlsplit
+
 from twisted.python import log
+import six
+from six.moves.urllib.parse import urlsplit
+
 from splash.qtutils import request_repr, drop_request
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 class AllowedDomainsMiddleware(object):

@@ -15,13 +15,11 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from PyQt5.QtWebKit import QWebSettings
 from twisted.python import log
+import six
 
 from splash.utils import truncated
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 OPERATION_NAMES = {

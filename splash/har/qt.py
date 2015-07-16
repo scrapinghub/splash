@@ -8,13 +8,11 @@ import base64
 
 from PyQt5.QtCore import Qt, QVariant, QUrlQuery
 from PyQt5.QtNetwork import QNetworkRequest
+import six
 
 from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 def _header_pairs(request_or_reply):

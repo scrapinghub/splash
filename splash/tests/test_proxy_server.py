@@ -1,11 +1,10 @@
 import unittest
-try:
-    import urlparse
-except ImportError:
-    import urllib.parse as urlparse
 import json
 import requests
 import pytest
+
+from six.moves.urllib import parse as urlparse
+
 from splash.tests import test_render, test_redirects, test_request_filters, test_runjs
 
 

@@ -6,12 +6,12 @@ from datetime import datetime
 import splash
 from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
 from PyQt5.QtWebKit import qWebKitVersion
+import six
 
 from .utils import get_duration, format_datetime, without_private
-from splash.compat import _PY3
 
-if _PY3:
-    basestring = (str, bytes)
+unicode = six.text_type
+basestring = six.string_types
 
 
 HarEvent = namedtuple('HarEvent', 'type data')
@@ -20,11 +20,6 @@ HAR_ENTRY = 'entry'
 HAR_TIMING = 'timing'
 HAR_URL_CHANGED = 'urlChanged'
 HAR_TITLE_CHANGED = 'titleChanged'
-
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
 
 
 class HarLog(object):

@@ -3,12 +3,11 @@
 from __future__ import absolute_import, print_function
 import os
 import optparse
-try:
-    from urllib import unquote
-except ImportError:
-    from urllib.parse import unquote
 import base64
 import random
+
+from six.moves.urllib.parse import unquote
+
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web import proxy, http

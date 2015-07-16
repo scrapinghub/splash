@@ -36,7 +36,6 @@ class BinaryCapsule(object):
 class SplashJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, BinaryCapsule):
-            print("yup")
             return o.as_b64()
         return super(SplashJSONEncoder, self).default(o)
 

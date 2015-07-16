@@ -9,6 +9,7 @@ import time
 
 from PIL import Image
 import requests
+import six
 import pytest
 lupa = pytest.importorskip("lupa")
 
@@ -18,10 +19,7 @@ from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
 from .. import defaults
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):

@@ -14,6 +14,7 @@ from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
 from twisted.internet import defer
 from twisted.python import log
+import six
 
 from splash import defaults
 from splash.har.qt import cookies2har
@@ -24,10 +25,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 def skip_if_closing(meth):

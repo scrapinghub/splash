@@ -4,13 +4,12 @@ import os
 import weakref
 import contextlib
 
+import six
+
 from splash.lua import lua2python, python2lua, get_new_runtime
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
-    basestring = (str, bytes)
+unicode = six.text_type
+basestring = six.string_types
 
 
 class SplashLuaRuntime(object):

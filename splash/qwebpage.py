@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from collections import namedtuple
+
 import sip
 from PyQt5.QtWebKitWidgets import QWebPage, QWebView
 from PyQt5.QtCore import QByteArray
 from twisted.python import log
+import six
+
 from splash.cookies import SplashCookieJar
 from splash.har.log import HarLog
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')

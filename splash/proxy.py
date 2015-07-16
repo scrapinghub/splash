@@ -11,19 +11,15 @@ an HTTP proxy (see :mod:`splash.proxy_server`).
 from __future__ import absolute_import
 import re
 import os
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
 
 from PyQt5.QtNetwork import QNetworkProxy
+import six
+from six.moves import configparser
 
 from splash.render_options import BadOption
 from splash.qtutils import create_proxy
-from splash.compat import _PY3
 
-if _PY3:
-    unicode = str
+unicode = six.text_type
 
 
 class _BlackWhiteSplashProxyFactory(object):

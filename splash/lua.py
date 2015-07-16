@@ -9,14 +9,12 @@ try:
     import lupa
 except ImportError:
     lupa = None
+import six
 
 _supported = None
 _lua = None
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
+unicode = six.text_type
 
 
 def is_supported():
@@ -134,7 +132,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
         if isinstance(obj, dict):
             return {
                 l2p(key, depth-1): l2p(value, depth-1)
-                for key, value in obj.iteritems()
+                for key, value in six.iteritems(obj)
             }
 
         if isinstance(obj, list):
@@ -208,7 +206,7 @@ def python2lua(lua, obj, max_depth=100):
     if isinstance(obj, dict):
         return lua.table_from({
             python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
-            for key, value in list(obj.items())
+            for key, value in obj.items()
         })
 
     if isinstance(obj, list):
