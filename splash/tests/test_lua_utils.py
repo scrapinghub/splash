@@ -61,9 +61,9 @@ class LuaPythonConversionTest(unittest.TestCase):
         }
         value = lua2python(self.lua, dct)
         self.assertEqual(value, {
-            "foo": "foo",
-            "bar": {"egg": "spam"},
-            "baz": [{"foo": "bar"}],
+            b"foo": b"foo",
+            b"bar": {b"egg": b"spam"},
+            b"baz": [{b"foo": b"bar"}],
         })
 
     def test_object(self):

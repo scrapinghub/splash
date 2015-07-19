@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import json
-import urllib
+
 import requests
+from six.moves.urllib import parse as urlparse
+import six
+
 from . import test_render, test_har, test_request_filters, test_runjs
 from ..compat import _PY3
 from ..utils import bytes_to_unicode
@@ -88,9 +91,14 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
         for r in [r1, r2]:
             self.assertStatusCode(r, 200)
-            self.assertIn("u'x-custom-header1': u'some-val1'", r.text)
-            self.assertIn("u'custom-header2': u'some-val2'", r.text)
-            self.assertIn("u'user-agent': u'Mozilla'", r.text)
+            if six.PY3:
+                self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+                self.assertIn("'custom-header2': 'some-val2'", r.text)
+                self.assertIn("'user-agent': 'Mozilla'", r.text)
+            else:
+                self.assertIn("u'x-custom-header1': u'some-val1'", r.text)
+                self.assertIn("u'custom-header2': u'some-val2'", r.text)
+                self.assertIn("u'user-agent': u'Mozilla'", r.text)
 
             # This is not a proxy request, so Splash shouldn't remove
             # "Connection" header.
@@ -126,7 +134,10 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "headers": headers,
         })
         self.assertStatusCode(r, 200)
-        self.assertIn("u'user-agent': u'Mozilla123'", r.text)
+        if six.PY3:
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        else:
+            self.assertIn("u'user-agent': u'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
         headers = {
@@ -140,19 +151,25 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         self.assertStatusCode(r, 200)
 
         # this is not a proxy request - don't remove headers
-        self.assertIn("u'user-agent': u'Mozilla123'", r.text)
+        if six.PY3:
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        else:
+            self.assertIn("u'user-agent': u'Mozilla123'", r.text)
         self.assertIn("mozilla123", r.text.lower())
 
     def test_user_agent_after_redirect(self):
         headers = {'User-Agent': 'Mozilla123'}
-        query = urllib.urlencode({"url": self.mockurl("getrequest")})
+        query = urlparse.urlencode({"url": self.mockurl("getrequest")})
         r = self.request({
             "url": self.mockurl("jsredirect-to?%s" % query),
             "headers": headers,
             "wait": 0.1,
         })
         self.assertStatusCode(r, 200)
-        self.assertIn("u'user-agent': u'Mozilla123'", r.text)
+        if six.PY3:
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        else:
+            self.assertIn("u'user-agent': u'Mozilla123'", r.text)
 
     def test_cookie(self):
         r = self.request({
@@ -164,7 +181,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
     # def test_cookie_after_redirect(self):
     #     headers = {'Cookie': 'foo=bar'}
-    #     query = urllib.urlencode({"url": self.mockurl("get-cookie?key=foo")})
+    #     query = urlparse.urlencode({"url": self.mockurl("get-cookie?key=foo")})
     #     r = self.request({
     #         "url": self.mockurl("jsredirect-to?%s" % query),
     #         "headers": headers,

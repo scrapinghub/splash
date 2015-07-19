@@ -149,7 +149,7 @@ class SplashProxyRequest(http.Request):
         # to the request directly.
         if body:
             self.setHeader(b'content-length', str(len(body)))
-            self.write(body.encode('utf-8'))
+            self.write(body)
         self.finish()
 
     def processingFailed(self, reason):

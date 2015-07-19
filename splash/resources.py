@@ -60,8 +60,6 @@ class BaseRenderResource(_ValidatingResource):
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
         render_options.get_filters(self.pool)  # check filters earlier
 
-        print(render_options)
-
         pool_d = self._getRender(request, render_options)
 
         timeout = render_options.get_timeout()

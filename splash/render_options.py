@@ -9,7 +9,8 @@ import six
 from splash import defaults
 
 unicode = six.text_type
-basestring = six.string_types
+if six.PY3:
+    basestring = (str, bytes)
 
 
 class BadOption(Exception):
@@ -47,7 +48,7 @@ class RenderOptions(object):
                         data.update(json.load(
                             StringIO(content.decode('utf-8')), encoding='utf8'))
                     except ValueError as e:
-                        raise BadOption("Invalid JSON: '{}'".format(e.message))
+                        raise BadOption("Invalid JSON: '{}'".format(str(e)))
 
                 # 3. js_source from application/javascript POST requests
                 if 'application/javascript' in content_type.decode('utf-8'):
@@ -141,7 +142,9 @@ class RenderOptions(object):
         return self.get(b"height", None, type=int, range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
-        scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
+        scale_method = self.get(b"scale_method", defaults.PNG_SCALE_METHOD)
+        if isinstance(scale_method, bytes):
+            scale_method = scale_method.decode('utf-8')
         if scale_method not in ('raster', 'vector'):
             raise BadOption(
                 "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
@@ -191,6 +194,7 @@ class RenderOptions(object):
             raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
 
         if isinstance(headers, (list, tuple)):
+            # import ipdb; ipdb.set_trace()
             for el in headers:
                 if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
                     raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")

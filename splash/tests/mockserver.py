@@ -162,7 +162,7 @@ class BaseUrl(Resource):
 """
 
     def getChild(self, name, request):
-        if name == "script.js":
+        if name == b"script.js":
             return self.ScriptJs()
         return self
 
@@ -172,7 +172,7 @@ class BaseUrl(Resource):
         isLeaf = True
 
         def render_GET(self, request):
-            request.setHeader("Content-Type", "application/javascript")
+            request.setHeader(b"Content-Type", b"application/javascript")
             return b'document.getElementById("p1").innerHTML="After";'
 
 
@@ -219,7 +219,7 @@ class Delay(Resource):
 
     def _delayedRender(self, request_info):
         request, n = request_info
-        request.write(b"Response delayed for %0.3f seconds\n" % n)
+        request.write(("Response delayed for %0.3f seconds\n" % n).encode('utf-8'))
         if not request._disconnected:
             request.finish()
 
@@ -561,18 +561,19 @@ class JsRedirectTo(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        next_url = unquote(getarg(request, "url"))
-        return """
+        url = getarg(request, b"url").decode('utf-8')
+        next_url = unquote(url)
+        return ("""
         <html><body>
         Redirecting now..
         <script> window.location = '%s'; </script>
         </body></html>
-        """ % next_url
+        """ % next_url).encode('utf-8')
 
 
 class CP1251Resource(Resource):
     def render_GET(self, request):
-        request.setHeader("Content-Type", "text/html; charset=windows-1251")
+        request.setHeader(b"Content-Type", b"text/html; charset=windows-1251")
         return u'''
                 <html>
                 <head>
@@ -616,7 +617,7 @@ class Subresources(Resource):
 
 class InvalidContentTypeResource(Resource):
     def render_GET(self, request):
-        request.setHeader("Content-Type", "ABRACADABRA: text/html; charset=windows-1251")
+        request.setHeader(b"Content-Type", b"ABRACADABRA: text/html; charset=windows-1251")
         return u'''проверка'''.encode('cp1251')
 
 

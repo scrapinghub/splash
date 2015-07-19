@@ -53,7 +53,10 @@ class MainFunctionTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.headers[u'content-type'], u'application/json')
+        if six.PY3:
+            self.assertEqual(resp.headers['content-type'], 'application/json')
+        else:
+            self.assertEqual(resp.headers[u'content-type'], u'application/json')
         self.assertEqual(resp.json(), {
             u"mystatus": u"ok",
             u"number": 5,
@@ -952,7 +955,10 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn(u"error during JS function call: u'ABC'", resp.text)
+        if six.PY3:
+            self.assertIn(u"error during JS function call: 'ABC'", resp.text)
+        else:
+            self.assertIn(u"error during JS function call: u'ABC'", resp.text)
 
     def test_throw_pcall(self):
         resp = self.request_lua(u"""
@@ -965,7 +971,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data[u"ok"], False)
-        self.assertIn(u"error during JS function call: u'ABC'", data[u"res"])
+        if six.PY3:
+            self.assertIn(u"error during JS function call: 'ABC'", data[u"res"])
+        else:
+            self.assertIn(u"error during JS function call: u'ABC'", data[u"res"])
 
     def test_throw_error(self):
         resp = self.request_lua(u"""
@@ -975,7 +984,10 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn(u"error during JS function call: u'Error: ABC'", resp.text)
+        if six.PY3:
+            self.assertIn(u"error during JS function call: 'Error: ABC'", resp.text)
+        else:
+            self.assertIn(u"error during JS function call: u'Error: ABC'", resp.text)
 
     def test_throw_error_pcall(self):
         resp = self.request_lua(u"""
@@ -988,7 +1000,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data[u"ok"], False)
-        self.assertIn(u"error during JS function call: u'Error: ABC'", data[u"res"])
+        if six.PY3:
+            self.assertIn(u"error during JS function call: 'Error: ABC'", data[u"res"])
+        else:
+            self.assertIn(u"error during JS function call: u'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
         resp = self.request_lua(u"""
