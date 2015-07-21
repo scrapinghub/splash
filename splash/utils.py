@@ -99,15 +99,7 @@ def get_ru_maxrss():
     return size
 
 
-def get_total_phymem():
-    """ Return the total amount of physical memory available. """
-    try:
-        return psutil.virtual_memory().total
-    except AttributeError: # psutil < 2.0
-        return psutil.phymem_usage().total
-
-
-def truncated(text, max_length=100, msg=b'...'):
+def truncated(text, max_length=100, msg=u'...'):
     """
     >>> truncated("hello world!", 5)
     'hello...'
@@ -116,6 +108,8 @@ def truncated(text, max_length=100, msg=b'...'):
     >>> truncated("hello world!", 5, " [truncated]")
     'hello [truncated]'
     """
+    if isinstance(text, bytes):
+        text = text.decode('latin-1')
     if len(text) < max_length:
         return text
     else:
