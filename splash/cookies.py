@@ -78,23 +78,23 @@ class SplashCookieJar(QNetworkCookieJar):
     @classmethod
     def har_cookie2qt(cls, cookie):
         qcookie = QNetworkCookie()
-        qcookie.setName(cookie[b"name"])
-        qcookie.setValue(cookie[b"value"])
+        qcookie.setName(cookie["name"])
+        qcookie.setValue(cookie["value"])
 
-        if b'domain' in cookie:
-            qcookie.setDomain(cookie[b"domain"].decode('utf-8'))
+        if 'domain' in cookie:
+            qcookie.setDomain(cookie["domain"])
 
-        if b'httpOnly' in cookie:
-            qcookie.setHttpOnly(cookie[b"httpOnly"])
+        if 'httpOnly' in cookie:
+            qcookie.setHttpOnly(cookie["httpOnly"])
 
-        if b'secure' in cookie:
-            qcookie.setSecure(cookie[b"secure"])
+        if 'secure' in cookie:
+            qcookie.setSecure(cookie["secure"])
 
-        if b'path' in cookie:
-            qcookie.setPath(cookie[b"path"].decode('utf-8'))
+        if 'path' in cookie:
+            qcookie.setPath(cookie["path"])
 
-        if cookie.get(b'expires'):
-            expires = QDateTime.fromString(cookie[b"expires"].decode('utf-8'), Qt.ISODate)
+        if cookie.get('expires'):
+            expires = QDateTime.fromString(cookie["expires"], Qt.ISODate)
             qcookie.setExpirationDate(expires)
 
         return qcookie

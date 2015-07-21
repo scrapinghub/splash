@@ -187,7 +187,7 @@ class SetCookie(Resource):
         key = getarg(request, b"key")
         value = getarg(request, b"value")
         next_url = unquote(getarg(request, b"next", b"").decode('utf-8'))
-        request.addCookie(str(key.decode('utf-8')), str(value.decode('utf-8')))
+        request.addCookie(key.decode('utf-8'), value.decode('utf-8'))
         if next_url:
             return (u"""
             <html><body>

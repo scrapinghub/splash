@@ -118,7 +118,7 @@ def reply2har(reply, include_content=False, binary_content=False):
     status_text = reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
     if status_text is not None:
         try:
-            res["statusText"] = bytes(status_text, 'latin1')
+            res["statusText"] = bytes(status_text, 'latin1').decode('latin1')
         except TypeError:
             res["statusText"] = bytes(status_text).decode('latin1')
 

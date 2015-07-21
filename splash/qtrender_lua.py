@@ -526,7 +526,7 @@ class Splash(object):
 
     @command(table_argument=True)
     def init_cookies(self, cookies):
-        cookies = self.lua.lua2python(cookies, max_depth=3)
+        cookies = bytes_to_unicode(self.lua.lua2python(cookies, max_depth=3))
         if isinstance(cookies, dict):
             keys = sorted(cookies.keys())
             cookies = [cookies[k] for k in keys]
@@ -539,21 +539,21 @@ class Splash(object):
     @command()
     def add_cookie(self, name, value, path=None, domain=None, expires=None,
                    httpOnly=None, secure=None):
-        name = name.encode('utf-8')
-        value = value.encode('utf-8')
+        name = name
+        value = value
         cookie = dict()
-        cookie[b'name'] = name
-        cookie[b'value'] = value
+        cookie['name'] = name
+        cookie['value'] = value
         if path is not None:
-            cookie[b"path"] = path.encode('utf-8')
+            cookie["path"] = path
         if domain is not None:
-            cookie[b"domain"] = domain.encode('utf-8')
+            cookie["domain"] = domain
         if expires is not None:
-            cookie[b"expires"] = expires.encode('utf-8')
+            cookie["expires"] = expires
         if httpOnly is not None:
-            cookie[b"httpOnly"] = httpOnly
+            cookie["httpOnly"] = httpOnly
         if secure is not None:
-            cookie[b"secure"] = secure
+            cookie["secure"] = secure
         return self.tab.add_cookie(cookie)
 
     @command()
@@ -568,12 +568,8 @@ class Splash(object):
             raise ScriptError("splash:set_result_header() arguments must be strings")
 
         try:
-            try:
-                name = name.decode('utf-8').encode('ascii')
-                value = value.decode('utf-8').encode('ascii')
-            except AttributeError:
-                name = name.encode('ascii')
-                value = value.encode('ascii')
+            name = name.encode('ascii')
+            value = value.encode('ascii')
         except UnicodeEncodeError:
             raise ScriptError("splash:set_result_header() arguments must be ascii")
 
@@ -797,7 +793,7 @@ class LuaRender(RenderScript):
 
         try:
             main_coro = self.get_main(lua_source)
-        except Exception as e:
+        except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError(u"lua_source: " + repr(e))
 
         self.runner.start(
