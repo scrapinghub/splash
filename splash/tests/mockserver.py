@@ -347,8 +347,8 @@ class PostResource(Resource):
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
-        headers = bytes_to_unicode(request.getAllHeaders())
-        payload = bytes_to_unicode(request.content.getvalue()) if request.content is not None else u''
+        headers = request.getAllHeaders()
+        payload = request.content.getvalue() if request.content is not None else b''
         return (u"""
 <html>
 <body>
@@ -373,8 +373,8 @@ class GetResource(Resource):
         empty_body = bool(request.args.get(b'empty', [b''])[0])
         if empty_body:
             return b""
-        headers = bytes_to_unicode(request.getAllHeaders())
-        payload = bytes_to_unicode(request.args)
+        headers = request.getAllHeaders()
+        payload = request.args
         return (u"""
 <html>
 <body>

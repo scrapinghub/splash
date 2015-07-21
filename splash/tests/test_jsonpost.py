@@ -92,13 +92,13 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         for r in [r1, r2]:
             self.assertStatusCode(r, 200)
             if six.PY3:
+                self.assertIn("b'x-custom-header1': b'some-val1'", r.text)
+                self.assertIn("b'custom-header2': b'some-val2'", r.text)
+                self.assertIn("b'user-agent': b'Mozilla'", r.text)
+            else:
                 self.assertIn("'x-custom-header1': 'some-val1'", r.text)
                 self.assertIn("'custom-header2': 'some-val2'", r.text)
                 self.assertIn("'user-agent': 'Mozilla'", r.text)
-            else:
-                self.assertIn("u'x-custom-header1': u'some-val1'", r.text)
-                self.assertIn("u'custom-header2': u'some-val2'", r.text)
-                self.assertIn("u'user-agent': u'Mozilla'", r.text)
 
             # This is not a proxy request, so Splash shouldn't remove
             # "Connection" header.
@@ -135,9 +135,9 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         })
         self.assertStatusCode(r, 200)
         if six.PY3:
-            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
         else:
-            self.assertIn("u'user-agent': u'Mozilla123'", r.text)
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
         headers = {
@@ -152,9 +152,9 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
         # this is not a proxy request - don't remove headers
         if six.PY3:
-            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
         else:
-            self.assertIn("u'user-agent': u'Mozilla123'", r.text)
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
         self.assertIn("mozilla123", r.text.lower())
 
     def test_user_agent_after_redirect(self):
@@ -167,9 +167,9 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         })
         self.assertStatusCode(r, 200)
         if six.PY3:
-            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
         else:
-            self.assertIn("u'user-agent': u'Mozilla123'", r.text)
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
     def test_cookie(self):
         r = self.request({

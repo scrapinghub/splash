@@ -778,7 +778,6 @@ class _SplashHttpClient(QObject):
         if headers is not None:
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
-
         return request
 
     def request(self, url, callback, method='GET', body=None,
@@ -859,7 +858,12 @@ class _SplashHttpClient(QObject):
 
         for name, value in headers or []:
             request.setRawHeader(name, value)
-            if name.lower() == 'user-agent':
+            # json post requests have text headers
+            if not isinstance(name, bytes):
+                name = name.encode('utf-8')
+            if name.lower() == b'user-agent':
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8')
                 self.set_user_agent(value)
 
     def _delete_reply(self, reply):

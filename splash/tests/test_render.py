@@ -236,8 +236,8 @@ class RenderHtmlTest(Base.RenderTest):
         r = self.request({'url': url})
         self.assertStatusCode(r, 200)
         self.assertTrue(
-            repr(nonascii_value) in r.text or  # direct request
-            urlparse.quote(nonascii_value) in r.text,  # request in proxy mode
+            repr(nonascii_value.encode('utf-8')) in r.text or  # direct request
+            urlparse.quote(nonascii_value.encode('utf-8')) in r.text,  # request in proxy mode
             r.text
         )
 
@@ -272,7 +272,7 @@ class RenderHtmlTest(Base.RenderTest):
         get_cookie_url = self.mockurl("get-cookie?key=foo")
         q = urlparse.urlencode({"key": "foo", "value": "bar", "next": get_cookie_url})
         url = self.mockurl("set-cookie?%s" % q)
-        resp = self.request({"url": url, "wait": 0.2})
+        resp = self.request({"url": url, "wait": '0.2'})
         self.assertStatusCode(resp, 200)
         self.assertIn("bar", resp.text)
 
@@ -329,9 +329,9 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1})
         self.assertStatusCode(r, 400)
 
-        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': '0.1'})
         self.assertStatusCode(r, 200)
-        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': '0.1'})
         self.assertStatusCode(r, 200)
 
     def test_viewport_invalid(self):
@@ -345,16 +345,16 @@ class RenderPngTest(Base.RenderTest):
             self.assertStatusCode(r, 400)
 
     def test_viewport_full(self):
-        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
     def test_render_all(self):
-        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
-                          'render_all': 1, 'wait': 0.1})
+                          'render_all': 1, 'wait': '0.1'})
         self.assertPng(r, width=2000, height=2000)
 
     def test_images_enabled(self):
@@ -550,8 +550,8 @@ class RenderJsonTest(Base.RenderTest):
                            {'vwidth': 100})
 
     def test_png_size_viewport(self):
-        self.assertSamePng(self.mockurl("jsrender"), {'wait': 0.1, 'viewport': 'full'})
-        self.assertSamePng(self.mockurl("tall"), {'wait': 0.1, 'viewport': 'full'})
+        self.assertSamePng(self.mockurl("jsrender"), {'wait': '0.1', 'viewport': 'full'})
+        self.assertSamePng(self.mockurl("tall"), {'wait': '0.1', 'viewport': 'full'})
 
     def test_png_images(self):
         self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100"})
@@ -631,7 +631,7 @@ class RenderJsonTest(Base.RenderTest):
         # override parent's test to make it aware of render.json endpoint
         r1 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
         r2 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
-        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': 0.2, 'html': 1})
+        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': '0.2', 'html': 1})
         self.assertStatusCode(r1, 200)
         self.assertStatusCode(r2, 200)
         self.assertStatusCode(r3, 200)
@@ -707,13 +707,13 @@ class RenderJsonHistoryTest(BaseRenderTest):
         )
 
         self.assertHistoryUrls(
-            {'url': self.mockurl('jsredirect'), 'wait': 0.2},
+            {'url': self.mockurl('jsredirect'), 'wait': '0.2'},
             [('jsredirect', 200), ('jsredirect-target', 200)]
         )
 
     def test_history_metaredirect(self):
         self.assertHistoryUrls(
-            {'url': self.mockurl('meta-redirect0'), 'wait': 0.2},
+            {'url': self.mockurl('meta-redirect0'), 'wait': '0.2'},
             [('meta-redirect0', 200), ('meta-redirect-target/', 200)]
         )
 
@@ -761,8 +761,8 @@ class IframesRenderTest(BaseRenderTest):
         self.assertIframesText('IFRAME_2_OK')
 
     def test_delayed_js_iframes(self):
-        self.assertNoIframesText('IFRAME_3_OK', {'wait': 0.0})
-        self.assertIframesText('IFRAME_3_OK', {'wait': 0.5})
+        self.assertNoIframesText('IFRAME_3_OK', {'wait': '0.0'})
+        self.assertIframesText('IFRAME_3_OK', {'wait': '0.5'})
 
     def test_onload_iframes(self):
         self.assertIframesText('IFRAME_4_OK')

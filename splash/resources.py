@@ -252,7 +252,7 @@ class DebugResource(Resource):
         self.warn = warn
 
     def render_GET(self, request):
-        request.setHeader("content-type", "application/json")
+        request.setHeader(b"content-type", b"application/json")
         info = {
             "leaks": get_leaks(),
             "active": [self.get_repr(r) for r in self.pool.active],
@@ -323,7 +323,7 @@ class DemoUI(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    PATH = 'info'
+    PATH = b'info'
 
     def __init__(self, pool, lua_enabled, max_timeout):
         Resource.__init__(self)
@@ -366,7 +366,7 @@ class DemoUI(_ValidatingResource):
           </div>
         """
 
-        return """<html>
+        return ("""<html>
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
@@ -565,14 +565,14 @@ class DemoUI(_ValidatingResource):
         </html>
         """ % dict(
             version = splash.__version__,
-            params = json.dumps(params),
+            params = json.dumps(bytes_to_unicode(params)),
             url = url,
             theme = BOOTSTRAP_THEME,
             cm_options = CODEMIRROR_OPTIONS,
             cm_resources = CODEMIRROR_RESOURCES if self.lua_enabled else "",
             endpoint = "execute" if self.lua_enabled else "render.json",
             lua_editor = LUA_EDITOR if self.lua_enabled else "",
-        )
+        )).encode('utf-8')
 
 
 class Root(Resource):

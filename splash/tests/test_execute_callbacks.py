@@ -2,7 +2,10 @@
 from __future__ import absolute_import
 import base64
 from io import BytesIO
+
 from PIL import Image
+import six
+
 from splash.tests.test_proxy import BaseHtmlProxyTest
 from .test_execute import BaseLuaRenderTest
 
@@ -125,5 +128,10 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-        self.assertIn("u'custom-header': u'some-val'", resp.text)
-        self.assertIn("u'user-agent': u'Mozilla'", resp.text)
+
+        if six.PY3:
+            self.assertIn("b'custom-header': b'some-val'", resp.text)
+            self.assertIn("b'user-agent': b'Mozilla'", resp.text)
+        else:
+            self.assertIn("'custom-header': 'some-val'", resp.text)
+            self.assertIn("'user-agent': 'Mozilla'", resp.text)

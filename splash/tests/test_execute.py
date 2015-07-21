@@ -1371,8 +1371,12 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertIn("{u'foo': [u'1']}", data['html_1'])
-        self.assertIn("{u'bar': [u'2']}", data['html_2'])
+        if six.PY3:
+            self.assertIn("{b'foo': [b'1']}", data['html_1'])
+            self.assertIn("{b'bar': [b'2']}", data['html_2'])
+        else:
+            self.assertIn("{'foo': ['1']}", data['html_1'])
+            self.assertIn("{'bar': ['2']}", data['html_2'])
 
     def test_go_404_then_good(self):
         resp = self.request_lua(u"""
@@ -1504,9 +1508,14 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn(u"Mozilla", data["res2"])
         self.assertNotIn(u"Mozilla", data["res3"])
 
-        self.assertNotIn("u'user-agent': u'Foozilla'", data["res1"])
-        self.assertIn("u'user-agent': u'Foozilla'", data["res2"])
-        self.assertIn("u'user-agent': u'Foozilla'", data["res3"])
+        if six.PY3:
+            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
+            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
+            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
+        else:
+            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
+            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
+            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
 
 
 class CookiesTest(BaseLuaRenderTest):
