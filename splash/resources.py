@@ -352,7 +352,6 @@ class DemoUI(_ValidatingResource):
         url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
-        url = url.encode('utf8')
         params = {k:v for k,v in params.items() if v is not None}
 
         request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature

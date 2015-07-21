@@ -14,9 +14,6 @@ from twisted.web import proxy, http
 from twisted.internet import reactor, ssl
 from twisted.internet.task import deferLater
 
-from splash.compat import _PY3
-from splash.utils import bytes_to_unicode
-
 
 _REQUIRED = object()
 

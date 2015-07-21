@@ -9,6 +9,7 @@ import time
 import sys
 
 import lupa
+import six
 
 from splash.browser_tab import JsError
 from splash.lua_runner import (
@@ -29,9 +30,8 @@ from splash.qtutils import (
     create_proxy
 )
 from splash.lua_runtime import SplashLuaRuntime
-from splash.compat import _PY3
 
-if _PY3:
+if six.PY3:
     basestring = (str, bytes)
 
 

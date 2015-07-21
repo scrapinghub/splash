@@ -10,10 +10,9 @@ import inspect
 import resource
 from collections import defaultdict
 import psutil
+import six
 
-from splash.compat import _PY3
-
-if _PY3:
+if six.PY3:
     basestring = (str, bytes)
 
 

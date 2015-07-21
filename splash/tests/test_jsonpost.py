@@ -7,10 +7,9 @@ from six.moves.urllib import parse as urlparse
 import six
 
 from . import test_render, test_har, test_request_filters, test_runjs
-from ..compat import _PY3
 from ..utils import bytes_to_unicode
 
-if _PY3:
+if six.PY3:
     basestring = (str, bytes)
 
 
