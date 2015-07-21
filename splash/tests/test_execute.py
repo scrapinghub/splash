@@ -2289,41 +2289,57 @@ end
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(1, nil)', 'TypeError.*a number is required'),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(nil, 1)', 'TypeError.*a number is required'),
-            ('{nil, 1}', 'TypeError.*a number is required'),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('()', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 2 required positional arguments:*'),
+            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 2 required positional arguments:*'),
+            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('(1, nil)', 'TypeError.*a number is required', None),
+            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('(nil, 1)', 'TypeError.*a number is required', None),
+            ('{nil, 1}', 'TypeError.*a number is required', None),
+            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'TypeError.*a number is required'),
-            ('{100, {}}', 'TypeError.*a number is required'),
+            ('{100, "a"}', 'TypeError.*a number is required', None),
+            ('{100, {}}', 'TypeError.*a number is required', None),
 
-            ('{100, -1}', 'Viewport is out of range'),
-            ('{100, 0}', 'Viewport is out of range'),
-            ('{100, 99999}', 'Viewport is out of range'),
-            ('{1, -100}', 'Viewport is out of range'),
-            ('{0, 100}', 'Viewport is out of range'),
-            ('{99999, 100}', 'Viewport is out of range'),
+            ('{100, -1}', 'Viewport is out of range', None),
+            ('{100, 0}', 'Viewport is out of range', None),
+            ('{100, 99999}', 'Viewport is out of range', None),
+            ('{1, -100}', 'Viewport is out of range', None),
+            ('{0, 100}', 'Viewport is out of range', None),
+            ('{99999, 100}', 'Viewport is out of range', None),
             ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for size_str, errmsg in cases:
-            self.assertRaisesRegexp(RuntimeError, errmsg, run_test, size_str)
+        for size_str, errmsg_py2, errmsg_py3 in cases:
+            if not errmsg_py3:
+                errmsg_py3 = errmsg_py2
+            if six.PY3:
+                self.assertRaisesRegexp(RuntimeError, errmsg_py3, run_test, size_str)
+            else:
+                self.assertRaisesRegexp(RuntimeError, errmsg_py2, run_test, size_str)
 
     def test_viewport_full(self):
         w = int(defaults.VIEWPORT_SIZE.split('x')[0])

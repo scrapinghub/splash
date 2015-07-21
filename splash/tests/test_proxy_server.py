@@ -154,6 +154,14 @@ class ProxyPostTest(test_render.BaseRenderTest):
     request_handler = ProxyRequestHandler
     use_gzip = False
 
+    def assertEitherIn(self, member1, member2, container, msg=None):
+        """Test if any of member1 or member2 are present in container."""
+        if (member1 not in container) and (member2 not in container):
+            std_msg = 'Neither %s nor %s found in %s' % (repr(member1),
+                                                         repr(member2),
+                                                         repr(container))
+            self.fail(self._formatMessage(msg, std_msg))
+
     def test_post_request(self):
         r = self.post({"url": self.mockurl("postrequest")})
         self.assertStatusCode(r, 200)
@@ -234,10 +242,9 @@ class ProxyPostTest(test_render.BaseRenderTest):
                    'form_field2': 'value2', }
         r = self.post({"url": self.mockurl("postrequest")}, payload=payload)
         self.assertStatusCode(r, 200)
-        if six.PY3:
-            self.assertIn('form_field1=value1&amp;form_field2=value2', r.text)
-        else:
-            self.assertIn('form_field2=value2&amp;form_field1=value1', r.text)
+        self.assertEitherIn('form_field2=value2&amp;form_field1=value1',
+                            'form_field1=value1&amp;form_field2=value2',
+                            r.text)
 
 
 class GzipProxyPostTest(ProxyPostTest):
