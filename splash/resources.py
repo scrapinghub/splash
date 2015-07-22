@@ -265,7 +265,7 @@ class DebugResource(Resource):
                               "Please use /_debug instead."
             # info['leaks'] = get_leaks()
 
-        return json.dumps(info)
+        return (json.dumps(info)).encode('utf-8')
 
     def get_repr(self, render):
         if hasattr(render, 'url'):
@@ -283,7 +283,7 @@ class ClearCachesResource(Resource):
         return json.dumps({
             "status": "ok",
             "pyobjects_collected": unreachable
-        })
+        }).encode('utf-8')
 
 
 BOOTSTRAP_THEME = 'simplex'
