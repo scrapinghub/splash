@@ -584,7 +584,7 @@ class CP1251Resource(Resource):
 class Subresources(Resource):
     """ Embedded css and image """
     def render_GET(self, request):
-        return """<html><head>
+        return ("""<html><head>
                 <link rel="stylesheet" href="style.css?_rnd={0}" />
             </head>
             <body>
@@ -592,24 +592,24 @@ class Subresources(Resource):
                  onload="window.imageLoaded = true;"
                  onerror="window.imageLoaded = false;"/>
             </body>
-        </html>""".format(random.randint(0, 1<<31))
+        </html>""".format(random.randint(0, 1<<31))).encode('utf-8')
 
     def getChild(self, name, request):
-        if name == "style.css":
+        if name == b"style.css":
             return self.StyleSheet()
-        if name == "img.gif":
+        if name == b"img.gif":
             return self.Image()
         return self
 
     class StyleSheet(Resource):
         def render_GET(self, request):
-            request.setHeader("Content-Type", "text/css; charset=utf-8")
-            print "Request Style!"
-            return "body { background-color: red; }"
+            request.setHeader(b"Content-Type", b"text/css; charset=utf-8")
+            print("Request Style!")
+            return b"body { background-color: red; }"
     class Image(Resource):
         def render_GET(self, request):
-            request.setHeader("Content-Type", "image/gif")
-            return base64.decodestring('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
+            request.setHeader(b"Content-Type", b"image/gif")
+            return base64.decodestring(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
 class InvalidContentTypeResource(Resource):
@@ -685,6 +685,7 @@ class Root(Resource):
         self.putChild(b"eggspam.js", EggSpamScript()),
         self.putChild(b"very-long-green-page", VeryLongGreenPage())
         self.putChild(b"rgb-stripes", RgbStripesPage())
+        self.putChild(b"subresources", Subresources())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

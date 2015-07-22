@@ -6,7 +6,7 @@ class ContentTypeTest(BaseRenderTest):
     endpoint = 'render.json'
 
     def _request(self, allowed_ctypes='*/*', forbidden_ctypes=''):
-        js_source = """
+        js_source = u"""
         JSON.stringify({
             imageLoaded: window.imageLoaded,
             styleLoaded: getComputedStyle(document.body).backgroundColor == 'rgb(255, 0, 0)'
@@ -23,7 +23,7 @@ class ContentTypeTest(BaseRenderTest):
         req_headers = {'content-type': 'application/json'}
         response = self.post(query,
             endpoint=self.endpoint,
-            payload=json.dumps(query, encoding='utf8'),
+            payload=json.dumps(query),
             headers=req_headers
         ).json()['script']
         return json.loads(response)

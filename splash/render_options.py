@@ -246,15 +246,17 @@ class RenderOptions(object):
             return allowed_domains.decode('utf-8').split(',')
 
     def get_allowed_content_types(self):
-        content_types = self.get("allowed_content_types", default=['*/*'])
+        content_types = self.get(b"allowed_content_types", default=[b'*/*'])
         if isinstance(content_types, basestring):
-            content_types = filter(None, content_types.split(','))
+            content_types = filter(None, content_types.split(b','))
+        content_types = [type.decode('utf-8') for type in content_types]
         return content_types
 
     def get_forbidden_content_types(self):
-        content_types = self.get("forbidden_content_types", default=[])
+        content_types = self.get(b"forbidden_content_types", default=[])
         if isinstance(content_types, basestring):
-            content_types = filter(None, content_types.split(','))
+            content_types = filter(None, content_types.split(b','))
+        content_types = [type.decode('utf-8') for type in content_types]
         return content_types
 
     def get_common_params(self, js_profiles_path):

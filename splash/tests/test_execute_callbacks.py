@@ -131,7 +131,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
         if six.PY3:
             self.assertIn("b'custom-header': b'some-val'", resp.text)
-            self.assertIn("b'user-agent': b'Mozilla'", resp.text)
+            self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
         else:
             self.assertIn("'custom-header': 'some-val'", resp.text)
-            self.assertIn("'user-agent': 'Mozilla'", resp.text)
+            self.assertIn("'user-agent': 'Fooozilla'", resp.text)

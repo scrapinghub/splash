@@ -6,10 +6,7 @@ import resource
 import traceback
 import signal
 import functools
-try:
-    from psutil import phymem_usage
-except ImportError:
-    from psutil import virtual_memory as phymem_usage
+
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
