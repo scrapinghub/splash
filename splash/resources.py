@@ -15,6 +15,7 @@ from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
+import six
 
 import splash
 from splash.qtrender import (
@@ -115,8 +116,7 @@ class BaseRenderResource(_ValidatingResource):
                 request.setHeader(name, value)
             return self._writeOutput(data, request, content_type)
 
-        # TODO: long?
-        if data is None or isinstance(data, (bool, int, float)):
+        if data is None or isinstance(data, (bool, six.integer_types, float)):
             return self._writeOutput(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
@@ -125,14 +125,9 @@ class BaseRenderResource(_ValidatingResource):
         request.setHeader(b"content-type", content_type)
 
         self._logStats(request)
-        try:
-            # Twisted expects bytes on Python 3
+        if not isinstance(data, bytes):
+            # Twisted expects bytes as response
             data = data.encode('utf-8')
-        except AttributeError:
-            # Already bytes on py3. Let it pass.
-            pass
-        except UnicodeDecodeError:
-            pass
         request.write(data)
 
     def _logStats(self, request):
