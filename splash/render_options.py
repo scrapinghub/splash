@@ -8,7 +8,6 @@ import six
 
 from splash import defaults
 
-unicode = six.text_type
 if six.PY3:
     basestring = (str, bytes)
 
@@ -79,7 +78,7 @@ class RenderOptions(object):
             value = self.data.get(name.decode('utf-8'))
         if value is not None:
             if type is not None:
-                if type is str and isinstance(value, unicode):
+                if type is str and isinstance(value, six.text_type):
                     value = value.encode('utf-8')
                 else:
                     try:

@@ -25,8 +25,6 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
-unicode = six.text_type
-
 
 def skip_if_closing(meth):
     @functools.wraps(meth)
@@ -235,7 +233,7 @@ class BrowserTab(QObject):
             mime_type = "text/html; charset=utf-8"
         if baseurl is None:
             baseurl = ''
-        if isinstance(data, unicode):
+        if isinstance(data, six.text_type):
             data = data.encode('utf8')
         callback_id = self._load_finished.connect(
             self._on_content_ready,
@@ -278,7 +276,7 @@ class BrowserTab(QObject):
     @property
     def url(self):
         """ Current URL """
-        return unicode(self.web_page.mainFrame().url().toString())
+        return six.text_type(self.web_page.mainFrame().url().toString())
 
     def go(self, url, callback, errback, baseurl=None, http_method='GET',
            body=None, headers=None):
@@ -490,7 +488,7 @@ class BrowserTab(QObject):
 
     def _on_url_changed(self, url):
         # log history
-        url = unicode(url.toString())
+        url = six.text_type(url.toString())
         cause_ev = self.web_page.har_log._prev_entry(url, -1)
         if cause_ev:
             self._history.append(without_private(cause_ev.data))
@@ -739,20 +737,20 @@ class BrowserTab(QObject):
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
-            "url": unicode(frame.url().toString()),
-            "requestedUrl": unicode(frame.requestedUrl().toString()),
+            "url": six.text_type(frame.url().toString()),
+            "requestedUrl": six.text_type(frame.requestedUrl().toString()),
             "geometry": (g.x(), g.y(), g.width(), g.height()),
-            "title": unicode(frame.title())
+            "title": six.text_type(frame.title())
         }
         if html:
-            res["html"] = unicode(frame.toHtml())
+            res["html"] = six.text_type(frame.toHtml())
 
         if children:
             res["childFrames"] = [
                 self._frame_to_dict(f, True, html)
                 for f in frame.childFrames()
             ]
-            res["frameName"] = unicode(frame.frameName())
+            res["frameName"] = six.text_type(frame.frameName())
 
         return res
 
@@ -879,7 +877,7 @@ class _JavascriptConsole(QObject):
 
     @pyqtSlot(str)
     def log(self, message):
-        self.messages.append(unicode(message))
+        self.messages.append(six.text_type(message))
 
 
 class _BrowserTabLogger(object):
@@ -929,7 +927,7 @@ class _BrowserTabLogger(object):
         if min_level is not None and self.verbosity < min_level:
             return
 
-        if isinstance(message, unicode):
+        if isinstance(message, six.text_type):
             message = message.encode('unicode-escape').decode('ascii')
 
         message = "[%s] %s" % (self.uid, message)

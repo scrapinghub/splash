@@ -14,8 +14,6 @@ from six.moves.urllib.parse import urlsplit
 
 from splash.qtutils import request_repr, drop_request
 
-unicode = six.text_type
-
 
 class AllowedDomainsMiddleware(object):
     """
@@ -29,7 +27,7 @@ class AllowedDomainsMiddleware(object):
     def process(self, request, render_options, operation, data):
         allowed_domains = render_options.get_allowed_domains()
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
-        if not host_re.match(unicode(request.url().host())):
+        if not host_re.match(six.text_type(request.url().host())):
             if self.verbosity >= 2:
                 log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
             drop_request(request)
@@ -109,7 +107,7 @@ class AdblockMiddleware(object):
         return request
 
     def _url_and_adblock_options(self, request, render_options):
-        url = unicode(request.url().toString())
+        url = six.text_type(request.url().toString())
         domain = urlsplit(render_options.get_url()).netloc
         options = {'domain': domain}
         return url, options

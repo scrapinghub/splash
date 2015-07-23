@@ -14,8 +14,6 @@ import six
 _supported = None
 _lua = None
 
-unicode = six.text_type
-
 
 def is_supported():
     """ Return True if Lua scripting is supported """
@@ -172,7 +170,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
                 "Lua %s objects are not allowed." % lupa.lua_type(obj)
             )
 
-        if binary and isinstance(obj, unicode):
+        if binary and isinstance(obj, six.text_type):
             obj = obj.encode('utf8')
 
         return obj
@@ -213,7 +211,7 @@ def python2lua(lua, obj, max_depth=100):
         tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
         return _mark_table_as_list(lua, tbl)
 
-    if isinstance(obj, unicode):
+    if isinstance(obj, six.text_type):
         # lupa encodes/decodes strings automatically,
         # but this doesn't apply to nested table keys.
         return obj.encode('utf8')

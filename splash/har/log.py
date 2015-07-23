@@ -10,9 +10,9 @@ import six
 
 from .utils import get_duration, format_datetime, without_private
 
-unicode = six.text_type
-basestring = six.string_types
 
+if six.PY3:
+    basestring = str
 
 HarEvent = namedtuple('HarEvent', 'type data')
 
@@ -47,11 +47,11 @@ class HarLog(object):
 
     def store_url(self, url):
         """ Call this method when URL is changed. """
-        self.events.append(HarEvent(HAR_URL_CHANGED, unicode(url)))
+        self.events.append(HarEvent(HAR_URL_CHANGED, six.text_type(url)))
 
     def store_title(self, title):
         """ Call this method when page title is changed. """
-        self.events.append(HarEvent(HAR_TITLE_CHANGED, unicode(title)))
+        self.events.append(HarEvent(HAR_TITLE_CHANGED, six.text_type(title)))
 
     def store_timing(self, name):
         """
@@ -85,7 +85,7 @@ class HarLog(object):
     def _get_browser(self):
         return {
             "name": "QWebKit",
-            "version": unicode(qWebKitVersion()),
+            "version": six.text_type(qWebKitVersion()),
             "comment": "PyQt %s, Qt %s" % (PYQT_VERSION_STR, QT_VERSION_STR),
         }
 

@@ -9,14 +9,11 @@ import six
 from . import test_render, test_har, test_request_filters, test_runjs
 from ..utils import bytes_to_unicode
 
-if six.PY3:
-    basestring = (str, bytes)
-
 
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
 
     def request(self, query, endpoint=None, headers=None):
-        assert not isinstance(query, basestring)
+        assert not isinstance(query, six.string_types)
         endpoint = endpoint or self.endpoint
         url = "http://%s/%s" % (self.host, endpoint)
         data = json.dumps(bytes_to_unicode(query))

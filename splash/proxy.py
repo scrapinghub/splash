@@ -19,8 +19,6 @@ from six.moves import configparser
 from splash.render_options import BadOption
 from splash.qtutils import create_proxy
 
-unicode = six.text_type
-
 
 class _BlackWhiteSplashProxyFactory(object):
     """
@@ -34,8 +32,8 @@ class _BlackWhiteSplashProxyFactory(object):
         self.proxy_list = proxy_list or []
 
     def queryProxy(self, query=None, *args, **kwargs):
-        protocol = unicode(query.protocolTag())
-        url = unicode(query.url().toString())
+        protocol = six.text_type(query.protocolTag())
+        url = six.text_type(query.url().toString())
         if self.shouldUseProxyList(protocol, url):
             return self._customProxyList()
 

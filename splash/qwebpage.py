@@ -11,8 +11,6 @@ import six
 from splash.cookies import SplashCookieJar
 from splash.har.log import HarLog
 
-unicode = six.text_type
-
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
@@ -123,8 +121,8 @@ class SplashQWebPage(QWebPage):
             self.error_info = RenderErrorInfo(
                 domain,
                 int(info.error),
-                unicode(info.errorString),
-                unicode(info.url.toString())
+                six.text_type(info.errorString),
+                six.text_type(info.url.toString())
             )
 
             # XXX: this page currently goes nowhere

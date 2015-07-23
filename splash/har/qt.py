@@ -12,8 +12,6 @@ import six
 
 from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
 
-unicode = six.text_type
-
 
 def _header_pairs(request_or_reply):
     if hasattr(request_or_reply, 'rawHeaderPairs'):
@@ -68,9 +66,9 @@ def cookie2har(cookie):
     cookie = {
         "name": bytes(cookie.name()),
         "value": bytes(cookie.value()),
-        "path": unicode(cookie.path()),
-        "domain": unicode(cookie.domain()),
-        "expires": unicode(cookie.expirationDate().toString(Qt.ISODate)),
+        "path": six.text_type(cookie.path()),
+        "domain": six.text_type(cookie.domain()),
+        "expires": six.text_type(cookie.expirationDate().toString(Qt.ISODate)),
         "httpOnly": cookie.isHttpOnly(),
         "secure": cookie.isSecure(),
     }
@@ -81,7 +79,7 @@ def cookie2har(cookie):
 
 def querystring2har(url):
     return [
-        {"name": unicode(name), "value": unicode(value)}
+        {"name": six.text_type(name), "value": six.text_type(value)}
         for name, value in QUrlQuery(url).queryItems()
     ]
 
@@ -102,7 +100,7 @@ def reply2har(reply, include_content=False, binary_content=False):
 
     content_type = reply.header(QNetworkRequest.ContentTypeHeader)
     if content_type is not None:
-        res["content"]["mimeType"] = unicode(content_type)
+        res["content"]["mimeType"] = six.text_type(content_type)
 
     content_length = reply.header(QNetworkRequest.ContentLengthHeader)
     if content_length is not None:
@@ -127,7 +125,7 @@ def reply2har(reply, include_content=False, binary_content=False):
 
     redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
     if redirect_url is not None:
-        res["redirectURL"] = unicode(redirect_url.toString())
+        res["redirectURL"] = six.text_type(redirect_url.toString())
     else:
         res["redirectURL"] = ""
 
@@ -149,7 +147,7 @@ def request2har(request, operation, outgoing_data=None):
     """ Serialize QNetworkRequest to HAR. """
     return {
         "method": OPERATION_NAMES.get(operation, '?'),
-        "url": unicode(request.url().toString()),
+        "url": six.text_type(request.url().toString()),
         "httpVersion": "HTTP/1.1",
         "cookies": request_cookies2har(request),
         "queryString": querystring2har(request.url()),

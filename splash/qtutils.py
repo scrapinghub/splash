@@ -19,8 +19,6 @@ import six
 
 from splash.utils import truncated
 
-unicode = six.text_type
-
 
 OPERATION_NAMES = {
     QNetworkAccessManager.HeadOperation: 'HEAD',
@@ -133,7 +131,7 @@ def get_qt_app():
 
 def qurl2ascii(url):
     """ Convert QUrl to ASCII text suitable for logging """
-    url = unicode(url.toString()).encode('unicode-escape').decode('ascii')
+    url = six.text_type(url.toString()).encode('unicode-escape').decode('ascii')
     if url.lower().startswith('data:'):
         return truncated(url, 80, '...[data uri truncated]')
     return url

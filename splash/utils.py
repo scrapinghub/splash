@@ -10,10 +10,6 @@ import inspect
 import resource
 from collections import defaultdict
 import psutil
-import six
-
-if six.PY3:
-    basestring = (str, bytes)
 
 
 _REQUIRED = object()

@@ -19,8 +19,6 @@ from .utils import NON_EXISTING_RESOLVABLE, SplashServer
 from .mockserver import JsRender
 from .. import defaults
 
-unicode = six.text_type
-
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
     endpoint = u'execute'
@@ -505,7 +503,7 @@ class EvaljsTest(BaseLuaRenderTest):
     def assertEvaljsError(self, js, error_parts="JsError"):
         resp = self._evaljs_request(js)
         self.assertStatusCode(resp, 400)
-        if isinstance(error_parts, (bytes, unicode)):
+        if isinstance(error_parts, (bytes, six.text_type)):
             error_parts = [error_parts]
         for part in error_parts:
             self.assertIn(part, resp.text)

@@ -31,9 +31,6 @@ from splash.qtutils import (
 )
 from splash.lua_runtime import SplashLuaRuntime
 
-if six.PY3:
-    basestring = (str, bytes)
-
 
 class AsyncBrowserCommand(AsyncCommand):
     def __repr__(self):
@@ -558,13 +555,13 @@ class Splash(object):
 
     @command()
     def set_result_content_type(self, content_type):
-        if not isinstance(content_type, basestring):
+        if not isinstance(content_type, six.string_types):
             raise ScriptError("splash:set_result_content_type() argument must be a string")
         self._result_content_type = content_type
 
     @command()
     def set_result_header(self, name, value):
-        if not all([isinstance(h, basestring) for h in [name, value]]):
+        if not all([isinstance(h, six.string_types) for h in [name, value]]):
             raise ScriptError("splash:set_result_header() arguments must be strings")
 
         try:
@@ -578,7 +575,7 @@ class Splash(object):
 
     @command()
     def set_user_agent(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             raise ScriptError("splash:set_user_agent() argument must be a string")
         self.tab.set_user_agent(value)
 
