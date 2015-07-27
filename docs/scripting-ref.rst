@@ -1563,7 +1563,7 @@ request to Splash:
 .. _splash-on-response-headers:
 
 splash:on_response_headers
------------------
+--------------------------
 
 Register a function to be called after response headers are received, before 
 response body is read.
@@ -1582,14 +1582,23 @@ response body is read.
 * ``info`` - a table with response data in `HAR response`_ format
 * ``request`` - a table with request information 
 
+
 These fields are for information only; changing them doesn't change
 response received by splash. ``response`` has following methods:
 
 * ``response:abort()`` - aborts reading of response body
 
 A callback passed to :ref:`splash-on-response-headeers` can't call Splash
-async methods like :ref:`splash-wait` or :ref:`splash-go`. ``response`` cannot
-is cleared after exiting from callback, so you cannot use it outside callback.
+async methods like :ref:`splash-wait` or :ref:`splash-go`. ``response`` object
+is deleted after exiting from callback, so you cannot use it outside callback.
+
+``response.request`` available in callback contains following attributes:
+
+* ``url`` - requested URL - can be different from response URL in case there is
+  redirect
+* ``headers`` - HTTP headers of request
+* ``method`` HTTP method of request
+* ``cookies`` - cookies in .har format
 
 Example 1 - log content-type headers of all responses received while rendering
 

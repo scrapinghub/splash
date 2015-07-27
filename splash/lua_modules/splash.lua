@@ -236,7 +236,7 @@ function Response._create(py_reply)
     setmetatable(self, Response)
     
     -- convert har headers to something more convenient
-    _request_headers = {}
+    local _request_headers = {}
     for name, value in pairs(py_reply.request["headers"]) do
         _request_headers[value["name"]] = value["value"]
     end
