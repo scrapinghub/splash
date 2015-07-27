@@ -172,18 +172,33 @@ class HtmlRender(DefaultRenderScript):
         return self.tab.html()
 
 
-class PngRender(DefaultRenderScript):
+class ImageRender(DefaultRenderScript):
 
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
         self.scale_method = kwargs.pop('scale_method')
-        return super(PngRender, self).start(**kwargs)
+        return super(ImageRender, self).start(**kwargs)
+
+
+class PngRender(ImageRender):
 
     def get_result(self):
         return self.tab.png(self.width, self.height,
                             render_all=self.render_all,
                             scale_method=self.scale_method)
+
+
+class JpegRender(ImageRender):
+
+    def start(self, **kwargs):
+        self.quality = kwargs.pop('quality')
+        return super(JpegRender, self).start(**kwargs)
+
+    def get_result(self):
+        return self.tab.jpeg(
+            self.width, self.height, render_all=self.render_all,
+            scale_method=self.scale_method, quality=self.quality)
 
 
 class JsonRender(DefaultRenderScript):

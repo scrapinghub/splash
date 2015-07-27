@@ -18,7 +18,7 @@ from twisted.python import log
 
 import splash
 from splash.qtrender import (
-    HtmlRender, PngRender, JsonRender, HarRender, RenderError
+    HtmlRender, PngRender, JsonRender, HarRender, RenderError, JpegRender
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
@@ -208,6 +208,16 @@ class RenderPngResource(BaseRenderResource):
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_png_params())
         return self.pool.render(PngRender, options, **params)
+
+
+class RenderJpegResource(BaseRenderResource):
+
+    content_type = "image/jpeg"
+
+    def _getRender(self, request, options):
+        params = options.get_common_params(self.js_profiles_path)
+        params.update(options.get_jpeg_params())
+        return self.pool.render(JpegRender, options, **params)
 
 
 class RenderJsonResource(BaseRenderResource):
@@ -580,6 +590,7 @@ class Root(Resource):
         self.lua_enabled = lua_enabled
         self.putChild("render.html", RenderHtmlResource(pool, max_timeout))
         self.putChild("render.png", RenderPngResource(pool, max_timeout))
+        self.putChild("render.jpeg", RenderJpegResource(pool, max_timeout))
         self.putChild("render.json", RenderJsonResource(pool, max_timeout))
         self.putChild("render.har", RenderHarResource(pool, max_timeout))
 
