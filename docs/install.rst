@@ -53,8 +53,8 @@ Ubuntu 12.04 (manual way)
        $ sudo add-apt-repository -y ppa:pi-rho/security
        $ sudo apt-get update
        $ sudo apt-get install libre2-dev
-       $ sudo apt-get install netbase ca-certificates python \
-                              python-dev build-essential libicu48 \
+       $ sudo apt-get install netbase ca-certificates liblua5.2-dev \
+                              python python-dev build-essential libicu48 \
                               xvfb libqt4-webkit python-twisted python-qt4
 
 2. TODO: install Python dependencies using pip, clone repo, chdir to it,
