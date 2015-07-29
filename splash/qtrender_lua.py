@@ -389,6 +389,19 @@ class Splash(object):
         return BinaryCapsule(result)
 
     @command()
+    def jpeg(self, width=None, height=None, render_all=False,
+             scale_method=None, quality=None):
+        if width is not None:
+            width = int(width)
+        if height is not None:
+            height = int(height)
+        if quality is not None:
+            quality = int(quality)
+        result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
+                               scale_method=scale_method, quality=quality)
+        return BinaryCapsule(result)
+
+    @command()
     def har(self):
         return self.tab.har()
 
