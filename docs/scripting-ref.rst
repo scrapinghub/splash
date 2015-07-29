@@ -1560,6 +1560,89 @@ request to Splash:
 
     `splash:on_request` method doesn't support named arguments.
 
+.. _splash-on-response-headers:
+
+splash:on_response_headers
+--------------------------
+
+Register a function to be called after response headers are received, before 
+response body is read.
+
+**Signature:** ``splash:on_response_headers(callback)``
+
+**Returns:** nil.
+
+**Async:** no.
+
+:ref:`splash-on-response-headers` callback receives a single ``response`` argument.
+``response`` contains following fields:
+
+* ``url`` - requested URL;
+* ``headers`` - HTTP headers of response
+* ``info`` - a table with response data in `HAR response`_ format
+* ``request`` - a table with request information 
+
+
+These fields are for information only; changing them doesn't change
+response received by splash. ``response`` has following methods:
+
+* ``response:abort()`` - aborts reading of response body
+
+A callback passed to :ref:`splash-on-response-headeers` can't call Splash
+async methods like :ref:`splash-wait` or :ref:`splash-go`. ``response`` object
+is deleted after exiting from callback, so you cannot use it outside callback.
+
+``response.request`` available in callback contains following attributes:
+
+* ``url`` - requested URL - can be different from response URL in case there is
+  redirect
+* ``headers`` - HTTP headers of request
+* ``method`` HTTP method of request
+* ``cookies`` - cookies in .har format
+
+Example 1 - log content-type headers of all responses received while rendering
+
+.. code-block:: lua
+
+    function main(splash)
+        local all_headers = {}
+        splash:on_response_headers(function(response)
+            local content_type = response.headers["Content-Type"]
+            all_headers[response.url] = content_type
+        end)
+        assert(splash:go(splash.args.url))
+        return all_headers
+    end
+    
+Example 2 - abort reading body of all responses with content type ``text/css``
+
+.. code-block:: lua
+
+    function main(splash)
+        splash:on_response_headers(function(response)
+            local content_type = response.headers["Content-Type"]
+            if content_type == "text/css" then
+                response.abort()
+            end
+        end)
+        assert(splash:go(splash.args.url))
+        return splash:png()
+    end
+
+Example 3 - extract all cookies set by website without reading response body
+
+.. code-block:: lua
+
+    function main(splash)
+        local cookies = ""
+        splash:on_response_headers(function(response)
+            local response_cookies = response.headers["Set-cookie"]
+            cookies = cookies .. ";" .. response_cookies
+            response.abort()
+        end)
+        assert(splash:go(splash.args.url))
+        return cookies
+    end
 
 .. _splash-args:
 
