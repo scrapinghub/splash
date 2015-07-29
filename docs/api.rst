@@ -221,6 +221,42 @@ Curl examples::
     curl 'http://localhost:8050/render.png?url=http://domain.com/page-with-javascript.html&width=320&height=240'
 
 
+.. _render.jpeg:
+
+render.jpeg
+-----------
+
+Return a image (in JPEG format) of the javascript-rendered page.
+
+Arguments:
+
+Same as `render.png`_ plus the following ones:
+
+.. _arg-quality:
+
+quality : integer : optional
+  JPEG quality parameter in range from ``0`` to ``100``.
+  Default is ``quality=75``.
+
+  .. note::
+
+      ``quality`` values above 95 should be avoided;
+      ``quality=100`` disables portions of the JPEG compression algorithm,
+      and results in large files with hardly any gain in image quality.
+
+
+Examples
+~~~~~~~~
+
+Curl examples::
+
+    # render with default quality
+    curl 'http://localhost:8050/render.jpeg?url=http://domain.com/'
+
+    # render with low quality
+    curl 'http://localhost:8050/render.jpeg?url=http://domain.com/&quality=30'
+
+
 .. _render.har:
 
 render.har
