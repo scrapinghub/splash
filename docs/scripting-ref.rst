@@ -917,6 +917,87 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
+.. _splash-jpeg:
+
+splash:jpeg
+-----------
+
+Return a `width x height` screenshot of a current page in JPEG format.
+
+**Signature:** ``jpeg = splash:jpeg{width=nil, height=nil, render_all=false, scale_method='raster', quality=75}``
+
+**Parameters:**
+
+* width - optional, width of a screenshot in pixels;
+* height - optional, height of a screenshot in pixels;
+* render_all - optional, if ``true`` render the whole webpage;
+* scale_method - optional, method to use when resizing the image, ``'raster'``
+  or ``'vector'``
+* quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``
+
+**Returns:** JPEG screenshot data.
+
+**Async:** no.
+
+Without arguments ``splash:jpeg()`` will take a snapshot of the current viewport.
+
+*width* parameter sets the width of the resulting image.  If the viewport has a
+different width, the image is scaled up or down to match the specified one.
+For example, if the viewport is 1024px wide then ``splash:jpeg{width=100}`` will
+return a screenshot of the whole viewport, but the image will be downscaled to
+100px width.
+
+*height* parameter sets the height of the resulting image.  If the viewport has
+a different height, the image is trimmed or extended vertically to match the
+specified one without resizing the content.  The region created by such
+extension is transparent.
+
+To set the viewport size use :ref:`splash-set-viewport-size`,
+:ref:`splash-set-viewport-full` or *render_all* argument.  ``render_all=true``
+is equivalent to running ``splash:set_viewport_full()`` just before the
+rendering and restoring the viewport size afterwards.
+
+*scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
+``scale_method='raster'``, the image is resized per-pixel.  When
+``scale_method='vector'``, the image is resized per-element during rendering.
+Vector scaling is more performant and produces sharper images, however it may
+cause rendering artifacts, so use it with caution.
+
+*quality* parameter must be an integer in range from ``0`` to ``100``.
+Values above ``95`` should be avoided; ``quality=100`` disables portions of
+the JPEG compression algorithm, and results in large files with hardly any
+gain in image quality.
+
+If the result of ``splash:jpeg()`` is returned directly as a result of
+"main" function, the screenshot is returned as binary data:
+
+.. code-block:: lua
+
+     -- A simplistic implementation of render.jpeg endpoint
+     function main(splash)
+         splash:set_result_content_type("image/jpeg")
+         assert(splash:go(splash.args.url))
+         return splash:jpeg{
+            width=splash.args.width,
+            height=splash.args.height
+         }
+     end
+
+If the result of ``splash:jpeg()`` is returned as a table value, it is encoded
+to base64 to make it possible to embed in JSON and build a data:uri
+on a client (magic!):
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         return {jpeg=splash:jpeg()}
+     end
+
+If your script returns the result of ``splash:jpeg()`` in a top-level
+``"jpeg"`` key (as we've done in a previous example) then Splash UI
+will display it as an image.
+
 .. _splash-har:
 
 splash:har

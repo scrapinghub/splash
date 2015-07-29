@@ -240,7 +240,7 @@ quality : integer : optional
 
   .. note::
 
-      ``quality`` values above 95 should be avoided;
+      ``quality`` values above ``95`` should be avoided;
       ``quality=100`` disables portions of the JPEG compression algorithm,
       and results in large files with hardly any gain in image quality.
 
