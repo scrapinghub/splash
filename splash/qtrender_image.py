@@ -416,7 +416,9 @@ class WrappedQImage(WrappedImage):
         self.img.save(buf, 'png', quality)
         return bytes(buf.data())
 
-    def to_jpeg(self, quality=defaults.JPEG_QUALITY):
+    def to_jpeg(self, quality=None):
+        if quality is None:
+            quality = defaults.JPEG_QUALITY
         buf = QBuffer()
         self.img.save(buf, 'jpeg', quality)
         return bytes(buf.data())
@@ -447,7 +449,9 @@ class WrappedPillowImage(WrappedImage):
         self.img.save(buf, 'png', compress_level=complevel)
         return buf.getvalue()
 
-    def to_jpeg(self, quality=defaults.JPEG_QUALITY):
+    def to_jpeg(self, quality=None):
+        if quality is None:
+            quality = defaults.JPEG_QUALITY
         buf = StringIO()
         self.img.save(buf, 'jpeg', quality=quality)
         return buf.getvalue()
