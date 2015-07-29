@@ -56,7 +56,7 @@ wait : float : optional
   (defaults to 0). Increase this value if you expect pages to contain
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
-  :ref:`wait <arg-wait>` is also required for PNG rendering when doing
+  :ref:`wait <arg-wait>` is also required for PNG and JPEG rendering when doing
   full-page rendering (see :ref:`render_all <arg-render-all>`). Maximum
   allowed value for wait is 10 seconds.
 
@@ -112,7 +112,7 @@ viewport : string : optional
   View width and height (in pixels) of the browser viewport to render the web
   page. Format is "<width>x<height>", e.g. 800x600.  Default value is 1024x768.
 
-  'viewport' parameter is more important for PNG rendering; it is supported for
+  'viewport' parameter is more important for PNG and JPEG rendering; it is supported for
   all rendering endpoints because javascript code execution can depend on
   viewport size.
 
@@ -290,7 +290,7 @@ arguments passed.
 
 Arguments:
 
-Same as `render.png`_ plus the following ones:
+Same as `render.jpeg`_ plus the following ones:
 
 .. _arg-html:
 
@@ -302,6 +302,12 @@ html : integer : optional
 
 png : integer : optional
     Whether to include PNG in output. Possible values are
+    ``1`` (include) and ``0`` (exclude). Default is 0.
+
+.. _arg-jpeg:
+
+jpeg : integer : optional
+    Whether to include JPEG in output. Possible values are
     ``1`` (include) and ``0`` (exclude). Default is 0.
 
 .. _arg-iframes:
@@ -487,7 +493,7 @@ execute
 
 Execute a custom rendering script and return a result.
 
-:ref:`render.html`, :ref:`render.png`, :ref:`render.har` and :ref:`render.json`
+:ref:`render.html`, :ref:`render.png`, :ref:`render.jpeg`, :ref:`render.har` and :ref:`render.json`
 endpoints cover many common use cases, but sometimes they are not enough.
 This endpoint allows to write custom :ref:`Splash Scripts <scripting-tutorial>`.
 
@@ -775,8 +781,8 @@ received will be proxied and the response will be rendered based in the
 following HTTP headers:
 
 X-Splash-render : string : required
-  The render mode to use, valid modes are: html, png and json. These modes have
-  the same behavior as the endpoints: `render.html`_, `render.png`_
+  The render mode to use, valid modes are: html, png, jpeg and json. These modes have
+  the same behavior as the endpoints: `render.html`_, `render.png`_, `render.jpeg`_
   and `render.json`_ respectively.
 
 X-Splash-js-source : string
@@ -809,22 +815,28 @@ X-Splash-images : string
   Same as :ref:`'images' <arg-images>` argument for `render.html`_.
 
 X-Splash-width : string
-  Same as :ref:`'width' <arg-width>` argument for `render.png`_.
+  Same as :ref:`'width' <arg-width>` argument for `render.png`_ and `render.jpeg`_.
 
 X-Splash-height : string
-  Same as :ref:`'height' <arg-height>` argument for `render.png`_.
+  Same as :ref:`'height' <arg-height>` argument for `render.png`_ and `render.jpeg`_.
 
 X-Splash-render-all : string
-  Same as :ref:`'render_all' <arg-render-all>` argument for `render.png`_.
+  Same as :ref:`'render_all' <arg-render-all>` argument for `render.png`_ and `render.jpeg`_.
 
 X-Splash-scale-method : string
-  Same as :ref:`'scale_method' <arg-scale-method>` argument for `render.png`_.
+  Same as :ref:`'scale_method' <arg-scale-method>` argument for `render.png`_ and `render.jpeg`_.
+
+X-Splash-quality : string
+  Same as :ref:`'quality' <arg-quality>` argument for `render.jpeg`_.
 
 X-Splash-html : string
   Same as :ref:`'html' <arg-html>` argument for `render.json`_.
 
 X-Splash-png : string
   Same as :ref:`'png' <arg-png>` argument for `render.json`_.
+
+X-Splash-jpeg : string
+  Same as :ref:`'jpeg' <arg-jpeg>` argument for `render.json`_.
 
 X-Splash-iframes : string
   Same as :ref:`'iframes' <arg-iframes>` argument for `render.json`_.

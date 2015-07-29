@@ -201,15 +201,12 @@ class JpegRender(ImageRender):
             scale_method=self.scale_method, quality=self.quality)
 
 
-class JsonRender(DefaultRenderScript):
+class JsonRender(JpegRender):
 
     def start(self, **kwargs):
-        self.width = kwargs.pop('width')
-        self.height = kwargs.pop('height')
-        self.scale_method = kwargs.pop('scale_method')
         self.include = {
             inc: kwargs.pop(inc)
-            for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
+            for inc in ['html', 'png', 'jpeg', 'iframes', 'script', 'history', 'har']
         }
         self.include['console'] = kwargs.get('console')
         super(JsonRender, self).start(**kwargs)
@@ -221,6 +218,11 @@ class JsonRender(DefaultRenderScript):
             res['png'] = self.tab.png(self.width, self.height, b64=True,
                                       render_all=self.render_all,
                                       scale_method=self.scale_method)
+        if self.include['jpeg']:
+            res['jpeg'] = self.tab.jpeg(self.width, self.height, b64=True,
+                                        render_all=self.render_all,
+                                        scale_method=self.scale_method,
+                                        quality=self.quality)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output

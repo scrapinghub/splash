@@ -226,7 +226,7 @@ class RenderJsonResource(BaseRenderResource):
 
     def _getRender(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
-        params.update(options.get_png_params())
+        params.update(options.get_jpeg_params())
         params.update(options.get_include_params())
         return self.pool.render(JsonRender, options, **params)
 

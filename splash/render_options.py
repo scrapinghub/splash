@@ -267,15 +267,15 @@ class RenderOptions(object):
         return params
 
     def get_include_params(self):
-        # TODO: add jpeg
         return dict(
-            html = self._get_bool("html", defaults.DO_HTML),
-            iframes = self._get_bool("iframes", defaults.DO_IFRAMES),
-            png = self._get_bool("png", defaults.DO_PNG),
-            script = self._get_bool("script", defaults.SHOW_SCRIPT),
-            console = self._get_bool("console", defaults.SHOW_CONSOLE),
-            history = self._get_bool("history", defaults.SHOW_HISTORY),
-            har = self._get_bool("har", defaults.SHOW_HAR),
+            html=self._get_bool("html", defaults.DO_HTML),
+            iframes=self._get_bool("iframes", defaults.DO_IFRAMES),
+            png=self._get_bool("png", defaults.DO_PNG),
+            jpeg=self._get_bool("jpeg", defaults.DO_JPEG),
+            script=self._get_bool("script", defaults.SHOW_SCRIPT),
+            console=self._get_bool("console", defaults.SHOW_CONSOLE),
+            history=self._get_bool("history", defaults.SHOW_HISTORY),
+            har=self._get_bool("har", defaults.SHOW_HAR),
         )
 
 
