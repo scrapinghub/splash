@@ -104,7 +104,8 @@ def start_logging(opts):
 def splash_started(opts, stderr):
     if opts.logfile:
         stderr.write("Splash started - logging to: %s\n" % opts.logfile)
-    print("Splash started")
+    else:
+        stderr.write("Splash started")
 
 
 def bump_nofile_limit():
