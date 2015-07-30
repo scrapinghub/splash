@@ -42,7 +42,8 @@ class _BlackWhiteSplashProxyFactory(object):
         if not self.proxy_list:
             return False
 
-        if protocol != 'http':  # don't try to proxy https
+        if protocol not in ('http', 'https'):
+            # don't try to proxy unknown protocols
             return False
 
         if any(re.match(p, url) for p in self.blacklist):

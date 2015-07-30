@@ -1489,7 +1489,8 @@ one of the ``request`` methods:
 * ``request:set_proxy{host, port, username=nil, password=nil, type='HTTP'}`` -
   set a proxy server to use for this request. Allowed proxy types are
   'HTTP' and 'SOCKS5'. Omit ``username`` and ``password`` arguments if a proxy
-  doesn't need auth.
+  doesn't need auth. When ``type`` is set to 'HTTP' HTTPS proxying should
+  also work; it is implemented using CONNECT command.
 * ``request:set_header(name, value)`` - set an HTTP header for this request.
   See also: :ref:`splash-set-custom-headers`.
 
