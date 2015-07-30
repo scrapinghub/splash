@@ -16,7 +16,7 @@ import ConfigParser
 from PyQt4.QtNetwork import QNetworkProxy
 
 from splash.render_options import BadOption
-from splash.qtutils import create_proxy
+from splash.qtutils import create_proxy, validate_proxy_type
 
 
 class _BlackWhiteSplashProxyFactory(object):
@@ -58,8 +58,8 @@ class _BlackWhiteSplashProxyFactory(object):
 
     def _customProxyList(self):
         return [
-            create_proxy(host, port, username, password)
-            for host, port, username, password in self.proxy_list
+            create_proxy(host, port, username, password, type)
+            for host, port, username, password,type in self.proxy_list
         ]
 
 
@@ -77,6 +77,7 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         port=8010
         username=username
         password=password
+        type=HTTP
 
         [rules]
         whitelist=
@@ -149,7 +150,12 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         except ValueError:
             raise BadOption("Invalid proxy profile: [proxy] port is incorrect")
 
-        proxy_list = [(host, port, proxy.get('username'), proxy.get('password'))]
+        if 'type' in proxy:
+            validate_proxy_type(proxy['type'])
+
+        proxy_list = [(host, port,
+                       proxy.get('username'), proxy.get('password'),
+                       proxy.get('type'))]
         return blacklist, whitelist, proxy_list
 
 

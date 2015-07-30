@@ -1486,9 +1486,10 @@ one of the ``request`` methods:
 
 * ``request:abort()`` - drop the request;
 * ``request:set_url(url)`` - change request URL to a specified value;
-* ``request:set_proxy{host, port, username=nil, password=nil}`` - set an
-  HTTP proxy server to use for this request. Omit ``username`` and ``password``
-  arguments if a proxy doesn't need auth.
+* ``request:set_proxy{host, port, username=nil, password=nil, type='HTTP'}`` -
+  set a proxy server to use for this request. Allowed proxy types are
+  'HTTP' and 'SOCKS5'. Omit ``username`` and ``password`` arguments if a proxy
+  doesn't need auth.
 * ``request:set_header(name, value)`` - set an HTTP header for this request.
   See also: :ref:`splash-set-custom-headers`.
 

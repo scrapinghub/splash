@@ -726,8 +726,8 @@ class _WrappedRequest(object):
 
     @command()
     @_requires_request
-    def set_proxy(self, host, port, username=None, password=None):
-        proxy = create_proxy(host, port, username, password)
+    def set_proxy(self, host, port, username=None, password=None, type='HTTP'):
+        proxy = create_proxy(host, port, username, password, type)
         self.request.custom_proxy = proxy
 
     @command()

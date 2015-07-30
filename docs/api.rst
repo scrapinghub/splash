@@ -703,6 +703,9 @@ Example contents of this file::
     username=username
     password=password
 
+    ; optional, default is HTTP. Allowed values are HTTP and SOCKS5
+    type=HTTP
+
     [rules]
     ; optional, default ".*"
     whitelist=
