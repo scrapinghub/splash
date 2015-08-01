@@ -8,18 +8,19 @@ branches:
     only:
         - master
         - py3
+        - qt5
 
 env:
-    - SYSTEM_PACKAGES=true  QT=qt5.2
+    - SYSTEM_PACKAGES=true QT=qt5.2
     - SYSTEM_PACKAGES=false QT=qt5.4
-    - SYSTEM_PACKAGES=true  QT=qt5.4
+    - SYSTEM_PACKAGES=true QT=qt5.4
 
 matrix:
     exclude:
         - python: 3.4
           env: SYSTEM_PACKAGES=true QT=qt5.2
         - python: 3.4
-          env: SYSTEM_PACKAGES=true  QT=qt5.4
+          env: SYSTEM_PACKAGES=true QT=qt5.4
 
 before_install:
     - sudo apt-get install -y python-twisted lua5.2-dev zlib1g-dev python-imaging
@@ -57,8 +58,8 @@ before_install:
     - popd
     # pip installs
     - pip install psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib qt5reactor-fork six
-    - if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow twisted service_identity lupa; fi
-    - if [[ $TRAVIS_PYTHON_VERSION == 3.4 ]]; then pip install git+https://github.com/twisted/twisted; fi
+    - if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow service_identity lupa; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == 3.4 ]]; then git clone https://github.com/twisted/twisted; pushd twisted; python setup.py install; popd; else pip install twisted; fi
 
 install:
     - python setup.py install
