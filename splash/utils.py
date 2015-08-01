@@ -171,11 +171,11 @@ def get_total_phymem():
 def truncated(text, max_length=100, msg=u'...'):
     """
     >>> truncated("hello world!", 5)
-    'hello...'
+    u'hello...'
     >>> truncated("hello world!", 25)
-    'hello world!'
+    u'hello world!'
     >>> truncated("hello world!", 5, " [truncated]")
-    'hello [truncated]'
+    u'hello [truncated]'
     """
     if isinstance(text, bytes):
         text = text.decode('latin-1')
