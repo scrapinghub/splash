@@ -123,6 +123,13 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         })
         self.assertStatusCode(r, 400)
 
+    def test_bad_headers_non_ascii(self):
+        r = self.request({
+            "url": self.mockurl("getrequest"),
+            "headers": {'Custom-Header': 'ŃŐŃ-àscîi'},
+        })
+        self.assertStatusCode(r, 400)
+
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
         r = self.request({

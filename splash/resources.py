@@ -22,7 +22,8 @@ from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, RenderError
 )
 from splash.lua import is_supported as lua_is_supported
-from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder, bytes_to_unicode
+from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
+    SplashJSONEncoder, bytes_to_unicode, to_bytes
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
 from splash.qtutils import clear_caches
@@ -39,11 +40,10 @@ class _ValidatingResource(Resource):
             return Resource.render(self, request)
         except BadOption as e:
             request.setResponseCode(400)
-            return str(e).encode('utf-8') + b"\n"
+            return to_bytes(str(e)) + b"\n"
 
 
 class BaseRenderResource(_ValidatingResource):
-
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
@@ -55,7 +55,7 @@ class BaseRenderResource(_ValidatingResource):
         self.max_timeout = max_timeout
 
     def render_GET(self, request):
-        # log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
+        #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
 
         request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
@@ -66,8 +66,7 @@ class BaseRenderResource(_ValidatingResource):
         timeout = render_options.get_timeout()
         wait_time = render_options.get_wait()
 
-
-        timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
+        timer = reactor.callLater(timeout + wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
         pool_d.addCallback(self._writeOutput, request)
         pool_d.addErrback(self._timeoutError, request)
@@ -86,7 +85,8 @@ class BaseRenderResource(_ValidatingResource):
 
         content_type = request.getHeader(b'content-type')
 
-        if not any(ct in content_type.decode('utf-8') for ct in ['application/javascript', 'application/json']):
+        if not any(ct in content_type for ct in
+                   [b'application/javascript', b'application/json']):
             request.setResponseCode(415)
             request.write(b"Request content-type not supported\n")
             return
@@ -165,7 +165,7 @@ class BaseRenderResource(_ValidatingResource):
     def _badRequest(self, failure, request):
         failure.trap(BadOption)
         request.setResponseCode(400)
-        request.write(str(failure.value).encode('utf-8') + b"\n")
+        request.write(to_bytes(str(failure.value)) + b"\n")
 
     def _finishRequest(self, _, request):
         if not request._disconnected:
@@ -208,7 +208,6 @@ class ExecuteLuaScriptResource(BaseRenderResource):
 
 
 class RenderPngResource(BaseRenderResource):
-
     content_type = "image/png"
 
     def _getRender(self, request, options):
@@ -218,7 +217,6 @@ class RenderPngResource(BaseRenderResource):
 
 
 class RenderJsonResource(BaseRenderResource):
-
     content_type = "application/json"
 
     def _getRender(self, request, options):
@@ -229,7 +227,6 @@ class RenderJsonResource(BaseRenderResource):
 
 
 class RenderHarResource(BaseRenderResource):
-
     content_type = "application/json"
 
     def _getRender(self, request, options):
@@ -238,7 +235,6 @@ class RenderHarResource(BaseRenderResource):
 
 
 class DebugResource(Resource):
-
     isLeaf = True
 
     def __init__(self, pool, warn=False):
@@ -314,6 +310,7 @@ CODEMIRROR_RESOURCES = """
 
 """
 
+
 class DemoUI(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
@@ -347,9 +344,10 @@ class DemoUI(_ValidatingResource):
         url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
-        params = {k:v for k,v in params.items() if v is not None}
+        params = {k: v for k, v in params.items() if v is not None}
 
-        request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
+        request.addCookie('phaseInterval',
+                          120000)  # disable "phases" HAR Viewer feature
 
         LUA_EDITOR = """
           <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
@@ -558,14 +556,14 @@ class DemoUI(_ValidatingResource):
         </body>
         </html>
         """ % dict(
-            version = splash.__version__,
-            params = json.dumps(bytes_to_unicode(params)),
-            url = url,
-            theme = BOOTSTRAP_THEME,
-            cm_options = CODEMIRROR_OPTIONS,
-            cm_resources = CODEMIRROR_RESOURCES if self.lua_enabled else "",
-            endpoint = "execute" if self.lua_enabled else "render.json",
-            lua_editor = LUA_EDITOR if self.lua_enabled else "",
+            version=splash.__version__,
+            params=json.dumps(bytes_to_unicode(params)),
+            url=url,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES if self.lua_enabled else "",
+            endpoint="execute" if self.lua_enabled else "render.json",
+            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )).encode('utf-8')
 
 
@@ -638,7 +636,7 @@ end
           <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
         </div>
         """ % dict(
-            lua_script = self.get_example_script(),
+            lua_script=self.get_example_script(),
         )
 
         result = """<html>
@@ -719,10 +717,10 @@ end
             </div>
         </body>
         </html>""" % dict(
-            version = splash.__version__,
-            theme = BOOTSTRAP_THEME,
-            cm_options = CODEMIRROR_OPTIONS,
-            cm_resources = CODEMIRROR_RESOURCES,
-            lua_editor = LUA_EDITOR if self.lua_enabled else "",
+            version=splash.__version__,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES,
+            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )
         return result.encode('utf8')

@@ -18,8 +18,6 @@ import six
 from splash import defaults
 
 
-xrange = six.moves.range
-
 # QPainter cannot render a region with any dimension greater than this value.
 QPAINTER_MAXSIZE = 32766
 
@@ -244,9 +242,9 @@ def _render_qwebpage_tiled(web_page, logger,
         # which is not what we want.
         painter.setViewport(render_rect)
         # painter.setClipRect(web_rect)
-        for i in xrange(tile_conf['horizontal_count']):
+        for i in six.moves.range(tile_conf['horizontal_count']):
             left = i * tile_qimage.width()
-            for j in xrange(tile_conf['vertical_count']):
+            for j in six.moves.range(tile_conf['vertical_count']):
                 top = j * tile_qimage.height()
                 painter.setViewport(render_rect.translated(-left, -top))
                 logger.log("Rendering with viewport=%s"

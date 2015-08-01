@@ -2,14 +2,11 @@
 from __future__ import absolute_import
 import os
 import json
-from io import StringIO
 
 import six
 
 from splash import defaults
-
-if six.PY3:
-    basestring = (str, bytes)
+from splash.utils import bytes_to_unicode, unicode_to_bytes
 
 
 class BadOption(Exception):
@@ -41,16 +38,16 @@ class RenderOptions(object):
                 request.content.seek(0)
 
                 # 2. application/json POST data
-                if 'application/json' in content_type.decode('utf-8'):
+                if b'application/json' in content_type:
                     try:
-                        content = request.content.read()
-                        data.update(json.load(
-                            StringIO(content.decode('utf-8')), encoding='utf8'))
+                        content = request.content.read().decode('utf-8')
+                        data.update(unicode_to_bytes(
+                            json.loads(content, encoding='utf8')))
                     except ValueError as e:
                         raise BadOption("Invalid JSON: '{}'".format(str(e)))
 
                 # 3. js_source from application/javascript POST requests
-                if 'application/javascript' in content_type.decode('utf-8'):
+                if b'application/javascript' in content_type:
                     data[b'js_source'] = request.content.read().decode('utf-8')
                 request.content.seek(0)
 
@@ -60,7 +57,7 @@ class RenderOptions(object):
                 (name, value)
                 for name, values in request.requestHeaders.getAllRawHeaders()
                 for value in values
-            ]
+                ]
             data.setdefault(b'headers', headers)
             data.setdefault(b'http_method', request.method)
 
@@ -73,9 +70,6 @@ class RenderOptions(object):
 
     def get(self, name, default=_REQUIRED, type=str, range=None):
         value = self.data.get(name)
-        if value is None and isinstance(name, bytes):
-            # In case of json post data the keys are unicode
-            value = self.data.get(name.decode('utf-8'))
         if value is not None:
             if type is not None:
                 if type is str and isinstance(value, six.text_type):
@@ -87,9 +81,11 @@ class RenderOptions(object):
                         if not (type is str and isinstance(value, bytes)):
                             value = type(value)
                     except ValueError:
-                        raise BadOption("Argument %r is not of expected value" % (name))
+                        raise BadOption(
+                            "Argument %r is not of expected value" % (name))
             if range is not None and not (range[0] <= value <= range[1]):
-                raise BadOption("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
+                raise BadOption("Argument %r out of range (%d-%d)" % (
+                    name, range[0], range[1]))
             return value
         elif default is self._REQUIRED:
             raise BadOption("Missing argument: %s" % name)
@@ -115,11 +111,13 @@ class RenderOptions(object):
         return self._get_url(b"baseurl", default=None)
 
     def get_wait(self):
-        return self.get(b"wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
+        return self.get(b"wait", defaults.WAIT_TIME, type=float,
+                        range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
         default = min(self.max_timeout, defaults.TIMEOUT)
-        return self.get(b"timeout", default, type=float, range=(0, self.max_timeout))
+        return self.get(b"timeout", default, type=float,
+                        range=(0, self.max_timeout))
 
     def get_images(self):
         return self._get_bool(b"images", defaults.AUTOLOAD_IMAGES)
@@ -138,7 +136,8 @@ class RenderOptions(object):
         return self.get(b"width", None, type=int, range=(1, defaults.MAX_WIDTH))
 
     def get_height(self):
-        return self.get(b"height", None, type=int, range=(1, defaults.MAX_HEIGTH))
+        return self.get(b"height", None, type=int,
+                        range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
         scale_method = self.get(b"scale_method", defaults.PNG_SCALE_METHOD)
@@ -193,11 +192,15 @@ class RenderOptions(object):
             raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
 
         if isinstance(headers, (list, tuple)):
-            # import ipdb; ipdb.set_trace()
             for el in headers:
-                if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
+                if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(
+                        isinstance(e, (six.string_types, six.binary_type)) for e
+                        in el)):
                     raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
-
+        try:
+            headers = bytes_to_unicode(headers, encoding='ascii')
+        except UnicodeDecodeError:
+            raise BadOption("headers can not contain non-ascii characters.")
         return headers
 
     def get_viewport(self, wait=None):
@@ -246,15 +249,15 @@ class RenderOptions(object):
 
     def get_allowed_content_types(self):
         content_types = self.get(b"allowed_content_types", default=[b'*/*'])
-        if isinstance(content_types, basestring):
-            content_types = filter(None, content_types.split(b','))
+        if isinstance(content_types, six.binary_type):
+            content_types = list(filter(None, content_types.split(b',')))
         content_types = [type.decode('utf-8') for type in content_types]
         return content_types
 
     def get_forbidden_content_types(self):
         content_types = self.get(b"forbidden_content_types", default=[])
-        if isinstance(content_types, basestring):
-            content_types = filter(None, content_types.split(b','))
+        if isinstance(content_types, six.binary_type):
+            content_types = list(filter(None, content_types.split(b',')))
         content_types = [type.decode('utf-8') for type in content_types]
         return content_types
 
@@ -282,13 +285,13 @@ class RenderOptions(object):
 
     def get_include_params(self):
         return dict(
-            html = self._get_bool(b"html", defaults.DO_HTML),
-            iframes = self._get_bool(b"iframes", defaults.DO_IFRAMES),
-            png = self._get_bool(b"png", defaults.DO_PNG),
-            script = self._get_bool(b"script", defaults.SHOW_SCRIPT),
-            console = self._get_bool(b"console", defaults.SHOW_CONSOLE),
-            history = self._get_bool(b"history", defaults.SHOW_HISTORY),
-            har = self._get_bool(b"har", defaults.SHOW_HAR),
+            html=self._get_bool(b"html", defaults.DO_HTML),
+            iframes=self._get_bool(b"iframes", defaults.DO_IFRAMES),
+            png=self._get_bool(b"png", defaults.DO_PNG),
+            script=self._get_bool(b"script", defaults.SHOW_SCRIPT),
+            console=self._get_bool(b"console", defaults.SHOW_CONSOLE),
+            history=self._get_bool(b"history", defaults.SHOW_HISTORY),
+            har=self._get_bool(b"har", defaults.SHOW_HAR),
         )
 
 
@@ -312,6 +315,6 @@ def validate_size_str(size_str):
         raise ValueError("Invalid viewport format: %s" % size_str)
     else:
         if not ((0 < w <= max_width) and (0 < h <= max_heigth) and
-                (w*h < max_area)):
+                    (w * h < max_area)):
             raise ValueError("Viewport is out of range (%dx%d, area=%d)" %
                              (max_width, max_heigth, max_area))

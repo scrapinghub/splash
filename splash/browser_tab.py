@@ -233,8 +233,6 @@ class BrowserTab(QObject):
             mime_type = "text/html; charset=utf-8"
         if baseurl is None:
             baseurl = ''
-        if isinstance(data, six.text_type):
-            data = data.encode('utf8')
         callback_id = self._load_finished.connect(
             self._on_content_ready,
             callback=callback,
@@ -673,7 +671,7 @@ class BrowserTab(QObject):
         """ Return HTML of the current main frame """
         self.logger.log("getting HTML", min_level=2)
         frame = self.web_page.mainFrame()
-        result = bytes(frame.toHtml().encode('utf-8'))
+        result = frame.toHtml().encode('utf-8')
         self.store_har_timing("_onHtmlRendered")
         return result
 
@@ -856,12 +854,7 @@ class _SplashHttpClient(QObject):
 
         for name, value in headers or []:
             request.setRawHeader(name, value)
-            # json post requests have text headers
-            if not isinstance(name, bytes):
-                name = name.encode('utf-8')
-            if name.lower() == b'user-agent':
-                if isinstance(value, bytes):
-                    value = value.decode('utf-8')
+            if name.lower() == 'user-agent':
                 self.set_user_agent(value)
 
     def _delete_reply(self, reply):

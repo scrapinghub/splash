@@ -490,6 +490,8 @@ class Splash(object):
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
         cmd_id = next(self._command_ids)
+        if isinstance(data, six.text_type):
+            data = data.encode('utf8')
 
         def success():
             self._return(cmd_id, True)
@@ -536,11 +538,7 @@ class Splash(object):
     @command()
     def add_cookie(self, name, value, path=None, domain=None, expires=None,
                    httpOnly=None, secure=None):
-        name = name
-        value = value
-        cookie = dict()
-        cookie['name'] = name
-        cookie['value'] = value
+        cookie = dict(name=name, value=value)
         if path is not None:
             cookie["path"] = path
         if domain is not None:
@@ -791,7 +789,7 @@ class LuaRender(RenderScript):
         try:
             main_coro = self.get_main(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
-            raise ScriptError(u"lua_source: " + repr(e))
+            raise ScriptError("lua_source: " + repr(e))
 
         self.runner.start(
             main_coro=main_coro,

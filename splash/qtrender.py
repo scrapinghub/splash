@@ -5,7 +5,6 @@ import functools
 import pprint
 from splash import defaults
 from splash.browser_tab import BrowserTab
-from splash.utils import bytes_to_unicode
 
 
 class RenderError(Exception):
@@ -230,5 +229,5 @@ class JsonRender(DefaultRenderScript):
 
 class HarRender(DefaultRenderScript):
     def get_result(self):
-        return json.dumps(bytes_to_unicode(self.tab.har()))
+        return json.dumps((self.tab.har()))
 

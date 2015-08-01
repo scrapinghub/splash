@@ -11,6 +11,7 @@ from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
 
+
 def install_qtreactor(verbose):
     init_qt_app(verbose)
     import qt5reactor
@@ -184,7 +185,6 @@ def splash_server(portnum, slots, network_manager, max_timeout,
         js_profiles_path=js_profiles_path,
         verbosity=verbosity,
     )
-
 
     if not lua.is_supported() and lua_enabled:
         lua_enabled = False

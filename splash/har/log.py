@@ -11,9 +11,6 @@ import six
 from .utils import get_duration, format_datetime, without_private
 
 
-if six.PY3:
-    basestring = str
-
 HarEvent = namedtuple('HarEvent', 'type data')
 
 HAR_ENTRY = 'entry'
@@ -90,7 +87,7 @@ class HarLog(object):
         }
 
     def _empty_page(self, page_id, started_dt):
-        if not isinstance(started_dt, basestring):
+        if not isinstance(started_dt, six.string_types):
             started_dt = format_datetime(started_dt)
 
         return {
