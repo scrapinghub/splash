@@ -994,9 +994,6 @@ on a client (magic!):
          return {jpeg=splash:jpeg()}
      end
 
-If your script returns the result of ``splash:jpeg()`` in a top-level
-``"jpeg"`` key (as we've done in a previous example) then Splash UI
-will display it as an image.
 
 .. _splash-har:
 
