@@ -9,7 +9,6 @@ import time
 import sys
 
 import lupa
-from PyQt4.QtNetwork import QNetworkRequest
 
 from splash.browser_tab import JsError
 from splash.lua_runner import (
