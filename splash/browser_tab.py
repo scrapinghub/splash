@@ -7,7 +7,7 @@ import json
 import os
 import weakref
 import uuid
-from contextlib import contextmanager
+
 from PyQt4.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
 from PyQt4.QtNetwork import QNetworkRequest
 from PyQt4.QtWebKit import QWebPage, QWebSettings
@@ -18,8 +18,7 @@ from splash import defaults
 from splash.har.qt import cookies2har
 from splash.har.utils import without_private
 from splash.qtrender_image import QtImageRenderer
-from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
-                            qurl2ascii)
+from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2ascii
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
@@ -675,7 +674,6 @@ class BrowserTab(QObject):
         self.store_har_timing("_onHtmlRendered")
         return result
 
-    @contextmanager
     def _get_image(self, image_format, width, height, render_all, scale_method):
         old_size = self.web_page.viewportSize()
         try:
@@ -687,12 +685,12 @@ class BrowserTab(QObject):
                 self.web_page, self.logger, image_format,
                 width=width, height=height, scale_method=scale_method)
             image = renderer.render_qwebpage()
-            self.store_har_timing("_onScreenshotPrepared")
-            yield image
         finally:
             if old_size != self.web_page.viewportSize():
                 # Let's not generate extra "set size" messages in the log.
                 self.web_page.setViewportSize(old_size)
+        self.store_har_timing("_onScreenshotPrepared")
+        return image
 
     def png(self, width=None, height=None, b64=False, render_all=False,
             scale_method=None):
@@ -701,12 +699,12 @@ class BrowserTab(QObject):
             "Getting PNG: width=%s, height=%s, "
             "render_all=%s, scale_method=%s" %
             (width, height, render_all, scale_method), min_level=2)
-        with self._get_image('PNG', width, height, render_all, scale_method) as image:
-            result = image.to_png()
-            if b64:
-                result = base64.b64encode(result)
-            self.store_har_timing("_onPngRendered")
-            return result
+        image = self._get_image('PNG', width, height, render_all, scale_method)
+        result = image.to_png()
+        if b64:
+            result = base64.b64encode(result)
+        self.store_har_timing("_onPngRendered")
+        return result
 
     def jpeg(self, width=None, height=None, b64=False, render_all=False,
              scale_method=None, quality=None):
@@ -715,12 +713,12 @@ class BrowserTab(QObject):
             "Getting JPEG: width=%s, height=%s, "
             "render_all=%s, scale_method=%s, quality=%s" %
             (width, height, render_all, scale_method, quality), min_level=2)
-        with self._get_image('JPEG', width, height, render_all, scale_method) as image:
-            result = image.to_jpeg(quality=quality)
-            if b64:
-                result = base64.b64encode(result)
-            self.store_har_timing("_onJpegRendered")
-            return result
+        image = self._get_image('JPEG', width, height, render_all, scale_method)
+        result = image.to_jpeg(quality=quality)
+        if b64:
+            result = base64.b64encode(result)
+        self.store_har_timing("_onJpegRendered")
+        return result
 
     def iframes_info(self, children=True, html=True):
         """ Return information about all iframes """
