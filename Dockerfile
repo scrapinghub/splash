@@ -8,6 +8,7 @@ ADD dockerfiles/splash/provision.sh /tmp/provision.sh
 
 RUN /tmp/provision.sh \
     prepare_install \
+    install_msfonts \
     install_deps \
     install_builddeps \
     install_python_deps \

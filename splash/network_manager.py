@@ -27,6 +27,7 @@ from splash.request_middleware import (
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 
+
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
     if allowed_schemes is None:
@@ -117,6 +118,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
             reply.error.connect(self._handleError)
             reply.finished.connect(self._handleFinished)
+            # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
             reply.metaDataChanged.connect(self._handleMetaData)
             reply.downloadProgress.connect(self._handleDownloadProgress)
 
@@ -266,8 +268,23 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
+        """Signal emitted before reading response body, after getting headers
+        """
         reply = self.sender()
         self._handle_reply_cookies(reply)
+
+        callbacks = self._getWebPageAttribute(reply.request(), "callbacks")
+
+        if callbacks and "on_response_headers" in callbacks:
+            for cb in callbacks["on_response_headers"]:
+                try:
+                    cb(reply)
+                except:
+                    # TODO unhandled exceptions in lua callbacks
+                    # should we raise errors here?
+                    # https://github.com/scrapinghub/splash/issues/161
+                    self.log("error in on_response_headers callback", min_level=1)
+                    self.log(traceback.format_exc(), min_level=1)
 
         har_entry = self._harEntry()
         if har_entry is not None:
@@ -333,6 +350,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         msg = msg.format(url=url)
         log.msg(msg, system='network-manager')
+
 
 class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
