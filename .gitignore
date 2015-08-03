@@ -14,3 +14,6 @@ _trial_temp
 
 # IPython notebooks
 /notebooks/
+
+# Dev files
+/dev/
