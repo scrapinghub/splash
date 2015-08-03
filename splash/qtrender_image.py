@@ -43,21 +43,24 @@ class QtImageRenderer(object):
             scale_method = defaults.IMAGE_SCALE_METHOD
         self.scale_method = scale_method
         self.image_format = image_format.upper()
-        if self.image_format == 'PNG':
-            self.qt_image_format = QImage.Format_ARGB32
-            # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
-            # hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGR'.
-            self.pillow_image_format = 'RGBA'
-            # mapping is taken from
-            # https://github.com/python-pillow/Pillow/blob/2.9.0/libImaging/Pack.c#L526
-            self.pillow_decoder_format = 'BGRA'
-        elif self.image_format == 'JPEG':
-            self.qt_image_format = QImage.Format_RGB32
-            self.pillow_image_format = 'RGB'
-            self.pillow_decoder_format = 'BGR'
-        else:
+        if not (self.is_png() or self.is_jpeg()):
             raise ValueError('Unexpected image format %s, should be PNG or JPEG' %
                              self.image_format)
+        # For JPEG it's okay to use this format as well, but canvas should be white
+        # to remove black areas from image where it was transparent
+        self.qt_image_format = QImage.Format_ARGB32
+        # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
+        # hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGR'.
+        self.pillow_image_format = 'RGBA'
+        # mapping is taken from
+        # https://github.com/python-pillow/Pillow/blob/2.9.0/libImaging/Pack.c#L526
+        self.pillow_decoder_format = 'BGRA'
+
+    def is_jpeg(self):
+        return self.image_format == 'JPEG'
+
+    def is_png(self):
+        return self.image_format == 'PNG'
 
     def qimage_to_pil_image(self, qimage):
         """Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode)."""
@@ -200,7 +203,12 @@ class QtImageRenderer(object):
             raise ValueError("Rendering region is too large to be drawn"
                              " in one step, use tile-by-tile renderer instead")
         canvas = QImage(canvas_size, self.qt_image_format)
-        canvas.fill(0)
+        if self.is_jpeg():
+            # White background for JPEG images, same as we have in all browsers.
+            canvas.fill(Qt.white)
+        else:
+            # Preserve old behaviour for PNG format.
+            canvas.fill(0)
         painter = QPainter(canvas)
         try:
             painter.setRenderHint(QPainter.Antialiasing, True)
@@ -236,7 +244,13 @@ class QtImageRenderer(object):
         tile_conf = self._calculate_tiling(
             to_paint=render_rect.intersected(QRect(QPoint(0, 0), canvas_size)))
 
-        canvas = Image.new('RGBA', self._qsize_to_tuple(canvas_size))
+        canvas = Image.new(self.pillow_image_format, self._qsize_to_tuple(canvas_size))
+        if self.is_jpeg():
+            # Fill canvas with white color. Without this transparent parts of
+            # a web page would be rendered as black.
+            # Browser canvas is white as well, so this will produce the same result
+            # as we can see in browser.
+            canvas.paste('white')
         ratio = render_rect.width() / float(web_rect.width())
         tile_qimage = QImage(tile_conf['tile_size'], self.qt_image_format)
         painter = QPainter(tile_qimage)
