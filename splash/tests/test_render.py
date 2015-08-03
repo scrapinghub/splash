@@ -912,7 +912,6 @@ class RenderJpegTest(Base.RenderTest):
             20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
             20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20
         ]))
-        self.assertEqual(len(r.content), 13366)
 
     def test_width_height_low_quality(self):
         r = self.request({
@@ -938,7 +937,6 @@ class RenderJpegTest(Base.RenderTest):
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1
         ]))
-        self.assertEqual(len(r.content), 12793)
 
     def test_range_checks(self):
         for arg in ('width', 'height'):
