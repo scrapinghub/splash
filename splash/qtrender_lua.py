@@ -22,7 +22,7 @@ from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
-from splash.utils import truncated, BinaryCapsule, bytes_to_unicode
+from splash.utils import truncated, BinaryCapsule
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -220,8 +220,7 @@ class _WrappedJavascriptFunction(object):
     @can_raise
     @emits_lua_objects
     def __call__(self, *args):
-        args = self.lua.lua2python(args)
-        args = bytes_to_unicode(args)
+        args = self.lua.lua2python(args, binary=False)
         args_text = json.dumps(args, ensure_ascii=False)[1:-1]
         func_text = json.dumps([self.source], ensure_ascii=False)[1:-1]
         wrapper_script = """
@@ -525,7 +524,7 @@ class Splash(object):
 
     @command(table_argument=True)
     def init_cookies(self, cookies):
-        cookies = bytes_to_unicode(self.lua.lua2python(cookies, max_depth=3))
+        cookies = self.lua.lua2python(cookies, binary=False, max_depth=3)
         if isinstance(cookies, dict):
             keys = sorted(cookies.keys())
             cookies = [cookies[k] for k in keys]

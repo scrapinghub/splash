@@ -28,7 +28,7 @@ class BinaryCapsule(object):
         self.data = data
 
     def as_b64(self):
-        return base64.b64encode(self.data)
+        return base64.b64encode(self.data).decode('utf-8')
 
 
 class SplashJSONEncoder(json.JSONEncoder):
@@ -58,25 +58,6 @@ def bytes_to_unicode(data, encoding='utf-8'):
         raise TypeError('bytes_to_unicode expects bytes, str, unicode, list, '
                         'dict, tuple or %s object, got '
                         '%s' % (repr(BinaryCapsule), type(data).__name__))
-
-
-def unicode_to_bytes(data, encoding='utf-8'):
-    """Recursively converts all unicode objects in object `data` to their bytes
-    representation using the given encoding"""
-    if isinstance(data, six.text_type):
-        return data.encode(encoding)
-    elif isinstance(data, dict):
-        return dict(list(
-            map(functools.partial(unicode_to_bytes, encoding=encoding),
-                list(data.items()))))
-    elif isinstance(data, (list, tuple)):
-        return type(data)(list(
-            map(functools.partial(unicode_to_bytes, encoding=encoding), data)))
-    elif isinstance(data, (bool, six.integer_types, float, six.binary_type)):
-        return data
-    else:
-        raise TypeError('bytes_to_unicode expects bytes, str, unicode, list, '
-                        'dict or tuple object, got %s' % type(data).__name__)
 
 
 def to_unicode(text, encoding=None, errors='strict'):

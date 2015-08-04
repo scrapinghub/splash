@@ -100,12 +100,10 @@ class BaseRenderResource(_ValidatingResource):
 
     def _writeOutput(self, data, request, content_type=None):
         # log.msg("_writeOutput: %s" % id(request))
-
         if content_type is None:
             content_type = self.content_type
 
         if isinstance(data, (dict, list)):
-            data = bytes_to_unicode(data)
             data = json.dumps(data, cls=SplashJSONEncoder)
             return self._writeOutput(data, request, "application/json")
 
@@ -132,8 +130,10 @@ class BaseRenderResource(_ValidatingResource):
 
     def _logStats(self, request):
         stats = {
-            "path": request.path,
-            "args": request.args,
+            # Anything we retrieve from Twisted request object contains bytes.
+            # We have to convert it to unicode first for json.dump to succeed.
+            "path": request.path.decode('utf-8'),
+            "args": bytes_to_unicode(request.args),
             "rendertime": time.time() - request.starttime,
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
@@ -142,7 +142,7 @@ class BaseRenderResource(_ValidatingResource):
             "qsize": len(self.pool.queue.pending),
             "_id": id(request),
         }
-        log.msg(json.dumps(bytes_to_unicode(stats)), system="stats")
+        log.msg(json.dumps(stats), system="stats")
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
@@ -557,7 +557,7 @@ class DemoUI(_ValidatingResource):
         </html>
         """ % dict(
             version=splash.__version__,
-            params=json.dumps(bytes_to_unicode(params)),
+            params=json.dumps(params),
             url=url,
             theme=BOOTSTRAP_THEME,
             cm_options=CODEMIRROR_OPTIONS,

@@ -64,7 +64,7 @@ class MainFunctionTest(BaseLuaRenderTest):
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
-        """.encode('utf8'))
+        """)
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
@@ -75,7 +75,7 @@ class MainFunctionTest(BaseLuaRenderTest):
         function main(splash)
           return 'привет'
         end
-        """.encode('utf8'))
+        """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, u"привет")
         self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
@@ -211,7 +211,7 @@ class ResultHeaderTest(BaseLuaRenderTest):
         self.assertErrorLineNumber(resp, 3)
 
     def test_unicode_headers_raise_bad_request(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:set_result_header("paweł", "kiść")
             return "hi!"
@@ -233,7 +233,7 @@ class ErrorsTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
 
     def test_unicode_error(self):
-        resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))
+        resp = self.request_lua(u"function main(splash) 'привет' end")
         self.assertStatusCode(resp, 400)
         self.assertIn("unexpected symbol", resp.text)
 
@@ -1243,7 +1243,7 @@ class JsonPostUnicodeTest(BaseLuaRenderTest):
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
-        """.encode('utf8'))
+        """)
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
@@ -2134,7 +2134,7 @@ class SetContentTest(BaseLuaRenderTest):
         })
 
     def test_unicode(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             assert(splash:set_content("проверка"))
             return splash:html()

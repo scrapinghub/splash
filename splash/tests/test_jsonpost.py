@@ -7,7 +7,6 @@ from six.moves.urllib import parse as urlparse
 import six
 
 from . import test_render, test_har, test_request_filters, test_runjs
-from ..utils import bytes_to_unicode
 
 
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
@@ -16,7 +15,7 @@ class JsonPostRequestHandler(test_render.DirectRequestHandler):
         assert not isinstance(query, six.string_types)
         endpoint = endpoint or self.endpoint
         url = "http://%s/%s" % (self.host, endpoint)
-        data = json.dumps(bytes_to_unicode(query))
+        data = json.dumps(query)
         _headers = {'content-type': 'application/json'}
         _headers.update(headers or {})
         return requests.post(url, data=data, headers=_headers)
@@ -120,13 +119,6 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("bar", {"hello": "world"})],
-        })
-        self.assertStatusCode(r, 400)
-
-    def test_bad_headers_non_ascii(self):
-        r = self.request({
-            "url": self.mockurl("getrequest"),
-            "headers": {'Custom-Header': 'ŃŐŃ-àscîi'},
         })
         self.assertStatusCode(r, 400)
 

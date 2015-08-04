@@ -6,7 +6,6 @@ import json
 import six
 
 from splash import defaults
-from splash.utils import bytes_to_unicode, unicode_to_bytes
 
 
 class BadOption(Exception):
@@ -31,7 +30,8 @@ class RenderOptions(object):
         """
 
         # 1. GET / POST data
-        data = {key: values[0] for key, values in request.args.items()}
+        data = {key.decode('utf-8'): values[0].decode('utf-8') for key, values
+                in request.args.items()}
         if request.method == b'POST':
             content_type = request.getHeader(b'content-type')
             if content_type:
@@ -41,48 +41,41 @@ class RenderOptions(object):
                 if b'application/json' in content_type:
                     try:
                         content = request.content.read().decode('utf-8')
-                        data.update(unicode_to_bytes(
-                            json.loads(content, encoding='utf8')))
+                        data.update(json.loads(content, encoding='utf8'))
                     except ValueError as e:
                         raise BadOption("Invalid JSON: '{}'".format(str(e)))
 
                 # 3. js_source from application/javascript POST requests
                 if b'application/javascript' in content_type:
-                    data[b'js_source'] = request.content.read().decode('utf-8')
+                    data['js_source'] = request.content.read().decode('utf-8')
                 request.content.seek(0)
 
         # 4. handle proxy requests
         if getattr(request, 'inspect_me', False):
             headers = [
-                (name, value)
+                (name.decode('utf-8'), value.decode('utf-8'))
                 for name, values in request.requestHeaders.getAllRawHeaders()
                 for value in values
                 ]
-            data.setdefault(b'headers', headers)
-            data.setdefault(b'http_method', request.method)
+            data.setdefault('headers', headers)
+            data.setdefault('http_method', request.method.decode('utf-8'))
 
             request.content.seek(0)
-            data.setdefault(b'body', request.content.read())
+            data.setdefault('body', request.content.read().decode('utf-8'))
             request.content.seek(0)
 
-        data[b'uid'] = id(request)
+        data['uid'] = id(request)
         return cls(data, max_timeout)
 
-    def get(self, name, default=_REQUIRED, type=str, range=None):
+    def get(self, name, default=_REQUIRED, type=six.text_type, range=None):
         value = self.data.get(name)
         if value is not None:
             if type is not None:
-                if type is str and isinstance(value, six.text_type):
-                    value = value.encode('utf-8')
-                else:
-                    try:
-                        # If value is Python 3 byte string, we don't want it
-                        # to be converted into unicode
-                        if not (type is str and isinstance(value, bytes)):
-                            value = type(value)
-                    except ValueError:
-                        raise BadOption(
-                            "Argument %r is not of expected value" % (name))
+                try:
+                    value = type(value)
+                except ValueError:
+                    raise BadOption(
+                        "Argument %r is not of expected value" % (name))
             if range is not None and not (range[0] <= value <= range[1]):
                 raise BadOption("Argument %r out of range (%d-%d)" % (
                     name, range[0], range[1]))
@@ -102,50 +95,41 @@ class RenderOptions(object):
         return url
 
     def get_uid(self):
-        return self.get(b'uid')
+        return self.get('uid')
 
     def get_url(self):
-        return self._get_url(b"url")
+        return self._get_url("url")
 
     def get_baseurl(self):
-        return self._get_url(b"baseurl", default=None)
+        return self._get_url("baseurl", default=None)
 
     def get_wait(self):
-        return self.get(b"wait", defaults.WAIT_TIME, type=float,
+        return self.get("wait", defaults.WAIT_TIME, type=float,
                         range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
         default = min(self.max_timeout, defaults.TIMEOUT)
-        return self.get(b"timeout", default, type=float,
+        return self.get("timeout", default, type=float,
                         range=(0, self.max_timeout))
 
     def get_images(self):
-        return self._get_bool(b"images", defaults.AUTOLOAD_IMAGES)
+        return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
 
     def get_proxy(self):
-        proxy = self.get(b"proxy", default=None)
-        if isinstance(proxy, bytes):
-            proxy = proxy.decode('utf-8')
-        return proxy
+        return self.get("proxy", default=None)
 
     def get_js_source(self):
-        # we want js_source to be unicode, not bytes.
-        val = self.get(b"js_source", default=None)
-        if val:
-            return val.decode('utf-8')
-        return val
+        return self.get("js_source", default=None)
 
     def get_width(self):
-        return self.get(b"width", None, type=int, range=(1, defaults.MAX_WIDTH))
+        return self.get("width", None, type=int, range=(1, defaults.MAX_WIDTH))
 
     def get_height(self):
-        return self.get(b"height", None, type=int,
+        return self.get("height", None, type=int,
                         range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
-        scale_method = self.get(b"scale_method", defaults.PNG_SCALE_METHOD)
-        if isinstance(scale_method, bytes):
-            scale_method = scale_method.decode('utf-8')
+        scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
         if scale_method not in ('raster', 'vector'):
             raise BadOption(
                 "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
@@ -153,31 +137,28 @@ class RenderOptions(object):
         return scale_method
 
     def get_http_method(self):
-        val = self.get(b"http_method", "GET")
-        if val != "GET":
-            val = val.decode("utf-8")
-        return val
+        return self.get("http_method", "GET")
 
     def get_body(self):
-        return self.get(b"body", None)
+        return self.get("body", None)
 
     def get_render_all(self, wait=None):
-        result = self._get_bool(b"render_all", False)
+        result = self._get_bool("render_all", False)
         if result == 1 and wait == 0:
             raise BadOption("Pass non-zero 'wait' to render full webpage")
         return result
 
     def get_lua_source(self):
-        return self.get(b"lua_source")
+        return self.get("lua_source")
 
     def get_js_profile(self, js_profiles_path):
-        js_profile = self.get(b"js", default=None)
+        js_profile = self.get("js", default=None)
         if not js_profile:
             return js_profile
 
         if js_profiles_path is None:
             raise BadOption('Javascript profiles are not enabled')
-        profile_dir = os.path.join(js_profiles_path, js_profile.decode('utf-8'))
+        profile_dir = os.path.join(js_profiles_path, js_profile)
         if not profile_dir.startswith(js_profiles_path + os.path.sep):
             # security check fails
             raise BadOption('Javascript profile does not exist')
@@ -186,30 +167,26 @@ class RenderOptions(object):
         return profile_dir
 
     def get_headers(self):
-        headers = self.get(b"headers", default=None, type=None)
+        headers = self.get("headers", default=None, type=None)
 
         if headers is None:
             return headers
 
         if not isinstance(headers, (list, tuple, dict)):
-            raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
+            raise BadOption(
+                "'headers' must be either JSON array of (name, value) pairs or JSON object")
 
         if isinstance(headers, (list, tuple)):
             for el in headers:
                 if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(
-                        isinstance(e, (six.string_types, six.binary_type)) for e
+                        isinstance(e, six.string_types) for e
                         in el)):
-                    raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
-        try:
-            headers = bytes_to_unicode(headers, encoding='ascii')
-        except UnicodeDecodeError:
-            raise BadOption("headers can not contain non-ascii characters.")
+                    raise BadOption(
+                        "'headers' must be either JSON array of (name, value) pairs or JSON object")
         return headers
 
     def get_viewport(self, wait=None):
-        viewport = self.get(b"viewport", defaults.VIEWPORT_SIZE)
-        if isinstance(viewport, bytes):
-            viewport = viewport.decode('utf-8')
+        viewport = self.get("viewport", defaults.VIEWPORT_SIZE)
         if viewport == 'full':
             if wait == 0:
                 raise BadOption("Pass non-zero 'wait' to render full webpage")
@@ -221,8 +198,8 @@ class RenderOptions(object):
         return viewport
 
     def get_filters(self, pool=None, adblock_rules=None):
-        filter_names = self.get(b'filters', b'')
-        filter_names = [f for f in filter_names.decode('utf-8').split(',') if f]
+        filter_names = self.get('filters', '')
+        filter_names = [f for f in filter_names.split(',') if f]
 
         if pool is None and adblock_rules is None:  # skip validation
             return filter_names
@@ -246,22 +223,20 @@ class RenderOptions(object):
         return filter_names
 
     def get_allowed_domains(self):
-        allowed_domains = self.get(b"allowed_domains", default=None)
+        allowed_domains = self.get("allowed_domains", default=None)
         if allowed_domains is not None:
-            return allowed_domains.decode('utf-8').split(',')
+            return allowed_domains.split(',')
 
     def get_allowed_content_types(self):
-        content_types = self.get(b"allowed_content_types", default=[b'*/*'])
-        if isinstance(content_types, six.binary_type):
-            content_types = list(filter(None, content_types.split(b',')))
-        content_types = [type.decode('utf-8') for type in content_types]
+        content_types = self.get("allowed_content_types", default=['*/*'])
+        if isinstance(content_types, six.text_type):
+            content_types = list(filter(None, content_types.split(',')))
         return content_types
 
     def get_forbidden_content_types(self):
-        content_types = self.get(b"forbidden_content_types", default=[])
-        if isinstance(content_types, six.binary_type):
-            content_types = list(filter(None, content_types.split(b',')))
-        content_types = [type.decode('utf-8') for type in content_types]
+        content_types = self.get("forbidden_content_types", default=[])
+        if isinstance(content_types, six.text_type):
+            content_types = list(filter(None, content_types.split(',')))
         return content_types
 
     def get_common_params(self, js_profiles_path):
@@ -288,13 +263,13 @@ class RenderOptions(object):
 
     def get_include_params(self):
         return dict(
-            html=self._get_bool(b"html", defaults.DO_HTML),
-            iframes=self._get_bool(b"iframes", defaults.DO_IFRAMES),
-            png=self._get_bool(b"png", defaults.DO_PNG),
-            script=self._get_bool(b"script", defaults.SHOW_SCRIPT),
-            console=self._get_bool(b"console", defaults.SHOW_CONSOLE),
-            history=self._get_bool(b"history", defaults.SHOW_HISTORY),
-            har=self._get_bool(b"har", defaults.SHOW_HAR),
+            html=self._get_bool("html", defaults.DO_HTML),
+            iframes=self._get_bool("iframes", defaults.DO_IFRAMES),
+            png=self._get_bool("png", defaults.DO_PNG),
+            script=self._get_bool("script", defaults.SHOW_SCRIPT),
+            console=self._get_bool("console", defaults.SHOW_CONSOLE),
+            history=self._get_bool("history", defaults.SHOW_HISTORY),
+            har=self._get_bool("har", defaults.SHOW_HAR),
         )
 
 

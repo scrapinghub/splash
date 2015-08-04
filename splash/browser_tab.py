@@ -694,7 +694,9 @@ class BrowserTab(QObject):
 
             result = image.to_png()
             if b64:
-                result = base64.b64encode(result)
+                # make the base64 encoded string json serializable by
+                # decoding it to unicode.
+                result = base64.b64encode(result).decode('utf-8')
             self.store_har_timing("_onPngRendered")
             return result
         finally:
