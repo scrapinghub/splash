@@ -248,7 +248,7 @@ class ShowImage(Resource):
 
     def render_GET(self, request):
         token = random.random()  # prevent caching
-        return (u"""<html><body>
+        return ("""<html><body>
         <img id='foo' width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
         </body></html>
         """ % token).encode('utf-8')
@@ -346,7 +346,7 @@ class PostResource(Resource):
         request.setResponseCode(int(code))
         headers = request.getAllHeaders()
         payload = request.content.getvalue() if request.content is not None else b''
-        return (u"""
+        return ("""
 <html>
 <body>
 <p id="p1">From POST</p>
@@ -372,7 +372,7 @@ class GetResource(Resource):
             return b""
         headers = request.getAllHeaders()
         payload = request.args
-        return (u"""
+        return ("""
 <html>
 <body>
 <p id="p1">GET request</p>
@@ -630,7 +630,7 @@ class Index(Resource):
             "<li><a href='%s'>%s</a></li>" % (path, path)
             for (path, child) in self.rootChildren.items() if path
         ])
-        return (u"""
+        return ("""
         <html>
         <body><ul>%s</ul></body>
         </html>

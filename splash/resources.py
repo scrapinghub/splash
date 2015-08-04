@@ -346,8 +346,8 @@ class DemoUI(_ValidatingResource):
             url = 'http://' + url
         params = {k: v for k, v in params.items() if v is not None}
 
-        request.addCookie('phaseInterval',
-                          120000)  # disable "phases" HAR Viewer feature
+        # disable "phases" HAR Viewer feature
+        request.addCookie('phaseInterval', 120000)
 
         LUA_EDITOR = """
           <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
@@ -570,9 +570,9 @@ class DemoUI(_ValidatingResource):
 class Root(Resource):
     HARVIEWER_PATH = os.path.join(
         os.path.dirname(__file__),
-        u'vendor',
-        u'harviewer',
-        u'webapp',
+        'vendor',
+        'harviewer',
+        'webapp',
     )
 
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,

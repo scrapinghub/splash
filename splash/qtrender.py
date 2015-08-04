@@ -229,5 +229,5 @@ class JsonRender(DefaultRenderScript):
 
 class HarRender(DefaultRenderScript):
     def get_result(self):
-        return json.dumps((self.tab.har()))
+        return json.dumps(self.tab.har())
 

@@ -39,15 +39,14 @@ def skip_proxy(func):
 
 class DirectRequestHandler(object):
 
-    endpoint = u"render.html"
+    endpoint = "render.html"
 
     def __init__(self, ts):
         self.ts = ts
 
     @property
     def host(self):
-        print(u"localhost:%s" % self.ts.splashserver.portnum)
-        return u"localhost:%s" % self.ts.splashserver.portnum
+        return "localhost:%s" % self.ts.splashserver.portnum
 
     def request(self, query, endpoint=None, headers=None):
         url, params = self._url_and_params(endpoint, query)
@@ -60,10 +59,10 @@ class DirectRequestHandler(object):
     def _url_and_params(self, endpoint, query):
         endpoint = endpoint if endpoint is not None else self.endpoint
         if isinstance(query, dict):
-            url = u"http://%s/%s" % (self.host, endpoint)
+            url = "http://%s/%s" % (self.host, endpoint)
             params = query
         else:
-            url = u"http://%s/%s?%s" % (self.host, endpoint, query)
+            url = "http://%s/%s?%s" % (self.host, endpoint, query)
             params = None
         return url, params
 
@@ -71,7 +70,7 @@ class DirectRequestHandler(object):
 @pytest.mark.usefixtures("class_ts")
 class BaseRenderTest(unittest.TestCase):
 
-    endpoint = u"render.html"
+    endpoint = "render.html"
     request_handler = DirectRequestHandler
     use_gzip = False
 

@@ -87,12 +87,11 @@ def parse_opts():
 def start_logging(opts):
     import twisted
     from twisted.python import log
-    # TODO: fix this.
-    # from twisted.python.logfile import DailyLogFile
-    # if opts.logfile:
-    #     logfile = DailyLogFile.fromFullPath(opts.logfile)
-    # else:
-    logfile = sys.stderr
+    if opts.logfile:
+        from twisted.python.logfile import DailyLogFile
+        logfile = DailyLogFile.fromFullPath(opts.logfile)
+    else:
+        logfile = sys.stderr
     flo = log.startLogging(logfile)
 
     if twisted.version.major >= 13:  # add microseconds to log

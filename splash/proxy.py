@@ -105,8 +105,6 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         Return (blacklist, whitelist, proxy_list) tuple
         loaded from profile ``profile_name``.
         """
-        if isinstance(profile_name, bytes):
-            profile_name = profile_name.decode('utf-8')
         if profile_name is None:
             profile_name = 'default'
             ini_path = self._getIniPath(profile_name)

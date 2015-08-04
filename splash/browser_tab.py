@@ -671,7 +671,7 @@ class BrowserTab(QObject):
         """ Return HTML of the current main frame """
         self.logger.log("getting HTML", min_level=2)
         frame = self.web_page.mainFrame()
-        result = frame.toHtml().encode('utf-8')
+        result = frame.toHtml()
         self.store_har_timing("_onHtmlRendered")
         return result
 

@@ -123,7 +123,10 @@ class RenderOptions(object):
         return self._get_bool(b"images", defaults.AUTOLOAD_IMAGES)
 
     def get_proxy(self):
-        return self.get(b"proxy", default=None)
+        proxy = self.get(b"proxy", default=None)
+        if isinstance(proxy, bytes):
+            proxy = proxy.decode('utf-8')
+        return proxy
 
     def get_js_source(self):
         # we want js_source to be unicode, not bytes.

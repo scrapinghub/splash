@@ -6,7 +6,7 @@ class ContentTypeTest(BaseRenderTest):
     endpoint = 'render.json'
 
     def _request(self, allowed_ctypes='*/*', forbidden_ctypes=''):
-        js_source = u"""
+        js_source = """
         JSON.stringify({
             imageLoaded: window.imageLoaded,
             styleLoaded: getComputedStyle(document.body).backgroundColor == 'rgb(255, 0, 0)'
