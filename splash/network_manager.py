@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import itertools
+import functools
 from datetime import datetime
 import traceback
 from contextlib import contextmanager
 
+from PyQt4.QtCore import QTimer
 from PyQt4.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
@@ -55,6 +57,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     * Provides a way to get the "source" request (that was made to Splash
       itself).
     * Tracks information about requests/responses and stores it in HAR format.
+    * Allows to set per-request timeouts.
 
     """
 
@@ -69,6 +72,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.sslErrors.connect(self._sslErrors)
         self.finished.connect(self._finished)
         self.verbosity = verbosity
+        self._reply_timeout_timers = {}  # requestId => timer
 
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
@@ -117,6 +121,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             reply = super(ProxiedQNetworkAccessManager, self).createRequest(
                 operation, request, outgoingData
             )
+
+            if hasattr(request, 'timeout'):
+                timeout = request.timeout * 1000
+                if timeout:
+                    self._setReplyTimeout(reply, timeout)
+
             if har_entry is not None:
                 har_entry["response"].update(har_qt.reply2har(reply))
 
@@ -127,6 +137,32 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             reply.downloadProgress.connect(self._handleDownloadProgress)
 
         return reply
+
+    def _setReplyTimeout(self, reply, timeout_ms):
+        request_id = self._getRequestId(reply.request())
+        # reply is used as a parent for the timer in order to destroy
+        # the timer when reply is destroyed. It segfaults otherwise.
+        timer = QTimer(reply)
+        timer.setSingleShot(True)
+        timer_callback = functools.partial(self._onReplyTimeout,
+                                           reply=reply,
+                                           timer=timer,
+                                           request_id=request_id)
+        timer.timeout.connect(timer_callback)
+        self._reply_timeout_timers[request_id] = timer
+        timer.start(timeout_ms)
+
+    def _onReplyTimeout(self, reply, timer, request_id):
+        self._reply_timeout_timers.pop(request_id)
+        self.log("timed out, aborting: {url}", reply, min_level=1)
+        # FIXME: set proper error code
+        reply.abort()
+
+    def _cancelReplyTimer(self, reply):
+        request_id = self._getRequestId(reply.request())
+        timer = self._reply_timeout_timers.pop(request_id, None)
+        if timer and timer.isActive():
+            timer.stop()
 
     @contextmanager
     def _proxyApplied(self, request):
@@ -246,6 +282,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleFinished(self):
         reply = self.sender()
+        self._cancelReplyTimer(reply)
         har_entry = self._harEntry()
         if har_entry is not None:
             har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
