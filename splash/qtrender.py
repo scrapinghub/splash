@@ -172,13 +172,16 @@ class HtmlRender(DefaultRenderScript):
         return self.tab.html()
 
 
-class PngRender(DefaultRenderScript):
+class ImageRender(DefaultRenderScript):
 
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
         self.scale_method = kwargs.pop('scale_method')
-        return super(PngRender, self).start(**kwargs)
+        return super(ImageRender, self).start(**kwargs)
+
+
+class PngRender(ImageRender):
 
     def get_result(self):
         return self.tab.png(self.width, self.height,
@@ -186,15 +189,24 @@ class PngRender(DefaultRenderScript):
                             scale_method=self.scale_method)
 
 
-class JsonRender(DefaultRenderScript):
+class JpegRender(ImageRender):
 
     def start(self, **kwargs):
-        self.width = kwargs.pop('width')
-        self.height = kwargs.pop('height')
-        self.scale_method = kwargs.pop('scale_method')
+        self.quality = kwargs.pop('quality')
+        return super(JpegRender, self).start(**kwargs)
+
+    def get_result(self):
+        return self.tab.jpeg(
+            self.width, self.height, render_all=self.render_all,
+            scale_method=self.scale_method, quality=self.quality)
+
+
+class JsonRender(JpegRender):
+
+    def start(self, **kwargs):
         self.include = {
             inc: kwargs.pop(inc)
-            for inc in ['html', 'png', 'iframes', 'script', 'history', 'har']
+            for inc in ['html', 'png', 'jpeg', 'iframes', 'script', 'history', 'har']
         }
         self.include['console'] = kwargs.get('console')
         super(JsonRender, self).start(**kwargs)
@@ -206,6 +218,11 @@ class JsonRender(DefaultRenderScript):
             res['png'] = self.tab.png(self.width, self.height, b64=True,
                                       render_all=self.render_all,
                                       scale_method=self.scale_method)
+        if self.include['jpeg']:
+            res['jpeg'] = self.tab.jpeg(self.width, self.height, b64=True,
+                                        render_all=self.render_all,
+                                        scale_method=self.scale_method,
+                                        quality=self.quality)
 
         if self.include['script'] and self.js_output:
             res['script'] = self.js_output

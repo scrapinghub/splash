@@ -20,6 +20,11 @@ MAX_HEIGTH = 1080
 
 AUTOLOAD_IMAGES = 1
 
+# If 'raster', PNG images will be rescaled after rendering as regular images.
+# If 'vector', PNG image will be rescaled during rendering which is faster and
+# crisper, but may cause rendering artifacts.
+IMAGE_SCALE_METHOD = 'raster'
+
 # This value has the same meaning as "level" kwarg of :func:`zlib.compress`:
 # - 0 means no compression at all
 # - 1 means best speed, lowest compression ratio
@@ -29,10 +34,10 @@ AUTOLOAD_IMAGES = 1
 # larger files.
 PNG_COMPRESSION_LEVEL = 1
 
-# If 'raster', PNG images will be rescaled after rendering as regular images.
-# If 'vector', PNG image will be rescaled during rendering which is faster and
-# crisper, but may cause rendering artifacts.
-PNG_SCALE_METHOD = 'raster'
+# 75 is Pillow default. Values above 95 should be avoided;
+# 100 disables portions of the JPEG compression algorithm,
+# and results in large files with hardly any gain in image quality.
+JPEG_QUALITY = 75
 
 # There's a bug in Qt that manifests itself when width or height of rendering
 # surface (aka the png image) is more than 32768.  Usually, this is solved by
@@ -50,6 +55,7 @@ TILE_MAXSIZE = 2048
 DO_HTML = 0
 DO_IFRAMES = 0
 DO_PNG = 0
+DO_JPEG = 0
 SHOW_SCRIPT = 0
 SHOW_CONSOLE = 0
 SHOW_HISTORY = 0

@@ -122,12 +122,15 @@ class RenderOptions(object):
         return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
-        scale_method = self.get("scale_method", defaults.PNG_SCALE_METHOD)
+        scale_method = self.get("scale_method", defaults.IMAGE_SCALE_METHOD)
         if scale_method not in ('raster', 'vector'):
             raise BadOption(
                 "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
                 scale_method)
         return scale_method
+
+    def get_quality(self):
+        return self.get("quality", defaults.JPEG_QUALITY, type=int, range=(0, 100))
 
     def get_http_method(self):
         return self.get("http_method", "GET")
@@ -248,19 +251,31 @@ class RenderOptions(object):
             # 'lua': self.get_lua(),
         }
 
+    def get_image_params(self):
+        return {
+            'width': self.get_width(),
+            'height': self.get_height(),
+            'scale_method': self.get_scale_method()
+        }
+
     def get_png_params(self):
-        return {'width': self.get_width(), 'height': self.get_height(),
-                'scale_method': self.get_scale_method()}
+        return self.get_image_params()
+
+    def get_jpeg_params(self):
+        params = {'quality': self.get_quality()}
+        params.update(self.get_image_params())
+        return params
 
     def get_include_params(self):
         return dict(
-            html = self._get_bool("html", defaults.DO_HTML),
-            iframes = self._get_bool("iframes", defaults.DO_IFRAMES),
-            png = self._get_bool("png", defaults.DO_PNG),
-            script = self._get_bool("script", defaults.SHOW_SCRIPT),
-            console = self._get_bool("console", defaults.SHOW_CONSOLE),
-            history = self._get_bool("history", defaults.SHOW_HISTORY),
-            har = self._get_bool("har", defaults.SHOW_HAR),
+            html=self._get_bool("html", defaults.DO_HTML),
+            iframes=self._get_bool("iframes", defaults.DO_IFRAMES),
+            png=self._get_bool("png", defaults.DO_PNG),
+            jpeg=self._get_bool("jpeg", defaults.DO_JPEG),
+            script=self._get_bool("script", defaults.SHOW_SCRIPT),
+            console=self._get_bool("console", defaults.SHOW_CONSOLE),
+            history=self._get_bool("history", defaults.SHOW_HISTORY),
+            har=self._get_bool("har", defaults.SHOW_HAR),
         )
 
 
