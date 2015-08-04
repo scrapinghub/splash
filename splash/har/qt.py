@@ -93,7 +93,7 @@ def reply2har(reply, include_content=False, binary_content=False):
             "size": 0,
             "mimeType": "",
         },
-        "headersSize" : headers_size(reply),
+        "headersSize": headers_size(reply),
         # non-standard but useful
         "ok": not reply.error(),
         # non-standard, useful because reply url may not equal request url

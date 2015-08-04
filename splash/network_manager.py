@@ -45,13 +45,16 @@ def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
 
 class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     """
-    This QNetworkAccessManager subclass enables "splash proxy factories"
-    support. Qt provides similar functionality via setProxyFactory method,
-    but standard QNetworkProxyFactory is not flexible enough.
+    QNetworkAccessManager subclass with extra features. It
 
-    It also sets up some extra logging, provides a way to get
-    the "source" request (that was made to Splash itself) and tracks
-    information about requests/responses.
+    * Enables "splash proxy factories" support. Qt provides similar
+      functionality via setProxyFactory method, but standard
+      QNetworkProxyFactory is not flexible enough.
+    * Sets up extra logging.
+    * Provides a way to get the "source" request (that was made to Splash
+      itself).
+    * Tracks information about requests/responses and stores it in HAR format.
+
     """
 
     _REQUEST_ID = QNetworkRequest.User + 1
@@ -65,8 +68,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.sslErrors.connect(self._sslErrors)
         self.finished.connect(self._finished)
         self.verbosity = verbosity
-        self._next_id = 0
 
+        self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
     def _sslErrors(self, reply, errors):
@@ -142,8 +145,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _wrapRequest(self, request):
         request = QNetworkRequest(request)
-        request.setAttribute(self._REQUEST_ID, self._next_id)
-        self._next_id += 1
+        request.setAttribute(self._REQUEST_ID, next(self._request_ids))
         return request
 
     def _initialHarData(self, start_time, operation, request, outgoingData):
