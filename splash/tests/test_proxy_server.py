@@ -1,9 +1,10 @@
-import unittest
 import urlparse
 import json
+
 import requests
 import pytest
-from splash.tests import test_render, test_redirects, test_request_filters, test_runjs
+
+from splash.tests import test_render, test_redirects, test_request_filters
 
 
 SPLASH_HEADER_PREFIX = 'x-splash-'
@@ -67,6 +68,13 @@ class GzipProxyRenderHtmlTest(ProxyRenderHtmlTest):
 
 
 class ProxyRenderPngTest(test_render.RenderPngTest):
+    request_handler = ProxyRequestHandler
+    https_supported = False
+    proxy_test = True
+    use_gzip = False
+
+
+class ProxyRenderJpegTest(test_render.RenderJpegTest):
     request_handler = ProxyRequestHandler
     https_supported = False
     proxy_test = True

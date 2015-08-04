@@ -102,4 +102,19 @@ function emulation.render_png(splash)
 end
 
 
+function emulation.render_jpeg(splash)
+    splash:go_and_wait(splash.args)
+    splash:set_result_content_type("image/jpeg")
+    local render_all = (splash.args.render_all or
+            splash.args.viewport == "full")
+    return splash:jpeg{
+        width=splash.args.width,
+        height=splash.args.height,
+        render_all=render_all,
+        scale_method=splash.args.scale_method,
+        quality=splash.args.quality,
+    }
+end
+
+
 return emulation
