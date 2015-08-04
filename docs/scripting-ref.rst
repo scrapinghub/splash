@@ -950,7 +950,7 @@ return a screenshot of the whole viewport, but the image will be downscaled to
 *height* parameter sets the height of the resulting image.  If the viewport has
 a different height, the image is trimmed or extended vertically to match the
 specified one without resizing the content.  The region created by such
-extension is transparent.
+extension is white.
 
 To set the viewport size use :ref:`splash-set-viewport-size`,
 :ref:`splash-set-viewport-full` or *render_all* argument.  ``render_all=true``

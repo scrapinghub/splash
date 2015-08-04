@@ -1,8 +1,4 @@
-
-"""
-This module handles rendering QWebPage into PNG images.
-"""
-
+"""This module handles rendering QWebPage into PNG and JPEG images."""
 import sys
 import array
 from abc import ABCMeta, abstractmethod, abstractproperty
