@@ -1003,38 +1003,8 @@ class RenderJpegTest(Base.RenderTest):
         # Ensure that the extra pixels at the bottom are white.
         self.assertBoxColor(r, (0, 100, 100, 1000), (255, 255, 255))
 
-    def jpeg_vertical_split_is_sharp(self, img, offset=0):
-        """
-        :param offset: offset from the center of image - used in jpeg tests, because
-            either way jpeg gives a bit blurry split, but less blurry with vector scale
-
-        """
-        width, height = img.size
-        left = (0, 0, width // 2 - offset, height)
-        right = (width // 2 + offset, 0, width, height)
-        left_extrema = img.crop(left).getextrema()
-        right_extrema = img.crop(right).getextrema()
-        return (all(abs(e_min - e_max) <= 1 for e_min, e_max in left_extrema) and
-                all(abs(e_min - e_max) <= 1 for e_min, e_max in right_extrema))
-
     def test_invalid_scale_method(self):
         for method in ['foo', '1', '']:
             r = self.request({'url': self.mockurl("jsrender"),
                               'scale_method': method})
             self.assertStatusCode(r, 400)
-
-    def test_scale_method_raster_produces_blurry_split(self):
-        r = self.request({'url': self.mockurl('red-green'),
-                          'viewport': '100x100', 'width': 200,
-                          'scale_method': 'raster'})
-        img = self.assertJpeg(r, width=200, height=200)
-        self.assertFalse(self.jpeg_vertical_split_is_sharp(img, offset=10),
-                         "Split is not blurry")
-
-    def test_scale_method_vector_produces_sharp_split(self):
-        r = self.request({'url': self.mockurl('red-green'),
-                          'viewport': '100x100', 'width': 200,
-                          'scale_method': 'vector'})
-        img = self.assertJpeg(r, width=200, height=200)
-        self.assertTrue(self.jpeg_vertical_split_is_sharp(img, offset=10),
-                        "Split is not sharp")
