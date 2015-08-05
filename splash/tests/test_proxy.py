@@ -3,7 +3,11 @@ from __future__ import absolute_import
 import os
 import shutil
 import unittest
+
 import requests
+import pytest
+import six
+
 from splash.proxy import _BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import TestServers
@@ -63,6 +67,7 @@ class BaseHtmlProxyTest(BaseRenderTest):
 
 class HtmlProxyRenderTest(BaseHtmlProxyTest):
 
+    @pytest.mark.skipif(six.PY3, reason="requires https://twistedmatrix.com/trac/ticket/7981 to be fixed")
     def test_proxy_works(self):
         r1 = self.request({'url': self.mockurl('jsrender')})
         self.assertNotProxied(r1.text)
@@ -70,6 +75,7 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
         r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'test'})
         self.assertProxied(r2.text)
 
+    @pytest.mark.skipif(six.PY3, reason="requires https://twistedmatrix.com/trac/ticket/7981 to be fixed")
     def test_blacklist(self):
         params = {'url': self.mockurl('iframes'),
                   'proxy': 'test', 'html': 1, 'iframes': 1}
@@ -120,6 +126,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
         dst = os.path.join(ts2.proxy_profiles_path, 'default.ini')
         os.unlink(dst)
 
+    @pytest.mark.skipif(six.PY3, reason="requires https://twistedmatrix.com/trac/ticket/7981 to be fixed")
     def test_ts_setup(self):
         with TestServers() as ts2:
             r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender', gzip=False)})
@@ -131,6 +138,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
             })
             self.assertProxied(r2.text)
 
+    @pytest.mark.skipif(six.PY3, reason="requires https://twistedmatrix.com/trac/ticket/7981 to be fixed")
     def test_default_profile_works(self):
         with TestServers() as ts2:
             self.create_default_ini(ts2)
