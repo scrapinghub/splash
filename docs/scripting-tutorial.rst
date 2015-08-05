@@ -11,23 +11,23 @@ Splash Scripts Tutorial
 Intro
 -----
 
-Splash can execute custom rendering scripts written in Lua_
-programming language. This allows to use Splash as a browser automation
+Splash can execute custom rendering scripts written in the Lua_
+programming language. This allows us to use Splash as a browser automation
 tool similar to PhantomJS_.
 
-To execute a script and get the result back send it to :ref:`execute`
+To execute a script and get the result back send it to the :ref:`execute`
 endpoint in a :ref:`lua_source <arg-lua-source>` argument.
 
 .. note::
 
     Most likely you'll be able to follow Splash scripting examples even
-    without knowing Lua. Nevertheless, the language worths learning -
-    with Lua you can, for example, write Redis_, Nginx_, Apache_,
+    without knowing Lua; nevertheless, the language is worth learning.
+    With Lua you can, for example, write Redis_, Nginx_, Apache_,
     `World of Warcraft`_ scripts, create mobile apps using
-    Moai_ or `Corona SDK`_ or use state of the arts Deep Learning
+    Moai_ or `Corona SDK`_ or use the state of the art Deep Learning
     framework Torch7_. It is easy to get started and there are good online
-    resources available like `Learn Lua in 15 minutes`_ tutorial and
-    `Programming in Lua`_ book.
+    resources available like the tutorial `Learn Lua in 15 minutes`_ and the
+    book `Programming in Lua`_.
 
 .. _Learn Lua in 15 minutes: http://tylerneylon.com/a/learn-lua/
 .. _Nginx: http://wiki.nginx.org/HttpLuaModule
@@ -52,10 +52,10 @@ Let's start with a basic example:
          return {title=title}
      end
 
-If we submit this script to :ref:`execute` endpoint in a ``lua_source``
-argument, Splash will go to example.com website, wait until it loads,
-then wait 0.5s more, then get page title (by evaluating a JavaScript snippet
-in page context), and then return the result as a JSON encoded object.
+If we submit this script to the :ref:`execute` endpoint in a ``lua_source``
+argument, Splash will go to the example.com website, wait until it loads,
+wait aother half-second, then get the page title (by evaluating a JavaScript
+snippet in page context), and then return the result as a JSON encoded object.
 
 .. note::
 
@@ -66,14 +66,15 @@ in page context), and then return the result as a JSON encoded object.
 Entry Point: the "main" Function
 --------------------------------
 
-The script must provide "main" function; this function is called by Splash.
-The result of this function is returned as an HTTP response.
-Script could contain other helper functions and statements,
-but 'main' is required.
+The script must provide a "main" function which is called by Splash. The
+result is returned as an HTTP response. The script could contain other
+helper functions and statements, but 'main' is required.
 
 In the first example 'main' function returned a Lua table (an associative array
 similar to JavaScript Object or Python dict). Such results are returned as
-JSON. This will return ``{"hello":"world!"}`` string as an HTTP response:
+JSON.
+
+The following will return the string ``{"hello":"world!"}`` as an HTTP response:
 
 .. code-block:: lua
 
@@ -81,7 +82,7 @@ JSON. This will return ``{"hello":"world!"}`` string as an HTTP response:
         return {hello="world!"}
     end
 
-Script can also return a string:
+The script can also return a string:
 
 .. code-block:: lua
 
@@ -95,8 +96,8 @@ Let's check it with curl::
     $ curl 'http://127.0.0.1:8050/execute?lua_source=function+main%28splash%29%0D%0A++return+%27hello%27%0D%0Aend'
     hello
 
-"main" function receives an object that allows to control the "browser tab".
-All Splash features are exposed using this object. By a convention, this
+The "main" function receives an object that allows us to control the "browser
+tab". All Splash features are exposed using this object. By convention, this
 argument is called "splash", but you are not required to follow this convention:
 
 .. code-block:: lua
@@ -110,7 +111,7 @@ argument is called "splash", but you are not required to follow this convention:
 Where Are My Callbacks?
 -----------------------
 
-Here is a part of the first example:
+Here is a snippet from our first example:
 
 .. code-block:: lua
 
@@ -118,13 +119,13 @@ Here is a part of the first example:
     splash:wait(0.5)
     local title = splash:evaljs("document.title")
 
-The code looks like a standard procedural code; there are no callbacks
-or fancy control flow structures. It doesn't mean Splash works in a synchronous
+The code looks like standard procedural code; there are no callbacks or fancy
+control-flow structures. It doesn't mean Splash works in a synchronous
 way; under the hood it is still async. When you call ``splash.wait(0.5)``,
 Splash switches from the script to other tasks, and comes back after 0.5s.
 
 It is possible to use loops, conditional statements, functions as usual
-in Splash scripts; this enables a more straightforward code.
+in Splash scripts which enables more straightforward coding.
 
 Let's check an `example <https://github.com/ariya/phantomjs/blob/master/examples/follow.js>`__
 PhantomJS script:
@@ -159,7 +160,7 @@ PhantomJS script:
     }
     process();
 
-The code is arguably tricky: ``process`` function implements a loop
+The code is (arguably) tricky: ``process`` function implements a loop
 by creating a chain of callbacks; ``followers`` function doesn't return a value
 (it would be more complex to implement) - the result is logged to the console
 instead.
@@ -232,7 +233,6 @@ handling?). Splash scripts are standard Lua code.
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS: http://www.nightmarejs.org/
 
-
 Living Without Callbacks
 ------------------------
 
@@ -245,14 +245,15 @@ Living Without Callbacks
     See http://www.lua.org/pil/9.html for Lua coroutines tutorial.
 
 In Splash scripts it is not explicit which calls are async and which calls
-are blocking. It is a common criticism of coroutines/greenlets; check e.g.
+are blocking; this is a common criticism of coroutines/greenlets. Check
 `this <https://glyph.twistedmatrix.com/2014/02/unyielding.html>`__ article
-for a good description of the problem. However, we feel that in Splash scripts
-negative effects are not quite there: scripts are meant to be small,
-shared state is minimized, and an API is designed to execute a single
-command at time, so in most cases the control flow is linear.
+for a good description of the problem.
 
-If you want to be safe then think of all ``splash`` methods as of async;
+However, these negatives have no real impact in Splash scripts which: are
+meant to be small, where shared state is minimized, and the API is designed to
+execute a single command at a time, so in most cases the control flow is linear.
+
+If you want to be safe then think of all ``splash`` methods as async;
 consider that after you call ``splash:foo()`` a webpage being
 rendered can change. Often that's the point of calling a method,
 e.g. ``splash:wait(time)`` or ``splash:go(url)`` only make sense because
@@ -266,7 +267,7 @@ to work if we ever change that.
 Calling Splash Methods
 ----------------------
 
-Unlike many languages, in Lua methods are usually separated from an object
+Unlike in many languages, methods in Lua are usually separated from an object
 using a colon ``:``; to call "foo" method of "splash" object use
 ``splash:foo()`` syntax. See http://www.lua.org/pil/16.html for more details.
 
@@ -290,12 +291,12 @@ named arguments use curly braces: ``splash:foo{name1=val1, name2=val2}``:
     -- Mixed arguments example:
     splash:wait{0.5, cancel_on_redirect=false}
 
-For the convenience all ``splash`` methods are designed to support both
-styles of calling. But note that generally this convention is not
-followed in Lua. There are no "real" named arguments in Lua, and most Lua
-functions (including the ones from the standard library) choose to support
-only one style of calling. Check http://www.lua.org/pil/5.3.html for more info.
+For convenience all ``splash`` methods are designed to support both styles
+of calling: positional and named. But since there are `no "real" named
+arguments in Lua`_ most Lua functions (including the ones from the
+standard library) choose to support just positional arguments.
 
+.. _no "real" named arguments in Lua: http://www.lua.org/pil/5.3.html
 
 Error Handling
 --------------
