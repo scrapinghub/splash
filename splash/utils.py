@@ -158,8 +158,6 @@ def truncated(text, max_length=100, msg='...'):
     >>> truncated("hello world!", 5, " [truncated]")
     'hello [truncated]'
     """
-    if isinstance(text, bytes):
-        text = text.decode('latin-1')
     if len(text) < max_length:
         return text
     else:

@@ -96,7 +96,7 @@ class BaseRenderTest(unittest.TestCase):
         return self._get_handler().post(query, endpoint, payload, headers, **kwargs)
 
     def assertStatusCode(self, response, code):
-        msg = (response.status_code, truncated(response.content, 1000))
+        msg = (response.status_code, truncated(response.text, 1000))
         self.assertEqual(response.status_code, code, msg)
 
     def assertPng(self, response, width=None, height=None):
