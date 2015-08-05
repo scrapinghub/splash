@@ -94,8 +94,12 @@ def reply2har(reply, include_content=False, binary_content=False):
             "size": 0,
             "mimeType": "",
         },
-        "headersSize" : headers_size(reply),
-        "ok": not reply.error(),  # non-standard but useful
+        "headersSize": headers_size(reply),
+        # non-standard but useful
+        "ok": not reply.error(),
+        # non-standard, useful because reply url may not equal request url
+        # in case of redirect
+        "url": reply.url().toString()
     }
 
     content_type = reply.header(QNetworkRequest.ContentTypeHeader)

@@ -612,6 +612,13 @@ class Subresources(Resource):
             return base64.decodestring(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
+class SetHeadersResource(Resource):
+    def render_GET(self, request):
+        for k, values in request.args.items():
+            for v in values:
+                request.setHeader(k, v)
+        return b""
+
 class InvalidContentTypeResource(Resource):
     def render_GET(self, request):
         request.setHeader(b"Content-Type", b"ABRACADABRA: text/html; charset=windows-1251")
@@ -686,6 +693,7 @@ class Root(Resource):
         self.putChild(b"very-long-green-page", VeryLongGreenPage())
         self.putChild(b"rgb-stripes", RgbStripesPage())
         self.putChild(b"subresources", Subresources())
+        self.putChild(b"set-header", SetHeadersResource())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

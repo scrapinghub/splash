@@ -11,5 +11,10 @@ _trial_temp
 .ipynb_checkpoints
 .splash-cache*
 .coverage
-notebooks
 env*
+
+# IPython notebooks
+/notebooks/
+
+# Dev files
+/dev/

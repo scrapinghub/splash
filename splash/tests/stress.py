@@ -52,6 +52,7 @@ class StressTest():
         for c, n in Counter(outputs).items():
             print("  %s: %d" % (c, n))
 
+
 def worker(host, q, p, verbose=False):
     url = "http://%s/render.html" % host
     while True:
@@ -59,10 +60,10 @@ def worker(host, q, p, verbose=False):
             args = q.get()
             t = time.time()
             r = requests.get(url, params=args)
-            t = time.time() -t
+            t = time.time() - t
             p.put(r.status_code)
             if verbose:
-                print(". %.3fs %s" % (t, args))
+                print(". %d %.3fs %s" % (r.status_code, t, args))
             else:
                 sys.stdout.write(".")
                 sys.stdout.flush()
@@ -102,6 +103,8 @@ class MockArgs(object):
         ok_urls = self._ok_urls()
         error_urls = self._error_urls()
         timeout_urls = self._timeout_urls()
+        print("Expected codes: HTTP200x%d, HTTP502x%d, HTTP504x%d" % (
+            len(ok_urls), len(error_urls), len(timeout_urls)))
         urls = ok_urls + error_urls + timeout_urls
         return ({"url": x} for x in urls)
 
@@ -112,8 +115,12 @@ class ArgsFromUrlFile(object):
         self.urlfile = urlfile
 
     def __iter__(self):
-        for l in open(self.urlfile):
-            yield {"url": l.rstrip()}
+        for line in open(self.urlfile):
+            url = line.rstrip()
+            if '://' not in url:
+                url = 'http://' + url
+            yield {"url": url, "timeout": 60}
+
 
 class ArgsFromLogfile(object):
 
@@ -218,6 +225,7 @@ def parse_opts():
     op.add_option("-n", dest="requests", type="int", default=1000,
             help="number of requests (default: %default)")
     return op.parse_args()
+
 
 def main():
     opts, _ = parse_opts()

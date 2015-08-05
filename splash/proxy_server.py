@@ -8,15 +8,16 @@ Not to be confused with Splash support for proxying outgoing requests
 from __future__ import absolute_import, print_function
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod
-from twisted.python import log, failure
+from twisted.python import failure
 from splash.resources import (RenderHtmlResource, RenderPngResource,
-                              RenderJsonResource)
+                              RenderJpegResource, RenderJsonResource)
 
 NOT_DONE_YET = 1
 SPLASH_HEADER_PREFIX = b'x-splash-'
 SPLASH_RESOURCES = {
     b'html': RenderHtmlResource,
     b'png': RenderPngResource,
+    b'jpeg': RenderJpegResource,
     b'json': RenderJsonResource,
 }
 
@@ -25,6 +26,7 @@ HTML_PARAMS = [b'baseurl', b'timeout', b'wait', b'proxy', b'allowed-domains',
                b'viewport', b'js', b'js-source', b'images', b'filters',
                b'render-all', b'scale-method']
 PNG_PARAMS = [b'width', b'height']
+JPEG_PARAMS = [b'width', b'height', b'quality']
 JSON_PARAMS = [b'html', b'png', b'iframes', b'script', b'console', b'history', b'har']
 
 HOP_BY_HOP_HEADERS = [
@@ -117,8 +119,10 @@ class SplashProxyRequest(http.Request):
 
             if resource_name == b'png':
                 self._fill_args_from_headers(PNG_PARAMS)
+            elif resource_name == b'jpeg':
+                self._fill_args_from_headers(JPEG_PARAMS)
             elif resource_name == b'json':
-                self._fill_args_from_headers(PNG_PARAMS)
+                self._fill_args_from_headers(JPEG_PARAMS)
                 self._fill_args_from_headers(JSON_PARAMS)
 
             # make sure no splash headers are sent to the target

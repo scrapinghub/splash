@@ -23,9 +23,9 @@ class BadRequest(Exception):
 
 class BinaryCapsule(object):
     """ A wrapper for passing binary data. """
-
-    def __init__(self, data):
+    def __init__(self, data, content_type):
         self.data = data
+        self.content_type = content_type
 
     def as_b64(self):
         return base64.b64encode(self.data).decode('utf-8')
@@ -108,7 +108,7 @@ def get_alive():
                                 'QSize', 'QBuffer', 'QPainter', 'QImage',
                                 'QUrl', 'QTimer',
                                 'SplashCookieJar', 'OneShotCallbackProxy',
-                                '_WrappedRequest',
+                                '_WrappedRequest', '_WrappedResponse',
                                 'BrowserTab', '_SplashHttpClient',
                                 'JavascriptConsole',
                                 'ProfilesSplashProxyFactory',

@@ -387,7 +387,20 @@ class Splash(object):
             height = int(height)
         result = self.tab.png(width, height, b64=False, render_all=render_all,
                               scale_method=scale_method)
-        return BinaryCapsule(result)
+        return BinaryCapsule(result, 'image/png')
+
+    @command()
+    def jpeg(self, width=None, height=None, render_all=False,
+             scale_method=None, quality=None):
+        if width is not None:
+            width = int(width)
+        if height is not None:
+            height = int(height)
+        if quality is not None:
+            quality = int(quality)
+        result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
+                               scale_method=scale_method, quality=quality)
+        return BinaryCapsule(result, 'image/jpeg')
 
     @command()
     def har(self):
@@ -632,6 +645,16 @@ class Splash(object):
         self.tab.register_callback("on_request", py_callback)
         return True
 
+    @command(sets_callback=True)
+    def private_on_response_headers(self, callback):
+
+        def res_callback(reply):
+            with wrapped_response(self.lua, reply) as res:
+                callback(res)
+
+        self.tab.register_callback("on_response_headers", res_callback)
+        return True
+
     def _error_info_to_lua(self, error_info):
         if error_info is None:
             return "error"
@@ -687,6 +710,8 @@ def _requires_request(meth):
 
 class _WrappedRequest(object):
     """ QNetworkRequest wrapper for Lua """
+    # TODO perhaps refactor common parts
+    # of wrapped response and wrapped request into common object?
 
     _attribute_whitelist = ['info', 'commands']
 
@@ -717,14 +742,69 @@ class _WrappedRequest(object):
 
     @command()
     @_requires_request
-    def set_proxy(self, host, port, username=None, password=None):
-        proxy = create_proxy(host, port, username, password)
+    def set_proxy(self, host, port, username=None, password=None, type='HTTP'):
+        proxy = create_proxy(host, port, username, password, type)
         self.request.custom_proxy = proxy
 
     @command()
     @_requires_request
     def set_header(self, name, value):
         self.request.setRawHeader(name, value)
+
+
+def _requires_response(meth):
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        if self.response is None:
+            raise ValueError("response is used outside callback")
+        return meth(self, *args, **kwargs)
+    return wrapper
+
+
+@contextlib.contextmanager
+def wrapped_response(lua, reply):
+    """
+    Context manager which returns a wrapped QNetworkReply
+    suitable for using in Lua code.
+    """
+    res = _WrappedResponse(lua, reply)
+    try:
+        with lua.object_allowed(res, res.attr_whitelist):
+            yield res
+    finally:
+        res.clear()
+
+
+class _WrappedResponse(object):
+    _attribute_whitelist = [
+        'commands', "headers", "response",  "info", "request"
+    ]
+
+    def __init__(self, lua, reply):
+        self.lua = lua
+        self.response = reply
+        # according to specs HTTP response headers should not contain unicode
+        # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
+        _headers = {bytes(k): bytes(v) for k, v in reply.rawHeaderPairs()}
+        self.headers = self.lua.python2lua(_headers)
+        self.info = self.lua.python2lua(reply2har(reply))
+        commands = get_commands(self)
+        self.commands = self.lua.python2lua(commands)
+        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
+        self._exceptions = []
+        self.request = self.lua.python2lua(
+            request2har(reply.request(), reply.operation())
+        )
+
+    def clear(self):
+        self.response = None
+        self.lua = None
+        self.request = None
+
+    @command()
+    @_requires_response
+    def abort(self):
+        self.response.abort()
 
 
 class SplashScriptRunner(BaseScriptRunner):
@@ -802,4 +882,3 @@ class LuaRender(RenderScript):
         else:
             main, env = get_main(self.lua, lua_source)
         return self.lua.create_coroutine(main)
-

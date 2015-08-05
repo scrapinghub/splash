@@ -85,6 +85,11 @@ REQUEST_ERRORS_SHORT = {
     QNetworkReply.ProtocolFailure : 'protocol_error',
 }
 
+PROXY_TYPES = {
+    'HTTP': QNetworkProxy.HttpProxy,
+    'SOCKS5': QNetworkProxy.Socks5Proxy,
+}
+
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
@@ -147,14 +152,25 @@ def drop_request(request):
     set_request_url(request, "")  # hack: set invalid URL
 
 
-def create_proxy(host, port, username=None, password=None):
+def validate_proxy_type(typename):
+    if typename.upper() not in PROXY_TYPES:
+        alllowed = ", ".join(PROXY_TYPES.keys())
+        raise ValueError(
+            "Invalid proxy type %r. Allowed values: %s" % (typename, alllowed)
+        )
+
+
+def create_proxy(host, port, username=None, password=None, type=None):
     """ Create a new QNetworkProxy object """
+    if type is None:
+        type = 'HTTP'
+    validate_proxy_type(type)
+    proxy_type = PROXY_TYPES[type.upper()]
     port = int(port)
     if username is not None and password is not None:
-        proxy = QNetworkProxy(QNetworkProxy.HttpProxy,
-                              host, port, username, password)
+        proxy = QNetworkProxy(proxy_type, host, port, username, password)
     else:
-        proxy = QNetworkProxy(QNetworkProxy.HttpProxy, host, port)
+        proxy = QNetworkProxy(proxy_type, host, port)
     return proxy
 
 

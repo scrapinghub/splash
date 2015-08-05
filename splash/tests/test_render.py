@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+from array import array
 import unittest
-import json
 import base64
 from functools import wraps
 from io import BytesIO
@@ -110,11 +110,31 @@ class BaseRenderTest(unittest.TestCase):
             self.assertEqual(img.size[1], height)
         return img
 
+    def assertJpeg(self, response, width=None, height=None):
+        self.assertStatusCode(response, 200)
+        self.assertEqual(response.headers["content-type"], "image/jpeg")
+        img = Image.open(BytesIO(response.content))
+        self.assertEqual(img.format, "JPEG")
+        if width is not None:
+            self.assertEqual(img.size[0], width)
+        if height is not None:
+            self.assertEqual(img.size[1], height)
+        return img
+
+    def assertPixelColor(self, response, x, y, color):
+        img = Image.open(BytesIO(response.content))
+        self.assertEqual(color, img.getpixel((x, y)))
+
     COLOR_NAMES = ('red', 'green', 'blue', 'alpha')
 
     def assertBoxColor(self, response, box, etalon):
-        assert len(etalon) == 4  # RGBA components
         img = Image.open(BytesIO(response.content))
+        if img.format == 'PNG':
+            assert len(etalon) == 4  # RGBA components
+        elif img.format == 'JPEG':
+            assert len(etalon) == 3  # RGB components
+        else:
+            raise TypeError('Unexpected image format {}'.format(img.format))
         extrema = img.crop(box).getextrema()
         for (color_name, (min_val, max_val)) in zip(self.COLOR_NAMES, extrema):
             self.assertEqual(
@@ -358,11 +378,11 @@ class RenderPngTest(Base.RenderTest):
 
     def test_images_enabled(self):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
-        self.assertPixelColor(r, 30, 30, (0,0,0,255))
+        self.assertPixelColor(r, 30, 30, (0, 0, 0, 255))
 
     def test_images_disabled(self):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
-        self.assertPixelColor(r, 30, 30, (255,255,255,255))
+        self.assertPixelColor(r, 30, 30, (255, 255, 255, 255))
 
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
@@ -407,10 +427,6 @@ class RenderPngTest(Base.RenderTest):
         img = self.assertPng(r, width=200, height=200)
         self.assertTrue(self.vertical_split_is_sharp(img),
                         "Split is not sharp")
-
-    def assertPixelColor(self, response, x, y, color):
-        img = Image.open(BytesIO(response.content))
-        self.assertEqual(color, img.getpixel((x, y)))
 
 
 class RenderPngScalingAndCroppingTest(BaseRenderTest):
@@ -730,7 +746,6 @@ class RenderJsonHistoryTest(BaseRenderTest):
             url = self.mockurl('getrequest') + '?code=%d' % code
             self.assertHistoryUrls({'url': url}, [(url, code)], full_urls=True)
 
-
     def assertHistoryUrls(self, query, urls_and_codes, full_urls=False):
         query['history'] = 1
         resp = self.request(query)
@@ -847,3 +862,149 @@ class TestTestSetup(unittest.TestCase):
     def test_splashserver_works(self):
         r = requests.get('http://localhost:%s/_debug' % self.ts.splashserver.portnum)
         self.assertEqual(r.status_code, 200)
+
+
+class RenderJpegTest(Base.RenderTest):
+
+    endpoint = "render.jpeg"
+
+    def test_ok(self):
+        self._test_ok(self.mockurl("jsrender"))
+
+    @https_only
+    def test_ok_https(self):
+        self._test_ok(self.ts.mockserver.https_url("jsrender"))
+
+    def _test_ok(self, url):
+        r = self.request({"url": url})
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
+        self.assertJpeg(r, width=w, height=h)
+
+    def test_width(self):
+        r = self.request({"url": self.mockurl("jsrender"), "width": "300"})
+        self.assertJpeg(r, width=300)
+
+    def test_width_height(self):
+        r = self.request({"url": self.mockurl("jsrender"), "width": "300", "height": "100"})
+        self.assertJpeg(r, width=300, height=100)
+
+    def test_width_height_high_quality(self):
+        r = self.request({
+            "url": self.mockurl("jsrender"),
+            "width": "1500",
+            "height": "500",
+            "quality": "90"
+        })
+        img = self.assertJpeg(r, width=1500, height=500)
+        # There's no way to detect exact quality number from the response, but
+        # quality number is reflected in quantization tables, so we can check them
+        self.assertEqual(img.quantization[0], array('b', [
+            3, 2, 2, 3, 2, 2, 3, 3, 3, 3, 4, 3, 3, 4, 5, 8, 5, 5, 4, 4,
+            5, 10, 7, 7, 6, 8, 12, 10, 12, 12, 11, 10, 11, 11, 13, 14,
+            18, 16, 13, 14, 17, 14, 11, 11,  16, 22, 16, 17, 19, 20,
+            21, 21, 21, 12, 15, 23, 24, 22, 20, 24, 18, 20, 21, 20
+        ]))
+        # There's no way to detect exact quality number from the response, but
+        # quality number is reflected in quantization tables, so we can check them
+        self.assertEqual(img.quantization[1], array('b', [
+            3, 4, 4, 5, 4, 5, 9, 5, 5, 9, 20, 13, 11, 13, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20
+        ]))
+
+    def test_width_height_low_quality(self):
+        r = self.request({
+            "url": self.mockurl("jsrender"),
+            "width": "1500",
+            "height": "500",
+            "quality": "10"
+        })
+        img = self.assertJpeg(r, width=1500, height=500)
+        # There's no way to detect exact quality number from the response, but
+        # quality number is reflected in quantization tables, so we can check them
+        self.assertEqual(img.quantization[0], array('b', [
+            80, 55, 60, 70, 60, 50, 80, 70, 65, 70, 90, 85, 80, 95, 120, -56, -126, 120,
+            110, 110, 120, -11, -81, -71, -111, -56, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+        ]))
+        # There's no way to detect exact quality number from the response, but
+        # quality number is reflected in quantization tables, so we can check them
+        self.assertEqual(img.quantization[1], array('b', [
+            85, 90, 90, 120, 105, 120, -21, -126, -126, -21, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1
+        ]))
+
+    def test_range_checks(self):
+        for arg in ('width', 'height'):
+            for val in (-1, 99999):
+                url = self.mockurl("jsrender")
+                r = self.request({"url": url, arg: val})
+                self.assertStatusCode(r, 400)
+
+    def test_viewport_full_wait(self):
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
+        self.assertStatusCode(r, 400)
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1})
+        self.assertStatusCode(r, 400)
+
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': '0.1'})
+        self.assertStatusCode(r, 200)
+        self.assertJpeg(r)
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': '0.1'})
+        self.assertStatusCode(r, 200)
+        self.assertJpeg(r)
+
+    def test_viewport_invalid(self):
+        for viewport in ['foo', '1xfoo', 'axe', '-1x300']:
+            r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
+            self.assertStatusCode(r, 400)
+
+    def test_viewport_out_of_bounds(self):
+        for viewport in ['99999x1', '1x99999', '9000x9000']:
+            r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
+            self.assertStatusCode(r, 400)
+
+    def test_viewport_full(self):
+        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
+        self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
+
+    def test_render_all(self):
+        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
+        self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
+
+    def test_render_all_with_viewport(self):
+        r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
+                          'render_all': 1, 'wait': '0.1'})
+        self.assertJpeg(r, width=2000, height=2000)
+
+    def test_images_enabled(self):
+        r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100'})
+        self.assertPixelColor(r, 30, 30, (0, 0, 0))
+
+    def test_images_disabled(self):
+        r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
+        self.assertPixelColor(r, 30, 30, (255, 255, 255))
+
+    def test_very_long_green_page(self):
+        r = self.request({'url': self.mockurl("very-long-green-page"),
+                          'render_all': 1, 'wait': '0.01', 'quality': '100'})
+        self.assertJpeg(r, height=60000)  # hardcoded in the html
+        # XXX: JPEG some quality? why 0xFE and not 0xFF?
+        self.assertPixelColor(r, 0, 59999, (0x00, 0xFE, 0x77))
+
+    def test_extra_height_doesnt_leave_garbage_when_using_full_render(self):
+        r = self.request({'url': self.mockurl('tall'), 'viewport': '100x100',
+                          'height': 1000})
+        self.assertJpeg(r, height=1000)
+        # Ensure that the extra pixels at the bottom are white.
+        self.assertBoxColor(r, (0, 100, 100, 1000), (255, 255, 255))
+
+    def test_invalid_scale_method(self):
+        for method in ['foo', '1', '']:
+            r = self.request({'url': self.mockurl("jsrender"),
+                              'scale_method': method})
+            self.assertStatusCode(r, 400)
