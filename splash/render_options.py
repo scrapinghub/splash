@@ -222,7 +222,7 @@ class RenderOptions(object):
             return allowed_domains.split(',')
 
     def get_allowed_content_types(self):
-        content_types = self.get("allowed_content_types", default=['*/*'])
+        content_types = self.get("allowed_content_types", default=['*'])
         if isinstance(content_types, basestring):
             content_types = filter(None, content_types.split(','))
         return content_types

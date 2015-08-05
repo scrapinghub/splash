@@ -10,6 +10,7 @@ from splash.qtutils import request_repr
 from twisted.python import log
 import fnmatch
 
+
 class ContentTypeMiddleware(object):
     """
     Response middleware, aborts responses depending on the content type.
@@ -28,6 +29,8 @@ class ContentTypeMiddleware(object):
         >>> ContentTypeMiddleware.contains(set(), 'any/thing')
         False
         >>> ContentTypeMiddleware.contains({'text/css', 'image/*'}, 'image/png')
+        True
+        >>> ContentTypeMiddleware.contains({'*'}, 'any-thing')
         True
         """
         for pattern in mime_set:
@@ -64,4 +67,3 @@ class ContentTypeMiddleware(object):
                 msg = "Dropping %s because of Content Type" % request_str
                 log.msg(msg, system='response_middleware')
             reply.abort()
-
