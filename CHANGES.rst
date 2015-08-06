@@ -1,6 +1,44 @@
 Changes
 =======
 
+1.7 (2015-08-06)
+----------------
+
+New features:
+
+* :ref:`render.jpeg` endpoint and :ref:`splash-jpeg` function allow to take
+  screenshots in JPEG format;
+* :ref:`splash-on-response-headers` Lua function and
+  :ref:`allowed_content_types <arg-allowed-content-types>` /
+  :ref:`forbidden_content_types <arg-forbidden-content-types>` HTTP arguments
+  allow to discard responses earlier based on their headers;
+* :ref:`splash-images-enabled` attribute to enable/disable images from
+  Lua scripts;
+* :ref:`splash-js-enabled` attribute to enable/disable JS processing from
+  Lua scripts;
+* :ref:`splash-set-result-header` method for setting custom HTTP headers
+  returned to Splash clients;
+* :ref:`resource_timeout <arg-resource-timeout>` argument for setting network
+  request timeouts in render endpoints;
+* ``request:set_timeout(timeout)`` method (ses :ref:`splash-on-request`)
+  for setting request timeouts from Lua scripts;
+* SOCKS5 proxy support: new 'type' argument
+  in :ref:`proxy profile <proxy profiles>` config files
+  and ``request:set_proxy`` method (ses :ref:`splash-on-request`)
+* enabled HTTPS proxying;
+
+Other changes:
+
+* HTTP error detection is improved;
+* MS fonts are added to the Docker image for better rendering quality;
+* Chinese fonts are added to the Docker image to enable rendering of Chinese
+  websites;
+* validation of ``timeout`` and ``wait`` arguments is improved;
+* documentation: grammar is fixed in the tutorial;
+* assorted documentation improvements and code cleanups;
+* ``splash:set_images_enabled`` method is deprecated.
+
+
 1.6 (2015-05-15)
 ----------------
 
