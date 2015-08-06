@@ -7,7 +7,7 @@ import traceback
 from contextlib import contextmanager
 
 from PyQt5.QtCore import QTimer
-from PyQt4.QtNetwork import (
+from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
