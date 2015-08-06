@@ -14,10 +14,9 @@ from PyQt4.QtNetwork import (
     QNetworkReply,
     QNetworkCookieJar
 )
-from PyQt4.QtWebKit import QWebFrame
 from twisted.python import log
 
-from splash.qtutils import qurl2ascii, REQUEST_ERRORS
+from splash.qtutils import qurl2ascii, REQUEST_ERRORS, get_request_webframe
 from splash import har
 from splash.har import qt as har_qt
 from splash.request_middleware import (
@@ -26,7 +25,7 @@ from splash.request_middleware import (
     AllowedSchemesMiddleware,
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
-)
+    ResourceTimeoutMiddleware)
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 
@@ -181,9 +180,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             self.setProxy(old_proxy)
 
     def _wrapRequest(self, request):
-        request = QNetworkRequest(request)
-        request.setAttribute(self._REQUEST_ID, next(self._request_ids))
-        return request
+        req = QNetworkRequest(request)
+        req.setAttribute(self._REQUEST_ID, next(self._request_ids))
+        if hasattr(request, 'timeout'):
+            req.timeout = request.timeout
+        return req
 
     def _initialHarData(self, start_time, operation, request, outgoingData):
         """ Return initial values for HAR entry """
@@ -265,13 +266,13 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         return har_log.get_mutable_entry(self._getRequestId(request), create)
 
     def _getWebPageAttribute(self, request, attribute):
-        web_frame = request.originatingObject()
-        if isinstance(web_frame, QWebFrame):
+        web_frame = get_request_webframe(request)
+        if web_frame:
             return getattr(web_frame.page(), attribute, None)
 
     def _setWebPageAttribute(self, request, attribute, value):
-        web_frame = request.originatingObject()
-        if isinstance(web_frame, QWebFrame):
+        web_frame = get_request_webframe(request)
+        if web_frame:
             return setattr(web_frame.page(), attribute, value)
 
     def _handleError(self, error_id):
@@ -418,6 +419,7 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
             )
 
         self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
+        self.request_middlewares.append(ResourceTimeoutMiddleware())
 
         if filters_path is not None:
             self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)

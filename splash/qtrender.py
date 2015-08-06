@@ -80,7 +80,7 @@ class DefaultRenderScript(RenderScript):
     def start(self, url, baseurl=None, wait=None, viewport=None,
               js_source=None, js_profile=None, images=None, console=False,
               headers=None, http_method='GET', body=None,
-              render_all=False):
+              render_all=False, resource_timeout=None):
 
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
@@ -89,6 +89,9 @@ class DefaultRenderScript(RenderScript):
         self.console = console
         self.viewport = defaults.VIEWPORT_SIZE if viewport is None else viewport
         self.render_all = render_all or viewport == 'full'
+
+        if resource_timeout:
+            self.tab.set_resource_timeout(resource_timeout)
 
         if images is not None:
             self.tab.set_images_enabled(images)

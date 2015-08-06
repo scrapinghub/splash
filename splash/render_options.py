@@ -106,6 +106,9 @@ class RenderOptions(object):
         default = min(self.max_timeout, defaults.TIMEOUT)
         return self.get("timeout", default, type=float, range=(0, self.max_timeout))
 
+    def get_resource_timeout(self):
+        return self.get("resource_timeout", 0, type=float, range=(0, 1e6))
+
     def get_images(self):
         return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
 
@@ -239,6 +242,7 @@ class RenderOptions(object):
             'url': self.get_url(),
             'baseurl': self.get_baseurl(),
             'wait': wait,
+            'resource_timeout': self.get_resource_timeout(),
             'viewport': self.get_viewport(wait),
             'render_all': self.get_render_all(wait),
             'images': self.get_images(),
