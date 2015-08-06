@@ -37,6 +37,13 @@ function Splash:go_and_wait(args)
     self:set_viewport_size(tonumber(w), tonumber(h))
   end
 
+  -- set a resource timeout
+  if args.resource_timeout ~= nil then
+    self:on_request(function(request)
+      request:set_timeout(args.resource_timeout)
+    end)
+  end
+
   local ok, reason = self:go{url=url, baseurl=args.baseurl}
   if not ok then
     -- render.xxx endpoints don't return HTTP errors as errors,

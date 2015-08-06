@@ -241,10 +241,11 @@ class ShowImage(Resource):
 
     def render_GET(self, request):
         token = random.random()  # prevent caching
+        n = getarg(request, "n", 0, type=float)
         return """<html><body>
-        <img id='foo' width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
+        <img id='foo' width=50 heigth=50 src="/slow.gif?n=%s&rnd=%s">
         </body></html>
-        """ % token
+        """ % (n, token)
 
 
 class IframeResource(Resource):
@@ -618,6 +619,12 @@ class InvalidContentTypeResource(Resource):
         return u'''проверка'''.encode('cp1251')
 
 
+class InvalidContentTypeResource2(Resource):
+    def render_GET(self, request):
+        request.setHeader(b"Content-Type", b"text-html; charset=utf-8")
+        return b"ok"
+
+
 class Index(Resource):
     isLeaf = True
 
@@ -678,6 +685,7 @@ class Root(Resource):
         self.putChild("external", ExternalResource())
         self.putChild("cp1251", CP1251Resource())
         self.putChild("cp1251-invalid", InvalidContentTypeResource())
+        self.putChild("bad-content-type", InvalidContentTypeResource2())
         self.putChild("bad-related", BadRelatedResource())
         self.putChild("set-cookie", SetCookie()),
         self.putChild("get-cookie", GetCookie()),

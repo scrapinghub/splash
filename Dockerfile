@@ -10,6 +10,7 @@ RUN /tmp/provision.sh \
     prepare_install \
     install_msfonts \
     install_deps \
+    install_extra_fonts \
     install_builddeps \
     install_python_deps \
     remove_builddeps \

@@ -100,11 +100,16 @@ class RenderOptions(object):
         return self._get_url("baseurl", default=None)
 
     def get_wait(self):
-        return self.get("wait", defaults.WAIT_TIME, type=float, range=(0, defaults.MAX_WAIT_TIME))
+        return self.get("wait", defaults.WAIT_TIME,
+                        type=float, range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
         default = min(self.max_timeout, defaults.TIMEOUT)
         return self.get("timeout", default, type=float, range=(0, self.max_timeout))
+
+    def get_resource_timeout(self):
+        return self.get("resource_timeout", defaults.RESOURCE_TIMEOUT,
+                        type=float, range=(0, 1e6))
 
     def get_images(self):
         return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
@@ -222,7 +227,7 @@ class RenderOptions(object):
             return allowed_domains.split(',')
 
     def get_allowed_content_types(self):
-        content_types = self.get("allowed_content_types", default=['*/*'])
+        content_types = self.get("allowed_content_types", default=['*'])
         if isinstance(content_types, basestring):
             content_types = filter(None, content_types.split(','))
         return content_types
@@ -239,6 +244,7 @@ class RenderOptions(object):
             'url': self.get_url(),
             'baseurl': self.get_baseurl(),
             'wait': wait,
+            'resource_timeout': self.get_resource_timeout(),
             'viewport': self.get_viewport(wait),
             'render_all': self.get_render_all(wait),
             'images': self.get_images(),

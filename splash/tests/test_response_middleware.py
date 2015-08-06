@@ -1,11 +1,15 @@
-from .test_render import BaseRenderTest
 import json
+
+import pytest
+
+from .test_render import BaseRenderTest
+
 
 class ContentTypeTest(BaseRenderTest):
     """Tests the content type middleware """
     endpoint = 'render.json'
 
-    def _request(self, allowed_ctypes='*/*', forbidden_ctypes=''):
+    def _request(self, allowed_ctypes=None, forbidden_ctypes=None):
         js_source = """
         JSON.stringify({
             imageLoaded: window.imageLoaded,
@@ -17,9 +21,13 @@ class ContentTypeTest(BaseRenderTest):
             'script': 1,
             'console': 1,
             'js_source': js_source,
-            'allowed_content_types': allowed_ctypes,
-            'forbidden_content_types': forbidden_ctypes,
         }
+        if allowed_ctypes is not None:
+            query['allowed_content_types'] = allowed_ctypes
+
+        if forbidden_ctypes is not None:
+            query['forbidden_content_types'] = forbidden_ctypes
+
         req_headers = {'content-type': 'application/json'}
         response = self.post(query,
             endpoint=self.endpoint,
@@ -58,3 +66,9 @@ class ContentTypeTest(BaseRenderTest):
             u'imageLoaded': True
         })
 
+    @pytest.mark.xfail(
+        run=False,
+        reason="https://github.com/scrapinghub/splash/issues/247")
+    def test_dont_block_invalid(self):
+        resp = self.request({"url": self.mockurl("bad-content-type")})
+        self.assertEqual(resp.text, "ok")
