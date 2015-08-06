@@ -1,4 +1,4 @@
-FROM scrapinghub/splash:master
+FROM scrapinghub/splash:1.7
 # XXX: after each release a new branch named X.Y should be created,
 # and FROM should be changed to FROM scrapinghub/splash:X.Y
 
