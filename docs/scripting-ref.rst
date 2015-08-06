@@ -1571,6 +1571,9 @@ one of the ``request`` methods:
   also work; it is implemented using CONNECT command.
 * ``request:set_header(name, value)`` - set an HTTP header for this request.
   See also: :ref:`splash-set-custom-headers`.
+* ``request:set_timeout(timeout)`` - set a timeout for this request,
+  in seconds. If response is not fully received after the timeout,
+  request is aborted.
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.
@@ -1635,6 +1638,15 @@ request to Splash:
             password = splash.args.password,
         }
     end)
+
+Example 6 - discard requests which take longer than 5 seconds to complete:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        request:set_timeout(5.0)
+    end)
+
 
 .. note::
 

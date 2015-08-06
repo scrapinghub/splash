@@ -13,7 +13,7 @@ from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
                           QRegExp, QString, QUrl, QVariant)
 from PyQt4.QtGui import QApplication
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
-from PyQt4.QtWebKit import QWebSettings
+from PyQt4.QtWebKit import QWebSettings, QWebFrame
 from twisted.python import log
 
 from splash.utils import truncated
@@ -251,3 +251,11 @@ class WrappedSignal(object):
 
 def clear_caches():
     QWebSettings.clearMemoryCaches()
+
+
+def get_request_webframe(request):
+    """ Return a QWebFrame which sent this QNetworkRequest """
+    web_frame = request.originatingObject()
+    if isinstance(web_frame, QWebFrame):
+        return web_frame
+    return None

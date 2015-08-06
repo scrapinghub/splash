@@ -198,6 +198,14 @@ class Base(object):
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
 
+        def test_resource_timeout(self):
+            resp = self.request({
+                'url': self.mockurl("show-image?n=10"),
+                'timeout': "3",
+                'resource_timeout': "0.5",
+            })
+            self.assertStatusCode(resp, 200)
+
 
 class RenderHtmlTest(Base.RenderTest):
 

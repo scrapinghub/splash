@@ -241,10 +241,11 @@ class ShowImage(Resource):
 
     def render_GET(self, request):
         token = random.random()  # prevent caching
+        n = getarg(request, "n", 0, type=float)
         return """<html><body>
-        <img id='foo' width=50 heigth=50 src="/slow.gif?n=0&rnd=%s">
+        <img id='foo' width=50 heigth=50 src="/slow.gif?n=%s&rnd=%s">
         </body></html>
-        """ % token
+        """ % (n, token)
 
 
 class IframeResource(Resource):
