@@ -128,6 +128,7 @@ class BaseRenderResource(_ValidatingResource):
             "path": request.path,
             "args": request.args,
             "rendertime": time.time() - request.starttime,
+            # TODO: add splash.utils.get_memory_usage here?
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
             "fds": get_num_fds(),

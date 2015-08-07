@@ -1,17 +1,17 @@
 from __future__ import absolute_import
-
-import os
-import gc
-import sys
-import json
 import base64
+import gc
 import inspect
-import resource
+import json
+import os
 from collections import defaultdict
+
 import psutil
 
 
 _REQUIRED = object()
+PID = os.getpid()
+PSUTIL_PROCESS = psutil.Process()
 
 
 class BadRequest(Exception):
@@ -35,7 +35,6 @@ class SplashJSONEncoder(json.JSONEncoder):
         return super(SplashJSONEncoder, self).default(o)
 
 
-PID = os.getpid()
 def get_num_fds():
     proc = psutil.Process(PID)
     try:
@@ -72,13 +71,8 @@ def get_leaks():
     return get_alive()
 
 
-def get_ru_maxrss():
-    """ Return max RSS usage (in bytes) """
-    size = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    if sys.platform != 'darwin':
-        # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
-        size *= 1024
-    return size
+def get_memory_usage():
+    return PSUTIL_PROCESS.memory_info().rss
 
 
 def get_total_phymem():
