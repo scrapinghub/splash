@@ -916,6 +916,9 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
+See also: :ref:`splash-jpeg`.
+
+
 .. _splash-jpeg:
 
 splash:jpeg
@@ -993,6 +996,8 @@ on a client (magic!):
          return {jpeg=splash:jpeg()}
      end
 
+See also: :ref:`splash-png`. Note that `splash:jpeg()` is often
+1.5..2x faster than ``splash:png()``.
 
 .. _splash-har:
 
@@ -1570,6 +1575,9 @@ one of the ``request`` methods:
   also work; it is implemented using CONNECT command.
 * ``request:set_header(name, value)`` - set an HTTP header for this request.
   See also: :ref:`splash-set-custom-headers`.
+* ``request:set_timeout(timeout)`` - set a timeout for this request,
+  in seconds. If response is not fully received after the timeout,
+  request is aborted.
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.
@@ -1635,6 +1643,15 @@ request to Splash:
         }
     end)
 
+Example 6 - discard requests which take longer than 5 seconds to complete:
+
+.. code-block:: lua
+
+    splash:on_request(function(request)
+        request:set_timeout(5.0)
+    end)
+
+
 .. note::
 
     `splash:on_request` method doesn't support named arguments.
@@ -1667,7 +1684,7 @@ response received by splash. ``response`` has following methods:
 
 * ``response:abort()`` - aborts reading of response body
 
-A callback passed to :ref:`splash-on-response-headeers` can't call Splash
+A callback passed to :ref:`splash-on-response-headers` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`. ``response`` object
 is deleted after exiting from callback, so you cannot use it outside callback.
 

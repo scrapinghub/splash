@@ -751,6 +751,11 @@ class _WrappedRequest(object):
     def set_header(self, name, value):
         self.request.setRawHeader(name, value)
 
+    @command()
+    @_requires_request
+    def set_timeout(self, timeout):
+        self.request.timeout = float(timeout)
+
 
 def _requires_response(meth):
     @functools.wraps(meth)

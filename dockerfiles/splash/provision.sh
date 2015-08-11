@@ -13,6 +13,7 @@ install_deps -- install system-level dependencies
 install_builddeps -- install system-level build-dependencies
 install_python_deps -- install python-level dependencies
 install_msfonts - agree with EULA and install Microsoft fonts
+install_extra_fonts - install extra fonts
 remove_builddeps -- remove build-dependencies
 remove_extra -- remove files that are unnecessary to run Splash
 
@@ -84,6 +85,11 @@ install_msfonts() {
     apt-get update && \
     echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections && \
     apt-get install -y ttf-mscorefonts-installer
+}
+
+install_extra_fonts() {
+    # Install extra fonts (Chinese)
+    apt-get install ttf-wqy-zenhei
 }
 
 remove_builddeps () {

@@ -60,14 +60,14 @@ class BaseRenderResource(_ValidatingResource):
 
         request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
-        render_options.get_filters(self.pool)  # check filters earlier
 
-        pool_d = self._getRender(request, render_options)
-
+        # check arguments before starting the render
+        render_options.get_filters(self.pool)
         timeout = render_options.get_timeout()
         wait_time = render_options.get_wait()
 
-        timer = reactor.callLater(timeout + wait_time, pool_d.cancel)
+        pool_d = self._getRender(request, render_options)
+        timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
         pool_d.addCallback(self._writeOutput, request)
         pool_d.addErrback(self._timeoutError, request)
@@ -101,6 +101,7 @@ class BaseRenderResource(_ValidatingResource):
 
     def _writeOutput(self, data, request, content_type=None):
         # log.msg("_writeOutput: %s" % id(request))
+
         if content_type is None:
             content_type = self.content_type
 

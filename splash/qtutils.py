@@ -8,12 +8,12 @@ import itertools
 import sys
 import time
 
-
 from PyQt5.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
                           QUrl, QVariant)
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWebKitWidgets import QWebFrame
 from twisted.python import log
 import six
 
@@ -242,3 +242,11 @@ class WrappedSignal(object):
 
 def clear_caches():
     QWebSettings.clearMemoryCaches()
+
+
+def get_request_webframe(request):
+    """ Return a QWebFrame which sent this QNetworkRequest """
+    web_frame = request.originatingObject()
+    if isinstance(web_frame, QWebFrame):
+        return web_frame
+    return None

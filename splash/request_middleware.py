@@ -12,7 +12,7 @@ from twisted.python import log
 import six
 from six.moves.urllib.parse import urlsplit
 
-from splash.qtutils import request_repr, drop_request
+from splash.qtutils import request_repr, drop_request, get_request_webframe
 
 
 class AllowedDomainsMiddleware(object):
@@ -64,6 +64,7 @@ class AllowedSchemesMiddleware(object):
             drop_request(request)
         return request
 
+
 class RequestLoggingMiddleware(object):
     """ Request middleware for logging requests """
     def process(self, request, render_options, operation, data):
@@ -71,6 +72,19 @@ class RequestLoggingMiddleware(object):
             "[%s] %s" % (render_options.get_uid(), request_repr(request, operation)),
             system='network'
         )
+        return request
+
+
+class ResourceTimeoutMiddleware(object):
+    """
+    Request middleware which sets timeouts for requests based on
+    ``resource_timeout`` attribute of QWebPage.
+    """
+    def process(self, request, render_options, operation, data):
+        web_frame = get_request_webframe(request)
+        if not web_frame:
+            return request
+        request.timeout = getattr(web_frame.page(), 'resource_timeout', 0)
         return request
 
 

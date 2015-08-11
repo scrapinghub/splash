@@ -49,6 +49,14 @@ timeout : float : optional
 
       $ python -m splash.server --max-timeout 120
 
+.. _arg-resource-timeout:
+
+resource_timeout : float : optional
+  A timeout (in seconds) for individual network requests.
+
+  See also: :ref:`splash-on-request` and its
+  ``request:set_timeout(timeout)`` method.
+
 .. _arg-wait:
 
 wait : float : optional
@@ -798,6 +806,9 @@ X-Splash-js : string
 
 X-Splash-timeout : string
   Same as :ref:`'timeout' <arg-timeout>` argument for `render.html`_.
+
+X-Splash-resource-timeout : string
+  Same as :ref:`'wait' <arg-resource-timeout>` argument for `render.html`_.
 
 X-Splash-wait : string
   Same as :ref:`'wait' <arg-wait>` argument for `render.html`_.
