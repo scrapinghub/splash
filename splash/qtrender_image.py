@@ -69,16 +69,16 @@ class QtImageRenderer(object):
         if sys.byteorder != "little":
             buf = self.swap_byte_order_i32(buf)
         # PIL>2.0 doesn't have fromstring. But older ones don't have frombytes.
-        try:
-            return Image.frombytes(
-                self.pillow_image_format,
-                self._qsize_to_tuple(qimage.size()),
-                buf, 'raw', self.pillow_decoder_format)
-        except AttributeError:
-            return Image.fromstring(
-                self.pillow_image_format,
-                self._qsize_to_tuple(qimage.size()),
-                buf, 'raw', self.pillow_decoder_format)
+        if hasattr(Image, 'frombytes'):
+            frombytes = Image.frombytes
+        else:
+            frombytes = Image.fromstring
+
+        return frombytes(
+            self.pillow_image_format,
+            self._qsize_to_tuple(qimage.size()),
+            buf, 'raw', self.pillow_decoder_format)
+
 
     def swap_byte_order_i32(self, buf):
         """Swap order of bytes in each 32-bit word of given byte sequence."""

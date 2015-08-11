@@ -204,7 +204,7 @@ def python2lua(lua, obj, max_depth=100):
     if isinstance(obj, dict):
         return lua.table_from({
             python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
-            for key, value in obj.items()
+            for key, value in six.iteritems(obj)
         })
 
     if isinstance(obj, list):

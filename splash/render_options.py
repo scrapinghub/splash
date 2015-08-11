@@ -180,16 +180,13 @@ class RenderOptions(object):
             return headers
 
         if not isinstance(headers, (list, tuple, dict)):
-            raise BadOption(
-                "'headers' must be either JSON array of (name, value) pairs or JSON object")
+            raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
 
         if isinstance(headers, (list, tuple)):
             for el in headers:
-                if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(
-                        isinstance(e, six.string_types) for e
-                        in el)):
-                    raise BadOption(
-                        "'headers' must be either JSON array of (name, value) pairs or JSON object")
+                string_only = all(isinstance(e, six.string_types) for e in el)
+                if not (isinstance(el, (list, tuple)) and len(el) == 2 and string_only):
+                    raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
         return headers
 
     def get_viewport(self, wait=None):

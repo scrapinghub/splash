@@ -23,7 +23,7 @@ from splash.qtrender import (
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
-    SplashJSONEncoder, bytes_to_unicode, to_bytes
+    SplashJSONEncoder, to_bytes
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
 from splash.qtutils import clear_caches
@@ -131,11 +131,23 @@ class BaseRenderResource(_ValidatingResource):
         request.write(data)
 
     def _logStats(self, request):
+
+        def args_to_unicode(args):
+            unicode_args = {}
+            for key,val in args.items():
+                key = key.decode('utf-8')
+                if isinstance(val, list):
+                    val = [item.decode('utf-8') for item in val]
+                else:
+                    val = val.decode('utf-8')
+                unicode_args[key] = val
+                return unicode_args
+
         stats = {
             # Anything we retrieve from Twisted request object contains bytes.
             # We have to convert it to unicode first for json.dump to succeed.
             "path": request.path.decode('utf-8'),
-            "args": bytes_to_unicode(request.args),
+            "args": args_to_unicode(request.args),
             "rendertime": time.time() - request.starttime,
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),

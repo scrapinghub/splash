@@ -18,11 +18,11 @@ from twisted.internet.task import deferLater
 _REQUIRED = object()
 
 
-def getarg(request, name, default=_REQUIRED, type=bytes):
+def getarg(request, name, default=_REQUIRED, type=str):
     value = request.args.get(name, [None])[0]
     if value is not None:
         if type is not None:
-            value = type(value)
+            value = type(value.decode('utf-8'))
         return value
     elif default is _REQUIRED:
         raise Exception("Missing argument: %s" % name)
@@ -183,8 +183,8 @@ class SetCookie(Resource):
     def render_GET(self, request):
         key = getarg(request, b"key")
         value = getarg(request, b"value")
-        next_url = unquote(getarg(request, b"next", b"").decode('utf-8'))
-        request.addCookie(str(key.decode('utf-8')), str(value.decode('utf-8')))
+        next_url = unquote(getarg(request, b"next", ""))
+        request.addCookie(key, value)
         if next_url:
             return (u"""
             <html><body>
@@ -200,7 +200,7 @@ class GetCookie(Resource):
     """ Return a cookie with key=key """
     isLeaf = False
     def render_GET(self, request):
-        value = request.getCookie(getarg(request, b"key")) or b""
+        value = request.getCookie(getarg(request, b"key").encode('utf-8')) or b""
         return value
 
 
@@ -559,7 +559,7 @@ class JsRedirectTo(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        url = getarg(request, b"url").decode('utf-8')
+        url = getarg(request, b"url")
         next_url = unquote(url)
         return ("""
         <html><body>
