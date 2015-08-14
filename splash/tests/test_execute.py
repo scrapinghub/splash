@@ -884,9 +884,9 @@ class RunjsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {
-            "err": "SyntaxError: Parse error",
-        })
+        #  u"SyntaxError: Unexpected token '('"}
+        self.assertIn("err", resp.json())
+        self.assertIn("SyntaxError", resp.json()["err"])
 
     def test_runjs_exception(self):
         resp = self.request_lua("""
@@ -2128,10 +2128,8 @@ class SetContentTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {
-            "html": "<html><head></head><body><h1>Hello</h1></body></html>",
-            "url": "about:blank",
-        })
+        self.assertIn("html", resp.json())
+        self.assertEqual(resp.json()["html"], "<html><head></head><body><h1>Hello</h1></body></html>")
 
     def test_unicode(self):
         resp = self.request_lua("""
