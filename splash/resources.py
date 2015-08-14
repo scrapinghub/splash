@@ -61,13 +61,14 @@ class BaseRenderResource(_ValidatingResource):
 
         # check arguments before starting the render
         render_options.get_filters(self.pool)
+
         timeout = render_options.get_timeout()
         wait_time = render_options.get_wait()
 
         pool_d = self._getRender(request, render_options)
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
-        pool_d.addCallback(self._writeOutput, request)
+        pool_d.addCallback(self._writeOutput, request, options=render_options.data)
         pool_d.addErrback(self._timeoutError, request)
         pool_d.addErrback(self._renderError, request)
         pool_d.addErrback(self._badRequest, request)
@@ -95,7 +96,7 @@ class BaseRenderResource(_ValidatingResource):
         timer.cancel()
         return _
 
-    def _writeOutput(self, data, request, content_type=None):
+    def _writeOutput(self, data, request, content_type=None, options=None):
         # log.msg("_writeOutput: %s" % id(request))
 
         if content_type is None:
@@ -103,30 +104,31 @@ class BaseRenderResource(_ValidatingResource):
 
         if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
-            return self._writeOutput(data, request, "application/json")
+            return self._writeOutput(data, request, "application/json", options)
 
         if isinstance(data, tuple) and len(data) == 3:
             data, content_type, headers = data
 
             for name, value in headers:
                 request.setHeader(name, value)
-            return self._writeOutput(data, request, content_type)
+            return self._writeOutput(data, request, content_type, options)
 
         if isinstance(data, (bool, int, long, float, types.NoneType)):
-            return self._writeOutput(str(data), request, content_type)
+            return self._writeOutput(str(data), request, content_type, options)
 
         if isinstance(data, BinaryCapsule):
-            return self._writeOutput(data.data, request, content_type)
+            return self._writeOutput(data.data, request, content_type, options)
 
         request.setHeader("content-type", content_type)
 
-        self._logStats(request)
+        self._logStats(request, options)
+
         request.write(data)
 
-    def _logStats(self, request):
-        stats = {
+    def _logStats(self, request, options):
+
+        msg = {
             "path": request.path,
-            "args": request.args,
             "rendertime": time.time() - request.starttime,
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
@@ -134,8 +136,12 @@ class BaseRenderResource(_ValidatingResource):
             "active": len(self.pool.active),
             "qsize": len(self.pool.queue.pending),
             "_id": id(request),
+            "method": request.method,
+            "timestamp": int(time.time()),
+            "user-agent": request.getHeader("user-agent"),
+            "args": options
         }
-        log.msg(json.dumps(stats), system="stats")
+        log.msg(json.dumps(msg), system="events")
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
