@@ -7,9 +7,9 @@ import resource
 import contextlib
 import time
 import sys
+from urllib import urlencode
 
 import lupa
-from PyQt4.QtNetwork import QNetworkRequest
 
 from splash.browser_tab import JsError
 from splash.lua_runner import (
@@ -343,9 +343,23 @@ class Splash(object):
         ))
 
     @command(async=True)
-    def go(self, url, baseurl=None, headers=None):
+    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None):
         if url is None:
             raise ScriptError("'url' is required for splash:go")
+
+        headers = self.lua.lua2python(headers, max_depth=3)
+
+        if body:
+            body = self.lua.lua2python(body)
+            if isinstance(body, dict):
+                body = urlencode(body)
+            else:
+                raise ScriptError("POST request body must be Lua table")
+
+            if not headers:
+                headers = [{"content-type", "application/x-www-form-urlencoded"}]
+            else:
+                headers.setdefault("content-type", "application/x-www-form-urlencoded")
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
@@ -371,7 +385,9 @@ class Splash(object):
             baseurl=baseurl,
             callback=success,
             errback=error,
-            headers=self.lua.lua2python(headers, max_depth=3),
+            http_method=http_method,
+            body=body,
+            headers=headers
         ))
 
     @command()

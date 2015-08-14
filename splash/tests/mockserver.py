@@ -338,6 +338,7 @@ class PostResource(Resource):
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
+        request.setHeader("Content-Type", "text/plain; charset=utf-8")
         headers = request.getAllHeaders()
         payload = request.content.getvalue() if request.content is not None else ''
         return """

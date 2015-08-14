@@ -134,6 +134,35 @@ class MainFunctionTest(BaseLuaRenderTest):
         self.assertIn("is not a function", resp.text)
 
 
+class SplashGoTest(BaseLuaRenderTest):
+    def test_splash_go_POST(self):
+        resp = self.request_lua("""
+        function main(splash)
+          form_body = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="POST", body=form_body}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        # {'url': "http://httpbin.org/post"})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("param2", resp.text)
+        self.assertIn("param2=bar&amp;param1=foo", resp.text)
+
+    def test_splash_go_POST_baseurl(self):
+        # TODO
+        resp = self.request_lua("""
+        function main(splash)
+          form_body = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 body=form_body, baseurl="http://loc"}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        # {'url': "http://httpbin.org/post"})
+        # self.assertStatusCode(resp, 200)
+
+
+
 class ResultContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
         resp = self.request_lua("""
