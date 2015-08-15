@@ -63,13 +63,14 @@ class BaseRenderResource(_ValidatingResource):
 
         # check arguments before starting the render
         render_options.get_filters(self.pool)
+
         timeout = render_options.get_timeout()
         wait_time = render_options.get_wait()
 
         pool_d = self._getRender(request, render_options)
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancelTimer, timer)
-        pool_d.addCallback(self._writeOutput, request)
+        pool_d.addCallback(self._writeOutput, request, options=render_options.data)
         pool_d.addErrback(self._timeoutError, request)
         pool_d.addErrback(self._renderError, request)
         pool_d.addErrback(self._badRequest, request)
@@ -99,7 +100,7 @@ class BaseRenderResource(_ValidatingResource):
         timer.cancel()
         return _
 
-    def _writeOutput(self, data, request, content_type=None):
+    def _writeOutput(self, data, request, content_type=None, options=None):
         # log.msg("_writeOutput: %s" % id(request))
 
         if content_type is None:
@@ -107,30 +108,30 @@ class BaseRenderResource(_ValidatingResource):
 
         if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
-            return self._writeOutput(data, request, "application/json")
+            return self._writeOutput(data, request, "application/json", options)
 
         if isinstance(data, tuple) and len(data) == 3:
             data, content_type, headers = data
 
             for name, value in headers:
                 request.setHeader(name, value)
-            return self._writeOutput(data, request, content_type)
+            return self._writeOutput(data, request, content_type, options)
 
         if data is None or isinstance(data, (bool, six.integer_types, float)):
-            return self._writeOutput(str(data), request, content_type)
+            return self._writeOutput(str(data), request, content_type, options)
 
         if isinstance(data, BinaryCapsule):
-            return self._writeOutput(data.data, request, content_type)
+            return self._writeOutput(data.data, request, content_type, options)
 
         request.setHeader(b"content-type", content_type)
 
-        self._logStats(request)
+        self._logStats(request, options)
         if not isinstance(data, bytes):
             # Twisted expects bytes as response
             data = data.encode('utf-8')
         request.write(data)
 
-    def _logStats(self, request):
+    def _logStats(self, request, options):
 
         def args_to_unicode(args):
             unicode_args = {}
@@ -143,11 +144,10 @@ class BaseRenderResource(_ValidatingResource):
                 unicode_args[key] = val
                 return unicode_args
 
-        stats = {
+        msg = {
             # Anything we retrieve from Twisted request object contains bytes.
             # We have to convert it to unicode first for json.dump to succeed.
             "path": request.path.decode('utf-8'),
-            "args": args_to_unicode(request.args),
             "rendertime": time.time() - request.starttime,
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
@@ -155,8 +155,13 @@ class BaseRenderResource(_ValidatingResource):
             "active": len(self.pool.active),
             "qsize": len(self.pool.queue.pending),
             "_id": id(request),
+            "method": request.method.decode('ascii'),
+            "timestamp": int(time.time()),
+            "user-agent": (request.getHeader(b"user-agent").decode('utf-8')
+                           if request.getHeader(b"user-agent") else None),
+            "args": options
         }
-        log.msg(json.dumps(stats), system="stats")
+        log.msg(json.dumps(msg), system="events")
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
