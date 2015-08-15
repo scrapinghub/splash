@@ -77,7 +77,6 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertStatusCode(resp, 200)
         self.assertIn('After', resp.content.decode('utf-8'))
 
-    @pytest.mark.skipif(six.PY3, reason="requires https://twistedmatrix.com/trac/ticket/7981 to be fixed")
     def test_set_proxy(self):
         proxy_port = self.ts.mock_proxy_port
         resp = self.request_lua("""
