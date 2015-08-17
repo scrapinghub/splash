@@ -22,6 +22,8 @@ from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2as
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
+from splash.render_options import BadOption
+
 
 def skip_if_closing(meth):
     @functools.wraps(meth)
@@ -286,6 +288,9 @@ class BrowserTab(QObject):
         address tab and pressing Enter.
         """
         self.store_har_timing("_onStarted")
+        operation = getattr(self.network_manager, http_method.lower(), None)
+        if not operation:
+            raise BadOption("incorrect HTTP method")
 
         if baseurl:
             # If baseurl is used, we download the page manually,
@@ -787,7 +792,7 @@ class _SplashHttpClient(QObject):
         """ Set User-Agent header for future requests """
         self.web_page.custom_user_agent = value
 
-    def request_obj(self, url, headers=None):
+    def request_obj(self, url, headers=None, body=None):
         """ Return a QNetworkRequest object """
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
@@ -796,6 +801,11 @@ class _SplashHttpClient(QObject):
         if headers is not None:
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
+
+        if (body and not headers) or (body and not headers.get("content-type")):
+            # there is POST body but no content-type
+            # QT will set this header, but it will complain so better to do this here
+            request.setRawHeader("content-type", "application/x-www-form-urlencoded")
 
         return request
 
@@ -827,11 +837,17 @@ class _SplashHttpClient(QObject):
 
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
-        # XXX: The caller must ensure self._delete_reply is called in a callback.
-        if method != 'GET':
-            raise NotImplementedError()
-        request = self.request_obj(url, headers=headers)
-        reply = self.network_manager.get(request)
+        # XXX: The caller must ensure self._delete_reply is called in a callback
+        request = self.request_obj(url, headers=headers, body=body)
+        operation = getattr(self.network_manager, method.lower(), None)
+        if not operation:
+            raise BadOption("bad http method")
+
+        if body:
+            reply = operation(request, body)
+        else:
+            reply = operation(request)
+
         reply.finished.connect(callback)
         self._replies.add(reply)
         return reply

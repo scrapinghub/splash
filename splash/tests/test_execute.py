@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from base64 import standard_b64decode
-import json
 import unittest
 from cStringIO import StringIO
 import numbers
@@ -138,29 +137,43 @@ class SplashGoTest(BaseLuaRenderTest):
     def test_splash_go_POST(self):
         resp = self.request_lua("""
         function main(splash)
-          form_body = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="POST", body=form_body}
+          formdata = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="POST", formdata=formdata}
           return splash:html()
         end
         """, {"url": self.mockurl('postrequest')})
-        # {'url': "http://httpbin.org/post"})
         self.assertStatusCode(resp, 200)
-        self.assertIn("param2", resp.text)
         self.assertIn("param2=bar&amp;param1=foo", resp.text)
+        self.assertIn("application/x-www-form-urlencoded", resp.text)
 
     def test_splash_go_POST_baseurl(self):
-        # TODO
+        # if baseurl is passed request is processed differently
+        # so this test can fail even if above test goes fine
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 body=form_body, baseurl="http://loc",
+                                 formdata=formdata}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("param2=bar&amp;param1=foo", resp.text)
+        self.assertIn("application/x-www-form-urlencoded", resp.text)
+
+    def test_splash_bad_http_method(self):
+        # someone passses "BAD" as HTTP method
         resp = self.request_lua("""
         function main(splash)
           form_body = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="POST",
+          ok, reason = splash:go{splash.args.url, http_method="BAD",
                                  body=form_body, baseurl="http://loc"}
           return splash:html()
         end
         """, {"url": self.mockurl('postrequest')})
-        # {'url': "http://httpbin.org/post"})
-        # self.assertStatusCode(resp, 200)
-
+        self.assertStatusCode(resp, 400)
+        self.assertIn("incorrect HTTP method", resp.text)
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):

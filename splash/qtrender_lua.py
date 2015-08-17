@@ -343,23 +343,16 @@ class Splash(object):
         ))
 
     @command(async=True)
-    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None):
+    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
         if url is None:
             raise ScriptError("'url' is required for splash:go")
 
-        headers = self.lua.lua2python(headers, max_depth=3)
-
-        if body:
-            body = self.lua.lua2python(body)
+        if formdata:
+            body = self.lua.lua2python(formdata)
             if isinstance(body, dict):
                 body = urlencode(body)
             else:
-                raise ScriptError("POST request body must be Lua table")
-
-            if not headers:
-                headers = [{"content-type", "application/x-www-form-urlencoded"}]
-            else:
-                headers.setdefault("content-type", "application/x-www-form-urlencoded")
+                raise ScriptError("formdata argument for go() must be Lua table")
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
@@ -386,8 +379,8 @@ class Splash(object):
             callback=success,
             errback=error,
             http_method=http_method,
-            body=body,
-            headers=headers
+            body=self.lua.lua2python(body),
+            headers=self.lua.lua2python(headers, max_depth=3)
         ))
 
     @command()
