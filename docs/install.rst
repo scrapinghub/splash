@@ -45,20 +45,29 @@ OS X + Docker
 
 .. _manual-install-ubuntu:
 
-Ubuntu 12.04 (manual way)
+Ubuntu 14.04 (manual way)
 -------------------------
 
 1. Install system dependencies::
 
        $ sudo add-apt-repository -y ppa:pi-rho/security
+       $ sudo apt-add-repository -y ppa:beineri/opt-qt541-trusty
        $ sudo apt-get update
        $ sudo apt-get install libre2-dev
        $ sudo apt-get install netbase ca-certificates liblua5.2-dev \
-                              python python-dev build-essential libicu48 \
-                              xvfb libqt4-webkit python-twisted python-qt4
+                              python3 python3-dev build-essential libicu52 \
+                              xvfb qt54base qt54declarative qt54webkit \
+                              python3-pyqt5 python3-pyqt5.qtwebkit python3-pip \
+                              libffi-dev
 
-2. TODO: install Python dependencies using pip, clone repo, chdir to it,
-   start splash.
+2. Clone the repo from Github::
+
+        $ git clone https://github.com/scrapinghub/splash/
+
+3. Install dependencies with pip::
+
+        $ cd splash
+        $ pip3 install -r requirements.txt
 
 
 To run the server execute the following command::
