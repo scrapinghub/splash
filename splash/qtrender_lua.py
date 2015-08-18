@@ -27,7 +27,8 @@ from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
     set_request_url,
-    create_proxy
+    create_proxy,
+    OPERATION_QT_CONSTANTS
 )
 from splash.lua_runtime import SplashLuaRuntime
 
@@ -346,6 +347,9 @@ class Splash(object):
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
         if url is None:
             raise ScriptError("'url' is required for splash:go")
+
+        if http_method not in OPERATION_QT_CONSTANTS:
+            raise ScriptError("incorrect HTTP method: {}".format(http_method))
 
         if formdata:
             body = self.lua.lua2python(formdata)

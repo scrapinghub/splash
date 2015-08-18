@@ -4,6 +4,8 @@ import os
 import json
 from splash import defaults
 
+from splash.qtutils import OPERATION_QT_CONSTANTS
+
 
 class BadOption(Exception):
     pass
@@ -138,7 +140,10 @@ class RenderOptions(object):
         return self.get("quality", defaults.JPEG_QUALITY, type=int, range=(0, 100))
 
     def get_http_method(self):
-        return self.get("http_method", "GET")
+        method = self.get("http_method", "GET")
+        if method not in OPERATION_QT_CONSTANTS:
+            raise BadOption("HTTP method {} not allowed".format(method))
+        return method
 
     def get_body(self):
         return self.get("body", None)

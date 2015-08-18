@@ -288,9 +288,11 @@ class BrowserTab(QObject):
         address tab and pressing Enter.
         """
         self.store_har_timing("_onStarted")
-        operation = getattr(self.network_manager, http_method.lower(), None)
-        if not operation:
-            raise BadOption("incorrect HTTP method")
+
+        if body and http_method not in ["POST", "PUT"]:
+            # if someone gives body but forgets method
+            # QT will raise exceptions
+            http_method = "POST"
 
         if baseurl:
             # If baseurl is used, we download the page manually,
@@ -839,9 +841,13 @@ class _SplashHttpClient(QObject):
                       headers=None):
         # XXX: The caller must ensure self._delete_reply is called in a callback
         request = self.request_obj(url, headers=headers, body=body)
+
         operation = getattr(self.network_manager, method.lower(), None)
+
         if not operation:
-            raise BadOption("bad http method")
+            # this should never happen (arguments are validated earlier)
+            # but just in case
+            operation = self.network_manager.get
 
         if body:
             reply = operation(request, body)
