@@ -1,10 +1,10 @@
 # install PyQt4 (Splash is tested on PyQT 4.9.x and PyQT 4.11.x)
 # and the following packages:
-twisted
+https://github.com/twisted/twisted/archive/trunk.zip#egg=twisted
 qt5reactor-fork
 psutil
 adblockparser >= 0.4
-re2 >= 0.2.21
+https://github.com/sunu/pyre2/archive/master.zip#egg=pyre2
 xvfbwrapper
 Pillow
 
