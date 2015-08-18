@@ -146,6 +146,23 @@ class SplashGoTest(BaseLuaRenderTest):
         self.assertIn("param2=bar&amp;param1=foo", resp.text)
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
+    def test_splash_POST_json(self):
+        json_payload = '{"name": "Frank", "address": "Elmwood Avenue 112"}'
+        resp = self.request_lua("""
+            function main(splash)
+              headers = {}
+              headers["content-type"] =  "application/json"
+              ok, reason = splash:go{splash.args.url, http_method="POST",
+                                     body='%s',
+                                     headers=headers}
+              return splash:html()
+            end
+        """ % json_payload, {"url": self.mockurl('postrequest')})
+
+        self.assertStatusCode(resp, 200)
+        self.assertIn("application/json", resp.text)
+        self.assertIn(json_payload, resp.text)
+
     def test_splash_go_POST_baseurl(self):
         # if baseurl is passed request is processed differently
         # so this test can fail even if above test goes fine

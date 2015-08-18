@@ -402,7 +402,7 @@ class BrowserTab(QObject):
             self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
-        request = self.http_client.request_obj(url, headers=headers)
+        request = self.http_client.request_obj(url, headers=headers, body=body)
         meth = OPERATION_QT_CONSTANTS[http_method]
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
@@ -804,7 +804,7 @@ class _SplashHttpClient(QObject):
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
 
-        if (body and not headers) or (body and not headers.get("content-type")):
+        if (body and not headers) or (body and not request.hasRawHeader("content-type")):
             # there is POST body but no content-type
             # QT will set this header, but it will complain so better to do this here
             request.setRawHeader("content-type", "application/x-www-form-urlencoded")

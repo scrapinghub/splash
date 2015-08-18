@@ -345,6 +345,7 @@ class Splash(object):
 
     @command(async=True)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
+
         if url is None:
             raise ScriptError("'url' is required for splash:go")
 
@@ -357,6 +358,11 @@ class Splash(object):
                 body = urlencode(body)
             else:
                 raise ScriptError("formdata argument for go() must be Lua table")
+
+        elif body:
+            body = self.lua.lua2python(body)
+            if not isinstance(body, basestring):
+                raise ScriptError("request body must be string")
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
@@ -383,7 +389,7 @@ class Splash(object):
             callback=success,
             errback=error,
             http_method=http_method,
-            body=self.lua.lua2python(body),
+            body=body,
             headers=self.lua.lua2python(headers, max_depth=3)
         ))
 
