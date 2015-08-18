@@ -11,10 +11,3 @@ Pillow
 # for scripting support
 lupa >= 1.1
 funcparserlib >= 0.3.6
-
-# the following libraries are only required by tests
-pytest
-pyOpenSSL
-requests >= 1.0
-jsonschema >= 2.0
-strict-rfc3339

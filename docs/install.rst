@@ -58,7 +58,17 @@ Ubuntu 14.04 (manual way)
                               python3 python3-dev build-essential libicu52 \
                               xvfb qt54base qt54declarative qt54webkit \
                               python3-pyqt5 python3-pyqt5.qtwebkit python3-pip \
-                              libffi-dev
+                              zlib1g-dev
+       # Install more recent version of sip.
+       $ curl -L -o sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz && \
+       $ echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - \
+       $ tar xzf sip.tar.gz && \
+       $ pushd sip-4.16.7 && \
+       $ python3 configure.py && \
+       $ make && \
+       $ make install && \
+       $ popd && \
+       $ rm -rf sip-4.16.7 sip.tar.gz
 
 2. Clone the repo from Github::
 

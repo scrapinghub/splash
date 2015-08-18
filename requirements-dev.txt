@@ -1,0 +1,7 @@
+# the following libraries are only required by tests
+pytest
+pyOpenSSL
+cryptography
+requests >= 1.0
+jsonschema >= 2.0
+strict-rfc3339

@@ -48,14 +48,13 @@ install_deps () {
         qt54webkit \
         python3-pyqt5 \
         python3-pyqt5.qtwebkit \
-        python3-sip-dev \
-        python3-pip \
         libre2 \
         libicu52 \
         liblua5.2-0 \
         zlib1g && \
     # Install more recent version of sip.
     curl -L -o sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz && \
+    echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - \
     tar xzf sip.tar.gz && \
     pushd sip-4.16.7 && \
     python3 configure.py && \
@@ -72,6 +71,7 @@ install_builddeps () {
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         python3-dev \
+        python3-pip \
         build-essential \
         libre2-dev \
         liblua5.2-dev \
@@ -91,7 +91,7 @@ install_python_deps () {
         lupa==1.1 \
         funcparserlib==0.3.6 \
         Pillow==2.9.0 && \
-    pip3 install https://github.com/sunu/pyre2/archive/master.zip\#egg\=pyre2
+    pip3 install https://github.com/sunu/pyre2/archive/master.zip#egg=pyre2
 }
 
 install_msfonts() {
