@@ -82,7 +82,7 @@ install_builddeps () {
 install_python_deps () {
     # Install python-level dependencies.
     pip3 install -U pip && \
-    pip3 install -U https://github.com/twisted/twisted/archive/trunk.zip#egg=twisted && \
+    pip3 install -U https://github.com/twisted/twisted/archive/a5108c0db829847bbfd4bf427868eb0b13da0465.zip#egg=twisted && \
     pip3 install \
         qt5reactor-fork==0.2 \
         psutil==3.1.1 \
@@ -91,7 +91,7 @@ install_python_deps () {
         lupa==1.1 \
         funcparserlib==0.3.6 \
         Pillow==2.9.0 && \
-    pip3 install https://github.com/sunu/pyre2/archive/master.zip#egg=pyre2
+    pip3 install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
 }
 
 install_msfonts() {
