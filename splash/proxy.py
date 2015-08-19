@@ -11,9 +11,10 @@ an HTTP proxy (see :mod:`splash.proxy_server`).
 from __future__ import absolute_import
 import re
 import os
-import ConfigParser
 
 from PyQt5.QtNetwork import QNetworkProxy
+import six
+from six.moves import configparser
 
 from splash.render_options import BadOption
 from splash.qtutils import create_proxy, validate_proxy_type
@@ -31,8 +32,8 @@ class _BlackWhiteSplashProxyFactory(object):
         self.proxy_list = proxy_list or []
 
     def queryProxy(self, query=None, *args, **kwargs):
-        protocol = unicode(query.protocolTag())
-        url = unicode(query.url().toString())
+        protocol = six.text_type(query.protocolTag())
+        url = six.text_type(query.url().toString())
         if self.shouldUseProxyList(protocol, url):
             return self._customProxyList()
 
@@ -128,7 +129,7 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
             return ini_path
 
     def _parseIni(self, ini_path):
-        parser = ConfigParser.ConfigParser(allow_no_value=True)
+        parser = configparser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
             raise BadOption(self.NO_PROXY_PROFILE_MSG)
 
@@ -136,7 +137,7 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         whitelist = _get_lines(parser, 'rules', 'whitelist', [])
         try:
             proxy = dict(parser.items('proxy'))
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             raise BadOption("Invalid proxy profile: no [proxy] section found")
 
         try:
@@ -164,5 +165,5 @@ def _get_lines(config_parser, section, option, default):
     try:
         lines = config_parser.get(section, option).splitlines()
         return [line for line in lines if line]
-    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+    except (configparser.NoOptionError, configparser.NoSectionError):
         return default

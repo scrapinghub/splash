@@ -14,6 +14,7 @@ from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
 from twisted.internet import defer
 from twisted.python import log
+import six
 
 from splash import defaults
 from splash.har.qt import cookies2har
@@ -236,8 +237,6 @@ class BrowserTab(QObject):
             mime_type = "text/html; charset=utf-8"
         if baseurl is None:
             baseurl = ''
-        if isinstance(data, unicode):
-            data = data.encode('utf8')
         callback_id = self._load_finished.connect(
             self._on_content_ready,
             callback=callback,
@@ -279,7 +278,7 @@ class BrowserTab(QObject):
     @property
     def url(self):
         """ Current URL """
-        return unicode(self.web_page.mainFrame().url().toString())
+        return six.text_type(self.web_page.mainFrame().url().toString())
 
     def go(self, url, callback, errback, baseurl=None, http_method='GET',
            body=None, headers=None):
@@ -491,7 +490,7 @@ class BrowserTab(QObject):
 
     def _on_url_changed(self, url):
         # log history
-        url = unicode(url.toString())
+        url = six.text_type(url.toString())
         cause_ev = self.web_page.har_log._prev_entry(url, -1)
         if cause_ev:
             self._history.append(without_private(cause_ev.data))
@@ -552,7 +551,7 @@ class BrowserTab(QObject):
         if not handle_errors:
             return qt2py(frame.evaluateJavaScript(js_source))
 
-        escaped = json.dumps([js_source], ensure_ascii=False, encoding='utf8')[1:-1]
+        escaped = json.dumps([js_source], ensure_ascii=False)[1:-1]
         wrapped = """
         (function(script_text){
             try{
@@ -676,7 +675,7 @@ class BrowserTab(QObject):
         """ Return HTML of the current main frame """
         self.logger.log("getting HTML", min_level=2)
         frame = self.web_page.mainFrame()
-        result = bytes(frame.toHtml().encode('utf-8'))
+        result = frame.toHtml()
         self.store_har_timing("_onHtmlRendered")
         return result
 
@@ -708,7 +707,7 @@ class BrowserTab(QObject):
         image = self._get_image('PNG', width, height, render_all, scale_method)
         result = image.to_png()
         if b64:
-            result = base64.b64encode(result)
+            result = base64.b64encode(result).decode('utf-8')
         self.store_har_timing("_onPngRendered")
         return result
 
@@ -722,7 +721,7 @@ class BrowserTab(QObject):
         image = self._get_image('JPEG', width, height, render_all, scale_method)
         result = image.to_jpeg(quality=quality)
         if b64:
-            result = base64.b64encode(result)
+            result = base64.b64encode(result).decode('utf-8')
         self.store_har_timing("_onJpegRendered")
         return result
 
@@ -759,20 +758,20 @@ class BrowserTab(QObject):
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
-            "url": unicode(frame.url().toString()),
-            "requestedUrl": unicode(frame.requestedUrl().toString()),
+            "url": six.text_type(frame.url().toString()),
+            "requestedUrl": six.text_type(frame.requestedUrl().toString()),
             "geometry": (g.x(), g.y(), g.width(), g.height()),
-            "title": unicode(frame.title())
+            "title": six.text_type(frame.title())
         }
         if html:
-            res["html"] = unicode(frame.toHtml())
+            res["html"] = six.text_type(frame.toHtml())
 
         if children:
             res["childFrames"] = [
                 self._frame_to_dict(f, True, html)
                 for f in frame.childFrames()
             ]
-            res["frameName"] = unicode(frame.frameName())
+            res["frameName"] = six.text_type(frame.frameName())
 
         return res
 
@@ -798,7 +797,6 @@ class _SplashHttpClient(QObject):
         if headers is not None:
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
-
         return request
 
     def request(self, url, callback, method='GET', body=None,
@@ -895,7 +893,7 @@ class _JavascriptConsole(QObject):
 
     @pyqtSlot(str)
     def log(self, message):
-        self.messages.append(unicode(message))
+        self.messages.append(six.text_type(message))
 
 
 class _BrowserTabLogger(object):
@@ -945,7 +943,7 @@ class _BrowserTabLogger(object):
         if min_level is not None and self.verbosity < min_level:
             return
 
-        if isinstance(message, unicode):
+        if isinstance(message, six.text_type):
             message = message.encode('unicode-escape').decode('ascii')
 
         message = "[%s] %s" % (self.uid, message)

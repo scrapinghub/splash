@@ -2,6 +2,9 @@
 from __future__ import absolute_import
 import os
 import json
+
+import six
+
 from splash import defaults
 
 
@@ -27,54 +30,55 @@ class RenderOptions(object):
         """
 
         # 1. GET / POST data
-        data = {key: values[0] for key, values in request.args.items()}
-        if request.method == 'POST':
-            content_type = request.getHeader('content-type')
+        data = {key.decode('utf-8'): values[0].decode('utf-8') for key, values
+                in request.args.items()}
+        if request.method == b'POST':
+            content_type = request.getHeader(b'content-type')
             if content_type:
                 request.content.seek(0)
 
                 # 2. application/json POST data
-                if 'application/json' in content_type:
+                if b'application/json' in content_type:
                     try:
-                        data.update(json.load(request.content, encoding='utf8'))
+                        content = request.content.read().decode('utf-8')
+                        data.update(json.loads(content, encoding='utf8'))
                     except ValueError as e:
-                        raise BadOption("Invalid JSON: '{}'".format(e.message))
+                        raise BadOption("Invalid JSON: '{}'".format(str(e)))
 
                 # 3. js_source from application/javascript POST requests
-                if 'application/javascript' in content_type:
-                    data['js_source'] = request.content.read()
+                if b'application/javascript' in content_type:
+                    data['js_source'] = request.content.read().decode('utf-8')
                 request.content.seek(0)
 
         # 4. handle proxy requests
         if getattr(request, 'inspect_me', False):
             headers = [
-                (name, value)
+                (name.decode('utf-8'), value.decode('utf-8'))
                 for name, values in request.requestHeaders.getAllRawHeaders()
                 for value in values
-            ]
+                ]
             data.setdefault('headers', headers)
-            data.setdefault('http_method', request.method)
+            data.setdefault('http_method', request.method.decode('utf-8'))
 
             request.content.seek(0)
-            data.setdefault('body', request.content.read())
+            data.setdefault('body', request.content.read().decode('utf-8'))
             request.content.seek(0)
 
         data['uid'] = id(request)
         return cls(data, max_timeout)
 
-    def get(self, name, default=_REQUIRED, type=str, range=None):
+    def get(self, name, default=_REQUIRED, type=six.text_type, range=None):
         value = self.data.get(name)
         if value is not None:
             if type is not None:
-                if type is str and isinstance(value, unicode):
-                    value = value.encode('utf8')
-                else:
-                    try:
-                        value = type(value)
-                    except ValueError:
-                        raise BadOption("Argument %r is not of expected value" % (name))
+                try:
+                    value = type(value)
+                except ValueError:
+                    raise BadOption(
+                        "Argument %r is not of expected value" % (name))
             if range is not None and not (range[0] <= value <= range[1]):
-                raise BadOption("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
+                raise BadOption("Argument %r out of range (%d-%d)" % (
+                    name, range[0], range[1]))
             return value
         elif default is self._REQUIRED:
             raise BadOption("Missing argument: %s" % name)
@@ -100,12 +104,13 @@ class RenderOptions(object):
         return self._get_url("baseurl", default=None)
 
     def get_wait(self):
-        return self.get("wait", defaults.WAIT_TIME,
-                        type=float, range=(0, defaults.MAX_WAIT_TIME))
+        return self.get("wait", defaults.WAIT_TIME, type=float,
+                        range=(0, defaults.MAX_WAIT_TIME))
 
     def get_timeout(self):
         default = min(self.max_timeout, defaults.TIMEOUT)
-        return self.get("timeout", default, type=float, range=(0, self.max_timeout))
+        return self.get("timeout", default, type=float,
+                        range=(0, self.max_timeout))
 
     def get_resource_timeout(self):
         return self.get("resource_timeout", defaults.RESOURCE_TIMEOUT,
@@ -124,7 +129,8 @@ class RenderOptions(object):
         return self.get("width", None, type=int, range=(1, defaults.MAX_WIDTH))
 
     def get_height(self):
-        return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
+        return self.get("height", None, type=int,
+                        range=(1, defaults.MAX_HEIGTH))
 
     def get_scale_method(self):
         scale_method = self.get("scale_method", defaults.IMAGE_SCALE_METHOD)
@@ -178,9 +184,9 @@ class RenderOptions(object):
 
         if isinstance(headers, (list, tuple)):
             for el in headers:
-                if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
+                string_only = all(isinstance(e, six.string_types) for e in el)
+                if not (isinstance(el, (list, tuple)) and len(el) == 2 and string_only):
                     raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
-
         return headers
 
     def get_viewport(self, wait=None):
@@ -228,14 +234,14 @@ class RenderOptions(object):
 
     def get_allowed_content_types(self):
         content_types = self.get("allowed_content_types", default=['*'])
-        if isinstance(content_types, basestring):
-            content_types = filter(None, content_types.split(','))
+        if isinstance(content_types, six.text_type):
+            content_types = list(filter(None, content_types.split(',')))
         return content_types
 
     def get_forbidden_content_types(self):
         content_types = self.get("forbidden_content_types", default=[])
-        if isinstance(content_types, basestring):
-            content_types = filter(None, content_types.split(','))
+        if isinstance(content_types, six.text_type):
+            content_types = list(filter(None, content_types.split(',')))
         return content_types
 
     def get_common_params(self, js_profiles_path):
@@ -305,6 +311,6 @@ def validate_size_str(size_str):
         raise ValueError("Invalid viewport format: %s" % size_str)
     else:
         if not ((0 < w <= max_width) and (0 < h <= max_heigth) and
-                (w*h < max_area)):
+                    (w * h < max_area)):
             raise ValueError("Viewport is out of range (%dx%d, area=%d)" %
                              (max_width, max_heigth, max_area))

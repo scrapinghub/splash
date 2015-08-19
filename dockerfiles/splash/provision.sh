@@ -28,34 +28,50 @@ prepare_install () {
     sed 's/main$/main universe/' -i /etc/apt/sources.list && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
+        curl \
         software-properties-common \
         python-software-properties
 }
 
 install_deps () {
     # Install package dependencies.
-    # ppa:pi-rho/security is a repo for libre2
-    add-apt-repository -y ppa:pi-rho/security && \
+    apt-add-repository -y ppa:beineri/opt-qt541-trusty && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         netbase \
         ca-certificates \
         xvfb \
         pkg-config \
-        python \
-        libqt4-webkit \
-        python-qt4 \
-        python-pip \
+        python3 \
+        qt54base \
+        qt54declarative \
+        qt54webkit \
+        python3-pyqt5 \
+        python3-pyqt5.qtwebkit \
         libre2 \
-        libicu48 \
-        liblua5.2 \
-        zlib1g
+        libicu52 \
+        liblua5.2-0 \
+        zlib1g && \
+    # Install more recent version of sip.
+    curl -L -o sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz && \
+    echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - \
+    tar xzf sip.tar.gz && \
+    pushd sip-4.16.7 && \
+    python3 configure.py && \
+    make && \
+    make install && \
+    popd && \
+    rm -rf sip-4.16.7 sip.tar.gz
 }
 
 install_builddeps () {
     # Install build dependencies for package (and its pip dependencies).
+    # ppa:pi-rho/security is a repo for libre2-dev
+    add-apt-repository -y ppa:pi-rho/security && \
+    apt-get update -q && \
     apt-get install -y --no-install-recommends \
-        python-dev \
+        python3-dev \
+        python3-pip \
         build-essential \
         libre2-dev \
         liblua5.2-dev \
@@ -65,23 +81,23 @@ install_builddeps () {
 
 install_python_deps () {
     # Install python-level dependencies.
-    pip install -U pip && \
-    /usr/local/bin/pip install --no-cache-dir \
-        Twisted==15.2.1 \
-        qt4reactor==1.6 \
+    pip3 install -U pip && \
+    pip3 install -U https://github.com/twisted/twisted/archive/a5108c0db829847bbfd4bf427868eb0b13da0465.zip#egg=twisted && \
+    pip3 install \
+        qt5reactor-fork==0.2 \
         psutil==3.1.1 \
         adblockparser==0.4 \
-        re2==0.2.21 \
         xvfbwrapper==0.2.4 \
         lupa==1.1 \
         funcparserlib==0.3.6 \
-        Pillow==2.9.0
+        Pillow==2.9.0 && \
+    pip3 install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
 }
 
 install_msfonts() {
     # Agree with EULA and install Microsoft fonts
-    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu precise multiverse" && \
-    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu precise-updates multiverse" && \
+    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu trusty multiverse" && \
+    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu trusty-updates multiverse" && \
     apt-get update && \
     echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections && \
     apt-get install -y ttf-mscorefonts-installer
@@ -89,13 +105,13 @@ install_msfonts() {
 
 install_extra_fonts() {
     # Install extra fonts (Chinese)
-    apt-get install ttf-wqy-zenhei
+    apt-get install -y ttf-wqy-zenhei
 }
 
 remove_builddeps () {
     # Uninstall build dependencies.
     apt-get remove -y --purge \
-        python-dev \
+        python3-dev \
         build-essential \
         libre2-dev \
         liblua5.2-dev \

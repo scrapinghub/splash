@@ -118,7 +118,7 @@ class BaseScriptRunner(object):
                 # previous result is a final result returned from "main"
                 self.log("[lua] returning result")
                 try:
-                    res = self.lua.lua2python(self.result)
+                    res = self.lua.lua2python(self.result, binary=False)
                 except ValueError as e:
                     # can't convert result to a Python object
                     raise ScriptError("'main' returned bad result. {!s}".format(e))

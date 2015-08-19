@@ -3,12 +3,13 @@ from __future__ import absolute_import
 from base64 import standard_b64decode
 import json
 import unittest
-from cStringIO import StringIO
+from io import BytesIO
 import numbers
 import time
 
 from PIL import Image
 import requests
+import six
 import pytest
 lupa = pytest.importorskip("lupa")
 
@@ -63,7 +64,7 @@ class MainFunctionTest(BaseLuaRenderTest):
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
-        """.encode('utf8'))
+        """)
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
@@ -74,7 +75,7 @@ class MainFunctionTest(BaseLuaRenderTest):
         function main(splash)
           return 'привет'
         end
-        """.encode('utf8'))
+        """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, u"привет")
         self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
@@ -210,7 +211,7 @@ class ResultHeaderTest(BaseLuaRenderTest):
         self.assertErrorLineNumber(resp, 3)
 
     def test_unicode_headers_raise_bad_request(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:set_result_header("paweł", "kiść")
             return "hi!"
@@ -232,7 +233,7 @@ class ErrorsTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
 
     def test_unicode_error(self):
-        resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))
+        resp = self.request_lua(u"function main(splash) 'привет' end")
         self.assertStatusCode(resp, 400)
         self.assertIn("unexpected symbol", resp.text)
 
@@ -499,7 +500,7 @@ class EvaljsTest(BaseLuaRenderTest):
     def assertEvaljsError(self, js, error_parts="JsError"):
         resp = self._evaljs_request(js)
         self.assertStatusCode(resp, 400)
-        if isinstance(error_parts, (bytes, unicode)):
+        if isinstance(error_parts, (bytes, six.text_type)):
             error_parts = [error_parts]
         for part in error_parts:
             self.assertIn(part, resp.text)
@@ -949,7 +950,10 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call: u'ABC'", resp.text)
+        if six.PY3:
+            self.assertIn("error during JS function call: 'ABC'", resp.text)
+        else:
+            self.assertIn("error during JS function call: u'ABC'", resp.text)
 
     def test_throw_pcall(self):
         resp = self.request_lua("""
@@ -962,7 +966,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        self.assertIn("error during JS function call: u'ABC'", data["res"])
+        if six.PY3:
+            self.assertIn("error during JS function call: 'ABC'", data[u"res"])
+        else:
+            self.assertIn("error during JS function call: u'ABC'", data[u"res"])
 
     def test_throw_error(self):
         resp = self.request_lua("""
@@ -972,7 +979,10 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call: u'Error: ABC'", resp.text)
+        if six.PY3:
+            self.assertIn("error during JS function call: 'Error: ABC'", resp.text)
+        else:
+            self.assertIn("error during JS function call: u'Error: ABC'", resp.text)
 
     def test_throw_error_pcall(self):
         resp = self.request_lua("""
@@ -985,7 +995,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        self.assertIn("error during JS function call: u'Error: ABC'", data["res"])
+        if six.PY3:
+            self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
+        else:
+            self.assertIn("error during JS function call: u'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
         resp = self.request_lua("""
@@ -1062,7 +1075,7 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json()['ok'], True)
+        self.assertEqual(resp.json()[u'ok'], True)
 
     def test_private_jsfunc_attributes(self):
         resp = self.request_lua("""
@@ -1230,7 +1243,7 @@ class JsonPostUnicodeTest(BaseLuaRenderTest):
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
-        """.encode('utf8'))
+        """)
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
@@ -1353,8 +1366,12 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertIn("{'foo': ['1']}", data['html_1'])
-        self.assertIn("{'bar': ['2']}", data['html_2'])
+        if six.PY3:
+            self.assertIn("{b'foo': [b'1']}", data['html_1'])
+            self.assertIn("{b'bar': [b'2']}", data['html_2'])
+        else:
+            self.assertIn("{'foo': ['1']}", data['html_1'])
+            self.assertIn("{'bar': ['2']}", data['html_2'])
 
     def test_go_404_then_good(self):
         resp = self.request_lua("""
@@ -1486,9 +1503,14 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn("Mozilla", data["res2"])
         self.assertNotIn("Mozilla", data["res3"])
 
-        self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-        self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-        self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+        if six.PY3:
+            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
+            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
+            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
+        else:
+            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
+            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
+            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
 
 
 class CookiesTest(BaseLuaRenderTest):
@@ -1548,7 +1570,6 @@ class CookiesTest(BaseLuaRenderTest):
             'httpOnly': False,
             'secure': False
         }
-
         self.assertEqual(data["c0"], [])
         self.assertEqual(data["c1"], [cookie1])
         self.assertEqual(data["c2"], [cookie1, cookie2])
@@ -2113,7 +2134,7 @@ class SetContentTest(BaseLuaRenderTest):
         })
 
     def test_unicode(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             assert(splash:set_content("проверка"))
             return splash:html()
@@ -2138,13 +2159,13 @@ class SetContentTest(BaseLuaRenderTest):
         """
         resp = self.request_lua(script, {"base": self.mockurl("")})
         self.assertStatusCode(resp, 200)
-        img = Image.open(StringIO(resp.content))
+        img = Image.open(BytesIO(resp.content))
         self.assertEqual((0,0,0,255), img.getpixel((10, 10)))
 
         # the same, but with a bad base URL
         resp = self.request_lua(script, {"base": ""})
         self.assertStatusCode(resp, 200)
-        img = Image.open(StringIO(resp.content))
+        img = Image.open(BytesIO(resp.content))
         self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
 
     def test_url(self):
@@ -2166,8 +2187,8 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         end
         """
         out = self.request_lua(func).json()
-        self.assertItemsEqual(out.keys(),
-                              ['walltime', 'cputime', 'maxrss'])
+        self.assertEqual(sorted(list(out.keys())),
+                              sorted(['walltime', 'cputime', 'maxrss']))
         self.assertIsInstance(out['cputime'], numbers.Real)
         self.assertIsInstance(out['walltime'], numbers.Real)
         self.assertIsInstance(out['maxrss'], numbers.Integral)
@@ -2263,41 +2284,57 @@ end
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(1, nil)', 'TypeError.*a number is required'),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(nil, 1)', 'TypeError.*a number is required'),
-            ('{nil, 1}', 'TypeError.*a number is required'),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('()', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 2 required positional arguments:*'),
+            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 2 required positional arguments:*'),
+            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('(1, nil)', 'TypeError.*a number is required', None),
+            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('(nil, 1)', 'TypeError.*a number is required', None),
+            ('{nil, 1}', 'TypeError.*a number is required', None),
+            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'TypeError.*a number is required'),
-            ('{100, {}}', 'TypeError.*a number is required'),
+            ('{100, "a"}', 'TypeError.*a number is required', None),
+            ('{100, {}}', 'TypeError.*a number is required', None),
 
-            ('{100, -1}', 'Viewport is out of range'),
-            ('{100, 0}', 'Viewport is out of range'),
-            ('{100, 99999}', 'Viewport is out of range'),
-            ('{1, -100}', 'Viewport is out of range'),
-            ('{0, 100}', 'Viewport is out of range'),
-            ('{99999, 100}', 'Viewport is out of range'),
+            ('{100, -1}', 'Viewport is out of range', None),
+            ('{100, 0}', 'Viewport is out of range', None),
+            ('{100, 99999}', 'Viewport is out of range', None),
+            ('{1, -100}', 'Viewport is out of range', None),
+            ('{0, 100}', 'Viewport is out of range', None),
+            ('{99999, 100}', 'Viewport is out of range', None),
             ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for size_str, errmsg in cases:
-            self.assertRaisesRegexp(RuntimeError, errmsg, run_test, size_str)
+        for size_str, errmsg_py2, errmsg_py3 in cases:
+            if not errmsg_py3:
+                errmsg_py3 = errmsg_py2
+            if six.PY3:
+                self.assertRaisesRegexp(RuntimeError, errmsg_py3, run_test, size_str)
+            else:
+                self.assertRaisesRegexp(RuntimeError, errmsg_py2, run_test, size_str)
 
     def test_viewport_full(self):
         w = int(defaults.VIEWPORT_SIZE.split('x')[0])
@@ -2338,7 +2375,7 @@ end
         self.assertEqual(out['before'], {'1': w, '2': h})
         self.assertEqual(out['after'], {'1': w, '2': h})
         # 2000px is hardcoded in that html
-        img = Image.open(StringIO(standard_b64decode(out['png'])))
+        img = Image.open(BytesIO(standard_b64decode(out['png'])))
         self.assertEqual(img.size, (w, 2000))
 
     def test_set_viewport_size_changes_contents_size_immediately(self):

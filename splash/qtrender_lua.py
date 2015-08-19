@@ -9,6 +9,7 @@ import time
 import sys
 
 import lupa
+import six
 
 from splash.browser_tab import JsError
 from splash.lua_runner import (
@@ -219,9 +220,9 @@ class _WrappedJavascriptFunction(object):
     @can_raise
     @emits_lua_objects
     def __call__(self, *args):
-        args = self.lua.lua2python(args)
-        args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
-        func_text = json.dumps([self.source], ensure_ascii=False, encoding='utf8')[1:-1]
+        args = self.lua.lua2python(args, binary=False)
+        args_text = json.dumps(args, ensure_ascii=False)[1:-1]
+        func_text = json.dumps([self.source], ensure_ascii=False)[1:-1]
         wrapper_script = """
         (function(func_text){
             try{
@@ -483,12 +484,13 @@ class Splash(object):
         else:
             # load JS from a remote resource
             cmd_id = next(self._command_ids)
+
             def callback(reply):
                 if reply.error():
                     reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
                     self._return(cmd_id, None, reason)
                 else:
-                    source = bytes(reply.readAll())
+                    source = bytes(reply.readAll()).decode('utf-8')
                     self.tab.autoload(source)
                     self._return(cmd_id, True)
 
@@ -500,6 +502,8 @@ class Splash(object):
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
         cmd_id = next(self._command_ids)
+        if isinstance(data, six.text_type):
+            data = data.encode('utf8')
 
         def success():
             self._return(cmd_id, True)
@@ -533,7 +537,7 @@ class Splash(object):
 
     @command(table_argument=True)
     def init_cookies(self, cookies):
-        cookies = self.lua.lua2python(cookies, max_depth=3)
+        cookies = self.lua.lua2python(cookies, binary=False, max_depth=3)
         if isinstance(cookies, dict):
             keys = sorted(cookies.keys())
             cookies = [cookies[k] for k in keys]
@@ -561,18 +565,18 @@ class Splash(object):
 
     @command()
     def set_result_content_type(self, content_type):
-        if not isinstance(content_type, basestring):
+        if not isinstance(content_type, six.string_types):
             raise ScriptError("splash:set_result_content_type() argument must be a string")
         self._result_content_type = content_type
 
     @command()
     def set_result_header(self, name, value):
-        if not all([isinstance(h, basestring) for h in [name, value]]):
+        if not all([isinstance(h, six.string_types) for h in [name, value]]):
             raise ScriptError("splash:set_result_header() arguments must be strings")
 
         try:
-            name = name.decode('utf-8').encode('ascii')
-            value = value.decode('utf-8').encode('ascii')
+            name = name.encode('ascii')
+            value = value.encode('ascii')
         except UnicodeEncodeError:
             raise ScriptError("splash:set_result_header() arguments must be ascii")
 
@@ -581,7 +585,7 @@ class Splash(object):
 
     @command()
     def set_user_agent(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             raise ScriptError("splash:set_user_agent() argument must be a string")
         self.tab.set_user_agent(value)
 
@@ -786,7 +790,7 @@ class _WrappedResponse(object):
         self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
-        _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
+        _headers = {bytes(k): bytes(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
         self.info = self.lua.python2lua(reply2har(reply))
         commands = get_commands(self)

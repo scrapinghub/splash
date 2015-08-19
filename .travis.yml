@@ -1,23 +1,29 @@
 language: python
 
 python:
-    - 2.7
+    - "2.7_with_system_site_packages"
+    - 3.4
 
 branches:
     only:
         - master
+        - py3
+        - qt5
 
 env:
-    matrix:
-        - SYSTEM_PACKAGES=true  QT=qt5.2
-        - SYSTEM_PACKAGES=false QT=qt5.4
-        - SYSTEM_PACKAGES=true  QT=qt5.4
+    - SYSTEM_PACKAGES=true QT=qt5.2
+    - SYSTEM_PACKAGES=false QT=qt5.4
+    - SYSTEM_PACKAGES=true QT=qt5.4
 
-virtualenv:
-    system_site_packages: true
+matrix:
+    exclude:
+        - python: 3.4
+          env: SYSTEM_PACKAGES=true QT=qt5.2
+        - python: 3.4
+          env: SYSTEM_PACKAGES=true QT=qt5.4
 
 before_install:
-    - sudo apt-get install -y python-twisted lua5.2-dev zlib1g-dev python-imaging
+    - sudo apt-get install -y lua5.2-dev zlib1g-dev
     # Cached Downloads
     - sudo mkdir -p /downloads
     - sudo chmod a+rw /downloads
@@ -51,9 +57,9 @@ before_install:
     # Builds Complete
     - popd
     # pip installs
-    - pip install psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib
-    - pip install git+https://github.com/sunu/qt5reactor
-    - "if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow twisted service_identity lupa; fi"
+    - if [ $TRAVIS_PYTHON_VERSION == 3.4 ] && [ $SYSTEM_PACKAGES == 'false' ]; then pip install https://github.com/twisted/twisted/archive/trunk.zip#egg=twisted; else pip install twisted; fi
+    - if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow service_identity lupa; else sudo apt-get install -y python-twisted python-imaging; fi
+    - pip install psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib qt5reactor-fork six
 
 install:
     - python setup.py install

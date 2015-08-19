@@ -9,6 +9,7 @@ try:
     import lupa
 except ImportError:
     lupa = None
+import six
 
 _supported = None
 _lua = None
@@ -129,7 +130,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
         if isinstance(obj, dict):
             return {
                 l2p(key, depth-1): l2p(value, depth-1)
-                for key, value in obj.iteritems()
+                for key, value in six.iteritems(obj)
             }
 
         if isinstance(obj, list):
@@ -169,7 +170,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
                 "Lua %s objects are not allowed." % lupa.lua_type(obj)
             )
 
-        if binary and isinstance(obj, unicode):
+        if binary and isinstance(obj, six.text_type):
             obj = obj.encode('utf8')
 
         return obj
@@ -203,14 +204,14 @@ def python2lua(lua, obj, max_depth=100):
     if isinstance(obj, dict):
         return lua.table_from({
             python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
-            for key, value in obj.iteritems()
+            for key, value in six.iteritems(obj)
         })
 
     if isinstance(obj, list):
         tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
         return _mark_table_as_list(lua, tbl)
 
-    if isinstance(obj, unicode):
+    if isinstance(obj, six.text_type):
         # lupa encodes/decodes strings automatically,
         # but this doesn't apply to nested table keys.
         return obj.encode('utf8')

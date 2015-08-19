@@ -5,6 +5,7 @@ import functools
 from datetime import datetime
 import traceback
 from contextlib import contextmanager
+import itertools
 
 from PyQt5.QtCore import QTimer
 from PyQt5.QtNetwork import (

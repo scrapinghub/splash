@@ -8,6 +8,7 @@ import base64
 
 from PyQt5.QtCore import Qt, QVariant, QUrlQuery
 from PyQt5.QtNetwork import QNetworkRequest
+import six
 
 from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
 
@@ -65,9 +66,9 @@ def cookie2har(cookie):
     cookie = {
         "name": bytes(cookie.name()),
         "value": bytes(cookie.value()),
-        "path": unicode(cookie.path()),
-        "domain": unicode(cookie.domain()),
-        "expires": unicode(cookie.expirationDate().toString(Qt.ISODate)),
+        "path": six.text_type(cookie.path()),
+        "domain": six.text_type(cookie.domain()),
+        "expires": six.text_type(cookie.expirationDate().toString(Qt.ISODate)),
         "httpOnly": cookie.isHttpOnly(),
         "secure": cookie.isSecure(),
     }
@@ -78,7 +79,7 @@ def cookie2har(cookie):
 
 def querystring2har(url):
     return [
-        {"name": unicode(name), "value": unicode(value)}
+        {"name": six.text_type(name), "value": six.text_type(value)}
         for name, value in QUrlQuery(url).queryItems()
     ]
 
@@ -98,12 +99,12 @@ def reply2har(reply, include_content=False, binary_content=False):
         "ok": not reply.error(),
         # non-standard, useful because reply url may not equal request url
         # in case of redirect
-        "url": unicode(reply.url().toString())
+        "url": reply.url().toString()
     }
 
     content_type = reply.header(QNetworkRequest.ContentTypeHeader)
     if content_type is not None:
-        res["content"]["mimeType"] = unicode(content_type)
+        res["content"]["mimeType"] = six.text_type(content_type)
 
     content_length = reply.header(QNetworkRequest.ContentLengthHeader)
     if content_length is not None:
@@ -118,13 +119,17 @@ def reply2har(reply, include_content=False, binary_content=False):
 
     status_text = reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
     if status_text is not None:
-        res["statusText"] = bytes(status_text).decode('latin1')
+        try:
+            res["statusText"] = bytes(status_text, 'latin1').decode('latin1')
+        except TypeError:
+            res["statusText"] = bytes(status_text).decode('latin1')
+
     else:
         res["statusText"] = REQUEST_ERRORS_SHORT.get(reply.error(), "?")
 
     redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
     if redirect_url is not None:
-        res["redirectURL"] = unicode(redirect_url.toString())
+        res["redirectURL"] = six.text_type(redirect_url.toString())
     else:
         res["redirectURL"] = ""
 
@@ -146,7 +151,7 @@ def request2har(request, operation, outgoing_data=None):
     """ Serialize QNetworkRequest to HAR. """
     return {
         "method": OPERATION_NAMES.get(operation, '?'),
-        "url": unicode(request.url().toString()),
+        "url": six.text_type(request.url().toString()),
         "httpVersion": "HTTP/1.1",
         "cookies": request_cookies2har(request),
         "queryString": querystring2har(request.url()),

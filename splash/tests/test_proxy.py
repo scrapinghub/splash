@@ -3,7 +3,11 @@ from __future__ import absolute_import
 import os
 import shutil
 import unittest
+
 import requests
+import pytest
+import six
+
 from splash.proxy import _BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import TestServers

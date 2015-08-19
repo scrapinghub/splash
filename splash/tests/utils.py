@@ -159,12 +159,12 @@ class TestServers(object):
         return dst_path
 
     def _fix_testproxy_port(self):
-        filename = os.path.join(self.proxy_profiles_path, 'test.ini')
+        filename = os.path.join(self.proxy_profiles_path, u'test.ini')
         with open(filename, 'rb') as f:
-            data = f.read()
-        data = data.replace('8990', str(self.mock_proxy_port))
+            data = f.read().decode('utf-8')
+        data = data.replace(u'8990', str(self.mock_proxy_port))
         with open(filename, 'wb') as f:
-            f.write(data)
+            f.write(data.encode('utf-8'))
 
     def __enter__(self):
         self.mockserver = MockServer(

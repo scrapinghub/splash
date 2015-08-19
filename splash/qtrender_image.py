@@ -2,12 +2,13 @@
 import sys
 import array
 from abc import ABCMeta, abstractmethod, abstractproperty
-from cStringIO import StringIO
+from io import BytesIO
 from math import ceil, floor
 
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QImage, QPainter, QRegion
+import six
 
 from splash import defaults
 
@@ -67,10 +68,17 @@ class QtImageRenderer(object):
         buf = qimage.bits().asstring(qimage.byteCount())
         if sys.byteorder != "little":
             buf = self.swap_byte_order_i32(buf)
-        return Image.frombytes(
+        # PIL>2.0 doesn't have fromstring. But older ones don't have frombytes.
+        if hasattr(Image, 'frombytes'):
+            frombytes = Image.frombytes
+        else:
+            frombytes = Image.fromstring
+
+        return frombytes(
             self.pillow_image_format,
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
+
 
     def swap_byte_order_i32(self, buf):
         """Swap order of bytes in each 32-bit word of given byte sequence."""
@@ -263,9 +271,9 @@ class QtImageRenderer(object):
             # which is not what we want.
             painter.setViewport(render_rect)
             # painter.setClipRect(web_rect)
-            for i in xrange(tile_conf['horizontal_count']):
+            for i in six.moves.range(tile_conf['horizontal_count']):
                 left = i * tile_qimage.width()
-                for j in xrange(tile_conf['vertical_count']):
+                for j in six.moves.range(tile_conf['vertical_count']):
                     top = j * tile_qimage.height()
                     painter.setViewport(render_rect.translated(-left, -top))
                     self.logger.log("Rendering with viewport=%s"
@@ -457,13 +465,13 @@ class WrappedPillowImage(WrappedImage):
         self.img = self.img.crop((left, top, right, bottom))
 
     def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
-        buf = StringIO()
+        buf = BytesIO()
         self.img.save(buf, 'png', compress_level=complevel)
         return buf.getvalue()
 
     def to_jpeg(self, quality=None):
         if quality is None:
             quality = defaults.JPEG_QUALITY
-        buf = StringIO()
+        buf = BytesIO()
         self.img.save(buf, 'jpeg', quality=quality)
         return buf.getvalue()

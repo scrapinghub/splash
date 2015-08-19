@@ -32,8 +32,10 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, (rendercls, render_options, splash_proxy_factory, kwargs, pool_d), slot):
+    def _start_render(self, slot_args, slot):
         self.log("initializing SLOT %d" % (slot, ))
+        (rendercls, render_options, splash_proxy_factory, kwargs,
+         pool_d) = slot_args
         render = rendercls(
             network_manager=self.network_manager,
             splash_proxy_factory=splash_proxy_factory,

@@ -7,8 +7,11 @@ various conditions. They should be used with
 from __future__ import absolute_import
 import re
 import os
-import urlparse
+
 from twisted.python import log
+import six
+from six.moves.urllib.parse import urlsplit
+
 from splash.qtutils import request_repr, drop_request, get_request_webframe
 
 
@@ -24,7 +27,7 @@ class AllowedDomainsMiddleware(object):
     def process(self, request, render_options, operation, data):
         allowed_domains = render_options.get_allowed_domains()
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
-        if not host_re.match(unicode(request.url().host())):
+        if not host_re.match(six.text_type(request.url().host())):
             if self.verbosity >= 2:
                 log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
             drop_request(request)
@@ -118,8 +121,8 @@ class AdblockMiddleware(object):
         return request
 
     def _url_and_adblock_options(self, request, render_options):
-        url = unicode(request.url().toString())
-        domain = urlparse.urlsplit(render_options.get_url()).netloc
+        url = six.text_type(request.url().toString())
+        domain = urlsplit(render_options.get_url()).netloc
         options = {'domain': domain}
         return url, options
 
@@ -168,7 +171,7 @@ class AdblockRulesRegistry(object):
             if self.verbosity >= 1:
                 log.msg("Loading filter %s" % name)
 
-            with open(fpath, 'rt') as f:
+            with open(fpath, 'rb') as f:
                 lines = [line.decode('utf8').strip() for line in f]
 
             rules = adblockparser.AdblockRules(

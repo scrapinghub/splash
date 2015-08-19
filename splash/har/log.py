@@ -6,6 +6,7 @@ from datetime import datetime
 import splash
 from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
 from PyQt5.QtWebKit import qWebKitVersion
+import six
 
 from .utils import get_duration, format_datetime, without_private
 
@@ -43,11 +44,11 @@ class HarLog(object):
 
     def store_url(self, url):
         """ Call this method when URL is changed. """
-        self.events.append(HarEvent(HAR_URL_CHANGED, unicode(url)))
+        self.events.append(HarEvent(HAR_URL_CHANGED, six.text_type(url)))
 
     def store_title(self, title):
         """ Call this method when page title is changed. """
-        self.events.append(HarEvent(HAR_TITLE_CHANGED, unicode(title)))
+        self.events.append(HarEvent(HAR_TITLE_CHANGED, six.text_type(title)))
 
     def store_timing(self, name):
         """
@@ -81,12 +82,12 @@ class HarLog(object):
     def _get_browser(self):
         return {
             "name": "QWebKit",
-            "version": unicode(qWebKitVersion()),
+            "version": six.text_type(qWebKitVersion()),
             "comment": "PyQt %s, Qt %s" % (PYQT_VERSION_STR, QT_VERSION_STR),
         }
 
     def _empty_page(self, page_id, started_dt):
-        if not isinstance(started_dt, basestring):
+        if not isinstance(started_dt, six.string_types):
             started_dt = format_datetime(started_dt)
 
         return {

@@ -3,9 +3,10 @@ from __future__ import absolute_import
 from PyQt5.QtCore import QDateTime, Qt, QUrl
 from PyQt5.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
 
+from splash.utils import to_unicode
+
 
 class SplashCookieJar(QNetworkCookieJar):
-
     def update_cookie_header(self, request):
         """ Use this cookiejar to set Cookie: request header """
         if not _should_send_cookies(request):
@@ -34,11 +35,13 @@ class SplashCookieJar(QNetworkCookieJar):
         """
         all_cookies = self.allCookies()
         if url is None:
-            new_cookies = [c for c in all_cookies if bytes(c.name()) != name]
+            new_cookies = [c for c in all_cookies if
+                           to_unicode(bytes(c.name())) != name]
         else:
             remove_cookies = self.cookiesForUrl(QUrl(url))
             if name is not None:
-                remove_cookies = [c for c in remove_cookies if bytes(c.name()) == name]
+                remove_cookies = [c for c in remove_cookies if
+                                  to_unicode(bytes(c.name())) == name]
             to_remove = {self._cookie_fp(c) for c in remove_cookies}
             new_cookies = [
                 c for c in all_cookies if self._cookie_fp(c) not in to_remove

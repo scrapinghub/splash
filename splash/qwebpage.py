@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from collections import namedtuple
+
 import sip
 from PyQt5.QtWebKitWidgets import QWebPage, QWebView
 from PyQt5.QtCore import QByteArray
 from twisted.python import log
+import six
+
 from splash.cookies import SplashCookieJar
 from splash.har.log import HarLog
 
@@ -120,8 +123,8 @@ class SplashQWebPage(QWebPage):
             self.error_info = RenderErrorInfo(
                 domain,
                 int(info.error),
-                unicode(info.errorString),
-                unicode(info.url.toString())
+                six.text_type(info.errorString),
+                six.text_type(info.url.toString())
             )
 
             # XXX: this page currently goes nowhere

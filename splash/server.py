@@ -11,6 +11,7 @@ from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
 
+
 def install_qtreactor(verbose):
     init_qt_app(verbose)
     import qt5reactor
@@ -86,8 +87,8 @@ def parse_opts():
 def start_logging(opts):
     import twisted
     from twisted.python import log
-    from twisted.python.logfile import DailyLogFile
     if opts.logfile:
+        from twisted.python.logfile import DailyLogFile
         logfile = DailyLogFile.fromFullPath(opts.logfile)
     else:
         logfile = sys.stderr
