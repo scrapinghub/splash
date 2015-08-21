@@ -6,6 +6,10 @@ Splash - A javascript rendering service
    :alt: Build Status
    :target: https://travis-ci.org/scrapinghub/splash
 
+.. image:: https://img.shields.io/codecov/c/github/scrapinghub/splash/master.svg
+   :alt: Coverage report
+   :target: http://codecov.io/github/scrapinghub/splash?branch=master
+
 .. image:: https://img.shields.io/badge/GITTER-join%20chat-green.svg
    :alt: Join the chat at https://gitter.im/scrapinghub/splash
    :target: https://gitter.im/scrapinghub/splash
