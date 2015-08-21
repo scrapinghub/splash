@@ -4,8 +4,4 @@ include = splash/*
 omit =
   splash/tests/*
   splash/vendor/*
-  splash/kernel/*
   splash/conftest.py
-  splash/defaults.py
-  splash/sentry.py
-  splash/xvfb.py
