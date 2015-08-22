@@ -5,21 +5,20 @@ FROM scrapinghub/splash:master
 # Install, use dev tools, and then clean up in one RUN transaction
 # to minimize image size.
 
-RUN add-apt-repository -y ppa:chris-lea/zeromq && \
-    apt-get update -q && \
+RUN apt-get update -q && \
     apt-get install --no-install-recommends -y \
         libzmq3 \
-        sqlite3 && \
+        libsqlite3-0 && \
 
     apt-get install --no-install-recommends -y \
-        python-dev \
+        python3-dev \
         build-essential \
         libzmq3-dev \
         libsqlite3-dev && \
-    /usr/local/bin/pip install --no-cache-dir \
+    pip3 install \
         ipython[notebook]==3.2.1 && \
     apt-get remove -y --purge \
-        python-dev \
+        python3-dev \
         build-essential \
         libzmq3-dev \
         libsqlite3-dev \
@@ -30,7 +29,7 @@ RUN add-apt-repository -y ppa:chris-lea/zeromq && \
     rm -rf /usr/share/perl /usr/share/perl5 /usr/share/man /usr/share/info /usr/share/doc && \
     rm -rf /var/lib/apt/lists/*
 
-RUN python -m splash.kernel install && \
+RUN python3 -m splash.kernel install && \
     echo 'ipython notebook --no-browser --port=8888 --ip=*' > start-ipython.sh && \
     chmod +x start-ipython.sh
 
