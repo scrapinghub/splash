@@ -54,7 +54,7 @@ install_deps () {
         zlib1g && \
     # Install more recent version of sip.
     curl -L -o sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz && \
-    echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - \
+    echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - && \
     tar xzf sip.tar.gz && \
     pushd sip-4.16.7 && \
     python3 configure.py && \
