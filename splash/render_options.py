@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import os
 import json
-from splash import defaults
+from splash import config
 
 
 class BadOption(Exception):
@@ -100,19 +100,19 @@ class RenderOptions(object):
         return self._get_url("baseurl", default=None)
 
     def get_wait(self):
-        return self.get("wait", defaults.WAIT_TIME,
-                        type=float, range=(0, defaults.MAX_WAIT_TIME))
+        return self.get("wait", config.WAIT_TIME,
+                        type=float, range=(0, config.MAX_WAIT_TIME))
 
     def get_timeout(self):
-        default = min(self.max_timeout, defaults.TIMEOUT)
+        default = min(self.max_timeout, config.TIMEOUT)
         return self.get("timeout", default, type=float, range=(0, self.max_timeout))
 
     def get_resource_timeout(self):
-        return self.get("resource_timeout", defaults.RESOURCE_TIMEOUT,
+        return self.get("resource_timeout", config.RESOURCE_TIMEOUT,
                         type=float, range=(0, 1e6))
 
     def get_images(self):
-        return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
+        return self._get_bool("images", config.AUTOLOAD_IMAGES)
 
     def get_proxy(self):
         return self.get("proxy", default=None)
@@ -121,13 +121,13 @@ class RenderOptions(object):
         return self.get("js_source", default=None)
 
     def get_width(self):
-        return self.get("width", None, type=int, range=(1, defaults.MAX_WIDTH))
+        return self.get("width", None, type=int, range=(1, config.MAX_WIDTH))
 
     def get_height(self):
-        return self.get("height", None, type=int, range=(1, defaults.MAX_HEIGTH))
+        return self.get("height", None, type=int, range=(1, config.MAX_HEIGTH))
 
     def get_scale_method(self):
-        scale_method = self.get("scale_method", defaults.IMAGE_SCALE_METHOD)
+        scale_method = self.get("scale_method", config.IMAGE_SCALE_METHOD)
         if scale_method not in ('raster', 'vector'):
             raise BadOption(
                 "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
@@ -135,7 +135,7 @@ class RenderOptions(object):
         return scale_method
 
     def get_quality(self):
-        return self.get("quality", defaults.JPEG_QUALITY, type=int, range=(0, 100))
+        return self.get("quality", config.JPEG_QUALITY, type=int, range=(0, 100))
 
     def get_http_method(self):
         return self.get("http_method", "GET")
@@ -184,7 +184,7 @@ class RenderOptions(object):
         return headers
 
     def get_viewport(self, wait=None):
-        viewport = self.get("viewport", defaults.VIEWPORT_SIZE)
+        viewport = self.get("viewport", config.VIEWPORT_SIZE)
 
         if viewport == 'full':
             if wait == 0:
@@ -274,14 +274,14 @@ class RenderOptions(object):
 
     def get_include_params(self):
         return dict(
-            html=self._get_bool("html", defaults.DO_HTML),
-            iframes=self._get_bool("iframes", defaults.DO_IFRAMES),
-            png=self._get_bool("png", defaults.DO_PNG),
-            jpeg=self._get_bool("jpeg", defaults.DO_JPEG),
-            script=self._get_bool("script", defaults.SHOW_SCRIPT),
-            console=self._get_bool("console", defaults.SHOW_CONSOLE),
-            history=self._get_bool("history", defaults.SHOW_HISTORY),
-            har=self._get_bool("har", defaults.SHOW_HAR),
+            html=self._get_bool("html", config.DO_HTML),
+            iframes=self._get_bool("iframes", config.DO_IFRAMES),
+            png=self._get_bool("png", config.DO_PNG),
+            jpeg=self._get_bool("jpeg", config.DO_JPEG),
+            script=self._get_bool("script", config.SHOW_SCRIPT),
+            console=self._get_bool("console", config.SHOW_CONSOLE),
+            history=self._get_bool("history", config.SHOW_HISTORY),
+            har=self._get_bool("har", config.SHOW_HAR),
         )
 
 
@@ -296,9 +296,9 @@ def validate_size_str(size_str):
     :param size_str: string to validate
 
     """
-    max_width = defaults.VIEWPORT_MAX_WIDTH
-    max_heigth = defaults.VIEWPORT_MAX_HEIGTH
-    max_area = defaults.VIEWPORT_MAX_AREA
+    max_width = config.VIEWPORT_MAX_WIDTH
+    max_heigth = config.VIEWPORT_MAX_HEIGTH
+    max_area = config.VIEWPORT_MAX_AREA
     try:
         w, h = map(int, size_str.split('x'))
     except ValueError:

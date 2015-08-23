@@ -27,13 +27,13 @@ from splash.request_middleware import (
     AdblockRulesRegistry,
     ResourceTimeoutMiddleware)
 from splash.response_middleware import ContentTypeMiddleware
-from splash import defaults
+from splash import config
 
 
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
-    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    verbosity = config.VERBOSITY if verbosity is None else verbosity
     if allowed_schemes is None:
-        allowed_schemes = defaults.ALLOWED_SCHEMES
+        allowed_schemes = config.ALLOWED_SCHEMES
     else:
         allowed_schemes = allowed_schemes.split(',')
     manager = SplashQNetworkAccessManager(

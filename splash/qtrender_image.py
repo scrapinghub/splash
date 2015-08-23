@@ -9,7 +9,7 @@ from PIL import Image
 from PyQt4.QtCore import QBuffer, QPoint, QRect, QSize, Qt
 from PyQt4.QtGui import QImage, QPainter, QRegion
 
-from splash import defaults
+from splash import config
 
 
 class QtImageRenderer(object):
@@ -36,7 +36,7 @@ class QtImageRenderer(object):
         self.width = width
         self.height = height
         if scale_method is None:
-            scale_method = defaults.IMAGE_SCALE_METHOD
+            scale_method = config.IMAGE_SCALE_METHOD
         self.scale_method = scale_method
         self.image_format = image_format.upper()
         if not (self.is_png() or self.is_jpeg()):
@@ -319,7 +319,7 @@ class QtImageRenderer(object):
         return image_viewport, image_size
 
     def _calculate_tiling(self, to_paint):
-        tile_maxsize = defaults.TILE_MAXSIZE
+        tile_maxsize = config.TILE_MAXSIZE
         tile_hsize = min(tile_maxsize, to_paint.width())
         tile_vsize = min(tile_maxsize, to_paint.height())
         htiles = 1 + (to_paint.width() - 1) // tile_hsize
@@ -420,7 +420,7 @@ class WrappedQImage(WrappedImage):
         assert isinstance(rect, QRect)
         self.img = self.img.copy(rect)
 
-    def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
+    def to_png(self, complevel=config.PNG_COMPRESSION_LEVEL):
         quality = 90 - (complevel * 10)
         buf = QBuffer()
         self.img.save(buf, 'png', quality)
@@ -428,7 +428,7 @@ class WrappedQImage(WrappedImage):
 
     def to_jpeg(self, quality=None):
         if quality is None:
-            quality = defaults.JPEG_QUALITY
+            quality = config.JPEG_QUALITY
         buf = QBuffer()
         self.img.save(buf, 'jpeg', quality)
         return bytes(buf.data())
@@ -454,14 +454,14 @@ class WrappedPillowImage(WrappedImage):
         top, bottom = rect.top(), rect.top() + rect.height()
         self.img = self.img.crop((left, top, right, bottom))
 
-    def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
+    def to_png(self, complevel=config.PNG_COMPRESSION_LEVEL):
         buf = StringIO()
         self.img.save(buf, 'png', compress_level=complevel)
         return buf.getvalue()
 
     def to_jpeg(self, quality=None):
         if quality is None:
-            quality = defaults.JPEG_QUALITY
+            quality = config.JPEG_QUALITY
         buf = StringIO()
         self.img.save(buf, 'jpeg', quality=quality)
         return buf.getvalue()

@@ -6,7 +6,7 @@ Uses xvfbwrapper Python package.
 from __future__ import absolute_import
 import sys
 from contextlib import contextmanager
-from splash import defaults
+from splash import config
 from twisted.python import log
 
 
@@ -34,7 +34,7 @@ def _get_xvfb():
 
     try:
         from xvfbwrapper import Xvfb
-        width, height = map(int, defaults.VIEWPORT_SIZE.split("x"))
+        width, height = map(int, config.VIEWPORT_SIZE.split("x"))
         return Xvfb(width, height)
     except ImportError:
         return None
