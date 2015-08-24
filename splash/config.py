@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import yaml
 from . import defaults
 
@@ -29,4 +28,4 @@ class Settings(object):
             raise AttributeError("There is no settings named %s" % item)
         return val
 
-sys.modules[__name__] = Settings()
+settings = Settings()
