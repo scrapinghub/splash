@@ -17,7 +17,7 @@ virtualenv:
 
 before_install:
     - sudo apt-get install python-twisted python-qt4 lua5.2-dev zlib1g-dev python-imaging
-    - pip install -U qt4reactor psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib pytest-cov codecov
+    - pip install -U qt4reactor psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib pytest-cov codecov pyyaml
     - "if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow twisted service_identity lupa; fi"
 
 install:

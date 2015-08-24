@@ -75,7 +75,8 @@ install_python_deps () {
         xvfbwrapper==0.2.4 \
         lupa==1.1 \
         funcparserlib==0.3.6 \
-        Pillow==2.9.0
+        Pillow==2.9.0 \
+        pyyaml==3.11
 }
 
 install_msfonts() {

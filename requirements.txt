@@ -7,6 +7,7 @@ adblockparser >= 0.4
 re2 >= 0.2.21
 xvfbwrapper
 Pillow
+pyyaml
 
 # for scripting support
 lupa >= 1.1
