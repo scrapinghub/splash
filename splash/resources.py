@@ -37,8 +37,20 @@ class _ValidatingResource(Resource):
         try:
             return Resource.render(self, request)
         except BadOption as e:
-            request.setResponseCode(400)
-            return str(e) + "\n"
+            return self._writeError(request, 400, str(e))
+
+    def _writeErrorContent(self, request, code, content, content_type='text/plain'):
+        request.setHeader("content-type", content_type)
+        request.setResponseCode(code)
+        request.write(content)
+        return "\n"
+
+    def _writeError(self, request, code, message):
+        """Can be overridden by subclasses format errors differently"""
+        return self._writeErrorContent(request, code, json.dumps({
+            "error": code,
+            "message": message,
+        }), content_type="application/json")
 
 
 class BaseRenderResource(_ValidatingResource):
@@ -85,9 +97,7 @@ class BaseRenderResource(_ValidatingResource):
 
         content_type = request.getHeader('content-type')
         if not any(ct in content_type for ct in ['application/javascript', 'application/json']):
-            request.setResponseCode(415)
-            request.write("Request content-type not supported\n")
-            return
+            return self._writeError(request, 415, "Request content-type not supported")
 
         return self.render_GET(request)
 
@@ -145,26 +155,20 @@ class BaseRenderResource(_ValidatingResource):
 
     def _timeoutError(self, failure, request):
         failure.trap(defer.CancelledError)
-        request.setResponseCode(504)
-        request.write("Timeout exceeded rendering page\n")
-        #log.msg("_timeoutError: %s" % id(request))
+        return self._writeError(request, 504, "Timeout exceeded rendering page")
 
     def _renderError(self, failure, request):
         failure.trap(RenderError)
-        request.setResponseCode(502)
-        request.write("Error rendering page\n")
-        #log.msg("_renderError: %s" % id(request))
+        return self._writeError(request, 502, "Error rendering page")
 
     def _internalError(self, failure, request):
-        request.setResponseCode(500)
-        request.write(failure.getErrorMessage())
         log.err()
         sentry.capture(failure)
+        return self._writeError(request, 500, failure.getErrorMessage())
 
     def _badRequest(self, failure, request):
         failure.trap(BadOption)
-        request.setResponseCode(400)
-        request.write(str(failure.value) + "\n")
+        return self._writeError(request, 400, str(failure.value))
 
     def _finishRequest(self, _, request):
         if not request._disconnected:

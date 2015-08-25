@@ -300,16 +300,16 @@ def _default_proxy_factory(proxy_profiles_path):
     from twisted.python import log
     from splash import proxy
 
-    if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
-        log.msg("--proxy-profiles-path does not exist or it is not a folder; "
-                "proxy won't be used")
-        proxy_profiles_enabled = False
-    else:
-        proxy_profiles_enabled = proxy_profiles_path is not None
+    if proxy_profiles_path is not None:
+        if os.path.isdir(proxy_profiles_path):
+            log.msg("proxy profiles support is enabled, "
+                    "proxy profiles path: %s" % proxy_profiles_path)
+        else:
+            log.msg("--proxy-profiles-path does not exist or it is not a folder; "
+                    "proxy won't be used")
+            proxy_profiles_path = None
 
-    if proxy_profiles_enabled:
-        log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
-        return functools.partial(proxy.ProfilesSplashProxyFactory, proxy_profiles_path)
+    return functools.partial(proxy.getFactory, proxy_profiles_path)
 
 
 def _check_js_profiles_path(js_profiles_path):
