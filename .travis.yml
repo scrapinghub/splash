@@ -59,6 +59,7 @@ install:
     - python setup.py install
 
 script:
+    - pip install -U pytest-cov
     - py.test --version
     - py.test --cov=splash --doctest-modules splash
 
