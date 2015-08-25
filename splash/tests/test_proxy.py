@@ -90,14 +90,20 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
         self.assertStatusCode(r, 400)
-        self.assertIn(ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG, r.text)
+        self.assertEqual(r.json(), {
+            "message": ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG,
+            "error": 400,
+        })
 
 
     def test_nonexisting(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
         self.assertStatusCode(r, 400)
-        self.assertIn(ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG, r.text)
+        self.assertEqual(r.json(), {
+            "message": ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG,
+            "error": 400,
+        })
 
     def test_no_proxy_settings(self):
         r = self.request({'url': self.mockurl('jsrender'),

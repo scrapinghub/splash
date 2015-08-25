@@ -43,6 +43,7 @@ class _ValidatingResource(Resource):
         request.setHeader("content-type", content_type)
         request.setResponseCode(code)
         request.write(content)
+        return "\n"
 
     def _writeError(self, request, code, message):
         """Can be overridden by subclasses format errors differently"""
