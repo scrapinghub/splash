@@ -1237,6 +1237,52 @@ After calling this method the navigation away from the page becomes
 permitted. Note that the pending navigation requests suppressed
 by :ref:`splash-lock-navigation` won't be reissued.
 
+.. _splash-set-result-status-code:
+
+splash:set_result_status_code
+-----------------------------
+
+Set HTTP status code of a result returned to a client.
+
+**Signature:** ``splash:set_result_status_code(code)``
+
+**Parameters:**
+
+* code - HTTP status code (a number 200 <= code <= 999).
+
+**Returns:** nil.
+
+**Async:** no.
+
+Use this function to signal errors or other conditions to splash client
+using HTTP status codes.
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         local ok, reason = splash:go("http://www.example.com")
+         if reason == "http500" then
+             splash:set_result_status_code(503)
+             splash:set_result_header("Retry-After", 10)
+             return ''
+         end
+         return splash:png()
+     end
+
+Be careful with this function: some proxies can be configured to
+process responses differently based on their status codes. See e.g. nginx
+`proxy_next_upstream <http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream>`_
+option.
+
+In case of unhandled Lua errors HTTP status code is set to 400 regardless
+of the value set with :ref:`splash-set-result-status-code`.
+
+See also: :ref:`splash-set-result-status-code`,
+:ref:`splash-set-result-header`.
+
+
 .. _splash-set-result-content-type:
 
 splash:set_result_content_type
@@ -1340,6 +1386,8 @@ result in an HTTP header:
          return screenshot
      end
 
+See also: :ref:`splash-set-result-status-code`,
+:ref:`splash-set-result-content-type`.
 
 .. _splash-images-enabled:
 

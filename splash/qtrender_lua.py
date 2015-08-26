@@ -259,6 +259,7 @@ class Splash(object):
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
+    _result_status_code = 200
     _attribute_whitelist = ['commands', 'args', 'tmp_storage',
                             'lua_properties']
 
@@ -567,6 +568,12 @@ class Splash(object):
         self._result_content_type = content_type
 
     @command()
+    def set_result_status_code(self, code):
+        if not isinstance(code, int) or not (200 <= code <= 999):
+            raise ScriptError("splash:set_result_status_code() argument must be a number 200 <= code <= 999")
+        self._result_status_code = code
+
+    @command()
     def set_result_header(self, name, value):
         if not all([isinstance(h, basestring) for h in [name, value]]):
             raise ScriptError("splash:set_result_header() arguments must be strings")
@@ -671,6 +678,9 @@ class Splash(object):
         if self._result_content_type is None:
             return None
         return str(self._result_content_type)
+
+    def result_status_code(self):
+        return self._result_status_code
 
     def result_headers(self):
         return self._result_headers
@@ -828,7 +838,12 @@ class SplashScriptRunner(BaseScriptRunner):
         super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
 
     def on_result(self, result):
-        self.return_result((result, self.splash.result_content_type(), self.splash.result_headers()))
+        self.return_result((
+            result,
+            self.splash.result_content_type(),
+            self.splash.result_headers(),
+            self.splash.result_status_code(),
+        ))
 
     def on_async_command(self, cmd):
         self.splash.run_async_command(cmd)

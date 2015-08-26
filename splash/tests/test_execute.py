@@ -1494,6 +1494,30 @@ class GoTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {'err': 'render_error'})
 
 
+class ResultStatusCodeTest(BaseLuaRenderTest):
+    def test_set_result_status_code(self):
+        for code in [200, 404, 500, 999]:
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_result_status_code(tonumber(splash.args.code))
+                return "hello"
+            end
+            """, {'code': code})
+            self.assertStatusCode(resp, code)
+            self.assertEqual(resp.text, 'hello')
+
+    def test_invalid_code(self):
+        for code in ["foo", "", {'x': 3}, 0, -200, 195, 1000]:
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_result_status_code(splash.args.code)
+                return "hello"
+            end
+            """, {'code': code})
+            self.assertStatusCode(resp, 400)
+            self.assertIn('splash:set_result_status_code() argument must be', resp.text)
+
+
 class SetUserAgentTest(BaseLuaRenderTest):
     def test_set_user_agent(self):
         resp = self.request_lua("""
