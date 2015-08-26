@@ -1482,6 +1482,17 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Value 2'", data["res3"])
         self.assertNotIn("'Value 3'", data["res3"])
 
+    def test_resource_timeout_aborts_first(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(req) req:set_timeout(0.1) end)
+            local ok, err = splash:go{splash.args.url}
+            return {err=err}
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'err': 'render_error'})
+
 
 class SetUserAgentTest(BaseLuaRenderTest):
     def test_set_user_agent(self):

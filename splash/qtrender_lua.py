@@ -655,7 +655,10 @@ class Splash(object):
     def _error_info_to_lua(self, error_info):
         if error_info is None:
             return "error"
-        return "%s%s" % (error_info.type.lower(), error_info.code)
+        res = "%s%s" % (error_info.type.lower(), error_info.code)
+        if res == "http200":
+            return "render_error"
+        return res
 
     def get_real_exception(self):
         if self._exceptions:
