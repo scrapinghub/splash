@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from PyQt5.QtCore import QDateTime, Qt, QUrl
 from PyQt5.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
 
-from splash.utils import to_unicode
+from splash.utils import to_unicode, to_bytes
 
 
 class SplashCookieJar(QNetworkCookieJar):
@@ -81,8 +81,8 @@ class SplashCookieJar(QNetworkCookieJar):
     @classmethod
     def har_cookie2qt(cls, cookie):
         qcookie = QNetworkCookie()
-        qcookie.setName(cookie["name"])
-        qcookie.setValue(cookie["value"])
+        qcookie.setName(to_bytes(cookie["name"]))
+        qcookie.setValue(to_bytes(cookie["value"]))
 
         if 'domain' in cookie:
             qcookie.setDomain(cookie["domain"])

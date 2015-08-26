@@ -22,7 +22,7 @@ from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
-from splash.utils import truncated, BinaryCapsule
+from splash.utils import truncated, BinaryCapsule, to_bytes
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -749,7 +749,7 @@ class _WrappedRequest(object):
     @command()
     @_requires_request
     def set_header(self, name, value):
-        self.request.setRawHeader(name, value)
+        self.request.setRawHeader(to_bytes(name), to_bytes(value))
 
     @command()
     @_requires_request

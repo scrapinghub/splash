@@ -23,7 +23,7 @@ from splash.qtrender import (
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
-    SplashJSONEncoder, to_bytes
+    SplashJSONEncoder, to_bytes, to_unicode
 from splash import sentry
 from splash.render_options import RenderOptions, BadOption
 from splash.qtutils import clear_caches
@@ -133,16 +133,16 @@ class BaseRenderResource(_ValidatingResource):
 
     def _logStats(self, request, options):
 
-        def args_to_unicode(args):
-            unicode_args = {}
-            for key,val in args.items():
-                key = key.decode('utf-8')
-                if isinstance(val, list):
-                    val = [item.decode('utf-8') for item in val]
-                else:
-                    val = val.decode('utf-8')
-                unicode_args[key] = val
-                return unicode_args
+        # def args_to_unicode(args):
+        #     unicode_args = {}
+        #     for key, val in args.items():
+        #         key = to_unicode(key)
+        #         if isinstance(val, list):
+        #             val = [args_to_unicode(item)item.decode('utf-8') for item in val]
+        #         else:
+        #             val = val.decode('utf-8')
+        #         unicode_args[key] = val
+        #         return unicode_args
 
         msg = {
             # Anything we retrieve from Twisted request object contains bytes.
@@ -159,7 +159,7 @@ class BaseRenderResource(_ValidatingResource):
             "timestamp": int(time.time()),
             "user-agent": (request.getHeader(b"user-agent").decode('utf-8')
                            if request.getHeader(b"user-agent") else None),
-            "args": options
+            "args": repr(options)
         }
         log.msg(json.dumps(msg), system="events")
 
@@ -176,6 +176,7 @@ class BaseRenderResource(_ValidatingResource):
         #log.msg("_renderError: %s" % id(request))
 
     def _internalError(self, failure, request):
+        failure.printTraceback()
         request.setResponseCode(500)
         request.write(failure.getErrorMessage())
         log.err()

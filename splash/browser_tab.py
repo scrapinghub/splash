@@ -24,6 +24,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
+from splash.utils import to_bytes
 
 
 def skip_if_closing(meth):
@@ -401,6 +402,7 @@ class BrowserTab(QObject):
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
         else:
+            assert isinstance(body, bytes)
             self.web_page.mainFrame().load(request, meth, body)
 
     @skip_if_closing
@@ -876,7 +878,7 @@ class _SplashHttpClient(QObject):
             headers = headers.items()
 
         for name, value in headers or []:
-            request.setRawHeader(name, value)
+            request.setRawHeader(to_bytes(name), to_bytes(value))
             if name.lower() == 'user-agent':
                 self.set_user_agent(value)
 

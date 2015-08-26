@@ -29,6 +29,7 @@ from splash.request_middleware import (
     ResourceTimeoutMiddleware)
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
+from splash.utils import to_bytes
 
 
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
@@ -234,7 +235,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             headers = headers.items()
 
         for name, value in headers or []:
-            request.setRawHeader(name, value)
+            request.setRawHeader(to_bytes(name), to_bytes(value))
 
     def _handle_request_cookies(self, request):
         jar = QNetworkCookieJar()

@@ -6,6 +6,7 @@ import json
 import six
 
 from splash import defaults
+from splash.utils import to_bytes
 
 
 class BadOption(Exception):
@@ -61,7 +62,7 @@ class RenderOptions(object):
             data.setdefault('http_method', request.method.decode('utf-8'))
 
             request.content.seek(0)
-            data.setdefault('body', request.content.read().decode('utf-8'))
+            data.setdefault('body', bytes(request.content.read()))
             request.content.seek(0)
 
         data['uid'] = id(request)
@@ -147,7 +148,7 @@ class RenderOptions(object):
         return self.get("http_method", "GET")
 
     def get_body(self):
-        return self.get("body", None)
+        return self.get("body", None, type=bytes)
 
     def get_render_all(self, wait=None):
         result = self._get_bool("render_all", False)
