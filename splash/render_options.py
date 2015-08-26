@@ -141,7 +141,7 @@ class RenderOptions(object):
 
     def get_http_method(self):
         method = self.get("http_method", "GET")
-        if method not in OPERATION_QT_CONSTANTS:
+        if method.upper() not in OPERATION_QT_CONSTANTS:
             raise BadOption("HTTP method {} not allowed".format(method))
         return method
 

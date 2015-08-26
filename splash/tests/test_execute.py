@@ -169,7 +169,7 @@ class SplashGoTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
           formdata = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="POST",
+          ok, reason = splash:go{splash.args.url, http_method="post",
                                  body=form_body, baseurl="http://loc",
                                  formdata=formdata}
           return splash:html()
@@ -180,7 +180,7 @@ class SplashGoTest(BaseLuaRenderTest):
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
     def test_splash_bad_http_method(self):
-        # someone passses "BAD" as HTTP method
+        # someone passes "BAD" as HTTP method
         resp = self.request_lua("""
         function main(splash)
           form_body = {param1="foo", param2="bar"}
@@ -191,6 +191,19 @@ class SplashGoTest(BaseLuaRenderTest):
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
         self.assertIn("incorrect HTTP method", resp.text)
+
+    def test_formdata_and_body_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 body="some string", baseurl="http://loc",
+                                 formdata=formdata}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("formdata and body cannot be passed", resp.text)
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):

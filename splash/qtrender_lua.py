@@ -349,18 +349,21 @@ class Splash(object):
         if url is None:
             raise ScriptError("'url' is required for splash:go")
 
-        if http_method not in OPERATION_QT_CONSTANTS:
+        if http_method.upper() not in OPERATION_QT_CONSTANTS:
             raise ScriptError("incorrect HTTP method: {}".format(http_method))
 
-        if formdata:
-            body = self.lua.lua2python(formdata)
+        if formdata and body:
+            raise ScriptError("formdata and body cannot be passed to go() in one call")
+
+        elif formdata:
+            body = self.lua.lua2python(formdata, max_depth=3)
             if isinstance(body, dict):
                 body = urlencode(body)
             else:
                 raise ScriptError("formdata argument for go() must be Lua table")
 
         elif body:
-            body = self.lua.lua2python(body)
+            body = self.lua.lua2python(body, max_depth=3)
             if not isinstance(body, basestring):
                 raise ScriptError("request body must be string")
 

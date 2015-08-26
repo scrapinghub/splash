@@ -804,7 +804,7 @@ class _SplashHttpClient(QObject):
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
 
-        if (body and not headers) or (body and not request.hasRawHeader("content-type")):
+        if body and not request.hasRawHeader("content-type"):
             # there is POST body but no content-type
             # QT will set this header, but it will complain so better to do this here
             request.setRawHeader("content-type", "application/x-www-form-urlencoded")
