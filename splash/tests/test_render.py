@@ -206,6 +206,17 @@ class Base(object):
             })
             self.assertStatusCode(resp, 200)
 
+        def test_resource_timeout_abort_first(self):
+            resp = self.request({
+                'url': self.mockurl("slow.gif?n=3"),
+                'resource_timeout': "0.5",
+            })
+            self.assertStatusCode(resp, 502)
+            self.assertEqual(resp.json(), {
+                "error": 502,
+                "message": "Error rendering page",
+            })
+
 
 class RenderHtmlTest(Base.RenderTest):
 
