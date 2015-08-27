@@ -57,7 +57,7 @@ install:
 
 script:
     - py.test --version
-    - py.test --cov=splash --doctest-modules splash
+    - py.test --doctest-modules splash
 
 after_success:
     - codecov
