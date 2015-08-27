@@ -1461,6 +1461,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Value 2'", data["res3"])
         self.assertNotIn("'Value 3'", data["res3"])
 
+    @pytest.mark.skipif(True, reason="resource_timeout doesn't work in Qt5. See issue #269 for details.")
     def test_resource_timeout_aborts_first(self):
         resp = self.request_lua("""
         function main(splash)
