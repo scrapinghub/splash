@@ -76,7 +76,7 @@ def parse_opts():
     op.add_option("--lua-sandbox-allowed-modules", default="",
         help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
-        help="verbosity level; valid values are integers from 0 to 5")
+        help="verbosity level; valid values are integers from 0 to 5 (default: %default)")
     op.add_option("--version", action="store_true",
         help="print Splash version number and exit")
 
@@ -141,6 +141,7 @@ def log_splash_version():
         versions.append(lua.get_version())
 
     log.msg(", ".join(versions))
+    log.msg("Python %s" % sys.version.replace("\n", ""))
 
 
 def manhole_server(portnum=None, username=None, password=None):

@@ -36,7 +36,7 @@ page load; ``reason`` provides an information about error type.
 
 **Async:** yes, unless the navigation is locked.
 
-Four types of errors are reported (``ok`` can be ``nil`` in 4 cases):
+Five types of errors are reported (``ok`` can be ``nil`` in 5 cases):
 
 1. There is a network error: a host doesn't exist, server dropped connection,
    etc. In this case ``reason`` is ``"network<code>"``. A list of possible
@@ -47,7 +47,9 @@ Four types of errors are reported (``ok`` can be ``nil`` in 4 cases):
    HTTP 404 Not Found ``reason`` is ``"http404"``.
 3. Navigation is locked (see :ref:`splash-lock-navigation`); ``reason``
    is ``"navigation_locked"``.
-4. If Splash can't decide what caused the error, just ``"error"`` is returned.
+4. Splash can't render the main page (e.g. because the first request was
+   aborted) - ``reason`` is ``render_error``.
+5. If Splash can't decide what caused the error, just ``"error"`` is returned.
 
 .. _Qt docs: http://doc.qt.io/qt-5/qnetworkreply.html#NetworkError-enum
 
@@ -1234,6 +1236,52 @@ After calling this method the navigation away from the page becomes
 permitted. Note that the pending navigation requests suppressed
 by :ref:`splash-lock-navigation` won't be reissued.
 
+.. _splash-set-result-status-code:
+
+splash:set_result_status_code
+-----------------------------
+
+Set HTTP status code of a result returned to a client.
+
+**Signature:** ``splash:set_result_status_code(code)``
+
+**Parameters:**
+
+* code - HTTP status code (a number 200 <= code <= 999).
+
+**Returns:** nil.
+
+**Async:** no.
+
+Use this function to signal errors or other conditions to splash client
+using HTTP status codes.
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         local ok, reason = splash:go("http://www.example.com")
+         if reason == "http500" then
+             splash:set_result_status_code(503)
+             splash:set_result_header("Retry-After", 10)
+             return ''
+         end
+         return splash:png()
+     end
+
+Be careful with this function: some proxies can be configured to
+process responses differently based on their status codes. See e.g. nginx
+`proxy_next_upstream <http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream>`_
+option.
+
+In case of unhandled Lua errors HTTP status code is set to 400 regardless
+of the value set with :ref:`splash-set-result-status-code`.
+
+See also: :ref:`splash-set-result-status-code`,
+:ref:`splash-set-result-header`.
+
+
 .. _splash-set-result-content-type:
 
 splash:set_result_content_type
@@ -1337,6 +1385,8 @@ result in an HTTP header:
          return screenshot
      end
 
+See also: :ref:`splash-set-result-status-code`,
+:ref:`splash-set-result-content-type`.
 
 .. _splash-images-enabled:
 
@@ -1661,7 +1711,7 @@ Example 6 - discard requests which take longer than 5 seconds to complete:
 splash:on_response_headers
 --------------------------
 
-Register a function to be called after response headers are received, before 
+Register a function to be called after response headers are received, before
 response body is read.
 
 **Signature:** ``splash:on_response_headers(callback)``
@@ -1676,7 +1726,7 @@ response body is read.
 * ``url`` - requested URL;
 * ``headers`` - HTTP headers of response
 * ``info`` - a table with response data in `HAR response`_ format
-* ``request`` - a table with request information 
+* ``request`` - a table with request information
 
 
 These fields are for information only; changing them doesn't change
@@ -1709,7 +1759,7 @@ Example 1 - log content-type headers of all responses received while rendering
         assert(splash:go(splash.args.url))
         return all_headers
     end
-    
+
 Example 2 - abort reading body of all responses with content type ``text/css``
 
 .. code-block:: lua

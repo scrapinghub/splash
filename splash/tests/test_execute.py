@@ -1461,6 +1461,41 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Value 2'", data["res3"])
         self.assertNotIn("'Value 3'", data["res3"])
 
+    def test_resource_timeout_aborts_first(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(req) req:set_timeout(0.1) end)
+            local ok, err = splash:go{splash.args.url}
+            return {err=err}
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'err': 'render_error'})
+
+
+class ResultStatusCodeTest(BaseLuaRenderTest):
+    def test_set_result_status_code(self):
+        for code in [200, 404, 500, 999]:
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_result_status_code(tonumber(splash.args.code))
+                return "hello"
+            end
+            """, {'code': code})
+            self.assertStatusCode(resp, code)
+            self.assertEqual(resp.text, 'hello')
+
+    def test_invalid_code(self):
+        for code in ["foo", "", {'x': 3}, 0, -200, 195, 1000]:
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_result_status_code(splash.args.code)
+                return "hello"
+            end
+            """, {'code': code})
+            self.assertStatusCode(resp, 400)
+            self.assertIn('splash:set_result_status_code() argument must be', resp.text)
+
 
 class SetUserAgentTest(BaseLuaRenderTest):
     def test_set_user_agent(self):
