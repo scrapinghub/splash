@@ -141,6 +141,7 @@ def log_splash_version():
         versions.append(lua.get_version())
 
     log.msg(", ".join(versions))
+    log.msg("Python %s" % sys.version.replace("\n", ""))
 
 
 def manhole_server(portnum=None, username=None, password=None):
