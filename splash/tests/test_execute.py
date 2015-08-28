@@ -12,6 +12,8 @@ import requests
 import pytest
 lupa = pytest.importorskip("lupa")
 
+from splash import __version__ as splash_version
+
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
@@ -2493,3 +2495,14 @@ end
                                 splash:go(splash.args.url)
                                 splash:set_viewport_full()
                                 """, url=self.mockurl('delay'))
+
+class VersionTest(BaseLuaRenderTest):
+    def test_version(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local major, minor = splash:get_version()
+            return major .. '.' .. minor
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, splash_version)
