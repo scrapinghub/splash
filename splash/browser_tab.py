@@ -842,15 +842,15 @@ class _SplashHttpClient(QObject):
         # XXX: The caller must ensure self._delete_reply is called in a callback
         request = self.request_obj(url, headers=headers, body=body)
 
-        operation = getattr(self.network_manager, method.lower(), None)
+        if method.upper() not in OPERATION_QT_CONSTANTS:
+            raise ValueError("Invalid HTTP method: '{}'".format(method))
 
-        if not operation:
-            # this should never happen (arguments are validated earlier)
-            # but just in case
-            operation = self.network_manager.get
+        operation = getattr(self.network_manager, method.lower())
 
-        if body:
+        if body and method.upper() in ["POST", "PUT"]:
             reply = operation(request, body)
+        elif body:
+            raise ValueError("Request with method {} should not have body".format(method))
         else:
             reply = operation(request)
 
