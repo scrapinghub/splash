@@ -1482,6 +1482,9 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Value 2'", data["res3"])
         self.assertNotIn("'Value 3'", data["res3"])
 
+
+class ResourceTimeoutTest(BaseLuaRenderTest):
+
     def test_resource_timeout_aborts_first(self):
         resp = self.request_lua("""
         function main(splash)
@@ -1492,6 +1495,67 @@ class GoTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("slow.gif?n=4")})
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'err': 'render_error'})
+
+    def test_resource_timeout_attribute(self):
+        # request should be cancelled
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = 0.1
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('render_error', resp.json()['message'])
+
+    def test_resource_timeout_attribute_priority(self):
+        # set_timeout should take a priority
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = 0.1
+            splash:on_request(function(req) req:set_timeout(10) end)
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 200)
+
+    def test_resource_timeout_read(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local default = splash.resource_timeout
+            splash.resource_timeout = 0.1
+            local updated = splash.resource_timeout
+            return {default=default, updated=updated}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"default": 0, "updated": 0.1})
+
+    def test_resource_timeout_zero(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = 0
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=1")})
+        self.assertStatusCode(resp, 200)
+
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = nil
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=1")})
+        self.assertStatusCode(resp, 200)
+
+    def test_resource_timeout_negative(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = -1
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=1")})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('splash.resource_timeout', resp.json()['message'])
 
 
 class ResultStatusCodeTest(BaseLuaRenderTest):

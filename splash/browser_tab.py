@@ -166,6 +166,10 @@ class BrowserTab(QObject):
         """ Set a default timeout for HTTP requests, in seconds. """
         self.web_page.resource_timeout = timeout
 
+    def get_resource_timeout(self):
+        """ Get a default timeout for HTTP requests, in seconds. """
+        return self.web_page.resource_timeout
+
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,
                                               enabled)
