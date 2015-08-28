@@ -1822,6 +1822,30 @@ Example 3 - extract all cookies set by website without reading response body
         return cookies
     end
 
+.. _splash-version:
+
+splash:get_version
+------------------
+
+Get Splash major and minor version.
+
+**Signature:** ``major, minor = splash:get_version()``
+
+**Returns:** two numbers corresponding to the major and minor Splash version.
+
+**Async:** no.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+         local major, minor = splash:get_version()
+         if major < 2 and minor < 8 then
+             error("Splash 1.8 or newer required")
+         end
+     end
+
 .. _splash-args:
 
 splash.args

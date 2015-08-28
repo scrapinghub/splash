@@ -30,6 +30,7 @@ from splash.qtutils import (
     create_proxy
 )
 from splash.lua_runtime import SplashLuaRuntime
+from splash import __version__ as splash_version
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -676,6 +677,11 @@ class Splash(object):
 
         self.tab.register_callback("on_response_headers", res_callback)
         return True
+
+    @command()
+    def get_version(self):
+        major, minor = splash_version.split('.')
+        return int(major), int(minor)
 
     def _error_info_to_lua(self, error_info):
         if error_info is None:
