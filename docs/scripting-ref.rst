@@ -1388,6 +1388,31 @@ result in an HTTP header:
 See also: :ref:`splash-set-result-status-code`,
 :ref:`splash-set-result-content-type`.
 
+.. _splash-resource-timeout:
+
+splash.resource_timeout
+-----------------------
+
+Set a default timeout for network requests, in seconds.
+
+**Signature:** ``splash.resource_timeout = value``
+
+Example - abort requests to remote resources if they take more than 10 seconds:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash.resource_timeout = 10.0
+         assert(splash:go(splash.args.url))
+         return splash:png()
+     end
+
+Zero or nil value means "no timeout".
+
+Request timeouts set in :ref:`splash-on-request` using
+``request:set_timeout`` have a priority over :ref:`splash-resource-timeout`.
+
+
 .. _splash-images-enabled:
 
 splash.images_enabled
@@ -1627,7 +1652,7 @@ one of the ``request`` methods:
   See also: :ref:`splash-set-custom-headers`.
 * ``request:set_timeout(timeout)`` - set a timeout for this request,
   in seconds. If response is not fully received after the timeout,
-  request is aborted.
+  request is aborted. See also: :ref:`splash-resource-timeout`.
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.
@@ -1693,12 +1718,18 @@ request to Splash:
         }
     end)
 
-Example 6 - discard requests which take longer than 5 seconds to complete:
+Example 6 - discard requests which take longer than 5 seconds to complete,
+but allow up to 15 seconds for the first request:
 
 .. code-block:: lua
 
+    local first = true
+    splash.resource_timeout = 5
     splash:on_request(function(request)
-        request:set_timeout(5.0)
+        if first then
+            request:set_timeout(15.0)
+            first = false
+        end
     end)
 
 
@@ -1789,6 +1820,30 @@ Example 3 - extract all cookies set by website without reading response body
         assert(splash:go(splash.args.url))
         return cookies
     end
+
+.. _splash-version:
+
+splash:get_version
+------------------
+
+Get Splash major and minor version.
+
+**Signature:** ``major, minor = splash:get_version()``
+
+**Returns:** two numbers corresponding to the major and minor Splash version.
+
+**Async:** no.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+         local major, minor = splash:get_version()
+         if major < 2 and minor < 8 then
+             error("Splash 1.8 or newer required")
+         end
+     end
 
 .. _splash-args:
 

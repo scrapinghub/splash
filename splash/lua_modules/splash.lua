@@ -150,10 +150,10 @@ function Splash._create(py_splash)
 
   -- Set attribute handler functions
   for key, opts in pairs(py_splash.lua_properties) do
-    local func = drops_self_argument(py_splash[key])
-    self._getters[opts.name] = drops_self_argument(
-                                            py_splash[opts.getter_method])
-    self._setters[opts.name] = func
+    local setter = unwraps_errors(drops_self_argument(py_splash[key]))
+    local getter = unwraps_errors(drops_self_argument(py_splash[opts.getter_method]))
+    self._getters[opts.name] = getter
+    self._setters[opts.name] = setter
   end
 
   return self
@@ -234,7 +234,7 @@ function Response._create(py_reply)
     }
 
     setmetatable(self, Response)
-    
+
     -- convert har headers to something more convenient
     local _request_headers = {}
     for name, value in pairs(py_reply.request["headers"]) do
@@ -242,14 +242,14 @@ function Response._create(py_reply)
     end
     py_reply.request["headers"] = _request_headers
 
-    -- take some keys from py_reply.info 
+    -- take some keys from py_reply.info
     -- but not all (we don't want mess har headers with response headers)
     local keys_from_reply_info = {"status", "url", "ok"}
 
-    for key, value in pairs(keys_from_reply_info) do 
+    for key, value in pairs(keys_from_reply_info) do
         self[value] = py_reply.info[value]
     end
-    
+
     for key, opts in pairs(py_reply.commands) do
         local command = py_reply[key]
         command = drops_self_argument(command)
@@ -259,7 +259,7 @@ function Response._create(py_reply)
         end
         self[key] = command
     end
-    
+
     return self
 end
 
