@@ -65,4 +65,8 @@ install:
     - python setup.py install
 
 script:
+    - py.test --version
     - py.test --doctest-modules splash
+
+after_success:
+    - codecov

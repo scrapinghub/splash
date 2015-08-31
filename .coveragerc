@@ -1,0 +1,7 @@
+[run]
+branch = true
+include = splash/*
+omit =
+  splash/tests/*
+  splash/vendor/*
+  splash/conftest.py

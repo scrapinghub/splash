@@ -1,4 +1,4 @@
-import sys, os, time, tempfile, shutil, socket, fcntl
+import sys, os, time, tempfile, shutil, socket, fcntl, signal
 from subprocess import Popen, PIPE
 
 
@@ -85,9 +85,11 @@ class SplashServer(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.proc.kill()
-        self.proc.wait()
-        shutil.rmtree(self.tempdir)
+        if self.proc is not None:
+            self.proc.send_signal(signal.SIGINT)
+            self.proc.wait()
+            self.proc = None
+            shutil.rmtree(self.tempdir)
 
     def url(self, path):
         return "http://localhost:%s/%s" % (self.portnum, path.lstrip('/'))

@@ -14,6 +14,7 @@ import os
 
 from PyQt5.QtNetwork import QNetworkProxy
 import six
+from six.moves.urllib.parse import urlparse
 from six.moves import configparser
 
 from splash.render_options import BadOption
@@ -159,6 +160,49 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
                        proxy.get('username'), proxy.get('password'),
                        proxy.get('type'))]
         return blacklist, whitelist, proxy_list
+
+
+class DirectSplashProxyFactory(object):
+    """
+    This proxy factory will set the proxy passed to a render request
+    using a parameter.
+
+    If GET parameter is a fully qualified URL, use the specified proxy.
+    The syntax to specify the proxy is:
+    [protocol://][user:password@]proxyhost[:port])
+
+    Where protocol is either ``http`` or ``socks5``. If port is not specified,
+    it's assumed to be 1080.
+    """
+    def __init__(self, proxy):
+        url = urlparse(proxy)
+        if url.scheme and url.scheme in ('http', 'socks5') and url.hostname:
+            self.proxy = create_proxy(
+                url.hostname,
+                url.port or 1080,
+                username=url.username,
+                password=url.password,
+                type=url.scheme.upper()
+            )
+        else:
+            raise BadOption('Invalid proxy URL format.')
+
+    def queryProxy(self, *args, **kwargs):
+        return [self.proxy]
+
+
+def getFactory(ini_path, parameter):
+    """
+    Returns the appropriate factory depending on the value of
+    ini_path and parameter
+    """
+    if parameter and re.match('^\w+://', parameter):
+        return DirectSplashProxyFactory(parameter)
+    else:
+        if ini_path:
+            return ProfilesSplashProxyFactory(ini_path, parameter)
+        else:
+            return None
 
 
 def _get_lines(config_parser, section, option, default):

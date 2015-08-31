@@ -30,6 +30,7 @@ from splash.qtutils import (
     create_proxy
 )
 from splash.lua_runtime import SplashLuaRuntime
+from splash import __version__ as splash_version
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -259,6 +260,7 @@ class Splash(object):
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
+    _result_status_code = 200
     _attribute_whitelist = ['commands', 'args', 'tmp_storage',
                             'lua_properties']
 
@@ -311,10 +313,12 @@ class Splash(object):
         self._return = return_func
 
     @lua_property('js_enabled')
+    @command()
     def get_js_enabled(self):
         return self.tab.get_js_enabled()
 
     @get_js_enabled.lua_setter
+    @command()
     def set_js_enabled(self, value):
         self.tab.set_js_enabled(value)
 
@@ -570,6 +574,12 @@ class Splash(object):
         self._result_content_type = content_type
 
     @command()
+    def set_result_status_code(self, code):
+        if not isinstance(code, int) or not (200 <= code <= 999):
+            raise ScriptError("splash:set_result_status_code() argument must be a number 200 <= code <= 999")
+        self._result_status_code = code
+
+    @command()
     def set_result_header(self, name, value):
         if not all([isinstance(h, six.string_types) for h in [name, value]]):
             raise ScriptError("splash:set_result_header() arguments must be strings")
@@ -607,6 +617,7 @@ class Splash(object):
         return tuple(self.tab.set_viewport('full'))
 
     @lua_property('images_enabled')
+    @command()
     def get_images_enabled(self):
         return self.tab.get_images_enabled()
 
@@ -615,6 +626,21 @@ class Splash(object):
     def set_images_enabled(self, enabled):
         if enabled is not None:
             self.tab.set_images_enabled(int(enabled))
+
+    @lua_property('resource_timeout')
+    @command()
+    def get_resource_timeout(self):
+        return self.tab.get_resource_timeout()
+
+    @get_resource_timeout.lua_setter
+    @command()
+    def set_resource_timeout(self, timeout):
+        if timeout is None:
+            timeout = 0
+        timeout = float(timeout)
+        if timeout < 0:
+            raise ScriptError("splash.resource_timeout can't be negative")
+        self.tab.set_resource_timeout(timeout)
 
     @command()
     def status_code(self):
@@ -655,10 +681,18 @@ class Splash(object):
         self.tab.register_callback("on_response_headers", res_callback)
         return True
 
+    @command()
+    def get_version(self):
+        major, minor = splash_version.split('.')
+        return int(major), int(minor)
+
     def _error_info_to_lua(self, error_info):
         if error_info is None:
             return "error"
-        return "%s%s" % (error_info.type.lower(), error_info.code)
+        res = "%s%s" % (error_info.type.lower(), error_info.code)
+        if res == "http200":
+            return "render_error"
+        return res
 
     def get_real_exception(self):
         if self._exceptions:
@@ -671,6 +705,9 @@ class Splash(object):
         if self._result_content_type is None:
             return None
         return str(self._result_content_type)
+
+    def result_status_code(self):
+        return self._result_status_code
 
     def result_headers(self):
         return self._result_headers
@@ -754,7 +791,10 @@ class _WrappedRequest(object):
     @command()
     @_requires_request
     def set_timeout(self, timeout):
-        self.request.timeout = float(timeout)
+        timeout = float(timeout)
+        if timeout < 0:
+            raise ScriptError("request:set_timeout() argument can't be < 0")
+        self.request.timeout = timeout
 
 
 def _requires_response(meth):
@@ -828,7 +868,12 @@ class SplashScriptRunner(BaseScriptRunner):
         super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
 
     def on_result(self, result):
-        self.return_result((result, self.splash.result_content_type(), self.splash.result_headers()))
+        self.return_result((
+            result,
+            self.splash.result_content_type(),
+            self.splash.result_headers(),
+            self.splash.result_status_code(),
+        ))
 
     def on_async_command(self, cmd):
         self.splash.run_async_command(cmd)

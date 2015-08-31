@@ -122,7 +122,7 @@ class BrowserTab(QObject):
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
-        settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
+        settings.setAttribute(QWebSettings.LocalStorageEnabled, False)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
@@ -169,6 +169,10 @@ class BrowserTab(QObject):
     def set_resource_timeout(self, timeout):
         """ Set a default timeout for HTTP requests, in seconds. """
         self.web_page.resource_timeout = timeout
+
+    def get_resource_timeout(self):
+        """ Get a default timeout for HTTP requests, in seconds. """
+        return self.web_page.resource_timeout
 
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,

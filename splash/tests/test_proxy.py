@@ -5,10 +5,14 @@ import shutil
 import unittest
 
 import requests
-import pytest
-import six
 
-from splash.proxy import _BlackWhiteSplashProxyFactory, ProfilesSplashProxyFactory
+from splash.proxy import (
+    _BlackWhiteSplashProxyFactory,
+    ProfilesSplashProxyFactory,
+    DirectSplashProxyFactory
+)
+from splash.qtutils import PROXY_TYPES
+from splash.render_options import BadOption
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import TestServers
 
@@ -55,6 +59,32 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
         self.assertTrue(f.shouldUseProxyList(protocol, url))
 
 
+class DirectSplashProxyFactoryTest(unittest.TestCase):
+    def test_parse(self):
+        factory = DirectSplashProxyFactory('http://pepe:hunter2@proxy.com:1234')
+        self.assertEquals(factory.proxy.port(), 1234)
+        self.assertEquals(factory.proxy.user(), 'pepe')
+        self.assertEquals(factory.proxy.password(), 'hunter2')
+        self.assertEquals(factory.proxy.hostName(), 'proxy.com')
+        self.assertEquals(factory.proxy.type(), PROXY_TYPES['HTTP'])
+
+    def test_default_port(self):
+        factory = DirectSplashProxyFactory('http://proxy.com')
+        self.assertEquals(factory.proxy.port(), 1080)
+
+    def test_socks5(self):
+        factory = DirectSplashProxyFactory('socks5://proxy.com')
+        self.assertEquals(factory.proxy.type(), PROXY_TYPES['SOCKS5'])
+
+    def test_invalid(self):
+        with self.assertRaises(BadOption):
+            DirectSplashProxyFactory('This is not a valid URL')
+        with self.assertRaises(BadOption):
+            DirectSplashProxyFactory('ftp://proxy.com')
+        with self.assertRaises(BadOption):
+            DirectSplashProxyFactory('relative_url')
+
+
 class BaseHtmlProxyTest(BaseRenderTest):
     use_gzip = False  # our simple testing proxy dosn't work with gzip
 
@@ -94,14 +124,20 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
         self.assertStatusCode(r, 400)
-        self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
+        self.assertEqual(r.json(), {
+            "message": ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG,
+            "error": 400,
+        })
 
 
     def test_nonexisting(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
         self.assertStatusCode(r, 400)
-        self.assertEqual(r.text.strip(), ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG)
+        self.assertEqual(r.json(), {
+            "message": ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG,
+            "error": 400,
+        })
 
     def test_no_proxy_settings(self):
         r = self.request({'url': self.mockurl('jsrender'),
@@ -173,3 +209,12 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
 
             finally:
                 self.remove_default_ini(ts2)
+
+
+class ProxyInParameterTest(BaseHtmlProxyTest):
+    def test_proxy_works(self):
+        r1 = self.request({'url': self.mockurl('jsrender')})
+        self.assertNotProxied(r1.text)
+
+        r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port})
+        self.assertProxied(r2.text)
