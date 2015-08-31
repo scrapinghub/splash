@@ -6,8 +6,8 @@ See http://www.softwareishard.com/blog/har-12-spec/.
 from __future__ import absolute_import
 import base64
 
-from PyQt4.QtCore import Qt, QVariant
-from PyQt4.QtNetwork import QNetworkRequest
+from PyQt5.QtCore import Qt, QVariant, QUrlQuery
+from PyQt5.QtNetwork import QNetworkRequest
 
 from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
 
@@ -79,7 +79,7 @@ def cookie2har(cookie):
 def querystring2har(url):
     return [
         {"name": unicode(name), "value": unicode(value)}
-        for name, value in url.queryItems()
+        for name, value in QUrlQuery(url).queryItems()
     ]
 
 
@@ -102,29 +102,28 @@ def reply2har(reply, include_content=False, binary_content=False):
     }
 
     content_type = reply.header(QNetworkRequest.ContentTypeHeader)
-    if not content_type.isNull():
-        res["content"]["mimeType"] = unicode(content_type.toString())
+    if content_type is not None:
+        res["content"]["mimeType"] = unicode(content_type)
 
     content_length = reply.header(QNetworkRequest.ContentLengthHeader)
-    if not content_length.isNull():
+    if content_length is not None:
         # this is not a correct way to get the size!
-        res["content"]["size"] = content_length.toInt()[0]
+        res["content"]["size"] = content_length
 
     status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
-    if not status.isNull():
-        status, ok = status.toInt()
+    if status is not None:
         res["status"] = int(status)
     else:
         res["status"] = 0
 
     status_text = reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
-    if not status_text.isNull():
-        res["statusText"] = bytes(status_text.toByteArray()).decode('latin1')
+    if status_text is not None:
+        res["statusText"] = bytes(status_text).decode('latin1')
     else:
         res["statusText"] = REQUEST_ERRORS_SHORT.get(reply.error(), "?")
 
     redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
-    if not redirect_url.isNull():
+    if redirect_url is not None:
         res["redirectURL"] = unicode(redirect_url.toString())
     else:
         res["redirectURL"] = ""

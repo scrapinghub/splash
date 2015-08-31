@@ -8,9 +8,10 @@ import os
 import weakref
 import uuid
 
-from PyQt4.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
-from PyQt4.QtNetwork import QNetworkRequest
-from PyQt4.QtWebKit import QWebPage, QWebSettings
+from PyQt5.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
+from PyQt5.QtNetwork import QNetworkRequest
+from PyQt5.QtWebKitWidgets import QWebPage
+from PyQt5.QtWebKit import QWebSettings
 from twisted.internet import defer
 from twisted.python import log
 
@@ -18,7 +19,8 @@ from splash import defaults
 from splash.har.qt import cookies2har
 from splash.har.utils import without_private
 from splash.qtrender_image import QtImageRenderer
-from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2ascii
+from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
+                            qurl2ascii)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
@@ -386,7 +388,7 @@ class BrowserTab(QObject):
         """
         self.logger.log("baseurl_request_finished", min_level=2)
         reply = self.sender()
-        mime_type = reply.header(QNetworkRequest.ContentTypeHeader).toString()
+        mime_type = reply.header(QNetworkRequest.ContentTypeHeader)
         data = reply.readAll()
         self.set_content(
             data=data,
@@ -678,7 +680,7 @@ class BrowserTab(QObject):
         """ Return HTML of the current main frame """
         self.logger.log("getting HTML", min_level=2)
         frame = self.web_page.mainFrame()
-        result = bytes(frame.toHtml().toUtf8())
+        result = bytes(frame.toHtml().encode('utf-8'))
         self.store_har_timing("_onHtmlRendered")
         return result
 
@@ -852,7 +854,7 @@ class _SplashHttpClient(QObject):
                 callback()  # XXX: should it be an error?
                 return
 
-            redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute).toPyObject()
+            redirect_url = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
             if redirect_url is None:  # no redirect
                 callback()
                 return

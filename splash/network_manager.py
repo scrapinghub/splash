@@ -6,8 +6,8 @@ from datetime import datetime
 import traceback
 from contextlib import contextmanager
 
-from PyQt4.QtCore import QTimer
-from PyQt4.QtNetwork import (
+from PyQt5.QtCore import QTimer
+from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
@@ -250,7 +250,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _getRequestId(self, request=None):
         if request is None:
             request = self.sender().request()
-        return request.attribute(self._REQUEST_ID).toPyObject()
+        return request.attribute(self._REQUEST_ID)
 
     def _harEntry(self, request=None, create=False):
         """

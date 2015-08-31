@@ -13,8 +13,8 @@ from splash.qtutils import init_qt_app
 
 def install_qtreactor(verbose):
     init_qt_app(verbose)
-    import qt4reactor
-    qt4reactor.install()
+    import qt5reactor
+    qt5reactor.install()
 
 
 def parse_opts():
@@ -123,8 +123,8 @@ def log_splash_version():
     import twisted
     from twisted.python import log
     import sip
-    from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-    from PyQt4.QtWebKit import qWebKitVersion
+    from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+    from PyQt5.QtWebKit import qWebKitVersion
     from splash import lua
 
     log.msg("Splash version: %s" % __version__)
@@ -323,7 +323,7 @@ def _check_js_profiles_path(js_profiles_path):
 
 
 def _set_global_render_settings(js_disable_cross_domain_access):
-    from PyQt4.QtWebKit import QWebSecurityOrigin
+    from PyQt5.QtWebKit import QWebSecurityOrigin
     if js_disable_cross_domain_access is False:
         # In order to enable cross domain requests it is necessary to add
         # the http and https to the local scheme, this way all the urls are

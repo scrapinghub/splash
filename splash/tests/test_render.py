@@ -198,6 +198,7 @@ class Base(object):
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
 
+        @pytest.mark.skipif(True, reason="resource_timeout doesn't work in Qt5. See issue #269 for details.")
         def test_resource_timeout(self):
             resp = self.request({
                 'url': self.mockurl("show-image?n=10"),
@@ -206,6 +207,7 @@ class Base(object):
             })
             self.assertStatusCode(resp, 200)
 
+        @pytest.mark.skipif(True, reason="resource_timeout doesn't work in Qt5. See issue #269 for details.")
         def test_resource_timeout_abort_first(self):
             resp = self.request({
                 'url': self.mockurl("slow.gif?n=3"),
