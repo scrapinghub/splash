@@ -59,14 +59,14 @@ before_install:
     # pip installs
     - if [ $TRAVIS_PYTHON_VERSION == 3.4 ] && [ $SYSTEM_PACKAGES == 'false' ]; then pip install https://github.com/twisted/twisted/archive/trunk.zip#egg=twisted; else pip install twisted; fi
     - if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow service_identity lupa; else sudo apt-get install -y python-twisted python-imaging; fi
-    - pip install psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib qt5reactor-fork six
+    - pip install -U psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib qt5reactor-fork six pytest-cov codecov
 
 install:
     - python setup.py install
 
 script:
     - py.test --version
-    - py.test --doctest-modules splash
+    - py.test --cov=splash --doctest-modules splash -v
 
 after_success:
     - codecov
