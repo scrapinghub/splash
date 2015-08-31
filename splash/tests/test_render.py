@@ -403,7 +403,7 @@ class RenderPngTest(Base.RenderTest):
 
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
-                          'render_all': 1, 'wait': '0.01'})
+                          'render_all': 1, 'wait': '0.01', 'viewport': '50x1024'})
         self.assertPng(r, height=60000)  # hardcoded in the html
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFF, 0x77, 0xFF))
 
@@ -1008,7 +1008,7 @@ class RenderJpegTest(Base.RenderTest):
 
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
-                          'render_all': 1, 'wait': '0.01', 'quality': '100'})
+                          'render_all': 1, 'wait': '0.01', 'viewport': '50x1024', 'quality': '100'})
         self.assertJpeg(r, height=60000)  # hardcoded in the html
         # XXX: JPEG some quality? why 0xFE and not 0xFF?
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFE, 0x77))
