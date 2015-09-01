@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import abc
+import six
 
 import lupa
 
@@ -35,11 +36,10 @@ class ScriptError(BadOption):
             self.args = (e.args[0] + "; " + self_repr,) + self.args[1:]
 
 
-class BaseScriptRunner(object):
+class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
     """
     An utility class for running Lua coroutines.
     """
-    __metaclass__ = abc.ABCMeta
     _START_CMD = '__START__'
 
     def __init__(self, lua, log, sandboxed):

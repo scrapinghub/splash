@@ -4,11 +4,11 @@ import array
 from abc import ABCMeta, abstractmethod, abstractproperty
 from io import BytesIO
 from math import ceil, floor
+import six
 
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QImage, QPainter, QRegion
-import six
 
 from splash import defaults
 
@@ -78,7 +78,6 @@ class QtImageRenderer(object):
             self.pillow_image_format,
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
-
 
     def swap_byte_order_i32(self, buf):
         """Swap order of bytes in each 32-bit word of given byte sequence."""
@@ -354,7 +353,7 @@ class _DummyLogger(object):
         pass
 
 
-class WrappedImage(object):
+class WrappedImage(six.with_metaclass(ABCMeta, object)):
     """
     Base interface for operations with images of rendered webpages.
 
@@ -363,8 +362,6 @@ class WrappedImage(object):
     use one or another.
 
     """
-    __metaclass__ = ABCMeta
-
     @abstractproperty
     def size(self):
         """
