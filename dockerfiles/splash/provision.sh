@@ -22,7 +22,7 @@ EOF
 
 prepare_install () {
     # Prepare docker image for installation of packages, docker images are
-    # usually stripped and aptitude doesn't work immediately.
+    # usually stripped and apt-get doesn't work immediately.
     #
     # python-software-properties contains "add-apt-repository" command for PPA conf
     sed 's/main$/main universe/' -i /etc/apt/sources.list && \
@@ -35,7 +35,6 @@ prepare_install () {
 
 install_deps () {
     # Install package dependencies.
-    apt-add-repository -y ppa:beineri/opt-qt541-trusty && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         netbase \
@@ -43,25 +42,12 @@ install_deps () {
         xvfb \
         pkg-config \
         python3 \
-        qt54base \
-        qt54declarative \
-        qt54webkit \
         python3-pyqt5 \
         python3-pyqt5.qtwebkit \
         libre2 \
         libicu52 \
         liblua5.2-0 \
-        zlib1g && \
-    # Install more recent version of sip.
-    curl -L -o sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz && \
-    echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - && \
-    tar xzf sip.tar.gz && \
-    pushd sip-4.16.7 && \
-    python3 configure.py && \
-    make && \
-    make install && \
-    popd && \
-    rm -rf sip-4.16.7 sip.tar.gz
+        zlib1g
 }
 
 install_builddeps () {
