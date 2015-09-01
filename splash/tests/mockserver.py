@@ -639,10 +639,12 @@ class Index(Resource):
         self.rootChildren = rootChildren
 
     def render(self, request):
+        paths = [path.decode('ascii')
+                 for (path, child) in self.rootChildren.items() if path]
 
         links = "\n".join([
             "<li><a href='%s'>%s</a></li>" % (path, path)
-            for (path, child) in self.rootChildren.items() if path
+            for path in paths
         ])
         return ("""
         <html>
