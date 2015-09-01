@@ -38,28 +38,6 @@ class SplashJSONEncoder(json.JSONEncoder):
         return super(SplashJSONEncoder, self).default(o)
 
 
-def bytes_to_unicode(data, encoding='utf-8'):
-    """Recursively converts all bytes objects in object `data` to their unicode
-    representation using the given encoding."""
-    if isinstance(data, bytes):
-        return data.decode(encoding)
-    elif isinstance(data, dict):
-        return dict(list(
-            map(functools.partial(bytes_to_unicode, encoding=encoding),
-                list(data.items()))))
-    elif isinstance(data, (list, tuple)):
-        return type(data)(list(
-            map(functools.partial(bytes_to_unicode, encoding=encoding), data)))
-    elif isinstance(data, BinaryCapsule):
-        return bytes_to_unicode(data.as_b64())
-    elif isinstance(data, (bool, six.integer_types, float, six.text_type)):
-        return data
-    else:
-        raise TypeError('bytes_to_unicode expects bytes, str, unicode, list, '
-                        'dict, tuple or %s object, got '
-                        '%s' % (repr(BinaryCapsule), type(data).__name__))
-
-
 def to_unicode(text, encoding=None, errors='strict'):
     """Return the unicode representation of a bytes object `text`. If `text`
     is already an unicode object, return it as-is."""
