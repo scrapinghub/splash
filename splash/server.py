@@ -123,18 +123,17 @@ def bump_nofile_limit():
 def log_splash_version():
     import twisted
     from twisted.python import log
-    import sip
-    from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-    from PyQt5.QtWebKit import qWebKitVersion
     from splash import lua
+    from splash.qtutils import get_versions
 
     log.msg("Splash version: %s" % __version__)
 
+    verdict = get_versions()
     versions = [
-        "Qt %s" % QT_VERSION_STR,
-        "PyQt %s" % PYQT_VERSION_STR,
-        "WebKit %s" % qWebKitVersion(),
-        "sip %s" % sip.SIP_VERSION_STR,
+        "Qt %s" % verdict['qt'],
+        "PyQt %s" % verdict['pyqt'],
+        "WebKit %s" % verdict['webkit'],
+        "sip %s" % verdict['sip'],
         "Twisted %s" % twisted.version.short(),
     ]
 
