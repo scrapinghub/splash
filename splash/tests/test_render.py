@@ -380,14 +380,17 @@ class RenderPngTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all(self):
         r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
                           'render_all': 1, 'wait': '0.1'})
@@ -582,6 +585,7 @@ class RenderJsonTest(Base.RenderTest):
         self.assertSamePng(self.mockurl("jsrender"),
                            {'vwidth': 100})
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_png_size_viewport(self):
         self.assertSamePng(self.mockurl("jsrender"), {'wait': '0.1', 'viewport': 'full'})
         self.assertSamePng(self.mockurl("tall"), {'wait': '0.1', 'viewport': 'full'})
@@ -963,6 +967,7 @@ class RenderJpegTest(Base.RenderTest):
                 r = self.request({"url": url, arg: val})
                 self.assertStatusCode(r, 400)
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full_wait(self):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
         self.assertStatusCode(r, 400)
@@ -986,14 +991,17 @@ class RenderJpegTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all(self):
         r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
                           'render_all': 1, 'wait': '0.1'})
