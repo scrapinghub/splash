@@ -255,8 +255,8 @@ def get_request_webframe(request):
 def get_versions():
     """ Return a dictionary with qt/pyqt/webkit/sip versions """
     from sip import SIP_VERSION_STR
-    from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-    from PyQt4.QtWebKit import qWebKitVersion
+    from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+    from PyQt5.QtWebKit import qWebKitVersion
 
     return {
         'qt': QT_VERSION_STR,
