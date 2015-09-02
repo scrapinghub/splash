@@ -2496,6 +2496,7 @@ end
                                 splash:set_viewport_full()
                                 """, url=self.mockurl('delay'))
 
+
 class VersionTest(BaseLuaRenderTest):
     def test_version(self):
         resp = self.request_lua("""

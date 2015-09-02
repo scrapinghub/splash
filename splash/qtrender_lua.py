@@ -11,10 +11,8 @@ import sip
 import twisted
 
 import lupa
-from PyQt4.QtNetwork import QNetworkRequest
-from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-from PyQt4.QtWebKit import qWebKitVersion
 
+import splash
 from splash.browser_tab import JsError
 from splash.lua_runner import (
     BaseScriptRunner,
@@ -31,10 +29,9 @@ from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
     set_request_url,
-    create_proxy
-)
+    create_proxy,
+    get_versions)
 from splash.lua_runtime import SplashLuaRuntime
-from splash import __version__ as splash_version
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -684,18 +681,15 @@ class Splash(object):
 
     @command()
     def get_version(self):
-        major, minor = splash_version.split('.')
-        return {
-            "major": int(major),
-            "minor": int(minor),
-            "splash": splash_version,
-            "qt": QT_VERSION_STR,
-            "pyqt": PYQT_VERSION_STR,
-            "webkit": str(qWebKitVersion()),
-            "sip": sip.SIP_VERSION_STR,
+        versions = get_versions()
+        versions.update({
+            "splash": splash.__version__,
+            "major": int(splash.version_info[0]),
+            "minor": int(splash.version_info[1]),
             "twisted": twisted.version.short(),
             "python": sys.version,
-        }
+        })
+        return versions
 
     def _error_info_to_lua(self, error_info):
         if error_info is None:
