@@ -2500,8 +2500,8 @@ class VersionTest(BaseLuaRenderTest):
     def test_version(self):
         resp = self.request_lua("""
         function main(splash)
-            local major, minor = splash:get_version()
-            return major .. '.' .. minor
+            local version = splash:get_version()
+            return version.major .. '.' .. version.minor
         end
         """)
         self.assertStatusCode(resp, 200)

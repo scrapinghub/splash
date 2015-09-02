@@ -1829,19 +1829,31 @@ splash:get_version
 
 Get Splash major and minor version.
 
-**Signature:** ``major, minor = splash:get_version()``
+**Signature:** ``version_info = splash:get_version()``
 
-**Returns:** two numbers corresponding to the major and minor Splash version.
+**Returns:** A table with version information.
 
 **Async:** no.
+
+As of now, this table contains:
+
+* ``splash`` - (string) Splash version
+* ``major`` - (int) Splash major version
+* ``minor`` - (int) Splash minor version
+* ``python`` - (string) Python version
+* ``qt`` - (string) Qt version
+* ``pyqt`` - (string) PyQt version
+* ``webkit`` - (string) WebKit version
+* ``sip`` - (string) SIP version
+* ``twisted`` - (string) Twisted version
 
 Example:
 
 .. code-block:: lua
 
     function main(splash)
-         local major, minor = splash:get_version()
-         if major < 2 and minor < 8 then
+         local version = splash:get_version()
+         if version.major < 2 and version.minor < 8 then
              error("Splash 1.8 or newer required")
          end
      end
