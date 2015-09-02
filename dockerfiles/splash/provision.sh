@@ -11,14 +11,20 @@ usage -- print this message
 prepare_install -- prepare image for installation
 install_deps -- install system-level dependencies
 install_builddeps -- install system-level build-dependencies
+install_pyqt5 -- install PyQT5 from sources
 install_python_deps -- install python-level dependencies
-install_msfonts - agree with EULA and install Microsoft fonts
-install_extra_fonts - install extra fonts
+install_msfonts -- agree with EULA and install Microsoft fonts
+install_extra_fonts -- install extra fonts
 remove_builddeps -- remove build-dependencies
 remove_extra -- remove files that are unnecessary to run Splash
 
 EOF
 }
+
+SIP_VERSION='4.16.9'
+PYQT_VERSION='5.5'
+QT_PATH='/opt/qt55'
+
 
 prepare_install () {
     # Prepare docker image for installation of packages, docker images are
@@ -30,11 +36,12 @@ prepare_install () {
     apt-get install -y --no-install-recommends \
         curl \
         software-properties-common \
-        python-software-properties
+        python3-software-properties
 }
 
 install_deps () {
     # Install package dependencies.
+    apt-add-repository -y ppa:beineri/opt-qt55-trusty && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         netbase \
@@ -42,8 +49,8 @@ install_deps () {
         xvfb \
         pkg-config \
         python3 \
-        python3-pyqt5 \
-        python3-pyqt5.qtwebkit \
+        qt55base \
+        qt55webkit \
         libre2 \
         libicu52 \
         liblua5.2-0 \
@@ -62,7 +69,45 @@ install_builddeps () {
         libre2-dev \
         liblua5.2-dev \
         libsqlite3-dev \
-        zlib1g-dev
+        zlib1g-dev \
+        libjpeg-turbo8-dev \
+        libgl1-mesa-dev-lts-utopic
+}
+
+install_pyqt5 () {
+    mkdir -p /downloads && \
+    chmod a+rw /downloads && \
+    curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-${SIP_VERSION}/sip-${SIP_VERSION}.tar.gz && \
+    curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${PYQT_VERSION}/PyQt-gpl-${PYQT_VERSION}.tar.gz && \
+    # TODO: check downloads
+    mkdir -p /builds && \
+    chmod a+rw /builds && \
+    pushd /builds && \
+    # SIP
+    tar xzf /downloads/sip.tar.gz --keep-newer-files  && \
+    pushd sip-${SIP_VERSION}  && \
+    python3 configure.py  && \
+    make  && \
+    make install  && \
+    popd  && \
+    # PyQt5
+    tar xzf /downloads/pyqt5.tar.gz --keep-newer-files  && \
+    pushd PyQt-gpl-${PYQT_VERSION}  && \
+    python3 configure.py -c --qmake "${QT_PATH}/bin/qmake" --verbose \
+        --confirm-license \
+        --no-designer-plugin \
+        -e QtCore \
+        -e QtGui \
+        -e QtWidgets \
+        -e QtNetwork \
+        -e QtWebKit \
+        -e QtWebKitWidgets \
+        -e QtPrintSupport && \
+    make  && \
+    make install && \
+    popd  && \
+    # Builds Complete
+    popd
 }
 
 install_python_deps () {
@@ -86,12 +131,17 @@ install_msfonts() {
     apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu trusty-updates multiverse" && \
     apt-get update && \
     echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections && \
-    apt-get install -y ttf-mscorefonts-installer
+    apt-get install --no-install-recommends -y ttf-mscorefonts-installer
 }
 
 install_extra_fonts() {
     # Install extra fonts (Chinese)
-    apt-get install -y ttf-wqy-zenhei
+    apt-get install --no-install-recommends -y \
+        ttf-wqy-zenhei \
+        fonts-arphic-gbsn00lp \
+        fonts-arphic-bsmi00lp \
+        fonts-arphic-gkai00mp \
+        fonts-arphic-bkai00mp
 }
 
 remove_builddeps () {
@@ -103,6 +153,9 @@ remove_builddeps () {
         liblua5.2-dev \
         zlib1g-dev \
         libc-dev \
+        libjpeg-turbo8-dev \
+        libpython2.7-minimal \
+        libcurl3 \
         gcc cpp binutils perl && \
     apt-get autoremove -y && \
     apt-get clean -y
@@ -111,12 +164,19 @@ remove_builddeps () {
 remove_extra () {
     # Remove unnecessary files.
     rm -rf \
-       /usr/share/perl \
-       /usr/share/perl5 \
-       /usr/share/man \
-       /usr/share/info \
-       /usr/share/doc \
-       /var/lib/apt/lists/*
+        /builds \
+        /downloads \
+        ${QT_PATH}/examples \
+        ${QT_PATH}/include \
+        ${QT_PATH}/mkspecs \
+        ${QT_PATH}/bin \
+        ${QT_PATH}/doc \
+        /usr/share/perl \
+        /usr/share/perl5 \
+        /usr/share/man \
+        /usr/share/info \
+        /usr/share/doc \
+        /var/lib/apt/lists/*
 }
 
 if [ \( $# -eq 0 \) -o \( "$1" = "-h" \) -o \( "$1" = "--help" \) ]; then
