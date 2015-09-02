@@ -401,6 +401,7 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255, 255, 255, 255))
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
                           'render_all': 1, 'wait': '0.01', 'viewport': '50x1024'})
@@ -1006,6 +1007,7 @@ class RenderJpegTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255, 255, 255))
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
                           'render_all': 1, 'wait': '0.01', 'viewport': '50x1024', 'quality': '100'})
