@@ -7,9 +7,13 @@ import resource
 import contextlib
 import time
 import sys
+import sip
+import twisted
 
 import lupa
 from PyQt4.QtNetwork import QNetworkRequest
+from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+from PyQt4.QtWebKit import qWebKitVersion
 
 from splash.browser_tab import JsError
 from splash.lua_runner import (
@@ -681,7 +685,17 @@ class Splash(object):
     @command()
     def get_version(self):
         major, minor = splash_version.split('.')
-        return int(major), int(minor)
+        return {
+            "major": int(major),
+            "minor": int(minor),
+            "splash": splash_version,
+            "qt": QT_VERSION_STR,
+            "pyqt": PYQT_VERSION_STR,
+            "webkit": str(qWebKitVersion()),
+            "sip": sip.SIP_VERSION_STR,
+            "twisted": twisted.version.short(),
+            "python": sys.version,
+        }
 
     def _error_info_to_lua(self, error_info):
         if error_info is None:
