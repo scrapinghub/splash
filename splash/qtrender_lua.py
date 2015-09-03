@@ -654,6 +654,7 @@ class Splash(object):
         rusage = resource.getrusage(resource.RUSAGE_SELF)
         # on Mac OS X ru_maxrss is in bytes, on Linux it is in KB
         rss_mul = 1 if sys.platform == 'darwin' else 1024
+        # TODO: add splash.utils.get_memory_usage here?
         return {'maxrss': rusage.ru_maxrss * rss_mul,
                 'cputime': rusage.ru_utime + rusage.ru_stime,
                 'walltime': time.time()}

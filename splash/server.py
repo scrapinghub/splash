@@ -1,15 +1,16 @@
 from __future__ import absolute_import
-import os
-import sys
-import optparse
-import resource
-import traceback
-import signal
 import functools
+import optparse
+import os
+import resource
+import signal
+import sys
+import traceback
 
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
+
 
 def install_qtreactor(verbose):
     init_qt_app(verbose)
@@ -23,7 +24,7 @@ def parse_opts():
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
-        help="exit if max RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
+        help="exit if RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
     op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
         help="port to listen to (default: %default)")
     op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
@@ -219,23 +220,23 @@ def splash_server(portnum, slots, network_manager, max_timeout,
         reactor.listenTCP(proxy_portnum, proxy_server_factory)
 
 
-def monitor_maxrss(maxrss):
+def monitor_memory(memory_limit):
     from twisted.internet import reactor, task
     from twisted.python import log
-    from splash.utils import get_ru_maxrss, get_total_phymem
+    from splash.utils import get_memory_usage, get_total_phymem
 
-    # Support maxrss as a ratio of total physical memory
-    if 0.0 < maxrss < 1.0:
-        maxrss = get_total_phymem() * maxrss / (1024 ** 2)
+    # Support memory limit as a ratio of total physical memory
+    if 0.0 < memory_limit < 1.0:
+        memory_limit = get_total_phymem() * memory_limit / (1024 ** 2)
 
-    def check_maxrss():
-        if get_ru_maxrss() > maxrss * (1024 ** 2):
-            log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
+    def check_memory():
+        if get_memory_usage() > memory_limit * (1024 ** 2):
+            log.msg("process allocated more then %d MB, shutting down..." % memory_limit)
             reactor.stop()
 
-    if maxrss:
-        log.msg("maxrss limit: %d MB" % maxrss)
-        t = task.LoopingCall(check_maxrss)
+    if memory_limit:
+        log.msg("memory limit: %d MB" % memory_limit)
+        t = task.LoopingCall(check_memory)
         t.start(60, now=False)
 
 
@@ -346,7 +347,7 @@ def main():
 
         install_qtreactor(opts.verbosity >= 5)
 
-        monitor_maxrss(opts.maxrss)
+        monitor_memory(opts.maxrss)
         if opts.manhole:
             manhole_server()
 
