@@ -710,8 +710,34 @@ is not a constant.
 If :ref:`splash-autoload` is called multiple times then all its scripts
 are executed on page load, in order they were added.
 
+To revert Splash not to execute anything on page load use
+:ref:`splash-autoload-clear`.
+
 See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
-:ref:`splash-wait-for-resume`.
+:ref:`splash-wait-for-resume`, :ref:`splash-autoload-clear`.
+
+
+.. _splash-autoload-clear:
+
+splash:autoload_clear
+---------------------
+
+Unregister all scripts previously set by :ref:`splash-autoload`.
+
+**Signature:** ``splash:autoload_clear()``
+
+**Returns:** nil
+
+**Async:** no
+
+After :ref:`splash-autoload-clear` call scripts set by :ref:`splash-autoload`
+won't be loaded in future requests; one can use :ref:`splash-autoload` again
+to setup a different set of scripts.
+
+Already loaded scripts are not removed from the current page context.
+
+See also: :ref:`splash-autoload`.
+
 
 .. _splash-http-get:
 

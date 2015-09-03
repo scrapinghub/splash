@@ -2107,6 +2107,27 @@ class AutoloadTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
 
+    def test_autoload_clear(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:autoload([[window.FOO = 'foo']])
+            splash:autoload([[window.BAR = 'bar']])
+
+            splash:go(splash.args.url)
+            local foo1 = splash:evaljs("window.FOO")
+            local bar1 = splash:evaljs("window.BAR")
+
+            splash:autoload_clear()
+            splash:go(splash.args.url)
+            local foo2 = splash:evaljs("window.FOO")
+            local bar2 = splash:evaljs("window.BAR")
+
+            return {foo1=foo1, bar1=bar1, foo2=foo2, bar2=bar2}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"foo1": "foo", "bar1": "bar"})
+
 
 class HttpGetTest(BaseLuaRenderTest):
     def test_get(self):

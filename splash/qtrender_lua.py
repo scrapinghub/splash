@@ -503,6 +503,10 @@ class Splash(object):
                 callback=callback
             ))
 
+    @command()
+    def autoload_clear(self):
+        self.tab.autoload_clear()
+
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
         cmd_id = next(self._command_ids)
