@@ -7,34 +7,52 @@ python:
 branches:
     only:
         - master
+        - /^\d\.\d+$/
 
 env:
     - SYSTEM_PACKAGES=true QT=qt5.2
     - SYSTEM_PACKAGES=false QT=qt5.4
-    - SYSTEM_PACKAGES=true QT=qt5.4
 
 matrix:
     exclude:
         - python: 3.4
           env: SYSTEM_PACKAGES=true QT=qt5.2
-        - python: 3.4
-          env: SYSTEM_PACKAGES=true QT=qt5.4
 
 before_install:
-    - sudo apt-get install -y lua5.2-dev zlib1g-dev
+    - sudo apt-get install -y lua5.2-dev zlib1g-dev libssl-dev python-openssl
     # Cached Downloads
     - sudo mkdir -p /downloads
     - sudo chmod a+rw /downloads
-    - if [ ! -f /downloads/sip.tar.gz ];   then curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz; fi
-    - if [ ! -f /downloads/pyqt5.tar.gz ]; then curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-5.4/PyQt-gpl-5.4.tar.gz; fi
+    - >
+        if [ ! -f /downloads/sip.tar.gz ]; then \
+            curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz; \
+        fi
+    - >
+        if [ ! -f /downloads/pyqt5.tar.gz ]; then \
+            curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-5.4/PyQt-gpl-5.4.tar.gz; \
+        fi
     - echo '32abc003980599d33ffd789734de4c36  /downloads/sip.tar.gz' | md5sum -c -
     - echo '7f2eb79eaf3d7e5e7df5a4e9c8c9340e  /downloads/pyqt5.tar.gz' | md5sum -c -
     # Builds
     - sudo mkdir -p /builds
     - sudo chmod a+rw /builds
     # QT5
-    - if [[ "$QT" == "qt5.2" ]]; then sudo apt-add-repository -y ppa:beineri/opt-qt521; sudo apt-get update -qq; sudo apt-get install -qq qt52base qt52declarative qt52webkit libgstreamer0.10-dev libgstreamer-plugins-base0.10-dev; fi
-    - if [[ "$QT" == "qt5.4" ]]; then sudo apt-add-repository -y ppa:beineri/opt-qt541; sudo apt-get update -qq; sudo apt-get install -qq qt54base qt54declarative qt54webkit; fi
+    - >
+        if [[ "$QT" == "qt5.2" ]]; then \
+            sudo apt-add-repository -y ppa:beineri/opt-qt521; \
+            sudo apt-get update -qq; \
+            sudo apt-get install -qq \
+                qt52base \
+                qt52webkit \
+                libgstreamer0.10-dev \
+                libgstreamer-plugins-base0.10-dev; \
+        fi
+    - >
+        if [[ "$QT" == "qt5.4" ]]; then \
+            sudo apt-add-repository -y ppa:beineri/opt-qt541; \
+            sudo apt-get update -qq; \
+            sudo apt-get install -qq qt54base qt54webkit; \
+        fi
     # Builds
     - pushd /builds
     # SIP
@@ -47,17 +65,69 @@ before_install:
     # PyQt5
     - tar xzf /downloads/pyqt5.tar.gz --keep-newer-files
     - pushd PyQt-gpl-5.4
-    - if [[ "$QT" == "qt5.2" ]]; then python configure.py -c --qmake "/opt/qt52/bin/qmake" --confirm-license --no-designer-plugin -e QtCore -e QtGui -e QtWidgets -e QtNetwork -e QtWebKit -e QtWebKitWidgets -e QtTest -e QtPrintSupport --verbose; fi
-    - if [[ "$QT" == "qt5.4" ]]; then python configure.py -c --qmake "/opt/qt54/bin/qmake" --confirm-license --no-designer-plugin -e QtCore -e QtGui -e QtWidgets -e QtNetwork -e QtWebKit -e QtWebKitWidgets -e QtTest -e QtPrintSupport --verbose; fi
+    - >
+        if [[ "$QT" == "qt5.2" ]]; then \
+            python configure.py -c --qmake "/opt/qt52/bin/qmake" \
+                --confirm-license \
+                --no-designer-plugin \
+                --verbose \
+                -e QtCore \
+                -e QtGui \
+                -e QtWidgets \
+                -e QtNetwork \
+                -e QtWebKit \
+                -e QtWebKitWidgets \
+                -e QtPrintSupport; \
+        fi
+    - >
+        if [[ "$QT" == "qt5.4" ]]; then \
+            python configure.py -c --qmake "/opt/qt54/bin/qmake" \
+                --confirm-license \
+                --no-designer-plugin \
+                --verbose \
+                -e QtCore \
+                -e QtGui \
+                -e QtWidgets \
+                -e QtNetwork \
+                -e QtWebKit \
+                -e QtWebKitWidgets \
+                -e QtPrintSupport; \
+        fi
     - make
     - sudo make install
     - popd
     # Builds Complete
     - popd
     # pip installs
-    - if [ $TRAVIS_PYTHON_VERSION == 3.4 ] && [ $SYSTEM_PACKAGES == 'false' ]; then pip install https://github.com/twisted/twisted/archive/trunk.zip#egg=twisted; else pip install twisted; fi
-    - if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow service_identity lupa jupyter_kernel_test nose ipython[notebook]; else sudo apt-get install -y python-twisted python-imaging; fi
-    - pip install -U psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib qt5reactor-fork six pytest-cov codecov
+    - sudo chmod -R 777 $VIRTUAL_ENV
+    - >
+        if [[ $SYSTEM_PACKAGES == 'false' ]]; then \
+            pip install -UI \
+                twisted \
+                pyOpenSSL \
+                service_identity \
+                idna \
+                lupa \
+                Pillow \
+                jupyter_kernel_test \
+                ipython[notebook] \
+                nose; \
+        else \
+            sudo apt-get install -y python-twisted python-imaging; \
+        fi
+    - >
+        pip install -U \
+            psutil \
+            requests \
+            jsonschema \
+            strict-rfc3339 \
+            xvfbwrapper \
+            pytest \
+            funcparserlib \
+            qt5reactor-fork \
+            six \
+            pytest-cov \
+            codecov; \
 
 install:
     - python setup.py install
