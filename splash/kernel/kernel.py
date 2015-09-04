@@ -3,9 +3,9 @@ from __future__ import absolute_import
 import os
 
 import lupa
-from IPython.kernel.zmq.kernelapp import IPKernelApp
-from IPython.kernel.zmq.eventloops import loop_qt4
-from IPython.kernel.kernelspec import install_kernel_spec
+from ipykernel.kernelapp import IPKernelApp
+from ipykernel.eventloops import loop_qt4
+from jupyter_client.kernelspec import install_kernel_spec
 from twisted.internet import defer
 
 import splash
