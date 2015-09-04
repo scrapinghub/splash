@@ -697,7 +697,7 @@ end
                             <li>Turn OFF images or use <a href="https://adblockplus.org">Adblock Plus</a>
                                 rules to make rendering faster</li>
                             <li>Execute custom JavaScript in page context</li>
-                            <li>Transparently plug into existing software using Proxy interface</li>
+                            <li>Write Lua browsing scripts;</li>
                             <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format</li>
                         </ul>
 
