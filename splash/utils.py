@@ -153,3 +153,19 @@ def dedupe(it):
             continue
         seen.add(el)
         yield el
+
+
+def path_join_secure(base, *paths):
+    """
+    Join two or more pathname components, inserting slashes as needed.
+    Unlike os.path.join ValueError is raised if the result is
+    outside ``base``.
+    """
+    base = os.path.abspath(base)
+    if not base.endswith(os.path.sep):
+        base = base + os.path.sep
+
+    path = os.path.abspath(os.path.join(base, *paths))
+    if not path.startswith(base):
+        raise ValueError("Resulting path %r is outside %r." % (path, base))
+    return path
