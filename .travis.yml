@@ -7,8 +7,6 @@ python:
 branches:
     only:
         - master
-        - py3
-        - qt5
 
 env:
     - SYSTEM_PACKAGES=true QT=qt5.2
