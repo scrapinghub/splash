@@ -19,3 +19,6 @@ requests >= 1.0
 jsonschema >= 2.0
 strict-rfc3339
 pytest-cov
+jupyter_kernel_test
+nose
+ipython[notebook]
