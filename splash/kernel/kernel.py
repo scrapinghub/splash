@@ -3,9 +3,9 @@ from __future__ import absolute_import
 import os
 
 import lupa
-from IPython.kernel.zmq.kernelapp import IPKernelApp
-from IPython.kernel.zmq.eventloops import loop_qt4
-from IPython.kernel.kernelspec import install_kernel_spec
+from ipykernel.kernelapp import IPKernelApp
+from ipykernel.eventloops import loop_qt5
+from jupyter_client.kernelspec import install_kernel_spec
 from twisted.internet import defer
 
 import splash
@@ -170,7 +170,7 @@ class SplashKernel(Kernel):
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         def success(res):
-            result, content_type, headers = res
+            result, content_type, headers, status_code = res
             reply = {
                 'status': 'ok',
                 'execution_count': self.execution_count,
@@ -268,5 +268,5 @@ def start():
         init_qt_app(verbose=False)
         kernel = IPKernelApp.instance(kernel_class=SplashKernel)
         kernel.initialize()
-        kernel.kernel.eventloop = loop_qt4
+        kernel.kernel.eventloop = loop_qt5
         kernel.start()

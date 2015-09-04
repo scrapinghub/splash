@@ -8,9 +8,9 @@ import functools
 import time
 import sys
 
-from IPython.utils.jsonutil import json_clean
-from IPython.utils import py3compat
-from IPython.kernel.zmq.kernelbase import Kernel as _Kernel
+from ipython_genutils import py3compat
+from ipykernel.jsonutil import json_clean
+from ipykernel.kernelbase import Kernel as _Kernel
 
 
 if hasattr(_Kernel, "send_execute_reply"):
@@ -30,7 +30,7 @@ else:
             # publish 'idle' state at the end. This is not correct
             # in presence of async handlers. Overriding dispatch_control
             # and dispatch_shell is problematic because it is a big copy-paste.
-            # So all handlers are overridden to set "indle" at the end,
+            # So all handlers are overridden to set "idle" at the end,
             # and _publish_status skips "idle" by default.
 
             this = self
