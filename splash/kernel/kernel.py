@@ -110,7 +110,8 @@ class SplashKernel(Kernel):
             "name": "text/x-lua",
         },
         'file_extension': '.lua',
-        'pygments_lexer': 'lua'
+        'pygments_lexer': 'lua',
+        'version': get_version(),
     }
     banner = "Splash kernel - write browser automation scripts interactively"
     help_links = [

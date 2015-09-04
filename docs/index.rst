@@ -12,8 +12,11 @@ features:
 * get HTML results and/or take screenshots;
 * turn OFF images or use Adblock Plus rules to make rendering faster;
 * execute custom JavaScript in page context;
-* transparently plug into existing software using Proxy interface;
+* write Lua browsing :ref:`scripts <scripting-tutorial>`;
+* develop Splash Lua scripts in :ref:`Splash-Jupyter <splash-jupyter>`
+  Notebooks.
 * get detailed rendering info in HAR format.
+
 
 Documentation
 =============
