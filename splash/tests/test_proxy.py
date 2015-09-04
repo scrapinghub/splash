@@ -126,7 +126,6 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
             "error": 400,
         })
 
-
     def test_nonexisting(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
