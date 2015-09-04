@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import jupyter_kernel_test
+from splash.kernel.kernel import install
 
 
 class SplashKernelTest(jupyter_kernel_test.KernelTests):
+
+    @classmethod
+    def setUpClass(cls):
+        # XXX: this installs kernel spec to global user environment,
+        # not to a virtualenv.
+        install()
+
+        super(SplashKernelTest, cls).setUpClass()
+
     # The name identifying an installed kernel to run the tests against
     kernel_name = "splash"
 
     # language_info.name in a kernel_info_reply should match this
     language_name = "Splash"
 
+    # Optional --------------------------------------
     # Code in the kernel's language to write "hello, world" to stdout
     # code_hello_world = "print 'hello, world'"
-    code_hello_world = None
-
-    # Optional --------------------------------------
 
     # Tab completions: in each dictionary, text is the input, which it will
     # try to complete from the end of. matches is the collection of results
