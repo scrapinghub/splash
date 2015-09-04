@@ -18,6 +18,7 @@ from PyQt4.QtNetwork import QNetworkProxy
 
 from splash.render_options import BadOption
 from splash.qtutils import create_proxy, validate_proxy_type
+from splash.utils import path_join_secure
 
 
 class _BlackWhiteSplashProxyFactory(object):
@@ -119,14 +120,13 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         return self._parseIni(ini_path)
 
     def _getIniPath(self, profile_name):
-        proxy_profiles_path = os.path.abspath(self.proxy_profiles_path)
         filename = profile_name + '.ini'
-        ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
-        if not ini_path.startswith(proxy_profiles_path + os.path.sep):
+        try:
+            return path_join_secure(self.proxy_profiles_path, filename)
+        except ValueError as e:
             # security check fails
+            print(e)
             raise BadOption(self.NO_PROXY_PROFILE_MSG)
-        else:
-            return ini_path
 
     def _parseIni(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)
