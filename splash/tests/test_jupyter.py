@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import jupyter_kernel_test
-from splash.kernel.kernel import install
+
+import pytest
+jupyter_kernel_test = pytest.importorskip("jupyter_kernel_test")
+lupa = pytest.importorskip("lupa")
 
 
 class SplashKernelTest(jupyter_kernel_test.KernelTests):
@@ -10,7 +12,8 @@ class SplashKernelTest(jupyter_kernel_test.KernelTests):
     def setUpClass(cls):
         # XXX: this installs kernel spec to global user environment,
         # not to a virtualenv.
-        install()
+        from splash.kernel import kernel
+        kernel.install()
 
         super(SplashKernelTest, cls).setUpClass()
 
