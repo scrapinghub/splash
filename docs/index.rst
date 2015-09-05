@@ -29,6 +29,7 @@ Documentation
    scripting-tutorial
    scripting-ref
    kernel
+   faq
    development
    changes
 
