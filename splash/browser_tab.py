@@ -524,7 +524,7 @@ class BrowserTab(QObject):
         """ Execute JS code before each page load """
         self._autoload_scripts.append(js_source)
 
-    def autoload_clear(self):
+    def autoload_reset(self):
         """ Remove all scripts scheduled for auto-loading """
         self._autoload_scripts = []
 
@@ -739,10 +739,18 @@ class BrowserTab(QObject):
         self.store_har_timing("_onIframesRendered")
         return result
 
-    def har(self):
+    def har(self, reset=False):
         """ Return HAR information """
         self.logger.log("getting HAR", min_level=3)
-        return self.web_page.har_log.todict()
+        res = self.web_page.har_log.todict()
+        if reset:
+            self.har_reset()
+        return res
+
+    def har_reset(self):
+        """ Drop current HAR information """
+        self.logger.log("HAR information is reset", min_level=3)
+        return self.web_page.reset_har()
 
     def history(self):
         """ Return history of 'main' HTTP requests """

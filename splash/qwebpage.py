@@ -53,17 +53,19 @@ class SplashQWebPage(QWebPage):
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
-        self.har_log = HarLog()
         self.cookiejar = SplashCookieJar(self)
         self.callbacks = {
-            'on_request': [],
+            "on_request": [],
             "on_response_headers": []
         }
-
         self.mainFrame().urlChanged.connect(self.onUrlChanged)
         self.mainFrame().titleChanged.connect(self.onTitleChanged)
         self.mainFrame().loadFinished.connect(self.onLoadFinished)
         self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
+        self.reset_har()
+
+    def reset_har(self):
+        self.har_log = HarLog()
 
     def onTitleChanged(self, title):
         self.har_log.store_title(title)

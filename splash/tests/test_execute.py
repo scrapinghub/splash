@@ -2057,6 +2057,52 @@ class HarTest(BaseLuaRenderTest):
         har = resp.json()["log"]
         self.assertEqual(har["entries"], [])
 
+    def test_har_reset(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            splash:go(splash.args.url)
+            splash:go(splash.args.url)
+            local har1 = splash:har()
+            splash:har_reset()
+            local har2 = splash:har()
+            splash:go(splash.args.url)
+            local har3 = splash:har()
+            return {har1, har2, har3}
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        har1 = resp.json()["1"]
+        har2 = resp.json()["2"]
+        har3 = resp.json()["3"]
+
+        self.assertEqual(len(har1['log']['entries']), 2)
+        self.assertEqual(har2['log']['entries'], [])
+        self.assertEqual(len(har3['log']['entries']), 1)
+
+    def test_har_reset_argument(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            splash:go(splash.args.url)
+            local har1 = splash:har()
+            splash:go(splash.args.url)
+            local har2 = splash:har{reset=true}
+            local har3 = splash:har()
+            splash:go(splash.args.url)
+            local har4 = splash:har()
+            return {har1, har2, har3, har4}
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        har1 = resp.json()["1"]
+        har2 = resp.json()["2"]
+        har3 = resp.json()["3"]
+        har4 = resp.json()["4"]
+
+        self.assertEqual(len(har1['log']['entries']), 1)
+        self.assertEqual(len(har2['log']['entries']), 2)
+        self.assertEqual(har3['log']['entries'], [])
+        self.assertEqual(len(har4['log']['entries']), 1)
+
 
 class AutoloadTest(BaseLuaRenderTest):
     def test_autoload(self):
@@ -2113,7 +2159,7 @@ class AutoloadTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
 
-    def test_autoload_clear(self):
+    def test_autoload_reset(self):
         resp = self.request_lua("""
         function main(splash)
             splash:autoload([[window.FOO = 'foo']])
@@ -2123,7 +2169,7 @@ class AutoloadTest(BaseLuaRenderTest):
             local foo1 = splash:evaljs("window.FOO")
             local bar1 = splash:evaljs("window.BAR")
 
-            splash:autoload_clear()
+            splash:autoload_reset()
             splash:go(splash.args.url)
             local foo2 = splash:evaljs("window.FOO")
             local bar2 = splash:evaljs("window.BAR")
