@@ -504,8 +504,8 @@ class Splash(object):
             ))
 
     @command()
-    def autoload_clear(self):
-        self.tab.autoload_clear()
+    def autoload_reset(self):
+        self.tab.autoload_reset()
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):

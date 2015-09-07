@@ -87,15 +87,15 @@
     "details": ":ref:`splash-autoload` allows to execute JavaScript code at each page load.\n:ref:`splash-autoload` doesn't doesn't execute the passed\nJavaScript code itself. To execute some code once, *after* page is loaded\nuse :ref:`splash-runjs` or :ref:`splash-jsfunc`.\n\n:ref:`splash-autoload` can be used to preload utility JavaScript libraries\nor replace JavaScript objects before a webpage has a chance to do it.\n\nExample:\n\n.. code-block:: lua\n\n    function main(splash)\n        splash:autoload([[\n            function get_document_title(){\n               return document.title;\n            }\n        ]])\n        assert(splash:go(splash.args.url))\n        return splash:evaljs(\"get_document_title()\")\n    end\n\nFor the convenience, when a first :ref:`splash-autoload` argument starts\nwith \"http://\" or \"https://\" a script from the passed URL is loaded.\nExample 2 - make sure a remote library is available:\n\n.. code-block:: lua\n\n    function main(splash)\n        assert(splash:autoload(\"https://code.jquery.com/jquery-2.1.3.min.js\"))\n        assert(splash:go(splash.args.url))\n        return splash:evaljs(\"$.fn.jquery\")  -- return jQuery version\n    end\n\nTo disable URL auto-detection use 'source' and 'url' arguments:\n\n.. code-block:: lua\n\n    splash:autoload{url=\"https://code.jquery.com/jquery-2.1.3.min.js\"}\n    splash:autoload{source=\"window.foo = 'bar';\"}\n\nIt is a good practice not to rely on auto-detection when the argument\nis not a constant.\n\nIf :ref:`splash-autoload` is called multiple times then all its scripts\nare executed on page load, in order they were added.\n\nTo revert Splash not to execute anything on page load use\n:ref:`splash-autoload-clear`.\n\nSee also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,\n:ref:`splash-wait-for-resume`, :ref:`splash-autoload-clear`.", 
     "params": "* source_or_url - either a string with JavaScript source code or an URL\n  to load the JavaScript code from;\n* source - a string with JavaScript source code;\n* url - an URL to load JavaScript source code from."
   }, 
-  "splash:autoload_clear": {
-    "name": "autoload_clear", 
-    "header": "splash:autoload_clear", 
-    "content": "Unregister all scripts previously set by :ref:`splash-autoload`.\n\n**Signature:** ``splash:autoload_clear()``\n\n**Returns:** nil\n\n**Async:** no\n\nAfter :ref:`splash-autoload-clear` call scripts set by :ref:`splash-autoload`\nwon't be loaded in future requests; one can use :ref:`splash-autoload` again\nto setup a different set of scripts.\n\nAlready loaded scripts are not removed from the current page context.\n\nSee also: :ref:`splash-autoload`.", 
+  "splash:autoload_reset": {
+    "name": "autoload_reset", 
+    "header": "splash:autoload_reset", 
+    "content": "Unregister all scripts previously set by :ref:`splash-autoload`.\n\n**Signature:** ``splash:autoload_reset()``\n\n**Returns:** nil\n\n**Async:** no\n\nAfter :ref:`splash-autoload-reset` call scripts set by :ref:`splash-autoload`\nwon't be loaded in future requests; one can use :ref:`splash-autoload` again\nto setup a different set of scripts.\n\nAlready loaded scripts are not removed from the current page context.\n\nSee also: :ref:`splash-autoload`.", 
     "short": "Unregister all scripts previously set by :ref:`splash-autoload`.", 
-    "signature": "splash:autoload_clear()", 
+    "signature": "splash:autoload_reset()", 
     "returns": "nil", 
     "async": "no", 
-    "details": "After :ref:`splash-autoload-clear` call scripts set by :ref:`splash-autoload`\nwon't be loaded in future requests; one can use :ref:`splash-autoload` again\nto setup a different set of scripts.\n\nAlready loaded scripts are not removed from the current page context.\n\nSee also: :ref:`splash-autoload`.", 
+    "details": "After :ref:`splash-autoload-reset` call scripts set by :ref:`splash-autoload`\nwon't be loaded in future requests; one can use :ref:`splash-autoload` again\nto setup a different set of scripts.\n\nAlready loaded scripts are not removed from the current page context.\n\nSee also: :ref:`splash-autoload`.", 
     "params": null
   }, 
   "splash:http_get": {

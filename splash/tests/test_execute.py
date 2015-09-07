@@ -2107,7 +2107,7 @@ class AutoloadTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 400)
 
-    def test_autoload_clear(self):
+    def test_autoload_reset(self):
         resp = self.request_lua("""
         function main(splash)
             splash:autoload([[window.FOO = 'foo']])
@@ -2117,7 +2117,7 @@ class AutoloadTest(BaseLuaRenderTest):
             local foo1 = splash:evaljs("window.FOO")
             local bar1 = splash:evaljs("window.BAR")
 
-            splash:autoload_clear()
+            splash:autoload_reset()
             splash:go(splash.args.url)
             local foo2 = splash:evaljs("window.FOO")
             local bar2 = splash:evaljs("window.BAR")

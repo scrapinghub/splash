@@ -521,7 +521,7 @@ class BrowserTab(QObject):
         """ Execute JS code before each page load """
         self._autoload_scripts.append(js_source)
 
-    def autoload_clear(self):
+    def autoload_reset(self):
         """ Remove all scripts scheduled for auto-loading """
         self._autoload_scripts = []
 
