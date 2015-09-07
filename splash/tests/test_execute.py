@@ -2051,6 +2051,28 @@ class HarTest(BaseLuaRenderTest):
         har = resp.json()["log"]
         self.assertEqual(har["entries"], [])
 
+    def test_har_reset(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            splash:go(splash.args.url)
+            splash:go(splash.args.url)
+            local har1 = splash:har()
+            splash:har_reset()
+            local har2 = splash:har()
+            splash:go(splash.args.url)
+            local har3 = splash:har()
+            return {har1, har2, har3}
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        har1 = resp.json()["1"]
+        har2 = resp.json()["2"]
+        har3 = resp.json()["3"]
+
+        self.assertEqual(len(har1['log']['entries']), 2)
+        self.assertEqual(har2['log']['entries'], [])
+        self.assertEqual(len(har3['log']['entries']), 1)
+
 
 class AutoloadTest(BaseLuaRenderTest):
     def test_autoload(self):

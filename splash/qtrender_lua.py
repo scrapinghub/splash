@@ -412,6 +412,10 @@ class Splash(object):
         return self.tab.har()
 
     @command()
+    def har_reset(self):
+        self.tab.har_reset()
+
+    @command()
     def history(self):
         return self.tab.history()
 

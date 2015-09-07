@@ -741,6 +741,11 @@ class BrowserTab(QObject):
         self.logger.log("getting HAR", min_level=3)
         return self.web_page.har_log.todict()
 
+    def har_reset(self):
+        """ Drop current HAR information """
+        self.logger.log("HAR information is reset", min_level=3)
+        return self.web_page.reset_har()
+
     def history(self):
         """ Return history of 'main' HTTP requests """
         self.logger.log("getting history", min_level=3)
