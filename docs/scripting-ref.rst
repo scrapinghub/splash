@@ -1033,12 +1033,19 @@ See also: :ref:`splash-png`. Note that `splash:jpeg()` is often
 splash:har
 ----------
 
-**Signature:** ``har = splash:har()``
+**Signature:** ``har = splash:har{reset=false}``
 
 **Returns:** information about pages loaded, events happened,
 network requests sent and responses received in HAR_ format.
 
+**Parameters:**
+
+* reset - optional; when ``true``, reset HAR records after taking a snapshot.
+
 **Async:** no.
+
+Use :ref:`splash-har` to get information about network requests and
+other Splash activity.
 
 If your script returns the result of ``splash:har()`` in a top-level
 ``"har"`` key then Splash UI will give you a nice diagram with network
@@ -1051,8 +1058,41 @@ information (similar to "Network" tabs in Firefox or Chrome developer tools):
          return {har=splash:har()}
      end
 
+By default, when several requests are made (e.g. :ref:`splash-go` is called
+multiple times), HAR data is accumulated and combined into a single object
+(logs are still grouped by page).
+
+If you want only updated information use ``reset`` parameter: it drops
+all existing logs and start recording from scratch:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url1))
+         local har1 = splash:har{reset=true}
+         assert(splash:go(splash.args.url2))
+         local har2 = splash:har()
+         return {har1=har1, har2=har2}
+     end
+
+See also: :ref:`splash-har-reset`.
+
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 
+
+.. _splash-har-reset:
+
+splash:har_reset
+----------------
+
+**Signature:** ``splash:har_reset()``
+
+**Returns:** nil.
+
+**Async:** no.
+
+Drops all internally stored HAR_ records. It is similar to
+``splash:har{reset=true}``, but doesn't return anything.
 
 .. _splash-history:
 

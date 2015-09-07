@@ -736,10 +736,13 @@ class BrowserTab(QObject):
         self.store_har_timing("_onIframesRendered")
         return result
 
-    def har(self):
+    def har(self, reset=False):
         """ Return HAR information """
         self.logger.log("getting HAR", min_level=3)
-        return self.web_page.har_log.todict()
+        res = self.web_page.har_log.todict()
+        if reset:
+            self.har_reset()
+        return res
 
     def har_reset(self):
         """ Drop current HAR information """

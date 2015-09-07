@@ -408,8 +408,8 @@ class Splash(object):
         return BinaryCapsule(result, 'image/jpeg')
 
     @command()
-    def har(self):
-        return self.tab.har()
+    def har(self, reset=False):
+        return self.tab.har(reset=reset)
 
     @command()
     def har_reset(self):
