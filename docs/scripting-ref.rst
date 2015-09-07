@@ -1035,12 +1035,12 @@ splash:har
 
 **Signature:** ``har = splash:har{reset=false}``
 
-**Returns:** information about pages loaded, events happened,
-network requests sent and responses received in HAR_ format.
-
 **Parameters:**
 
 * reset - optional; when ``true``, reset HAR records after taking a snapshot.
+
+**Returns:** information about pages loaded, events happened,
+network requests sent and responses received in HAR_ format.
 
 **Async:** no.
 
