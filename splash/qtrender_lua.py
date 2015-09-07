@@ -408,8 +408,12 @@ class Splash(object):
         return BinaryCapsule(result, 'image/jpeg')
 
     @command()
-    def har(self):
-        return self.tab.har()
+    def har(self, reset=False):
+        return self.tab.har(reset=reset)
+
+    @command()
+    def har_reset(self):
+        self.tab.har_reset()
 
     @command()
     def history(self):
@@ -504,8 +508,8 @@ class Splash(object):
             ))
 
     @command()
-    def autoload_clear(self):
-        self.tab.autoload_clear()
+    def autoload_reset(self):
+        self.tab.autoload_reset()
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):

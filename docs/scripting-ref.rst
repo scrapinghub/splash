@@ -711,26 +711,26 @@ If :ref:`splash-autoload` is called multiple times then all its scripts
 are executed on page load, in order they were added.
 
 To revert Splash not to execute anything on page load use
-:ref:`splash-autoload-clear`.
+:ref:`splash-autoload-reset`.
 
 See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
-:ref:`splash-wait-for-resume`, :ref:`splash-autoload-clear`.
+:ref:`splash-wait-for-resume`, :ref:`splash-autoload-reset`.
 
 
-.. _splash-autoload-clear:
+.. _splash-autoload-reset:
 
-splash:autoload_clear
+splash:autoload_reset
 ---------------------
 
 Unregister all scripts previously set by :ref:`splash-autoload`.
 
-**Signature:** ``splash:autoload_clear()``
+**Signature:** ``splash:autoload_reset()``
 
 **Returns:** nil
 
 **Async:** no
 
-After :ref:`splash-autoload-clear` call scripts set by :ref:`splash-autoload`
+After :ref:`splash-autoload-reset` call scripts set by :ref:`splash-autoload`
 won't be loaded in future requests; one can use :ref:`splash-autoload` again
 to setup a different set of scripts.
 
@@ -1033,12 +1033,19 @@ See also: :ref:`splash-png`. Note that `splash:jpeg()` is often
 splash:har
 ----------
 
-**Signature:** ``har = splash:har()``
+**Signature:** ``har = splash:har{reset=false}``
+
+**Parameters:**
+
+* reset - optional; when ``true``, reset HAR records after taking a snapshot.
 
 **Returns:** information about pages loaded, events happened,
 network requests sent and responses received in HAR_ format.
 
 **Async:** no.
+
+Use :ref:`splash-har` to get information about network requests and
+other Splash activity.
 
 If your script returns the result of ``splash:har()`` in a top-level
 ``"har"`` key then Splash UI will give you a nice diagram with network
@@ -1051,8 +1058,41 @@ information (similar to "Network" tabs in Firefox or Chrome developer tools):
          return {har=splash:har()}
      end
 
+By default, when several requests are made (e.g. :ref:`splash-go` is called
+multiple times), HAR data is accumulated and combined into a single object
+(logs are still grouped by page).
+
+If you want only updated information use ``reset`` parameter: it drops
+all existing logs and start recording from scratch:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url1))
+         local har1 = splash:har{reset=true}
+         assert(splash:go(splash.args.url2))
+         local har2 = splash:har()
+         return {har1=har1, har2=har2}
+     end
+
+See also: :ref:`splash-har-reset`.
+
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 
+
+.. _splash-har-reset:
+
+splash:har_reset
+----------------
+
+**Signature:** ``splash:har_reset()``
+
+**Returns:** nil.
+
+**Async:** no.
+
+Drops all internally stored HAR_ records. It is similar to
+``splash:har{reset=true}``, but doesn't return anything.
 
 .. _splash-history:
 
