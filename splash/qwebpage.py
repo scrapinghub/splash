@@ -7,8 +7,7 @@ from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QByteArray
 from twisted.python import log
 from splash.cookies import SplashCookieJar
-from splash.har.log import HarLog
-
+from splash.har_builder import HarBuilder
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
@@ -63,19 +62,19 @@ class SplashQWebPage(QWebPage):
         self.reset_har()
 
     def reset_har(self):
-        self.har_log = HarLog()
+        self.har = HarBuilder()
 
     def onTitleChanged(self, title):
-        self.har_log.store_title(title)
+        self.har.store_title(title)
 
     def onUrlChanged(self, url):
-        self.har_log.store_url(url.toString())
+        self.har.store_url(url)
 
     def onLoadFinished(self, ok):
-        self.har_log.store_timing("onLoad")
+        self.har.store_timing("onLoad")
 
     def onLayoutCompleted(self):
-        self.har_log.store_timing("onContentLoad")
+        self.har.store_timing("onContentLoad")
 
     def acceptNavigationRequest(self, webFrame, networkRequest, navigationType):
         if self.navigation_locked:

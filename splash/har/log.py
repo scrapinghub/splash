@@ -67,8 +67,8 @@ class HarLog(object):
 
         return {
             "log": {
-                "version" : "1.2",
-                "creator" : {
+                "version": "1.2",
+                "creator": {
                     "name": "Splash",
                     "version": splash.__version__,
                 },
@@ -129,8 +129,10 @@ class HarLog(object):
                     # Start a new page.
                     page_id += 1
                     if cause_ev is None:
-                        started_dt = self.created_at  # XXX: is it a right thing to do?
+                        # XXX: is it a right thing to do?
+                        started_dt = self.created_at
                     else:
+                        # FIXME: this requires non-standard _tmp data
                         started_dt = cause_ev.data['_tmp']['start_time']
                     current_page = self._empty_page(page_id, started_dt)
                     self.pages.append(current_page)
