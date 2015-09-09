@@ -13,6 +13,7 @@ import pytest
 lupa = pytest.importorskip("lupa")
 
 from splash import __version__ as splash_version
+from splash.har_builder import HarBuilder
 
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
@@ -2053,7 +2054,7 @@ class HarTest(BaseLuaRenderTest):
 
     def test_har_reset(self):
         resp = self.request_lua("""
-        function main(splash, args)
+        function main(splash)
             splash:go(splash.args.url)
             splash:go(splash.args.url)
             local har1 = splash:har()
@@ -2075,7 +2076,7 @@ class HarTest(BaseLuaRenderTest):
 
     def test_har_reset_argument(self):
         resp = self.request_lua("""
-        function main(splash, args)
+        function main(splash)
             splash:go(splash.args.url)
             local har1 = splash:har()
             splash:go(splash.args.url)
@@ -2096,6 +2097,27 @@ class HarTest(BaseLuaRenderTest):
         self.assertEqual(len(har2['log']['entries']), 2)
         self.assertEqual(har3['log']['entries'], [])
         self.assertEqual(len(har4['log']['entries']), 1)
+
+    def test_har_reset_inprogress(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.5)
+            local har1 = splash:har{reset=true}
+            splash:wait(2.5)
+            local har2 = splash:har()
+            return {har1, har2}
+        end
+        """, {'url': self.mockurl("show-image?n=2.0&js=0.1")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        har1, har2 = data["1"]["log"], data["2"]["log"]
+
+        self.assertEqual(len(har1['entries']), 2)
+        self.assertEqual(har1['entries'][0]['_splash_processing_state'],
+                         HarBuilder.REQUEST_FINISHED)
+        self.assertEqual(har1['entries'][1]['_splash_processing_state'],
+                         HarBuilder.REQUEST_HEADERS_RECEIVED)
 
 
 class AutoloadTest(BaseLuaRenderTest):
