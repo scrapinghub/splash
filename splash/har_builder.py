@@ -4,7 +4,7 @@ import copy
 from datetime import datetime
 
 from splash.har.log import HarLog
-from splash.har.utils import format_datetime, get_duration, without_private
+from splash.har.utils import format_datetime, get_duration, cleaned_har_entry
 from splash.har.qt import request2har, reply2har
 
 
@@ -30,6 +30,10 @@ class HarBuilder(object):
         """ Get a history of browser URL changes """
         return copy.deepcopy(self.history)
 
+    def reset(self):
+        """ Start building a new HAR log """
+        self.log = HarLog()
+
     def get_last_http_status(self):
         """
         Return HTTP status code of the currently loaded webpage
@@ -47,15 +51,17 @@ class HarBuilder(object):
         Return initial values for a new HAR entry.
         """
         return {
+            # custom fields
             '_tmp': {
                 'start_time': start_time,
                 'request_start_sending_time': start_time,
                 'request_sent_time': start_time,
                 'response_start_time': start_time,
-
                 # 'outgoingData': outgoingData,
-                'state': self.REQUEST_CREATED,
             },
+            '_splash_processing_state': self.REQUEST_CREATED,
+
+            # standard fields
             "startedDateTime": format_datetime(start_time),
             "request": request2har(request, operation, outgoingData),
             "response": {
@@ -102,6 +108,8 @@ class HarBuilder(object):
         """
         Store initial reply information.
         """
+        if not self.log.has_entry(req_id):
+            return
         entry = self.log.get_mutable_entry(req_id)
         entry["response"].update(reply2har(reply))
 
@@ -109,8 +117,10 @@ class HarBuilder(object):
         """
         Store information about a finished reply.
         """
+        if not self.log.has_entry(req_id):
+            return
         entry = self.log.get_mutable_entry(req_id)
-        entry["_tmp"]["state"] = self.REQUEST_FINISHED
+        entry["_splash_processing_state"] = self.REQUEST_FINISHED
 
         # update timings
         now = datetime.utcnow()
@@ -136,13 +146,15 @@ class HarBuilder(object):
         """
         Update reply information when HTTP headers are received.
         """
+        if not self.log.has_entry(req_id):
+            return
         entry = self.log.get_mutable_entry(req_id)
-        if entry["_tmp"]["state"] == self.REQUEST_FINISHED:
+        if entry["_splash_processing_state"] == self.REQUEST_FINISHED:
             # self.log("Headers received for {url}; ignoring", reply,
             #           min_level=3)
             return
 
-        entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
+        entry["_splash_processing_state"] = self.REQUEST_HEADERS_RECEIVED
         entry["response"].update(reply2har(reply))
 
         now = datetime.utcnow()
@@ -154,6 +166,8 @@ class HarBuilder(object):
         """
         Update reply information when new data is available
         """
+        if not self.log.has_entry(req_id):
+            return
         entry = self.log.get_mutable_entry(req_id)
         entry["response"]["bodySize"] = int(received)
 
@@ -161,6 +175,8 @@ class HarBuilder(object):
         """
         Update request information when outgoing data is sent.
         """
+        if not self.log.has_entry(req_id):
+            return
         entry = self.log.get_mutable_entry(req_id)
         entry["request"]["bodySize"] = int(sent)
 
@@ -182,5 +198,4 @@ class HarBuilder(object):
         """ Update history when redirect happens """
         cause_ev = self.log._prev_entry(url, last_idx=-1)
         if cause_ev:
-            self.history.append(without_private(cause_ev.data))
-
+            self.history.append(cleaned_har_entry(cause_ev.data))

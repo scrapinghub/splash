@@ -7,7 +7,7 @@ import splash
 from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
 from PyQt4.QtWebKit import qWebKitVersion
 
-from .utils import get_duration, format_datetime, without_private
+from .utils import get_duration, format_datetime, cleaned_har_entry
 
 
 HarEvent = namedtuple('HarEvent', 'type data')
@@ -40,6 +40,10 @@ class HarLog(object):
             self.network_entries_map[req_id] = entry
             self.events.append(HarEvent(HAR_ENTRY, entry))
         return self.network_entries_map[req_id]
+
+    def has_entry(self, req_id):
+        """ Return True if entry exists for this request """
+        return req_id in self.network_entries_map
 
     def store_url(self, url):
         """ Call this method when URL is changed. """
@@ -149,7 +153,7 @@ class HarLog(object):
 
     def _get_har_entries(self):
         return [
-            without_private(e.data)
+            cleaned_har_entry(e.data)
             for e in self.events
             if e.type == HAR_ENTRY
         ]

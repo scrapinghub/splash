@@ -59,10 +59,10 @@ class SplashQWebPage(QWebPage):
         self.mainFrame().titleChanged.connect(self.onTitleChanged)
         self.mainFrame().loadFinished.connect(self.onLoadFinished)
         self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
-        self.reset_har()
+        self.har = HarBuilder()
 
     def reset_har(self):
-        self.har = HarBuilder()
+        self.har.reset()
 
     def onTitleChanged(self, title):
         self.har.store_title(title)
