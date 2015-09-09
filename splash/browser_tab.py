@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import base64
-import copy
 import functools
 import json
 import os
@@ -18,7 +17,6 @@ import six
 
 from splash import defaults
 from splash.har.qt import cookies2har
-from splash.har.utils import without_private
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii)
@@ -73,7 +71,6 @@ class BrowserTab(QObject):
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
-        self._history = []
         self._autoload_scripts = []
 
         self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
@@ -495,12 +492,7 @@ class BrowserTab(QObject):
             self._cancel_timer(timer)
 
     def _on_url_changed(self, url):
-        # log history
-        url = six.text_type(url.toString())
-        cause_ev = self.web_page.har_log._prev_entry(url, -1)
-        if cause_ev:
-            self._history.append(without_private(cause_ev.data))
-
+        self.web_page.har.store_redirect(six.text_type(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def run_js_file(self, filename, handle_errors=True):
@@ -661,7 +653,7 @@ class BrowserTab(QObject):
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
-        self.web_page.har_log.store_timing(name)
+        self.web_page.har.store_timing(name)
 
     def _jsconsole_enable(self):
         # TODO: add public interface or make console available by default
@@ -742,7 +734,7 @@ class BrowserTab(QObject):
     def har(self, reset=False):
         """ Return HAR information """
         self.logger.log("getting HAR", min_level=3)
-        res = self.web_page.har_log.todict()
+        res = self.web_page.har.todict()
         if reset:
             self.har_reset()
         return res
@@ -755,19 +747,14 @@ class BrowserTab(QObject):
     def history(self):
         """ Return history of 'main' HTTP requests """
         self.logger.log("getting history", min_level=3)
-        return copy.deepcopy(self._history)
+        return self.web_page.har.get_history()
 
     def last_http_status(self):
         """
         Return HTTP status code of the currently loaded webpage
         or None if it is not available.
         """
-        if not self._history:
-            return
-        try:
-            return self._history[-1]["response"]["status"]
-        except KeyError:
-            return
+        return self.web_page.har.get_last_http_status()
 
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()

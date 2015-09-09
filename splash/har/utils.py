@@ -18,8 +18,8 @@ def get_duration(start, end=None):
     return int(elapsed * 1000)  # ms
 
 
-def without_private(dct):
-    return {k: v for (k, v) in dct.items() if not k.startswith('_')}
+def cleaned_har_entry(dct):
+    return {k: v for (k, v) in dct.items() if k not in {'_tmp', '_idx'}}
 
 
 def entries2pages(entries):

@@ -8,7 +8,7 @@ from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
 from PyQt5.QtWebKit import qWebKitVersion
 import six
 
-from .utils import get_duration, format_datetime, without_private
+from .utils import get_duration, format_datetime, cleaned_har_entry
 
 
 HarEvent = namedtuple('HarEvent', 'type data')
@@ -42,6 +42,10 @@ class HarLog(object):
             self.events.append(HarEvent(HAR_ENTRY, entry))
         return self.network_entries_map[req_id]
 
+    def has_entry(self, req_id):
+        """ Return True if entry exists for this request """
+        return req_id in self.network_entries_map
+
     def store_url(self, url):
         """ Call this method when URL is changed. """
         self.events.append(HarEvent(HAR_URL_CHANGED, six.text_type(url)))
@@ -68,8 +72,8 @@ class HarLog(object):
 
         return {
             "log": {
-                "version" : "1.2",
-                "creator" : {
+                "version": "1.2",
+                "creator": {
                     "name": "Splash",
                     "version": splash.__version__,
                 },
@@ -130,8 +134,10 @@ class HarLog(object):
                     # Start a new page.
                     page_id += 1
                     if cause_ev is None:
-                        started_dt = self.created_at  # XXX: is it a right thing to do?
+                        # XXX: is it a right thing to do?
+                        started_dt = self.created_at
                     else:
+                        # FIXME: this requires non-standard _tmp data
                         started_dt = cause_ev.data['_tmp']['start_time']
                     current_page = self._empty_page(page_id, started_dt)
                     self.pages.append(current_page)
@@ -148,7 +154,7 @@ class HarLog(object):
 
     def _get_har_entries(self):
         return [
-            without_private(e.data)
+            cleaned_har_entry(e.data)
             for e in self.events
             if e.type == HAR_ENTRY
         ]
