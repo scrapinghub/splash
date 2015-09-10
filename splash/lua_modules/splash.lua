@@ -25,11 +25,14 @@ end
 --
 --     result1, [result2, ...]
 --
-local function unwraps_errors(func)
-  return function(...)
-    -- Here assertx is tail-call-optimized and extra stack level is not
+local function unwraps_errors(func, nlevels)
+  if nlevels == nil then
+    -- assertx is tail-call-optimized and extra stack level is not
     -- created, hence nlevels==1.
-    return assertx(1, func(...))
+    nlevels = 1
+  end
+  return function(...)
+    return assertx(nlevels, func(...))
   end
 end
 
@@ -101,6 +104,10 @@ end
 
 local PRIVATE_PREFIX = "private_"
 
+local function is_private_name(key)
+  return string.find(key, "^" .. PRIVATE_PREFIX) ~= nil
+end
+
 --
 -- Create a Lua wrapper for a Python object.
 --
@@ -122,7 +129,13 @@ local function wrap_exposed_object(py_object, self, private_self, async)
     command = drops_self_argument(command)
 
     if opts.returns_error_flag then
-      command = unwraps_errors(command)
+      local nlevels = nil
+      if is_private_name(key) then
+        -- private functions are wrapped, so nlevels
+        -- is set to 2 to show error line number in user code
+        nlevels = 2
+      end
+      command = unwraps_errors(command, nlevels)
     end
 
     if async then
@@ -135,7 +148,7 @@ local function wrap_exposed_object(py_object, self, private_self, async)
       end
     end
     
-    if string.find(key, "^" .. PRIVATE_PREFIX) ~= nil then
+    if is_private_name(key) then
       local short_key = string.sub(key, PRIVATE_PREFIX:len()+1)
       private_self[short_key] = command
     else
@@ -203,7 +216,6 @@ end
 --
 local Request = {}
 local Request_private = {}
-Request.__index = Request
 
 function Request._create(py_request)
   local self = {info=py_request.info}
@@ -227,41 +239,42 @@ end
 
 local Response = {}
 local Response_private = {}
-Response.__index = Response
 
 function Response._create(py_reply)
-    local self = {
-        headers=py_reply.headers,
-        info=py_reply.info,
-        request=py_reply.request,
-    }
-    setmetatable(self, Response)
+  local self = {
+    headers=py_reply.headers,
+    info=py_reply.info,
+    request=py_reply.request,
+  }
+  setmetatable(self, Response)
 
-    -- convert har headers to something more convenient
-    local _request_headers = {}
-    for name, value in pairs(py_reply.request["headers"]) do
-        _request_headers[value["name"]] = value["value"]
-    end
-    py_reply.request["headers"] = _request_headers
+  -- convert har headers to something more convenient
+  local _request_headers = {}
+  for name, value in pairs(py_reply.request["headers"]) do
+    _request_headers[value["name"]] = value["value"]
+  end
+  py_reply.request["headers"] = _request_headers
 
-    -- take some keys from py_reply.info
-    -- but not all (we don't want mess har headers with response headers)
-    local keys_from_reply_info = {"status", "url", "ok"}
+  -- take some keys from py_reply.info
+  -- but not all (we don't want mess har headers with response headers)
+  local keys_from_reply_info = {"status", "url", "ok"}
 
-    for key, value in pairs(keys_from_reply_info) do
-        self[value] = py_reply.info[value]
-    end
+  for key, value in pairs(keys_from_reply_info) do
+    self[value] = py_reply.info[value]
+  end
 
-    wrap_exposed_object(py_reply, self, Response_private, false)
-    setup_property_access(py_reply, self, Response)
-    return self
+  wrap_exposed_object(py_reply, self, Response_private, false)
+  setup_property_access(py_reply, self, Response)
+  return self
 end
 
 function Splash:on_response_headers(cb)
-    Splash_private.on_response_headers(self, function (response)
-        local res = Response._create(response)
-        return cb(res)
-    end)
+  Splash_private.on_response_headers(self, function (response)
+    local res = Response._create(response)
+    return cb(res)
+  end)
+end
+
 end
 
 

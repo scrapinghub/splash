@@ -261,7 +261,7 @@ class BaseExposedObject(object):
     _attribute_whitelist = []
 
     def __init__(self, lua):
-        # self.lua = lua
+        self.lua = lua
         commands = get_commands(self)
         self.commands = lua.python2lua(commands)
 
@@ -279,6 +279,9 @@ class BaseExposedObject(object):
 
         self._exceptions = []
         self.tmp_storage = lua.table_from({})  # a workaround for callbacks
+
+    def clear(self):
+        self.lua = None
 
 
 class Splash(BaseExposedObject):
@@ -306,7 +309,6 @@ class Splash(BaseExposedObject):
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
         self.tab = tab
-        self.lua = lua
         self._command_ids = itertools.count()
         self._result_headers = []
 
@@ -771,16 +773,15 @@ class _WrappedRequest(BaseExposedObject):
     _attribute_whitelist = ['info']
 
     def __init__(self, lua, request, operation, outgoing_data):
+        super(_WrappedRequest, self).__init__(lua)
         self.request = request
-        self.lua = lua
         self.info = self.lua.python2lua(
             request2har(request, operation, outgoing_data)
         )
-        super(_WrappedRequest, self).__init__(lua)
 
     def clear(self):
+        super(_WrappedRequest, self).clear()
         self.request = None
-        self.lua = None
 
     @command()
     @_requires_request
@@ -841,7 +842,7 @@ class _WrappedResponse(BaseExposedObject):
     ]
 
     def __init__(self, lua, reply):
-        self.lua = lua
+        super(_WrappedResponse, self).__init__(lua)
         self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
@@ -851,11 +852,10 @@ class _WrappedResponse(BaseExposedObject):
         self.request = self.lua.python2lua(
             request2har(reply.request(), reply.operation())
         )
-        super(_WrappedResponse, self).__init__(lua)
 
     def clear(self):
+        super(_WrappedResponse, self).clear()
         self.response = None
-        self.lua = None
         self.request = None
 
     @command()
