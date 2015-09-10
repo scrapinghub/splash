@@ -275,7 +275,24 @@ function Splash:on_response_headers(cb)
   end)
 end
 
+--
+-- Timer Lua wrapper
+--
+
+local Timer = {}
+local Timer_private
+
+function Timer._create(py_timer)
+  local self = {}
+  setmetatable(self, Timer)
+  wrap_exposed_object(py_timer, self, Timer_private, false)
+  setup_property_access(py_timer, self, Timer)
+  return self
 end
 
+function Splash:call_later(cb, timeout)
+  local py_timer = Splash_private.call_later(self, cb, timeout)
+  return Timer._create(py_timer)
+end
 
 return Splash

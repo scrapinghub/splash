@@ -2596,3 +2596,142 @@ class VersionTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, splash_version)
+
+
+class CallLaterTest(BaseLuaRenderTest):
+    def test_call_later(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            splash:call_later(function() x = 2 end, 0.1)
+            local x1 = x
+            splash:wait(0.2)
+            local x2 = x
+            return {x1=x1, x2=x2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 2})
+
+    def test_zero_timeout(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            splash:call_later(function() x = 2 end)
+            local x1 = x
+            splash:wait(0.01)
+            local x2 = x
+            return {x1=x1, x2=x2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 2})
+
+    def test_bad_timeout(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:call_later(function() x = 2 end, -1)
+        end
+        """)
+        self.assertErrorLineNumber(resp, 3)
+
+        resp = self.request_lua("""
+        function main(splash)
+            splash:call_later(function() x = 2 end, 'foo')
+        end
+        """)
+        self.assertErrorLineNumber(resp, 3)
+
+    def test_bad_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:call_later(5, 1.0)
+        end
+        """)
+        self.assertErrorLineNumber(resp, 3)
+
+    def test_attributes_not_exposed(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function() end, 1.0)
+            return {
+                timer=timer.timer,
+                lua=timer.lua,
+                singleShot=timer.singleShot,
+            }
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {})
+
+    def test_cancel(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            local timer = splash:call_later(function() x = 2 end, 0.1)
+            timer:cancel()
+            local x1 = x
+            splash:wait(0.2)
+            local x2 = x
+            return {x1=x1, x2=x2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 1})
+
+    def test_is_running(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            local timer = splash:call_later(function() x = 2 end, 0.1)
+            local r1 = timer:is_running()
+            splash:wait(0.2)
+            local r2 = timer:is_running()
+            return {r1=r1, r2=r2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'r1': True, 'r2': False})
+
+    def test_call_later_chain(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 0
+            local function tick()
+               x = x + 1
+               if x < 5 then
+                   splash:call_later(tick, 0.01)
+               end
+            end
+            splash:call_later(tick, 0.0)
+            local x1 = x
+            splash:wait(0.2)
+            local x2 = x
+            splash:wait(0.2)
+            local x3 = x
+            return {x1=x1, x2=x2, x3=x3}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 0, 'x2': 5, 'x3': 5})
+
+    @pytest.mark.xfail(reason="callback coroutines are not implemented")
+    def test_wait(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            splash:call_later(function()
+                x = 2
+                splash:wait(0.2)
+                x = 3
+            end, 0.0)
+            local x1 = x
+            splash:wait(0.1)
+            local x2 = x
+            splash:wait(0.15)
+            local x3 = x3
+            return {x1=x1, x2=x2, x3=x3}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 2, 'x3': 3})

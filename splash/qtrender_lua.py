@@ -284,6 +284,22 @@ class BaseExposedObject(object):
         self.lua = None
 
 
+class _ExposedTimer(BaseExposedObject):
+    """ QTimer wrapper exposed to Lua """
+
+    def __init__(self, lua, timer):
+        self.timer = timer
+        super(_ExposedTimer, self).__init__(lua)
+
+    @command()
+    def cancel(self):
+        self.timer.stop()
+
+    @command()
+    def is_running(self):
+        return self.timer.isActive()
+
+
 class Splash(BaseExposedObject):
     """
     This object is passed to Lua script as an argument to 'main' function
@@ -696,6 +712,20 @@ class Splash(BaseExposedObject):
 
         self.tab.register_callback("on_response_headers", res_callback)
         return True
+
+    @command(sets_callback=True)
+    def private_call_later(self, callback, timeout=None):
+        if timeout is None:
+            timeout = 0
+        if not isinstance(timeout, (float, int)):
+            raise ScriptError("splash:call_later timeout must be a number")
+        timeout = float(timeout)
+        if timeout < 0:
+            raise ScriptError("splash:call_later timeout argument must be >= 0")
+        if not callable(callback):
+            raise ScriptError("splash:call_later callback is not a function")
+        timer = self.tab.call_later(timeout, callback)
+        return _ExposedTimer(self.lua, timer)
 
     @command()
     def get_version(self):
