@@ -287,8 +287,9 @@ class BaseExposedObject(object):
 
 
 class _ExposedTimer(BaseExposedObject):
-    """ QTimer wrapper exposed to Lua """
-
+    """
+    Timer object returned by splash:call_later().
+    """
     def __init__(self, lua, timer):
         self.timer = timer
         self.errors = []
