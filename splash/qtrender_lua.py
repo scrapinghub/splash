@@ -255,15 +255,40 @@ class _WrappedJavascriptFunction(object):
         return res.get("result")
 
 
-class Splash(object):
+class BaseExposedObject(object):
+    """ Base class for objects exposed to Lua """
+    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage']
+    _attribute_whitelist = []
+
+    def __init__(self, lua):
+        # self.lua = lua
+        commands = get_commands(self)
+        self.commands = lua.python2lua(commands)
+
+        lua_properties = get_lua_properties(self)
+        self.lua_properties = lua.python2lua(lua_properties)
+
+        self.attr_whitelist = (
+            list(commands.keys()) +
+            list(lua_properties.keys()) +
+            [lua_properties[attr]['getter_method'] for attr in lua_properties] +
+            self._base_attribute_whitelist +
+            self._attribute_whitelist
+        )
+        lua.add_allowed_object(self, self.attr_whitelist)
+
+        self._exceptions = []
+        self.tmp_storage = lua.table_from({})  # a workaround for callbacks
+
+
+class Splash(BaseExposedObject):
     """
     This object is passed to Lua script as an argument to 'main' function
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
     _result_status_code = 200
-    _attribute_whitelist = ['commands', 'args', 'tmp_storage',
-                            'lua_properties']
+    _attribute_whitelist = ['args']
 
     def __init__(self, lua, tab, render_options=None):
         """
@@ -271,41 +296,24 @@ class Splash(object):
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param splash.render_options.RenderOptions render_options: arguments
         """
-        self.tab = tab
-        self.lua = lua
-
-        self._exceptions = []
-        self._command_ids = itertools.count()
-
         if isinstance(render_options, RenderOptions):
-            self.args = self.lua.python2lua(render_options.data)
+            self.args = lua.python2lua(render_options.data)
         elif isinstance(render_options, dict):
-            self.args = self.lua.python2lua(render_options)
+            self.args = lua.python2lua(render_options)
         elif render_options is None:
-            self.args = self.lua.python2lua({})
+            self.args = lua.python2lua({})
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        commands = get_commands(self)
-        self.commands = self.lua.python2lua(commands)
+        self.tab = tab
+        self.lua = lua
+        self._command_ids = itertools.count()
+        self._result_headers = []
 
-        lua_properties = get_lua_properties(self)
-        self.lua_properties = self.lua.python2lua(lua_properties)
-        lua_attr_getters = [
-            lua_properties[attr]['getter_method'] for attr in lua_properties]
-
-        self.attr_whitelist = (list(commands.keys()) +
-                               list(lua_properties.keys()) +
-                               lua_attr_getters +
-                               self._attribute_whitelist)
-
-        self.lua.add_allowed_object(self, self.attr_whitelist)
-        self.tmp_storage = self.lua.table_from({})
+        super(Splash, self).__init__(lua)
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
-
-        self._result_headers = []
 
     def init_dispatcher(self, return_func):
         """
@@ -758,12 +766,9 @@ def _requires_request(meth):
     return wrapper
 
 
-class _WrappedRequest(object):
+class _WrappedRequest(BaseExposedObject):
     """ QNetworkRequest wrapper for Lua """
-    # TODO perhaps refactor common parts
-    # of wrapped response and wrapped request into common object?
-
-    _attribute_whitelist = ['info', 'commands']
+    _attribute_whitelist = ['info']
 
     def __init__(self, lua, request, operation, outgoing_data):
         self.request = request
@@ -771,10 +776,7 @@ class _WrappedRequest(object):
         self.info = self.lua.python2lua(
             request2har(request, operation, outgoing_data)
         )
-        commands = get_commands(self)
-        self.commands = self.lua.python2lua(commands)
-        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
-        self._exceptions = []
+        super(_WrappedRequest, self).__init__(lua)
 
     def clear(self):
         self.request = None
@@ -833,9 +835,9 @@ def wrapped_response(lua, reply):
         res.clear()
 
 
-class _WrappedResponse(object):
+class _WrappedResponse(BaseExposedObject):
     _attribute_whitelist = [
-        'commands', "headers", "response",  "info", "request"
+        "headers", "response",  "info", "request"
     ]
 
     def __init__(self, lua, reply):
@@ -846,13 +848,10 @@ class _WrappedResponse(object):
         _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
         self.info = self.lua.python2lua(reply2har(reply))
-        commands = get_commands(self)
-        self.commands = self.lua.python2lua(commands)
-        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
-        self._exceptions = []
         self.request = self.lua.python2lua(
             request2har(reply.request(), reply.operation())
         )
+        super(_WrappedResponse, self).__init__(lua)
 
     def clear(self):
         self.response = None
