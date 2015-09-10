@@ -114,7 +114,7 @@ end
 -- * Lua methods are created for Python methods wrapped in @command.
 -- * Async methods are wrapped to `coroutine.yield`.
 -- * Lua <-> Python error handling is fixed.
--- * Private methods are stored in `private_self`, public methods are 
+-- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
 local function wrap_exposed_object(py_object, self, private_self, async)
@@ -147,7 +147,7 @@ local function wrap_exposed_object(py_object, self, private_self, async)
         command = raises_async(command)
       end
     end
-    
+
     if is_private_name(key) then
       local short_key = string.sub(key, PRIVATE_PREFIX:len()+1)
       private_self[short_key] = command
@@ -170,15 +170,15 @@ function setup_property_access(py_object, self, cls)
     getters[opts.name] = getter
     setters[opts.name] = setter
   end
-  
+
   function cls:__newindex(index, value)
     if setters[index] then
-      setters[index](self, value)
+      return setters[index](self, value)
     else
-      rawset(cls, index, value)
-    end  
+      return rawset(cls, index, value)
+    end
   end
-  
+
   function cls:__index(index)
     if getters[index] then
       return getters[index](self)
