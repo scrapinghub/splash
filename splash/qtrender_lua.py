@@ -715,14 +715,14 @@ class Splash(BaseExposedObject):
         return True
 
     @command(sets_callback=True)
-    def private_call_later(self, callback, timeout=None):
-        if timeout is None:
-            timeout = 0
-        if not isinstance(timeout, (float, int)):
-            raise ScriptError("splash:call_later timeout must be a number")
-        timeout = int(float(timeout)*1000)
-        if timeout < 0:
-            raise ScriptError("splash:call_later timeout argument must be >= 0")
+    def private_call_later(self, callback, delay=None):
+        if delay is None:
+            delay = 0
+        if not isinstance(delay, (float, int)):
+            raise ScriptError("splash:call_later delay must be a number")
+        delay = int(float(delay)*1000)
+        if delay < 0:
+            raise ScriptError("splash:call_later delay must be >= 0")
         if not callable(callback):
             raise ScriptError("splash:call_later callback is not a function")
 
@@ -740,7 +740,7 @@ class Splash(BaseExposedObject):
             runner.start(coro, return_error=timer.store_error)
 
         qtimer.timeout.connect(run_coro)
-        qtimer.start(timeout)
+        qtimer.start(delay)
         return timer
 
     @command()

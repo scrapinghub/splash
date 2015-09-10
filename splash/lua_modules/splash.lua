@@ -289,8 +289,8 @@ function Timer._create(py_timer)
   return self
 end
 
-function Splash:call_later(cb, timeout)
-  local py_timer = Splash_private.call_later(self, cb, timeout)
+function Splash:call_later(cb, delay)
+  local py_timer = Splash_private.call_later(self, cb, delay)
   return Timer._create(py_timer)
 end
 

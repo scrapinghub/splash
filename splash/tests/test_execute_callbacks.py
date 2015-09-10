@@ -278,7 +278,7 @@ class CallLaterTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'x1': 1, 'x2': 2})
 
-    def test_zero_timeout(self):
+    def test_zero_delay(self):
         resp = self.request_lua("""
         function main(splash)
             local x = 1
@@ -292,7 +292,7 @@ class CallLaterTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'x1': 1, 'x2': 2})
 
-    def test_bad_timeout(self):
+    def test_bad_delay(self):
         resp = self.request_lua("""
         function main(splash)
             splash:call_later(function() x = 2 end, -1)
