@@ -278,14 +278,13 @@ end
 --
 -- Timer Lua wrapper
 --
-
 local Timer = {}
-local Timer_private
+local Timer_private = {}
 
 function Timer._create(py_timer)
   local self = {}
   setmetatable(self, Timer)
-  wrap_exposed_object(py_timer, self, Timer_private, false)
+  wrap_exposed_object(py_timer, self, Timer_private, true)
   setup_property_access(py_timer, self, Timer)
   return self
 end

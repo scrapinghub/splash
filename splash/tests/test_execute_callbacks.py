@@ -344,19 +344,33 @@ class CallLaterTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'x1': 1, 'x2': 1})
 
-    def test_is_running(self):
+    def test_is_pending(self):
         resp = self.request_lua("""
         function main(splash)
             local x = 1
             local timer = splash:call_later(function() x = 2 end, 0.1)
-            local r1 = timer:is_running()
+            local r1 = timer:is_pending()
             splash:wait(0.2)
-            local r2 = timer:is_running()
+            local r2 = timer:is_pending()
             return {r1=r1, r2=r2}
         end
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'r1': True, 'r2': False})
+
+    def test_is_pending_async(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function()
+                splash:wait(1.0)
+            end)
+            splash:wait(0.1)
+            -- timer should be 'executing', not pending at this point
+            return {pending=timer:is_pending()}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'pending': False})
 
     def test_call_later_chain(self):
         resp = self.request_lua("""
@@ -380,7 +394,6 @@ class CallLaterTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'x1': 0, 'x2': 5, 'x3': 5})
 
-    @pytest.mark.xfail(reason="callback coroutines are not implemented")
     def test_wait(self):
         resp = self.request_lua("""
         function main(splash)
@@ -394,9 +407,52 @@ class CallLaterTest(BaseLuaRenderTest):
             splash:wait(0.1)
             local x2 = x
             splash:wait(0.15)
-            local x3 = x3
+            local x3 = x
             return {x1=x1, x2=x2, x3=x3}
         end
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'x1': 1, 'x2': 2, 'x3': 3})
+
+    def test_error_unhandled_reraise(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function()
+                error("hello")
+            end, 0.1)
+            splash:wait(0.2)
+            timer:reraise()
+            return "ok"
+        end
+        """)
+        self.assertErrorLineNumber(resp, 4)
+
+    def test_error_unhandled_no_reraise(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function() error("hello") end, 0.1)
+            splash:wait(0.2)
+            return "ok"
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "ok")
+
+    def test_error_handled_in_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local status = "unknown"
+            local timer = splash:call_later(function()
+                if pcall(function() error("hello") end) then
+                    status = "no_errors"
+                else
+                    status = "error"
+                end
+            end, 0.1)
+            splash:wait(0.2)
+            timer:reraise()
+            return status
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "error")

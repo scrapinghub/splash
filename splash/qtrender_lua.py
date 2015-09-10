@@ -8,6 +8,7 @@ import time
 import sys
 import twisted
 
+from PyQt4.QtCore import QTimer
 import lupa
 
 import splash
@@ -290,6 +291,7 @@ class _ExposedTimer(BaseExposedObject):
 
     def __init__(self, lua, timer):
         self.timer = timer
+        self.errors = []
         super(_ExposedTimer, self).__init__(lua)
 
     @command()
@@ -297,8 +299,16 @@ class _ExposedTimer(BaseExposedObject):
         self.timer.stop()
 
     @command()
-    def is_running(self):
+    def is_pending(self):
         return self.timer.isActive()
+
+    @command()
+    def reraise(self):
+        if self.errors:
+            raise self.errors[-1]
+
+    def store_error(self, error):
+        self.errors.append(error)
 
 
 class Splash(BaseExposedObject):
@@ -310,7 +320,7 @@ class Splash(BaseExposedObject):
     _result_status_code = 200
     _attribute_whitelist = ['args']
 
-    def __init__(self, lua, tab, render_options=None):
+    def __init__(self, lua, tab, render_options=None, sandboxed=False):
         """
         :param SplashLuaRuntime lua: Lua wrapper
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
@@ -325,6 +335,7 @@ class Splash(BaseExposedObject):
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
+        self.sandboxed = sandboxed
         self.tab = tab
         self._result_headers = []
 
@@ -708,13 +719,28 @@ class Splash(BaseExposedObject):
             timeout = 0
         if not isinstance(timeout, (float, int)):
             raise ScriptError("splash:call_later timeout must be a number")
-        timeout = float(timeout)
+        timeout = int(float(timeout)*1000)
         if timeout < 0:
             raise ScriptError("splash:call_later timeout argument must be >= 0")
         if not callable(callback):
             raise ScriptError("splash:call_later callback is not a function")
-        timer = self.tab.call_later(timeout, callback)
-        return _ExposedTimer(self.lua, timer)
+
+        qtimer = QTimer(self.tab)
+        qtimer.setSingleShot(True)
+        timer = _ExposedTimer(self.lua, qtimer)
+
+        def log(message, min_level=None):
+            message = "[splash:call_later] " + message
+            self.tab.logger.log(message, min_level)
+
+        def run_coro():
+            runner = SplashCoroutineRunner(self.lua, self, log, self.sandboxed)
+            coro = self.lua.create_coroutine(callback)
+            runner.start(coro, return_error=timer.store_error)
+
+        qtimer.timeout.connect(run_coro)
+        qtimer.start(timeout)
+        return timer
 
     @command()
     def get_version(self):
@@ -883,19 +909,40 @@ class _WrappedResponse(BaseExposedObject):
         self.response.abort()
 
 
-class MainCoroutineRunner(BaseScriptRunner):
+
+class SplashCoroutineRunner(BaseScriptRunner):
     """
-    An utility class for running main Splash Lua coroutine.
+    Utility class for running Splash async functions (e.g. callbacks).
     """
     def __init__(self, lua, splash, log, sandboxed):
         self.splash = splash
-        super(MainCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
+        super(SplashCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
 
-    def start(self, main_coro, return_result, return_error):
-        self.return_result = return_result
-        self.return_error = return_error
+    def start(self, coro_func, coro_args=None, return_result=None, return_error=None):
+        do_nothing = lambda *args, **kwargs: None
+        self.return_result = return_result or do_nothing
+        self.return_error = return_error or do_nothing
+        super(SplashCoroutineRunner, self).start(coro_func, coro_args)
+
+    def on_result(self, result):
+        self.return_result(result)
+
+    def on_async_command(self, cmd):
+        self.splash.run_async_command(cmd)
+
+    @stop_on_error
+    def dispatch(self, cmd_id, *args):
+        super(SplashCoroutineRunner, self).dispatch(cmd_id, *args)
+
+
+class MainCoroutineRunner(SplashCoroutineRunner):
+    """
+    Utility class for running main Splash Lua coroutine.
+    """
+    def start(self, main_coro, return_result=None, return_error=None):
         self.splash.clear_exceptions()
-        super(MainCoroutineRunner, self).start(main_coro, [self.splash.get_wrapped()])
+        args = [self.splash.get_wrapped()]
+        super(MainCoroutineRunner, self).start(main_coro, args, return_result, return_error)
 
     def on_result(self, result):
         self.return_result((
@@ -905,9 +952,6 @@ class MainCoroutineRunner(BaseScriptRunner):
             self.splash.result_status_code(),
         ))
 
-    def on_async_command(self, cmd):
-        self.splash.run_async_command(cmd)
-
     def on_lua_error(self, lua_exception):
         ex = self.splash.get_real_exception()
         if not ex:
@@ -916,10 +960,6 @@ class MainCoroutineRunner(BaseScriptRunner):
         if isinstance(ex, ScriptError):
             ex.enrich_from_lua_error(lua_exception)
         raise ex
-
-    @stop_on_error
-    def dispatch(self, cmd_id, *args):
-        super(MainCoroutineRunner, self).dispatch(cmd_id, *args)
 
 
 class LuaRender(RenderScript):

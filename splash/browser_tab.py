@@ -338,17 +338,6 @@ class BrowserTab(QObject):
     #     """ Unregister a callback for an event """
     #     self.web_page.callbacks[event].remove(callback)
 
-    def call_later(self, timeout, callback):
-        """
-        Schedule a callback to be called after a timeout.
-        Return a QTimer instance.
-        """
-        timer = QTimer(self)
-        timer.setSingleShot(True)
-        timer.timeout.connect(callback)
-        timer.start(int(timeout*1000))
-        return timer
-
     def close(self):
         """ Destroy this tab """
         self.logger.log("close is requested by a script", min_level=2)
