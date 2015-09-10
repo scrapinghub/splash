@@ -739,6 +739,57 @@ Already loaded scripts are not removed from the current page context.
 See also: :ref:`splash-autoload`.
 
 
+.. _splash-call-later:
+
+splash:call_later
+-----------------
+
+Arrange for the callback to be called after the given delay seconds.
+
+**Signature:** ``timer = splash:call_later(callback, delay)``
+
+**Parameters:**
+
+* callback - function to run;
+* delay - delay, in seconds;
+
+**Returns:** a handle which allows to cancel pending timer or reraise
+  exceptions happened in a callback.
+
+**Async:** no.
+
+Example 1 - take two HTML snapshots, at 1.5s and 2.5s after page
+loading starts:
+
+.. code-block:: lua
+
+    function main(splash)
+        local snapshots = {}
+        local timer = splash:call_later(function()
+            snapshots["a"] = splash:html()
+            splash:wait(1.0)
+            snapshots["b"] = splash:html()
+        end, 1.5)
+        assert(splash:go(splash.args.url))
+        splash:wait(3.0)
+        timer:reraise()
+        return snapshots
+    end
+
+:ref:`splash-call-later` returns a handle (a ``timer``). To cancel pending
+task use its ``timer:cancel()`` method. If a callback is already
+started ``timer:cancel()`` has no effect.
+
+By default, exceptions raised in :ref:`splash-call-later` callback
+stop the callback, but don't stop the main script. To reraise these errors
+use ``timer:reraise()``.
+
+:ref:`splash-call-later` arranges callback to be executed in future;
+it never runs it immediately, even if delay is 0. When delay is 0
+callback is executed no earlier than current function yields to event loop,
+i.e. no earlier than some of the async functions is called.
+
+
 .. _splash-http-get:
 
 splash:http_get

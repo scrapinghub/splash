@@ -13,7 +13,7 @@ from splash.lua import get_version, get_main_sandboxed, get_main, parse_lua_erro
 from splash.browser_tab import BrowserTab
 from splash.lua_runner import ScriptError
 from splash.lua_runtime import SplashLuaRuntime
-from splash.qtrender_lua import Splash, SplashScriptRunner
+from splash.qtrender_lua import Splash, MainCoroutineRunner
 from splash.qtutils import init_qt_app
 from splash.render_options import RenderOptions
 from splash import network_manager
@@ -67,13 +67,12 @@ class DeferredSplashRunner(object):
         else:
             self.log = log
 
-        self.runner = SplashScriptRunner(
+        self.runner = MainCoroutineRunner(
             lua=self.lua,
             log=self.log,
             splash=splash,
             sandboxed=self.sandboxed,
         )
-        self.splash.init_dispatcher(self.runner.dispatch)
 
     def run(self, main_coro):
         """
