@@ -98,32 +98,25 @@ local function sets_callback(func, storage)
   end
 end
 
---
--- Lua wrapper for Splash Python object.
---
--- It hides attributes that should not be exposed,
--- wraps async methods to `coroutine.yield` and fixes Lua <-> Python
--- error handling.
---
-local Splash = {}
 
-local private = {}
 local PRIVATE_PREFIX = "private_"
 
-function Splash._create(py_splash)
-  local self = {
-    args=py_splash.args,
-    _setters={},
-    _getters={}
-  }
-  setmetatable(self, Splash)
-
-  -- Create Lua splash:<...> methods from Python Splash object:
-  for key, opts in pairs(py_splash.commands) do
-    local command = py_splash[key]
+--
+-- Create a Lua wrapper for a Python object.
+--
+-- * Lua methods are created for Python methods wrapped in @command.
+-- * Async methods are wrapped to `coroutine.yield`.
+-- * Lua <-> Python error handling is fixed.
+-- * Private methods are stored in `private_self`, public methods are 
+--   stored in `self`.
+--
+local function wrap_exposed_object(py_object, self, private_self, async)
+  -- Create lua_object:<...> methods from py_object methods:
+  for key, opts in pairs(py_object.commands) do
+    local command = py_object[key]
 
     if opts.sets_callback then
-      command = sets_callback(command, py_splash.tmp_storage)
+      command = sets_callback(command, py_object.tmp_storage)
     end
 
     command = drops_self_argument(command)
@@ -132,50 +125,68 @@ function Splash._create(py_splash)
       command = unwraps_errors(command)
     end
 
-    if opts.is_async then
-      command = yields_result(command)
-    end
+    if async then
+      if opts.is_async then
+        command = yields_result(command)
+      end
 
-    if opts.can_raise_async then
-      command = raises_async(command)
+      if opts.can_raise_async then
+        command = raises_async(command)
+      end
     end
-
-    if key:find("^" .. PRIVATE_PREFIX) ~= nil then
-      local short_key = key:sub(PRIVATE_PREFIX:len()+1)
-      private[short_key] = command
+    
+    if string.find(key, "^" .. PRIVATE_PREFIX) ~= nil then
+      local short_key = string.sub(key, PRIVATE_PREFIX:len()+1)
+      private_self[short_key] = command
     else
       self[key] = command
     end
   end
 
-  -- Set attribute handler functions
-  for key, opts in pairs(py_splash.lua_properties) do
-    local setter = unwraps_errors(drops_self_argument(py_splash[key]))
-    local getter = unwraps_errors(drops_self_argument(py_splash[opts.getter_method]))
-    self._getters[opts.name] = getter
-    self._setters[opts.name] = setter
-  end
+end
 
+--
+-- Handle @lua_property decorators.
+--
+function setup_property_access(py_object, self, cls)
+  local setters = {}
+  local getters = {}
+  for key, opts in pairs(py_object.lua_properties) do
+    local setter = unwraps_errors(drops_self_argument(py_object[key]))
+    local getter = unwraps_errors(drops_self_argument(py_object[opts.getter_method]))
+    getters[opts.name] = getter
+    setters[opts.name] = setter
+  end
+  
+  function cls:__newindex(index, value)
+    if setters[index] then
+      setters[index](self, value)
+    else
+      rawset(cls, index, value)
+    end  
+  end
+  
+  function cls:__index(index)
+    if getters[index] then
+      return getters[index](self)
+    else
+      return rawget(cls, index)
+    end
+  end
+end
+
+--
+-- Lua wrapper for Splash Python object.
+--
+local Splash = {}
+local Splash_private = {}
+
+function Splash._create(py_splash)
+  local self = {args=py_splash.args}
+  setmetatable(self, Splash)
+  wrap_exposed_object(py_splash, self, Splash_private, true)
+  setup_property_access(py_splash, self, Splash)
   return self
-end
-
---
--- Apply attribute handlers.
---
-function Splash:__newindex( index, value )
-  if self._setters[index] then
-    self._setters[index](self, value)
-  else
-    rawset(Splash, index, value)
-  end
-end
-
-function Splash:__index(index)
-  if self._getters[index] then
-    return self._getters[index](self)
-  else
-    return rawget(Splash, index)
-  end
 end
 
 --
@@ -183,7 +194,7 @@ end
 -- It is required to handle errors properly.
 --
 function Splash:jsfunc(...)
-  local func = private.jsfunc(self, ...)
+  local func = Splash_private.jsfunc(self, ...)
   return unwraps_errors(func)
 end
 
@@ -191,6 +202,7 @@ end
 -- Pass wrapped `request` object to `on_request` callback.
 --
 local Request = {}
+local Request_private = {}
 Request.__index = Request
 
 function Request._create(py_request)
@@ -201,38 +213,28 @@ function Request._create(py_request)
   for key, value in pairs(py_request.info) do
     self[key] = value
   end
-
-  for key, opts in pairs(py_request.commands) do
-    local command = py_request[key]
-    command = drops_self_argument(command)
-
-    if opts.returns_error_flag then
-      command = unwraps_errors(command)
-    end
-
-    self[key] = command
-  end
-
+  wrap_exposed_object(py_request, self, Request_private, false)
+  setup_property_access(py_request, self, Request)
   return self
 end
 
 function Splash:on_request(cb)
-  private.on_request(self, function(py_request)
+  Splash_private.on_request(self, function(py_request)
     local req = Request._create(py_request)
     return cb(req)
   end)
 end
 
 local Response = {}
+local Response_private = {}
 Response.__index = Response
 
 function Response._create(py_reply)
     local self = {
         headers=py_reply.headers,
         info=py_reply.info,
-        request=py_reply.request
+        request=py_reply.request,
     }
-
     setmetatable(self, Response)
 
     -- convert har headers to something more convenient
@@ -250,21 +252,13 @@ function Response._create(py_reply)
         self[value] = py_reply.info[value]
     end
 
-    for key, opts in pairs(py_reply.commands) do
-        local command = py_reply[key]
-        command = drops_self_argument(command)
-
-        if opts.returns_error_flag then
-            command = unwraps_errors(command)
-        end
-        self[key] = command
-    end
-
+    wrap_exposed_object(py_reply, self, Response_private, false)
+    setup_property_access(py_reply, self, Response)
     return self
 end
 
 function Splash:on_response_headers(cb)
-    private.on_response_headers(self, function (response)
+    Splash_private.on_response_headers(self, function (response)
         local res = Response._create(response)
         return cb(res)
     end)
