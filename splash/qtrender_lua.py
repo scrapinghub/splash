@@ -2,12 +2,10 @@
 from __future__ import absolute_import, print_function
 import json
 import functools
-import itertools
 import resource
 import contextlib
 import time
 import sys
-import sip
 import twisted
 
 import lupa
@@ -35,6 +33,7 @@ from splash.lua_runtime import SplashLuaRuntime
 
 
 class AsyncBrowserCommand(AsyncCommand):
+
     def __repr__(self):
         kwargs = self.kwargs.copy()
         if 'callback' in kwargs:
@@ -42,7 +41,9 @@ class AsyncBrowserCommand(AsyncCommand):
         if 'errback' in kwargs:
             kwargs['errback'] = '<an errback>'
         kwargs_repr = truncated(repr(kwargs), 400, "...[long kwargs truncated]")
-        return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
+        return "%s(id=%r, name=%r, kwargs=%s)" % (
+            self.__class__.__name__, self.id, self.name, kwargs_repr
+        )
 
 
 def command(async=False, can_raise_async=False, table_argument=False,
@@ -325,19 +326,12 @@ class Splash(BaseExposedObject):
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
         self.tab = tab
-        self._command_ids = itertools.count()
         self._result_headers = []
 
         super(Splash, self).__init__(lua)
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
-
-    def init_dispatcher(self, return_func):
-        """
-        :param callable return_func: function that continues the script
-        """
-        self._return = return_func
 
     @lua_property('js_enabled')
     @command()
@@ -355,23 +349,22 @@ class Splash(BaseExposedObject):
         if time < 0:
             raise BadOption("splash:wait time can't be negative")
 
-        cmd_id = next(self._command_ids)
-
         def success():
-            self._return(cmd_id, True)
+            cmd.return_result(True)
 
         def redirect(error_info):
-            self._return(cmd_id, None, 'redirect')
+            cmd.return_result(None, 'redirect')
 
         def error(error_info):
-            self._return(cmd_id, None, self._error_info_to_lua(error_info))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
-        return AsyncBrowserCommand(cmd_id, "wait", dict(
+        cmd = AsyncBrowserCommand("wait", dict(
             time_ms = time*1000,
             callback = success,
             onredirect = redirect if cancel_on_redirect else False,
             onerror = error if cancel_on_error else False,
         ))
+        return cmd
 
     @command(async=True)
     def go(self, url, baseurl=None, headers=None):
@@ -381,29 +374,28 @@ class Splash(BaseExposedObject):
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
 
-        cmd_id = next(self._command_ids)
-
         def success():
             try:
                 code = self.tab.last_http_status()
                 if code and 400 <= code < 600:
                     # return HTTP errors as errors
-                    self._return(cmd_id, None, "http%d" % code)
+                    cmd.return_result(None, "http%d" % code)
                 else:
-                    self._return(cmd_id, True)
+                    cmd.return_result(True)
             except Exception as e:
-                self._return(cmd_id, None, "internal_error")
+                cmd.return_result(None, "internal_error")
 
         def error(error_info):
-            self._return(cmd_id, None, self._error_info_to_lua(error_info))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
-        return AsyncBrowserCommand(cmd_id, "go", dict(
+        cmd = AsyncBrowserCommand("go", dict(
             url=url,
             baseurl=baseurl,
             callback=success,
             errback=error,
             headers=self.lua.lua2python(headers, max_depth=3),
         ))
+        return cmd
 
     @command()
     def html(self):
@@ -463,20 +455,19 @@ class Splash(BaseExposedObject):
 
     @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
-        cmd_id = next(self._command_ids)
-
         def callback(result):
-            self._return(cmd_id, self.lua.python2lua(result))
+            cmd.return_result(self.lua.python2lua(result))
 
         def errback(msg, raise_):
-            self._return(cmd_id, None, "JavaScript error: %s" % msg, raise_)
+            cmd.return_result(None, "JavaScript error: %s" % msg, raise_)
 
-        return AsyncBrowserCommand(cmd_id, "wait_for_resume", dict(
+        cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
             callback=callback,
             errback=errback,
             timeout=timeout,
         ))
+        return cmd
 
     @command()
     def private_jsfunc(self, func):
@@ -487,18 +478,17 @@ class Splash(BaseExposedObject):
         if url is None:
             raise ScriptError("'url' is required for splash:http_get")
 
-        cmd_id = next(self._command_ids)
-
         def callback(reply):
             reply_har = reply2har(reply, include_content=True, binary_content=True)
-            self._return(cmd_id, self.lua.python2lua(reply_har))
+            cmd.return_result(self.lua.python2lua(reply_har))
 
-        return AsyncBrowserCommand(cmd_id, "http_get", dict(
+        cmd = AsyncBrowserCommand("http_get", dict(
             url=url,
             callback=callback,
             headers=self.lua.lua2python(headers, max_depth=3),
             follow_redirects=follow_redirects,
         ))
+        return cmd
 
     @command(async=True)
     def autoload(self, source_or_url=None, source=None, url=None):
@@ -518,20 +508,20 @@ class Splash(BaseExposedObject):
             return ImmediateResult(True)
         else:
             # load JS from a remote resource
-            cmd_id = next(self._command_ids)
             def callback(reply):
                 if reply.error():
                     reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
-                    self._return(cmd_id, None, reason)
+                    cmd.return_result(None, reason)
                 else:
                     source = bytes(reply.readAll())
                     self.tab.autoload(source)
-                    self._return(cmd_id, True)
+                    cmd.return_result(True)
 
-            return AsyncBrowserCommand(cmd_id, "http_get", dict(
+            cmd = AsyncBrowserCommand("http_get", dict(
                 url=url,
                 callback=callback
             ))
+            return cmd
 
     @command()
     def autoload_reset(self):
@@ -539,21 +529,20 @@ class Splash(BaseExposedObject):
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
-        cmd_id = next(self._command_ids)
-
         def success():
-            self._return(cmd_id, True)
+            cmd.return_result(True)
 
         def error(error_info):
-            self._return(cmd_id, None, self._error_info_to_lua(error_info))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
-        return AsyncBrowserCommand(cmd_id, "set_content", dict(
+        cmd = AsyncBrowserCommand("set_content", dict(
             data=data,
             baseurl=baseurl,
             mime_type=mime_type,
             callback=success,
             errback=error,
         ))
+        return cmd
 
     @command()
     def lock_navigation(self):
@@ -894,20 +883,19 @@ class _WrappedResponse(BaseExposedObject):
         self.response.abort()
 
 
-class SplashScriptRunner(BaseScriptRunner):
+class MainCoroutineRunner(BaseScriptRunner):
     """
-    An utility class for running Lua coroutines that interact with Splash.
+    An utility class for running main Splash Lua coroutine.
     """
     def __init__(self, lua, splash, log, sandboxed):
         self.splash = splash
-        self.splash.init_dispatcher(self.dispatch)
-        super(SplashScriptRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
+        super(MainCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
 
     def start(self, main_coro, return_result, return_error):
         self.return_result = return_result
         self.return_error = return_error
         self.splash.clear_exceptions()
-        super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
+        super(MainCoroutineRunner, self).start(main_coro, [self.splash.get_wrapped()])
 
     def on_result(self, result):
         self.return_result((
@@ -931,7 +919,7 @@ class SplashScriptRunner(BaseScriptRunner):
 
     @stop_on_error
     def dispatch(self, cmd_id, *args):
-        super(SplashScriptRunner, self).dispatch(cmd_id, *args)
+        super(MainCoroutineRunner, self).dispatch(cmd_id, *args)
 
 
 class LuaRender(RenderScript):
@@ -950,7 +938,7 @@ class LuaRender(RenderScript):
         )
         self.splash = Splash(self.lua, self.tab, self.render_options)
 
-        self.runner = SplashScriptRunner(
+        self.runner = MainCoroutineRunner(
             lua=self.lua,
             splash=self.splash,
             log=self.log,
@@ -958,7 +946,7 @@ class LuaRender(RenderScript):
         )
 
         try:
-            main_coro = self.get_main(lua_source)
+            main_coro = self.get_main_coro(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + repr(e))
 
@@ -968,7 +956,7 @@ class LuaRender(RenderScript):
             return_error=self.return_error,
         )
 
-    def get_main(self, lua_source):
+    def get_main_coro(self, lua_source):
         if self.sandboxed:
             main, env = get_main_sandboxed(self.lua, lua_source)
         else:

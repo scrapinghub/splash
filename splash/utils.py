@@ -57,6 +57,7 @@ def get_alive():
         'SplashProxyRequest', 'Request', 'Deferred',
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
         '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
+        'AsyncBrowserCommand',
     ))
     counts = defaultdict(int)
     for o in gc.get_objects():
