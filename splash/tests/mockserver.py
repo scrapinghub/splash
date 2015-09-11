@@ -19,6 +19,8 @@ _REQUIRED = object()
 
 
 def getarg(request, name, default=_REQUIRED, type=str):
+    if not isinstance(name, bytes):
+        name = name.encode('utf8')
     value = request.args.get(name, [None])[0]
     if value is not None:
         if type is not None:
