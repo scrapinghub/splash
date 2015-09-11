@@ -8,6 +8,7 @@ import base64
 import inspect
 import resource
 from collections import defaultdict
+import functools
 import psutil
 
 
@@ -46,19 +47,22 @@ def get_num_fds():
 
 def get_alive():
     """ Return counts of alive objects. """
-    relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
+    relevant_types = {
+        'SplashQWebPage', 'SplashQNetworkAccessManager',
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
         'QWebView', 'QWebPage', 'QWebFrame',
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
-        'SplashCookieJar', 'OneShotCallbackProxy', '_WrappedRequest',
-        '_WrappedResponse', 'BrowserTab', '_SplashHttpClient',
-        'JavascriptConsole', 'ProfilesSplashProxyFactory',
+        'SplashCookieJar', 'OneShotCallbackProxy',
+        '_ExposedRequest', '_ExposedResponse', '_ExposedBoundResponse',
+        '_ExposedTimer',
+        'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
+        'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
         '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
         'AsyncBrowserCommand',
-    ))
+    }
     counts = defaultdict(int)
     for o in gc.get_objects():
         if not inspect.isclass(o):
@@ -132,3 +136,18 @@ def path_join_secure(base, *paths):
     if not path.startswith(base):
         raise ValueError("Resulting path %r is outside %r." % (path, base))
     return path
+
+
+def requires_attr(attr_name, error_msg):
+    """
+    Methods wrapped in this decorator raise an error if a required
+    attribute is not set.
+    """
+    def decorator(meth):
+        @functools.wraps(meth)
+        def wrapper(self, *args, **kwargs):
+            if getattr(self, attr_name, None) is None:
+                raise ValueError(error_msg)
+            return meth(self, *args, **kwargs)
+        return wrapper
+    return decorator

@@ -23,7 +23,7 @@ from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed
 from splash.har.qt import reply2har, request2har
 from splash.render_options import BadOption, RenderOptions
-from splash.utils import truncated, BinaryCapsule
+from splash.utils import truncated, BinaryCapsule, requires_attr
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -697,7 +697,7 @@ class Splash(BaseExposedObject):
     def private_on_response_headers(self, callback):
 
         def _callback(reply):
-            with _ExposedResponse.wraps(self.lua, reply) as resp:
+            with _ExposedBoundResponse.wraps(self.lua, reply) as resp:
                 callback(resp)
 
         self.tab.register_callback("on_response_headers", _callback)
@@ -707,8 +707,11 @@ class Splash(BaseExposedObject):
     def private_on_response(self, callback):
 
         def _callback(reply, har_entry):
-            with _ExposedResponse.wraps(self.lua, reply, har_entry) as resp:
-                callback(resp)
+            resp = _ExposedResponse(self.lua, reply, har_entry)
+            run_coro = self.get_coroutine_run_func(
+                "splash:on_response", callback, [resp]
+            )
+            return run_coro(resp)
 
         self.tab.register_callback("on_response", _callback)
         return True
@@ -778,12 +781,16 @@ class Splash(BaseExposedObject):
         return self._wrapped
 
     def run_async_command(self, cmd):
-        """ Execute _AsyncCommand """
+        """ Execute _AsyncBrowserCommand """
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
 
-    def get_coroutine_run_func(self, name, callback, #coro_args=None,
+    def get_coroutine_run_func(self, name, callback,
                                return_result=None, return_error=None):
+        """
+        Return a function which runs as coroutine and can be used
+        instead of `callback`.
+        """
         def func(*coro_args):
             def log(message, min_level=None):
                 self.tab.logger.log("[%s] %s" % (name, message), min_level)
@@ -820,13 +827,10 @@ class _ExposedTimer(BaseExposedObject):
         self.errors.append(error)
 
 
-def _requires_request(meth):
-    @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
-        if self.request is None:
-            raise ValueError("request is used outside a callback")
-        return meth(self, *args, **kwargs)
-    return wrapper
+requires_request = requires_attr("request",
+                                 "request is used outside a callback")
+requires_response = requires_attr("request",
+                                  "response is used outside a callback")
 
 
 class _ExposedRequest(BaseExposedObject):
@@ -845,28 +849,28 @@ class _ExposedRequest(BaseExposedObject):
         self.request = None
 
     @command()
-    @_requires_request
+    @requires_request
     def abort(self):
         drop_request(self.request)
 
     @command()
-    @_requires_request
+    @requires_request
     def set_url(self, url):
         set_request_url(self.request, url)
 
     @command()
-    @_requires_request
+    @requires_request
     def set_proxy(self, host, port, username=None, password=None, type='HTTP'):
         proxy = create_proxy(host, port, username, password, type)
         self.request.custom_proxy = proxy
 
     @command()
-    @_requires_request
+    @requires_request
     def set_header(self, name, value):
         self.request.setRawHeader(name, value)
 
     @command()
-    @_requires_request
+    @requires_request
     def set_timeout(self, timeout):
         timeout = float(timeout)
         if timeout < 0:
@@ -874,23 +878,12 @@ class _ExposedRequest(BaseExposedObject):
         self.request.timeout = timeout
 
 
-def _requires_response(meth):
-    @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
-        if self.response is None:
-            raise ValueError("response is used outside callback")
-        return meth(self, *args, **kwargs)
-    return wrapper
-
-
 class _ExposedResponse(BaseExposedObject):
-    _attribute_whitelist = [
-        "headers", "response", "info", "request"
-    ]
+    """ Response object exposed to Lua in on_response callback """
+    _attribute_whitelist = ["headers", "info", "request"]
 
     def __init__(self, lua, reply, har_entry=None):
         super(_ExposedResponse, self).__init__(lua)
-        self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
         _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
@@ -906,11 +899,21 @@ class _ExposedResponse(BaseExposedObject):
 
     def clear(self):
         super(_ExposedResponse, self).clear()
-        self.response = None
         self.request = None
 
+
+class _ExposedBoundResponse(_ExposedResponse):
+    """ Response object exposed to Lua in on_response_headers callback. """
+    def __init__(self, lua, reply, har_entry=None):
+        super(_ExposedBoundResponse, self).__init__(lua, reply, har_entry)
+        self.response = reply
+
+    def clear(self):
+        super(_ExposedBoundResponse, self).clear()
+        self.response = None
+
     @command()
-    @_requires_response
+    @requires_response
     def abort(self):
         self.response.abort()
 
