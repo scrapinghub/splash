@@ -285,31 +285,19 @@ class BaseExposedObject(object):
     def clear(self):
         self.lua = None
 
-
-class _ExposedTimer(BaseExposedObject):
-    """
-    Timer object returned by splash:call_later().
-    """
-    def __init__(self, lua, timer):
-        self.timer = timer
-        self.errors = []
-        super(_ExposedTimer, self).__init__(lua)
-
-    @command()
-    def cancel(self):
-        self.timer.stop()
-
-    @command()
-    def is_pending(self):
-        return self.timer.isActive()
-
-    @command()
-    def reraise(self):
-        if self.errors:
-            raise self.errors[-1]
-
-    def store_error(self, error):
-        self.errors.append(error)
+    @classmethod
+    @contextlib.contextmanager
+    def wraps(cls, lua, *args, **kwargs):
+        """
+        Context manager which returns a wrapped object
+        suitable for using in Lua code.
+        """
+        obj = cls(lua, *args, **kwargs)
+        try:
+            with lua.object_allowed(obj, obj.attr_whitelist):
+                yield obj
+        finally:
+            obj.clear()
 
 
 class Splash(BaseExposedObject):
@@ -698,20 +686,21 @@ class Splash(BaseExposedObject):
         """
         Register a Lua callback to be called when a resource is requested.
         """
-        def py_callback(request, operation, outgoing_data):
-            with wrapped_request(self.lua, request, operation, outgoing_data) as req:
+        def _callback(request, operation, outgoing_data):
+            with _ExposedRequest.wraps(self.lua, request, operation, outgoing_data) as req:
                 callback(req)
-        self.tab.register_callback("on_request", py_callback)
+
+        self.tab.register_callback("on_request", _callback)
         return True
 
     @command(sets_callback=True)
     def private_on_response_headers(self, callback):
 
-        def res_callback(reply):
-            with wrapped_response(self.lua, reply) as res:
-                callback(res)
+        def _callback(reply):
+            with _ExposedResponse.wraps(self.lua, reply) as resp:
+                callback(resp)
 
-        self.tab.register_callback("on_response_headers", res_callback)
+        self.tab.register_callback("on_response_headers", _callback)
         return True
 
     @command(sets_callback=True)
@@ -791,18 +780,30 @@ class Splash(BaseExposedObject):
         return meth(**cmd.kwargs)
 
 
-@contextlib.contextmanager
-def wrapped_request(lua, request, operation, outgoing_data):
+class _ExposedTimer(BaseExposedObject):
     """
-    Context manager which returns a wrapped QNetworkRequest
-    suitable for using in Lua code.
+    Timer object returned by splash:call_later().
     """
-    req = _WrappedRequest(lua, request, operation, outgoing_data)
-    try:
-        with lua.object_allowed(req, req.attr_whitelist):
-            yield req
-    finally:
-        req.clear()
+    def __init__(self, lua, timer):
+        self.timer = timer
+        self.errors = []
+        super(_ExposedTimer, self).__init__(lua)
+
+    @command()
+    def cancel(self):
+        self.timer.stop()
+
+    @command()
+    def is_pending(self):
+        return self.timer.isActive()
+
+    @command()
+    def reraise(self):
+        if self.errors:
+            raise self.errors[-1]
+
+    def store_error(self, error):
+        self.errors.append(error)
 
 
 def _requires_request(meth):
@@ -814,19 +815,19 @@ def _requires_request(meth):
     return wrapper
 
 
-class _WrappedRequest(BaseExposedObject):
+class _ExposedRequest(BaseExposedObject):
     """ QNetworkRequest wrapper for Lua """
     _attribute_whitelist = ['info']
 
     def __init__(self, lua, request, operation, outgoing_data):
-        super(_WrappedRequest, self).__init__(lua)
+        super(_ExposedRequest, self).__init__(lua)
         self.request = request
         self.info = self.lua.python2lua(
             request2har(request, operation, outgoing_data)
         )
 
     def clear(self):
-        super(_WrappedRequest, self).clear()
+        super(_ExposedRequest, self).clear()
         self.request = None
 
     @command()
@@ -868,27 +869,13 @@ def _requires_response(meth):
     return wrapper
 
 
-@contextlib.contextmanager
-def wrapped_response(lua, reply):
-    """
-    Context manager which returns a wrapped QNetworkReply
-    suitable for using in Lua code.
-    """
-    res = _WrappedResponse(lua, reply)
-    try:
-        with lua.object_allowed(res, res.attr_whitelist):
-            yield res
-    finally:
-        res.clear()
-
-
-class _WrappedResponse(BaseExposedObject):
+class _ExposedResponse(BaseExposedObject):
     _attribute_whitelist = [
         "headers", "response",  "info", "request"
     ]
 
     def __init__(self, lua, reply):
-        super(_WrappedResponse, self).__init__(lua)
+        super(_ExposedResponse, self).__init__(lua)
         self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
@@ -900,7 +887,7 @@ class _WrappedResponse(BaseExposedObject):
         )
 
     def clear(self):
-        super(_WrappedResponse, self).clear()
+        super(_ExposedResponse, self).clear()
         self.response = None
         self.request = None
 
@@ -908,7 +895,6 @@ class _WrappedResponse(BaseExposedObject):
     @_requires_response
     def abort(self):
         self.response.abort()
-
 
 
 class SplashCoroutineRunner(BaseScriptRunner):
