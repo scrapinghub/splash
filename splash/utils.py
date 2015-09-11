@@ -5,11 +5,10 @@ import gc
 import sys
 import json
 import base64
-import collections
-import functools
 import inspect
 import resource
 from collections import defaultdict
+import functools
 import psutil
 
 import six
@@ -84,7 +83,8 @@ def get_alive():
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
         'SplashCookieJar', 'OneShotCallbackProxy',
-        '_WrappedRequest', '_WrappedResponse',
+        '_ExposedRequest', '_ExposedResponse', '_ExposedBoundResponse',
+        '_ExposedTimer',
         'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
         'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
@@ -165,3 +165,18 @@ def path_join_secure(base, *paths):
     if not path.startswith(base):
         raise ValueError("Resulting path %r is outside %r." % (path, base))
     return path
+
+
+def requires_attr(attr_name, error_msg):
+    """
+    Methods wrapped in this decorator raise an error if a required
+    attribute is not set.
+    """
+    def decorator(meth):
+        @functools.wraps(meth)
+        def wrapper(self, *args, **kwargs):
+            if getattr(self, attr_name, None) is None:
+                raise ValueError(error_msg)
+            return meth(self, *args, **kwargs)
+        return wrapper
+    return decorator

@@ -183,7 +183,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 400)
-        self.assertIn("response is used outside callback", resp.text)
+        self.assertIn("response is used outside a callback", resp.text)
 
     def test_get_headers(self):
         headers = {
@@ -323,8 +323,6 @@ class OnResponseTest(BaseLuaRenderTest):
         self.assertEqual(e1['request']['method'], 'GET')
         self.assertEqual(e1['request']['cookies'], h1['request']['cookies'])
 
-    @pytest.mark.xfail(reason="async support for splash:on_response "
-                              "is not implemented yet")
     def test_async_wait(self):
         resp = self.request_lua("""
         function main(splash)
