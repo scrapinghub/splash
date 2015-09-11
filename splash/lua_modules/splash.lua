@@ -161,7 +161,7 @@ end
 --
 -- Handle @lua_property decorators.
 --
-function setup_property_access(py_object, self, cls)
+local function setup_property_access(py_object, self, cls)
   local setters = {}
   local getters = {}
   for key, opts in pairs(py_object.lua_properties) do
@@ -274,6 +274,14 @@ function Splash:on_response_headers(cb)
     return cb(res)
   end)
 end
+
+function Splash:on_response(cb)
+  Splash_private.on_response(self, function (response)
+    local res = Response._create(response)
+    return cb(res)
+  end)
+end
+
 
 --
 -- Timer Lua wrapper

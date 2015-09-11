@@ -55,7 +55,8 @@ class SplashQWebPage(QWebPage):
         self.cookiejar = SplashCookieJar(self)
         self.callbacks = {
             "on_request": [],
-            "on_response_headers": []
+            "on_response_headers": [],
+            "on_response": [],
         }
         self.mainFrame().urlChanged.connect(self.onUrlChanged)
         self.mainFrame().titleChanged.connect(self.onTitleChanged)

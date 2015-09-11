@@ -90,16 +90,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._handle_request_cookies(request)
 
         with self._proxyApplied(request):
-            callbacks = self._getWebPageAttribute(request, "callbacks")
-            if callbacks and 'on_request' in callbacks:
-                for cb in callbacks["on_request"]:
-                    try:
-                        cb(request, operation, outgoingData)
-                    except:
-                        # Unhandled exceptions in createRequest method cause
-                        # segfaults, so we log all errors.
-                        self.log("error in on_resource_requested callback", min_level=1)
-                        self.log(traceback.format_exc(), min_level=1)
+            self._run_webpage_callbacks(request, 'on_request',
+                                        request, operation, outgoingData)
 
             if hasattr(request, 'custom_proxy'):
                 self.setProxy(request.custom_proxy)
@@ -246,30 +238,27 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleFinished(self):
         reply = self.sender()
+        request = reply.request()
         self._cancelReplyTimer(reply)
         har = self._getHar()
+        har_entry = None
         if har is not None:
-            har.store_reply_finished(self._getRequestId(), reply)
+            req_id = self._getRequestId()
+            har.store_reply_finished(req_id, reply)
+            # We're passing HAR entry because reply object itself doesn't
+            # have all information.
+            har_entry = har.get_entry(req_id)
+
+        self._run_webpage_callbacks(request, "on_response", reply, har_entry)
         self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):
         """Signal emitted before reading response body, after getting headers
         """
         reply = self.sender()
+        request = reply.request()
         self._handle_reply_cookies(reply)
-
-        callbacks = self._getWebPageAttribute(reply.request(), "callbacks")
-
-        if callbacks and "on_response_headers" in callbacks:
-            for cb in callbacks["on_response_headers"]:
-                try:
-                    cb(reply)
-                except:
-                    # TODO unhandled exceptions in lua callbacks
-                    # should we raise errors here?
-                    # https://github.com/scrapinghub/splash/issues/161
-                    self.log("error in on_response_headers callback", min_level=1)
-                    self.log(traceback.format_exc(), min_level=1)
+        self._run_webpage_callbacks(request, "on_response_headers", reply)
 
         har = self._getHar()
         if har is not None:
@@ -301,6 +290,20 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _getRenderOptions(self, request):
         return self._getWebPageAttribute(request, 'render_options')
+
+    def _run_webpage_callbacks(self, request, event_name, *args):
+        callbacks = self._getWebPageAttribute(request, "callbacks")
+        if not callbacks:
+            return
+        for cb in callbacks.get(event_name, []):
+            try:
+                cb(*args)
+            except:
+                # TODO unhandled exceptions in lua callbacks
+                # should we raise errors here?
+                # https://github.com/scrapinghub/splash/issues/161
+                self.log("error in %s callback" % event_name, min_level=1)
+                self.log(traceback.format_exc(), min_level=1)
 
     def log(self, msg, reply=None, min_level=2):
         if self.verbosity < min_level:

@@ -46,6 +46,13 @@ class HarBuilder(object):
         except KeyError:
             return
 
+    def get_entry(self, req_id):
+        """ Return HAR entry for a given req_id """
+        if not self.log.has_entry(req_id):
+            return
+        entry = self.log.get_mutable_entry(req_id)
+        return copy.deepcopy(entry)
+
     def _initial_entry_data(self, start_time, operation, request, outgoingData):
         """
         Return initial values for a new HAR entry.
@@ -199,3 +206,4 @@ class HarBuilder(object):
         cause_ev = self.log._prev_entry(url, last_idx=-1)
         if cause_ev:
             self.history.append(cleaned_har_entry(cause_ev.data))
+

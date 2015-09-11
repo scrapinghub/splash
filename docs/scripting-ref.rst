@@ -1849,10 +1849,11 @@ but allow up to 15 seconds for the first request:
         end
     end)
 
+See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`.
 
 .. note::
 
-    `splash:on_request` method doesn't support named arguments.
+    :ref:`splash-on-request` doesn't support named arguments.
 
 .. _splash-on-response-headers:
 
@@ -1872,6 +1873,7 @@ response body is read.
 ``response`` contains following fields:
 
 * ``url`` - requested URL;
+* ``status`` - HTTP status code
 * ``headers`` - HTTP headers of response
 * ``info`` - a table with response data in `HAR response`_ format
 * ``request`` - a table with request information
@@ -1937,6 +1939,58 @@ Example 3 - extract all cookies set by website without reading response body
         assert(splash:go(splash.args.url))
         return cookies
     end
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response`.
+
+.. note::
+
+    :ref:`splash-on-response-headers` doesn't support named arguments.
+
+.. _splash-on-response:
+
+splash:on_response
+------------------
+
+Register a function to be called after response is downloaded.
+
+**Signature:** ``splash:on_response(callback)``
+
+**Returns:** nil.
+
+**Async:** no.
+
+:ref:`splash-on-response` callback receives a single ``response`` argument.
+``response`` contains following fields:
+
+* ``url`` - requested URL;
+* ``status`` - HTTP status code
+* ``headers`` - HTTP headers of response
+* ``info`` - a table with response data in `HAR response`_ format
+* ``request`` - a table with request information
+
+.. note::
+
+    Currently you can't read response body in a :ref:`splash-on-response`
+    callback.
+
+These fields are for information only; changing them doesn't change
+response received by splash.
+
+``response.request`` available in a callback contains the following attributes:
+
+* ``url`` - requested URL - can be different from response URL in case there is
+  redirect
+* ``headers`` - HTTP headers of request
+* ``method`` HTTP method of request
+* ``cookies`` - cookies in .har format
+
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`.
+
+.. note::
+
+    :ref:`splash-on-response` doesn't support named arguments.
+
 
 .. _splash-version:
 
