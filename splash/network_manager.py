@@ -236,10 +236,18 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handleFinished(self):
         reply = self.sender()
+        request = reply.request()
         self._cancelReplyTimer(reply)
         har = self._getHar()
+        har_entry = None
         if har is not None:
-            har.store_reply_finished(self._getRequestId(), reply)
+            req_id = self._getRequestId()
+            har.store_reply_finished(req_id, reply)
+            # We're passing HAR entry because reply object itself doesn't
+            # have all information.
+            har_entry = har.get_entry(req_id)
+
+        self._run_webpage_callbacks(request, "on_response", reply, har_entry)
         self.log("Finished downloading {url}", reply)
 
     def _handleMetaData(self):

@@ -275,6 +275,14 @@ function Splash:on_response_headers(cb)
   end)
 end
 
+function Splash:on_response(cb)
+  Splash_private.on_response(self, function (response)
+    local res = Response._create(response)
+    return cb(res)
+  end)
+end
+
+
 --
 -- Timer Lua wrapper
 --

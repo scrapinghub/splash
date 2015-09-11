@@ -703,6 +703,16 @@ class Splash(BaseExposedObject):
         self.tab.register_callback("on_response_headers", _callback)
         return True
 
+    @command(async=True, sets_callback=True)
+    def private_on_response(self, callback):
+
+        def _callback(reply, har_entry):
+            with _ExposedResponse.wraps(self.lua, reply, har_entry) as resp:
+                callback(resp)
+
+        self.tab.register_callback("on_response", _callback)
+        return True
+
     @command(sets_callback=True)
     def private_call_later(self, callback, delay=None):
         if delay is None:
@@ -718,16 +728,9 @@ class Splash(BaseExposedObject):
         qtimer = QTimer(self.tab)
         qtimer.setSingleShot(True)
         timer = _ExposedTimer(self.lua, qtimer)
-
-        def log(message, min_level=None):
-            message = "[splash:call_later] " + message
-            self.tab.logger.log(message, min_level)
-
-        def run_coro():
-            runner = SplashCoroutineRunner(self.lua, self, log, self.sandboxed)
-            coro = self.lua.create_coroutine(callback)
-            runner.start(coro, return_error=timer.store_error)
-
+        run_coro = self.get_coroutine_run_func(
+            "splash:call_later", callback, return_error=timer.store_error
+        )
         qtimer.timeout.connect(run_coro)
         qtimer.start(delay)
         return timer
@@ -778,6 +781,17 @@ class Splash(BaseExposedObject):
         """ Execute _AsyncCommand """
         meth = getattr(self.tab, cmd.name)
         return meth(**cmd.kwargs)
+
+    def get_coroutine_run_func(self, name, callback, #coro_args=None,
+                               return_result=None, return_error=None):
+        def func(*coro_args):
+            def log(message, min_level=None):
+                self.tab.logger.log("[%s] %s" % (name, message), min_level)
+
+            runner = SplashCoroutineRunner(self.lua, self, log, False)
+            coro = self.lua.create_coroutine(callback)
+            runner.start(coro, coro_args, return_result, return_error)
+        return func
 
 
 class _ExposedTimer(BaseExposedObject):
@@ -871,17 +885,21 @@ def _requires_response(meth):
 
 class _ExposedResponse(BaseExposedObject):
     _attribute_whitelist = [
-        "headers", "response",  "info", "request"
+        "headers", "response", "info", "request"
     ]
 
-    def __init__(self, lua, reply):
+    def __init__(self, lua, reply, har_entry=None):
         super(_ExposedResponse, self).__init__(lua)
         self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
         _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
-        self.info = self.lua.python2lua(reply2har(reply))
+        if har_entry is None:
+            resp_info = reply2har(reply)
+        else:
+            resp_info = har_entry['response']
+        self.info = self.lua.python2lua(resp_info)
         self.request = self.lua.python2lua(
             request2har(reply.request(), reply.operation())
         )
