@@ -829,7 +829,7 @@ class _ExposedTimer(BaseExposedObject):
 
 requires_request = requires_attr("request",
                                  "request is used outside a callback")
-requires_response = requires_attr("request",
+requires_response = requires_attr("response",
                                   "response is used outside a callback")
 
 
