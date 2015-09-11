@@ -2,13 +2,13 @@
 from __future__ import absolute_import, print_function
 import json
 import functools
-import itertools
 import resource
 import contextlib
 import time
 import sys
 import six
 
+from PyQt5.QtCore import QTimer
 import lupa
 import twisted
 
@@ -35,6 +35,7 @@ from splash.lua_runtime import SplashLuaRuntime
 
 
 class AsyncBrowserCommand(AsyncCommand):
+
     def __repr__(self):
         kwargs = self.kwargs.copy()
         if 'callback' in kwargs:
@@ -42,7 +43,9 @@ class AsyncBrowserCommand(AsyncCommand):
         if 'errback' in kwargs:
             kwargs['errback'] = '<an errback>'
         kwargs_repr = truncated(repr(kwargs), 400, "...[long kwargs truncated]")
-        return "%s(id=%r, name=%r, kwargs=%s)" % (self.__class__.__name__, self.id, self.name, kwargs_repr)
+        return "%s(id=%r, name=%r, kwargs=%s)" % (
+            self.__class__.__name__, self.id, self.name, kwargs_repr
+        )
 
 
 def command(async=False, can_raise_async=False, table_argument=False,
@@ -255,63 +258,93 @@ class _WrappedJavascriptFunction(object):
         return res.get("result")
 
 
-class Splash(object):
+class BaseExposedObject(object):
+    """ Base class for objects exposed to Lua """
+    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage']
+    _attribute_whitelist = []
+
+    def __init__(self, lua):
+        self.lua = lua
+        commands = get_commands(self)
+        self.commands = lua.python2lua(commands)
+
+        lua_properties = get_lua_properties(self)
+        self.lua_properties = lua.python2lua(lua_properties)
+
+        self.attr_whitelist = (
+            list(commands.keys()) +
+            list(lua_properties.keys()) +
+            [lua_properties[attr]['getter_method'] for attr in lua_properties] +
+            self._base_attribute_whitelist +
+            self._attribute_whitelist
+        )
+        lua.add_allowed_object(self, self.attr_whitelist)
+
+        self._exceptions = []
+        self.tmp_storage = lua.table_from({})  # a workaround for callbacks
+
+    def clear(self):
+        self.lua = None
+
+
+class _ExposedTimer(BaseExposedObject):
+    """
+    Timer object returned by splash:call_later().
+    """
+    def __init__(self, lua, timer):
+        self.timer = timer
+        self.errors = []
+        super(_ExposedTimer, self).__init__(lua)
+
+    @command()
+    def cancel(self):
+        self.timer.stop()
+
+    @command()
+    def is_pending(self):
+        return self.timer.isActive()
+
+    @command()
+    def reraise(self):
+        if self.errors:
+            raise self.errors[-1]
+
+    def store_error(self, error):
+        self.errors.append(error)
+
+
+class Splash(BaseExposedObject):
     """
     This object is passed to Lua script as an argument to 'main' function
     (wrapped in 'Splash' Lua object; see :file:`splash/lua_modules/splash.lua`).
     """
     _result_content_type = None
     _result_status_code = 200
-    _attribute_whitelist = ['commands', 'args', 'tmp_storage',
-                            'lua_properties']
+    _attribute_whitelist = ['args']
 
-    def __init__(self, lua, tab, render_options=None):
+    def __init__(self, lua, tab, render_options=None, sandboxed=False):
         """
         :param SplashLuaRuntime lua: Lua wrapper
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
         :param splash.render_options.RenderOptions render_options: arguments
         """
-        self.tab = tab
-        self.lua = lua
-
-        self._exceptions = []
-        self._command_ids = itertools.count()
-
         if isinstance(render_options, RenderOptions):
-            self.args = self.lua.python2lua(render_options.data)
+            self.args = lua.python2lua(render_options.data)
         elif isinstance(render_options, dict):
-            self.args = self.lua.python2lua(render_options)
+            self.args = lua.python2lua(render_options)
         elif render_options is None:
-            self.args = self.lua.python2lua({})
+            self.args = lua.python2lua({})
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        commands = get_commands(self)
-        self.commands = self.lua.python2lua(commands)
+        self.sandboxed = sandboxed
+        self.tab = tab
+        self._result_headers = []
 
-        lua_properties = get_lua_properties(self)
-        self.lua_properties = self.lua.python2lua(lua_properties)
-        lua_attr_getters = [
-            lua_properties[attr]['getter_method'] for attr in lua_properties]
-
-        self.attr_whitelist = (list(commands.keys()) +
-                               list(lua_properties.keys()) +
-                               lua_attr_getters +
-                               self._attribute_whitelist)
-
-        self.lua.add_allowed_object(self, self.attr_whitelist)
-        self.tmp_storage = self.lua.table_from({})
+        super(Splash, self).__init__(lua)
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
-
-        self._result_headers = []
-
-    def init_dispatcher(self, return_func):
-        """
-        :param callable return_func: function that continues the script
-        """
-        self._return = return_func
 
     @lua_property('js_enabled')
     @command()
@@ -329,23 +362,22 @@ class Splash(object):
         if time < 0:
             raise BadOption("splash:wait time can't be negative")
 
-        cmd_id = next(self._command_ids)
-
         def success():
-            self._return(cmd_id, True)
+            cmd.return_result(True)
 
         def redirect(error_info):
-            self._return(cmd_id, None, 'redirect')
+            cmd.return_result(None, 'redirect')
 
         def error(error_info):
-            self._return(cmd_id, None, self._error_info_to_lua(error_info))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
-        return AsyncBrowserCommand(cmd_id, "wait", dict(
+        cmd = AsyncBrowserCommand("wait", dict(
             time_ms = time*1000,
             callback = success,
             onredirect = redirect if cancel_on_redirect else False,
             onerror = error if cancel_on_error else False,
         ))
+        return cmd
 
     @command(async=True)
     def go(self, url, baseurl=None, headers=None):
@@ -355,29 +387,28 @@ class Splash(object):
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
 
-        cmd_id = next(self._command_ids)
-
         def success():
             try:
                 code = self.tab.last_http_status()
                 if code and 400 <= code < 600:
                     # return HTTP errors as errors
-                    self._return(cmd_id, None, "http%d" % code)
+                    cmd.return_result(None, "http%d" % code)
                 else:
-                    self._return(cmd_id, True)
+                    cmd.return_result(True)
             except Exception as e:
-                self._return(cmd_id, None, "internal_error")
+                cmd.return_result(None, "internal_error")
 
         def error(error_info):
-            self._return(cmd_id, None, self._error_info_to_lua(error_info))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
-        return AsyncBrowserCommand(cmd_id, "go", dict(
+        cmd = AsyncBrowserCommand("go", dict(
             url=url,
             baseurl=baseurl,
             callback=success,
             errback=error,
             headers=self.lua.lua2python(headers, max_depth=3),
         ))
+        return cmd
 
     @command()
     def html(self):
@@ -437,20 +468,19 @@ class Splash(object):
 
     @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
-        cmd_id = next(self._command_ids)
-
         def callback(result):
-            self._return(cmd_id, self.lua.python2lua(result))
+            cmd.return_result(self.lua.python2lua(result))
 
         def errback(msg, raise_):
-            self._return(cmd_id, None, "JavaScript error: %s" % msg, raise_)
+            cmd.return_result(None, "JavaScript error: %s" % msg, raise_)
 
-        return AsyncBrowserCommand(cmd_id, "wait_for_resume", dict(
+        cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
             callback=callback,
             errback=errback,
             timeout=timeout,
         ))
+        return cmd
 
     @command()
     def private_jsfunc(self, func):
@@ -461,18 +491,17 @@ class Splash(object):
         if url is None:
             raise ScriptError("'url' is required for splash:http_get")
 
-        cmd_id = next(self._command_ids)
-
         def callback(reply):
             reply_har = reply2har(reply, include_content=True, binary_content=True)
-            self._return(cmd_id, self.lua.python2lua(reply_har))
+            cmd.return_result(self.lua.python2lua(reply_har))
 
-        return AsyncBrowserCommand(cmd_id, "http_get", dict(
+        cmd = AsyncBrowserCommand("http_get", dict(
             url=url,
             callback=callback,
             headers=self.lua.lua2python(headers, max_depth=3),
             follow_redirects=follow_redirects,
         ))
+        return cmd
 
     @command(async=True)
     def autoload(self, source_or_url=None, source=None, url=None):
@@ -492,21 +521,20 @@ class Splash(object):
             return ImmediateResult(True)
         else:
             # load JS from a remote resource
-            cmd_id = next(self._command_ids)
-
             def callback(reply):
                 if reply.error():
                     reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
-                    self._return(cmd_id, None, reason)
+                    cmd.return_result(None, reason)
                 else:
                     source = bytes(reply.readAll()).decode('utf-8')
                     self.tab.autoload(source)
-                    self._return(cmd_id, True)
+                    cmd.return_result(True)
 
-            return AsyncBrowserCommand(cmd_id, "http_get", dict(
+            cmd = AsyncBrowserCommand("http_get", dict(
                 url=url,
                 callback=callback
             ))
+            return cmd
 
     @command()
     def autoload_reset(self):
@@ -514,23 +542,23 @@ class Splash(object):
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
-        cmd_id = next(self._command_ids)
         if isinstance(data, six.text_type):
             data = data.encode('utf8')
 
         def success():
-            self._return(cmd_id, True)
+            cmd.return_result(True)
 
         def error(error_info):
-            self._return(cmd_id, None, self._error_info_to_lua(error_info))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
-        return AsyncBrowserCommand(cmd_id, "set_content", dict(
+        cmd = AsyncBrowserCommand("set_content", dict(
             data=data,
             baseurl=baseurl,
             mime_type=mime_type,
             callback=success,
             errback=error,
         ))
+        return cmd
 
     @command()
     def lock_navigation(self):
@@ -690,6 +718,35 @@ class Splash(object):
         self.tab.register_callback("on_response_headers", res_callback)
         return True
 
+    @command(sets_callback=True)
+    def private_call_later(self, callback, delay=None):
+        if delay is None:
+            delay = 0
+        if not isinstance(delay, (float, int)):
+            raise ScriptError("splash:call_later delay must be a number")
+        delay = int(float(delay)*1000)
+        if delay < 0:
+            raise ScriptError("splash:call_later delay must be >= 0")
+        if not callable(callback):
+            raise ScriptError("splash:call_later callback is not a function")
+
+        qtimer = QTimer(self.tab)
+        qtimer.setSingleShot(True)
+        timer = _ExposedTimer(self.lua, qtimer)
+
+        def log(message, min_level=None):
+            message = "[splash:call_later] " + message
+            self.tab.logger.log(message, min_level)
+
+        def run_coro():
+            runner = SplashCoroutineRunner(self.lua, self, log, self.sandboxed)
+            coro = self.lua.create_coroutine(callback)
+            runner.start(coro, return_error=timer.store_error)
+
+        qtimer.timeout.connect(run_coro)
+        qtimer.start(delay)
+        return timer
+
     @command()
     def get_version(self):
         versions = get_versions()
@@ -761,27 +818,20 @@ def _requires_request(meth):
     return wrapper
 
 
-class _WrappedRequest(object):
+class _WrappedRequest(BaseExposedObject):
     """ QNetworkRequest wrapper for Lua """
-    # TODO perhaps refactor common parts
-    # of wrapped response and wrapped request into common object?
-
-    _attribute_whitelist = ['info', 'commands']
+    _attribute_whitelist = ['info']
 
     def __init__(self, lua, request, operation, outgoing_data):
+        super(_WrappedRequest, self).__init__(lua)
         self.request = request
-        self.lua = lua
         self.info = self.lua.python2lua(
             request2har(request, operation, outgoing_data)
         )
-        commands = get_commands(self)
-        self.commands = self.lua.python2lua(commands)
-        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
-        self._exceptions = []
 
     def clear(self):
+        super(_WrappedRequest, self).clear()
         self.request = None
-        self.lua = None
 
     @command()
     @_requires_request
@@ -836,30 +886,26 @@ def wrapped_response(lua, reply):
         res.clear()
 
 
-class _WrappedResponse(object):
+class _WrappedResponse(BaseExposedObject):
     _attribute_whitelist = [
-        'commands', "headers", "response",  "info", "request"
+        "headers", "response",  "info", "request"
     ]
 
     def __init__(self, lua, reply):
-        self.lua = lua
+        super(_WrappedResponse, self).__init__(lua)
         self.response = reply
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
         _headers = {bytes(k): bytes(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
         self.info = self.lua.python2lua(reply2har(reply))
-        commands = get_commands(self)
-        self.commands = self.lua.python2lua(commands)
-        self.attr_whitelist = list(commands.keys()) + self._attribute_whitelist
-        self._exceptions = []
         self.request = self.lua.python2lua(
             request2har(reply.request(), reply.operation())
         )
 
     def clear(self):
+        super(_WrappedResponse, self).clear()
         self.response = None
-        self.lua = None
         self.request = None
 
     @command()
@@ -868,20 +914,40 @@ class _WrappedResponse(object):
         self.response.abort()
 
 
-class SplashScriptRunner(BaseScriptRunner):
+
+class SplashCoroutineRunner(BaseScriptRunner):
     """
-    An utility class for running Lua coroutines that interact with Splash.
+    Utility class for running Splash async functions (e.g. callbacks).
     """
     def __init__(self, lua, splash, log, sandboxed):
         self.splash = splash
-        self.splash.init_dispatcher(self.dispatch)
-        super(SplashScriptRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
+        super(SplashCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
 
-    def start(self, main_coro, return_result, return_error):
-        self.return_result = return_result
-        self.return_error = return_error
+    def start(self, coro_func, coro_args=None, return_result=None, return_error=None):
+        do_nothing = lambda *args, **kwargs: None
+        self.return_result = return_result or do_nothing
+        self.return_error = return_error or do_nothing
+        super(SplashCoroutineRunner, self).start(coro_func, coro_args)
+
+    def on_result(self, result):
+        self.return_result(result)
+
+    def on_async_command(self, cmd):
+        self.splash.run_async_command(cmd)
+
+    @stop_on_error
+    def dispatch(self, cmd_id, *args):
+        super(SplashCoroutineRunner, self).dispatch(cmd_id, *args)
+
+
+class MainCoroutineRunner(SplashCoroutineRunner):
+    """
+    Utility class for running main Splash Lua coroutine.
+    """
+    def start(self, main_coro, return_result=None, return_error=None):
         self.splash.clear_exceptions()
-        super(SplashScriptRunner, self).start(main_coro, [self.splash.get_wrapped()])
+        args = [self.splash.get_wrapped()]
+        super(MainCoroutineRunner, self).start(main_coro, args, return_result, return_error)
 
     def on_result(self, result):
         self.return_result((
@@ -891,9 +957,6 @@ class SplashScriptRunner(BaseScriptRunner):
             self.splash.result_status_code(),
         ))
 
-    def on_async_command(self, cmd):
-        self.splash.run_async_command(cmd)
-
     def on_lua_error(self, lua_exception):
         ex = self.splash.get_real_exception()
         if not ex:
@@ -902,10 +965,6 @@ class SplashScriptRunner(BaseScriptRunner):
         if isinstance(ex, ScriptError):
             ex.enrich_from_lua_error(lua_exception)
         raise ex
-
-    @stop_on_error
-    def dispatch(self, cmd_id, *args):
-        super(SplashScriptRunner, self).dispatch(cmd_id, *args)
 
 
 class LuaRender(RenderScript):
@@ -924,7 +983,7 @@ class LuaRender(RenderScript):
         )
         self.splash = Splash(self.lua, self.tab, self.render_options)
 
-        self.runner = SplashScriptRunner(
+        self.runner = MainCoroutineRunner(
             lua=self.lua,
             splash=self.splash,
             log=self.log,
@@ -932,7 +991,7 @@ class LuaRender(RenderScript):
         )
 
         try:
-            main_coro = self.get_main(lua_source)
+            main_coro = self.get_main_coro(lua_source)
         except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
             raise ScriptError("lua_source: " + repr(e))
 
@@ -942,7 +1001,7 @@ class LuaRender(RenderScript):
             return_error=self.return_error,
         )
 
-    def get_main(self, lua_source):
+    def get_main_coro(self, lua_source):
         if self.sandboxed:
             main, env = get_main_sandboxed(self.lua, lua_source)
         else:

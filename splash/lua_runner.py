@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import abc
+import itertools
 import six
 
 import lupa
@@ -15,10 +16,21 @@ class ImmediateResult(object):
 
 
 class AsyncCommand(object):
-    def __init__(self, id, name, kwargs):
-        self.id = id
+    # Dispatcher should call .bind method to fill these attributes.
+    dispatcher = None
+    id = None
+
+    def __init__(self, name, kwargs):
         self.name = name
         self.kwargs = kwargs
+
+    def bind(self, dispatcher, id):
+        self.dispatcher = dispatcher
+        self.id = id
+
+    def return_result(self, *args):
+        """ Return result and resume the dispatcher. """
+        self.dispatcher.dispatch(self.id, *args)
 
 
 class ScriptError(BadOption):
@@ -53,16 +65,17 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         self.lua = lua
         self.coro = None
         self.result = None
+        self._command_ids = itertools.count()
         self._waiting_for_result_id = None
 
-    def start(self, coro_func, coro_args):
+    def start(self, coro_func, coro_args=None):
         """
         Run the script.
 
         :param callable coro_func: Lua coroutine to start
         :param list coro_args: arguments to pass to coro_func
         """
-        self.coro = coro_func(*coro_args)
+        self.coro = coro_func(*(coro_args or []))
         self.result = ''
         self._waiting_for_result_id = self._START_CMD
         self.dispatch(self._waiting_for_result_id)
@@ -136,6 +149,7 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
                 raise ScriptError("unhandled Lua error: {!s}".format(lua_ex))
 
             if isinstance(cmd, AsyncCommand):
+                cmd.bind(self, next(self._command_ids))
                 self.log("[lua] executing {!r}".format(cmd))
                 self._waiting_for_result_id = cmd.id
                 self.on_async_command(cmd)

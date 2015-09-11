@@ -77,25 +77,21 @@ def get_num_fds():
 
 def get_alive():
     """ Return counts of alive objects. """
-    relevant_types = frozenset(('SplashQWebPage', 'SplashQNetworkAccessManager',
-                                'HtmlRender', 'PngRender', 'JsonRender',
-                                'HarRender', 'LuaRender',
-                                'QWebView', 'QWebPage', 'QWebFrame',
-                                'QNetworkRequest', 'QNetworkReply',
-                                'QNetworkProxy',
-                                'QSize', 'QBuffer', 'QPainter', 'QImage',
-                                'QUrl', 'QTimer',
-                                'SplashCookieJar', 'OneShotCallbackProxy',
-                                '_WrappedRequest', '_WrappedResponse',
-                                'BrowserTab', '_SplashHttpClient',
-                                'JavascriptConsole',
-                                'ProfilesSplashProxyFactory',
-                                'SplashProxyRequest', 'Request', 'Deferred',
-                                'LuaRuntime', '_LuaObject', '_LuaTable',
-                                '_LuaIter', '_LuaThread',
-                                '_LuaFunction', '_LuaCoroutineFunction',
-                                'LuaError', 'LuaSyntaxError',
-                                ))
+    relevant_types = {
+        'SplashQWebPage', 'SplashQNetworkAccessManager',
+        'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
+        'QWebView', 'QWebPage', 'QWebFrame',
+        'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
+        'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
+        'SplashCookieJar', 'OneShotCallbackProxy',
+        '_WrappedRequest', '_WrappedResponse',
+        'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
+        'ProfilesSplashProxyFactory',
+        'SplashProxyRequest', 'Request', 'Deferred',
+        'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
+        '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
+        'AsyncBrowserCommand',
+    }
     counts = defaultdict(int)
     for o in gc.get_objects():
         if not inspect.isclass(o):

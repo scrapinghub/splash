@@ -443,7 +443,6 @@ class BrowserTab(QObject):
         happens. If onerror is callable then in case of a render error the
         timer is cancelled and this callable is called.
         """
-
         timer = QTimer()
         timer.setSingleShot(True)
         timer_callback = functools.partial(self._on_wait_timeout,
