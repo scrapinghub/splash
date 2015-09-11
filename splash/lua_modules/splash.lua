@@ -161,7 +161,7 @@ end
 --
 -- Handle @lua_property decorators.
 --
-function setup_property_access(py_object, self, cls)
+local function setup_property_access(py_object, self, cls)
   local setters = {}
   local getters = {}
   for key, opts in pairs(py_object.lua_properties) do
