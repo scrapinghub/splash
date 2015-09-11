@@ -236,7 +236,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             self.assertIn(k, result)
             self.assertIsInstance(result[k], v[0])
             if v[1]:
-                self.assertEqual(result[k], v[1], "{} should equal {}".format(k, v[1]))
+                self.assertEqual(result[k], v[1])
 
     def test_request_in_callback(self):
         mocked_url = self.mockurl("set-header?" + urlencode({"alfa": "beta"}))
@@ -261,6 +261,108 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertEqual(resp["url"], mocked_url)
         self.assertEqual(resp["method"], "GET")
         self.assertEqual(resp["headers"], {"hello": "world"})
+
+
+class OnResponseTest(BaseLuaRenderTest):
+    maxDiff = 2000
+
+    def test_on_response(self):
+        url = self.mockurl("show-image")
+        resp = self.request_lua("""
+        function main(splash)
+            local result = {}
+            splash:on_response(function(response)
+                local resp_info = {
+                    ctype = response.headers['Content-Type'],
+                    url = response.url,
+                    info = response.info,
+                    status = response.status,
+                    request = response.request,
+                }
+                result[#result+1] = resp_info
+            end)
+            assert(splash:go(splash.args.url))
+            return {
+                result = result,
+                har = splash:har(),
+            }
+        end
+        """, {'url': url})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(len(data['result']), 2, data['result'])
+
+        e1, e2 = data['result']['1'], data['result']['2']
+
+        entries = data['har']['log']['entries']
+        self.assertEqual(len(entries), 2, entries)
+        h1, h2 = entries[0], entries[1]
+
+        self.assertEqual(e1['info'], h1['response'])
+        self.assertEqual(e2['info'], h2['response'])
+
+        self.assertEqual(e1['ctype'], 'text/html')
+        self.assertEqual(e2['ctype'], 'image/gif')
+
+        self.assertEqual(e1['status'], 200)
+        self.assertEqual(e2['status'], 200)
+
+        self.assertEqual(e1['url'], url)
+
+        self.assertEqual(e1['request']['url'], url)
+        self.assertEqual(
+            e1['request']['headers'],
+            {el['name']: el['value'] for el in h1['request']['headers']}
+        )
+        self.assertEqual(e1['request']['method'], 'GET')
+        self.assertEqual(e1['request']['cookies'], h1['request']['cookies'])
+
+    @pytest.mark.xfail(reason="async support for splash:on_response "
+                              "is not implemented yet")
+    def test_async_wait(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local value = 0
+            splash:on_response(function(response)
+                splash:wait(0.1)
+                value = value + 1
+            end)
+            assert(splash:go(splash.args.url))
+            local v1 = value
+            splash:wait(0.3)
+            local v2 = value
+            return {v1, v2}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'1': 0, '2': 2})
+
+    def test_call_later_from_on_response(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local htmls = {}
+            splash:on_response(function(response)
+                htmls[#htmls+1] = {before=true, html=splash:html()}
+                splash:call_later(function()
+                    htmls[#htmls+1] = {before=false, html=splash:html()}
+                end, 0.1)
+            end)
+            assert(splash:go(splash.args.url))
+            splash:wait(0.2)
+            return htmls
+        end
+        """, {'url': self.mockurl("jsredirect")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 4, data)
+        self.assertEqual(
+            [data[k]['before'] for k in '1234'],
+            [True, True, False, False]
+        )
+        self.assertNotIn("JS REDIRECT TARGET", data['1']['html'])
+        self.assertNotIn("JS REDIRECT TARGET", data['2']['html'])
+        self.assertIn("JS REDIRECT TARGET", data['3']['html'])
+        self.assertIn("JS REDIRECT TARGET", data['4']['html'])
 
 
 class CallLaterTest(BaseLuaRenderTest):
