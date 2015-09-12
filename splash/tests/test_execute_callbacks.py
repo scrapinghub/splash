@@ -138,6 +138,15 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             self.assertIn("'custom-header': 'some-val'", resp.text)
             self.assertIn("'user-agent': 'Fooozilla'", resp.text)
 
+    def test_bad_callback(self):
+        for arg in '', '"foo"', '123':
+            resp = self.request_lua("""
+            function main(splash)
+                splash:on_request(%s)
+            end
+            """ % arg)
+            self.assertErrorLineNumber(resp, 3)
+
 
 class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_get_header(self):
@@ -268,6 +277,15 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertEqual(resp["method"], "GET")
         self.assertEqual(resp["headers"], {"hello": "world"})
 
+    def test_bad_callback(self):
+        for arg in '', '"foo"', '123':
+            resp = self.request_lua("""
+            function main(splash)
+                splash:on_response_headers(%s)
+            end
+            """ % arg)
+            self.assertErrorLineNumber(resp, 3)
+
 
 class OnResponseTest(BaseLuaRenderTest):
     maxDiff = 2000
@@ -367,6 +385,15 @@ class OnResponseTest(BaseLuaRenderTest):
         self.assertNotIn("JS REDIRECT TARGET", data['2']['html'])
         self.assertIn("JS REDIRECT TARGET", data['3']['html'])
         self.assertIn("JS REDIRECT TARGET", data['4']['html'])
+
+    def test_bad_callback(self):
+        for arg in '', '"foo"', '123':
+            resp = self.request_lua("""
+            function main(splash)
+                splash:on_response(%s)
+            end
+            """ % arg)
+            self.assertErrorLineNumber(resp, 3)
 
 
 class CallLaterTest(BaseLuaRenderTest):

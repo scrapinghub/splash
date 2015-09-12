@@ -699,7 +699,6 @@ class Splash(BaseExposedObject):
 
     @command(sets_callback=True)
     def private_on_response_headers(self, callback):
-
         def _callback(reply):
             with _ExposedBoundResponse.wraps(self.lua, reply) as resp:
                 callback(resp)
@@ -707,9 +706,8 @@ class Splash(BaseExposedObject):
         self.tab.register_callback("on_response_headers", _callback)
         return True
 
-    @command(async=True, sets_callback=True)
+    @command(sets_callback=True)
     def private_on_response(self, callback):
-
         def _callback(reply, har_entry):
             resp = _ExposedResponse(self.lua, reply, har_entry)
             run_coro = self.get_coroutine_run_func(
@@ -729,7 +727,7 @@ class Splash(BaseExposedObject):
         delay = int(float(delay)*1000)
         if delay < 0:
             raise ScriptError("splash:call_later delay must be >= 0")
-        if not callable(callback):
+        if lupa.lua_type(callback) != 'function':
             raise ScriptError("splash:call_later callback is not a function")
 
         qtimer = QTimer(self.tab)
