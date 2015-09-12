@@ -231,6 +231,9 @@ function Request._create(py_request)
 end
 
 function Splash:on_request(cb)
+  if type(cb) ~= 'function' then
+    error("splash:on_request callback is not a function", 2)
+  end
   Splash_private.on_request(self, function(py_request)
     local req = Request._create(py_request)
     return cb(req)
@@ -269,6 +272,9 @@ function Response._create(py_reply)
 end
 
 function Splash:on_response_headers(cb)
+  if type(cb) ~= 'function' then
+    error("splash:on_response_headers callback is not a function", 2)
+  end
   Splash_private.on_response_headers(self, function (response)
     local res = Response._create(response)
     return cb(res)
@@ -276,6 +282,9 @@ function Splash:on_response_headers(cb)
 end
 
 function Splash:on_response(cb)
+  if type(cb) ~= 'function' then
+    error("splash:on_response callback is not a function", 2)
+  end
   Splash_private.on_response(self, function (response)
     local res = Response._create(response)
     return cb(res)
