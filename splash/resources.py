@@ -39,17 +39,17 @@ class _ValidatingResource(Resource):
         try:
             return Resource.render(self, request)
         except BadOption as e:
-            return self._writeError(request, 400, str(e))
+            return self._write_error(request, 400, str(e))
 
-    def _writeErrorContent(self, request, code, content, content_type=b'text/plain'):
+    def _write_error_content(self, request, code, content, content_type=b'text/plain'):
         request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
         request.write(content)
         return b"\n"
 
-    def _writeError(self, request, code, message):
+    def _write_error(self, request, code, message):
         """Can be overridden by subclasses format errors differently"""
-        return self._writeErrorContent(request, code, json.dumps({
+        return self._write_error_content(request, code, json.dumps({
             "error": code,
             "message": message,
         }).encode('utf8'), content_type=b"application/json")
@@ -79,15 +79,15 @@ class BaseRenderResource(_ValidatingResource):
         timeout = render_options.get_timeout()
         wait_time = render_options.get_wait()
 
-        pool_d = self._getRender(request, render_options)
+        pool_d = self._get_render(request, render_options)
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
-        pool_d.addCallback(self._cancelTimer, timer)
-        pool_d.addCallback(self._writeOutput, request, options=render_options.data)
-        pool_d.addErrback(self._timeoutError, request)
-        pool_d.addErrback(self._renderError, request)
-        pool_d.addErrback(self._badRequest, request)
-        pool_d.addErrback(self._internalError, request)
-        pool_d.addBoth(self._finishRequest, request)
+        pool_d.addCallback(self._cancel_timer, timer)
+        pool_d.addCallback(self._write_output, request, options=render_options.data)
+        pool_d.addErrback(self._on_timeout_error, request)
+        pool_d.addErrback(self._on_render_error, request)
+        pool_d.addErrback(self._on_bad_request, request)
+        pool_d.addErrback(self._on_internal_error, request)
+        pool_d.addBoth(self._finish_request, request)
         return NOT_DONE_YET
 
     def render_POST(self, request):
@@ -100,17 +100,17 @@ class BaseRenderResource(_ValidatingResource):
         content_type = request.getHeader(b'content-type')
         if not any(ct in content_type for ct in
                    {b'application/javascript', b'application/json'}):
-            return self._writeError(request, 415,
+            return self._write_error(request, 415,
                                     "Request content-type not supported")
 
         return self.render_GET(request)
 
-    def _cancelTimer(self, _, timer):
+    def _cancel_timer(self, _, timer):
         #log.msg("_cancelTimer")
         timer.cancel()
         return _
 
-    def _writeOutput(self, data, request, content_type=None, options=None):
+    def _write_output(self, data, request, content_type=None, options=None):
         # log.msg("_writeOutput: %s" % id(request))
 
         if content_type is None:
@@ -118,7 +118,7 @@ class BaseRenderResource(_ValidatingResource):
 
         if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
-            return self._writeOutput(data, request, "application/json", options)
+            return self._write_output(data, request, "application/json", options)
 
         if isinstance(data, tuple) and len(data) == 4:
             data, content_type, headers, status_code = data
@@ -126,23 +126,24 @@ class BaseRenderResource(_ValidatingResource):
             request.setResponseCode(status_code)
             for name, value in headers:
                 request.setHeader(name, value)
-            return self._writeOutput(data, request, content_type, options)
+            return self._write_output(data, request, content_type, options)
 
         if data is None or isinstance(data, (bool, six.integer_types, float)):
-            return self._writeOutput(str(data), request, content_type, options)
+            return self._write_output(str(data), request, content_type, options)
 
         if isinstance(data, BinaryCapsule):
-            return self._writeOutput(data.data, request, content_type, options)
+            return self._write_output(data.data, request, content_type, options)
 
         request.setHeader(b"content-type", content_type)
 
-        self._logStats(request, options)
+        self._log_stats(request, options)
         if not isinstance(data, bytes):
             # Twisted expects bytes as response
             data = data.encode('utf-8')
+
         request.write(data)
 
-    def _logStats(self, request, options):
+    def _log_stats(self, request, options):
 
         # def args_to_unicode(args):
         #     unicode_args = {}
@@ -174,36 +175,36 @@ class BaseRenderResource(_ValidatingResource):
         }
         log.msg(json.dumps(msg), system="events")
 
-    def _timeoutError(self, failure, request):
+    def _on_timeout_error(self, failure, request):
         failure.trap(defer.CancelledError)
-        return self._writeError(request, 504, "Timeout exceeded rendering page")
+        return self._write_error(request, 504, "Timeout exceeded rendering page")
 
-    def _renderError(self, failure, request):
+    def _on_render_error(self, failure, request):
         failure.trap(RenderError)
-        return self._writeError(request, 502, "Error rendering page")
+        return self._write_error(request, 502, "Error rendering page")
 
-    def _internalError(self, failure, request):
+    def _on_internal_error(self, failure, request):
         log.err()
         sentry.capture(failure)
-        return self._writeError(request, 500, failure.getErrorMessage())
+        return self._write_error(request, 500, failure.getErrorMessage())
 
-    def _badRequest(self, failure, request):
+    def _on_bad_request(self, failure, request):
         failure.trap(BadOption)
-        return self._writeError(request, 400, str(failure.value))
+        return self._write_error(request, 400, str(failure.value))
 
-    def _finishRequest(self, _, request):
+    def _finish_request(self, _, request):
         if not request._disconnected:
             request.finish()
         #log.msg("_finishRequest: %s" % id(request))
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         raise NotImplementedError()
 
 
 class RenderHtmlResource(BaseRenderResource):
     content_type = "text/html; charset=utf-8"
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
         return self.pool.render(HtmlRender, options, **params)
 
@@ -220,7 +221,7 @@ class ExecuteLuaScriptResource(BaseRenderResource):
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         params = dict(
             proxy=options.get_proxy(),
             lua_source=options.get_lua_source(),
@@ -234,7 +235,7 @@ class ExecuteLuaScriptResource(BaseRenderResource):
 class RenderPngResource(BaseRenderResource):
     content_type = "image/png"
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_png_params())
         return self.pool.render(PngRender, options, **params)
@@ -244,7 +245,7 @@ class RenderJpegResource(BaseRenderResource):
 
     content_type = "image/jpeg"
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_jpeg_params())
         return self.pool.render(JpegRender, options, **params)
@@ -253,7 +254,7 @@ class RenderJpegResource(BaseRenderResource):
 class RenderJsonResource(BaseRenderResource):
     content_type = "application/json"
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_jpeg_params())
         params.update(options.get_include_params())
@@ -263,7 +264,7 @@ class RenderJsonResource(BaseRenderResource):
 class RenderHarResource(BaseRenderResource):
     content_type = "application/json"
 
-    def _getRender(self, request, options):
+    def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
         return self.pool.render(HarRender, options, **params)
 

@@ -36,12 +36,11 @@ class _BlackWhiteSplashProxyFactory(object):
     def queryProxy(self, query=None, *args, **kwargs):
         protocol = six.text_type(query.protocolTag())
         url = six.text_type(query.url().toString())
-        if self.shouldUseProxyList(protocol, url):
-            return self._customProxyList()
+        if self.should_use_proxy_list(protocol, url):
+            return self._get_custom_proxy_list()
+        return self._get_default_proxy_list()
 
-        return self._defaultProxyList()
-
-    def shouldUseProxyList(self, protocol, url):
+    def should_use_proxy_list(self, protocol, url):
         if not self.proxy_list:
             return False
 
@@ -57,10 +56,10 @@ class _BlackWhiteSplashProxyFactory(object):
 
         return not bool(self.whitelist)
 
-    def _defaultProxyList(self):
+    def _get_default_proxy_list(self):
         return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
 
-    def _customProxyList(self):
+    def _get_custom_proxy_list(self):
         return [
             create_proxy(host, port, username, password, type)
             for host, port, username, password,type in self.proxy_list
@@ -101,26 +100,26 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
 
     def __init__(self, proxy_profiles_path, profile_name):
         self.proxy_profiles_path = proxy_profiles_path
-        blacklist, whitelist, proxy_list = self._getFilterParams(profile_name)
+        blacklist, whitelist, proxy_list = self._get_filter_params(profile_name)
         super(ProfilesSplashProxyFactory, self).__init__(blacklist, whitelist, proxy_list)
 
-    def _getFilterParams(self, profile_name=None):
+    def _get_filter_params(self, profile_name=None):
         """
         Return (blacklist, whitelist, proxy_list) tuple
         loaded from profile ``profile_name``.
         """
         if profile_name is None:
             profile_name = 'default'
-            ini_path = self._getIniPath(profile_name)
+            ini_path = self._get_ini_path(profile_name)
             if not os.path.isfile(ini_path):
                 profile_name = 'none'
 
         if profile_name == 'none':
             return [], [], []
-        ini_path = self._getIniPath(profile_name)
-        return self._parseIni(ini_path)
+        ini_path = self._get_ini_path(profile_name)
+        return self._parse_ini(ini_path)
 
-    def _getIniPath(self, profile_name):
+    def _get_ini_path(self, profile_name):
         filename = profile_name + '.ini'
         try:
             return path_join_secure(self.proxy_profiles_path, filename)
@@ -129,7 +128,7 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
             print(e)
             raise BadOption(self.NO_PROXY_PROFILE_MSG)
 
-    def _parseIni(self, ini_path):
+    def _parse_ini(self, ini_path):
         parser = configparser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
             raise BadOption(self.NO_PROXY_PROFILE_MSG)
@@ -191,7 +190,7 @@ class DirectSplashProxyFactory(object):
         return [self.proxy]
 
 
-def getFactory(ini_path, parameter):
+def get_factory(ini_path, parameter):
     """
     Returns the appropriate factory depending on the value of
     ini_path and parameter
