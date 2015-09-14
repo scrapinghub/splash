@@ -32,7 +32,7 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
     def test_noproxy(self):
         f = _BlackWhiteSplashProxyFactory()
-        self.assertFalse(f.shouldUseProxyList('http', 'crawlera.com'))
+        self.assertFalse(f.should_use_proxy_list('http', 'crawlera.com'))
 
     def test_whitelist(self):
         self.assertUsesCustom('http://www.scrapinghub.com')
@@ -49,11 +49,11 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 
     def assertUsesDefault(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
-        self.assertFalse(f.shouldUseProxyList(protocol, url))
+        self.assertFalse(f.should_use_proxy_list(protocol, url))
 
     def assertUsesCustom(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
-        self.assertTrue(f.shouldUseProxyList(protocol, url))
+        self.assertTrue(f.should_use_proxy_list(protocol, url))
 
 
 class DirectSplashProxyFactoryTest(unittest.TestCase):

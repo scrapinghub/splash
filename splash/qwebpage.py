@@ -56,25 +56,25 @@ class SplashQWebPage(QWebPage):
             "on_response_headers": [],
             "on_response": [],
         }
-        self.mainFrame().urlChanged.connect(self.onUrlChanged)
-        self.mainFrame().titleChanged.connect(self.onTitleChanged)
-        self.mainFrame().loadFinished.connect(self.onLoadFinished)
-        self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
+        self.mainFrame().urlChanged.connect(self.on_url_changed)
+        self.mainFrame().titleChanged.connect(self.on_title_changed)
+        self.mainFrame().loadFinished.connect(self.on_load_finished)
+        self.mainFrame().initialLayoutCompleted.connect(self.on_layout_completed)
         self.har = HarBuilder()
 
     def reset_har(self):
         self.har.reset()
 
-    def onTitleChanged(self, title):
+    def on_title_changed(self, title):
         self.har.store_title(title)
 
-    def onUrlChanged(self, url):
+    def on_url_changed(self, url):
         self.har.store_url(url)
 
-    def onLoadFinished(self, ok):
+    def on_load_finished(self, ok):
         self.har.store_timing("onLoad")
 
-    def onLayoutCompleted(self):
+    def on_layout_completed(self):
         self.har.store_timing("onContentLoad")
 
     def acceptNavigationRequest(self, webFrame, networkRequest, navigationType):

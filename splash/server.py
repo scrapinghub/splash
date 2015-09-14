@@ -309,7 +309,7 @@ def _default_proxy_factory(proxy_profiles_path):
                     "proxy won't be used")
             proxy_profiles_path = None
 
-    return functools.partial(proxy.getFactory, proxy_profiles_path)
+    return functools.partial(proxy.get_factory, proxy_profiles_path)
 
 
 def _check_js_profiles_path(js_profiles_path):
