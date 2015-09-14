@@ -741,6 +741,18 @@ class Splash(BaseExposedObject):
         return timer
 
     @command()
+    def on_response_reset(self):
+        self.tab.clear_callbacks("on_response")
+
+    @command()
+    def on_request_reset(self):
+        self.tab.clear_callbacks("on_request")
+
+    @command()
+    def on_response_headers_reset(self):
+        self.tab.clear_callbacks("on_response_headers")
+
+    @command()
     def get_version(self):
         versions = get_versions()
         versions.update({

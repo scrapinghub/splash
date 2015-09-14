@@ -336,6 +336,10 @@ class BrowserTab(QObject):
         """ Register a callback for an event """
         self.web_page.callbacks[event].append(callback)
 
+    def clear_callbacks(self, event):
+        """ Unreguster all callbacks for an event """
+        del self.web_page.callbacks[event][:]
+
     # def remove_callback(self, event, callback):
     #     """ Unregister a callback for an event """
     #     self.web_page.callbacks[event].remove(callback)

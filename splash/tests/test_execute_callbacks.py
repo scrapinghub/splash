@@ -147,6 +147,20 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             """ % arg)
             self.assertErrorLineNumber(resp, 3)
 
+    def test_on_request_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            x = 0
+            splash:on_request(function(req) x = x + 1 end)
+            splash:go(splash.args.url)
+            splash:on_request_reset()
+            splash:go(splash.args.url)
+            return x
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '1')
+
 
 class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_get_header(self):
@@ -286,6 +300,20 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             """ % arg)
             self.assertErrorLineNumber(resp, 3)
 
+    def test_on_response_headers_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            x = 0
+            splash:on_response_headers(function(resp) x = x + 1 end)
+            splash:go(splash.args.url)
+            splash:on_response_headers_reset()
+            splash:go(splash.args.url)
+            return x
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '1')
+
 
 class OnResponseTest(BaseLuaRenderTest):
     maxDiff = 2000
@@ -394,6 +422,20 @@ class OnResponseTest(BaseLuaRenderTest):
             end
             """ % arg)
             self.assertErrorLineNumber(resp, 3)
+
+    def test_on_response_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            x = 0
+            splash:on_response(function(resp) x = x + 1 end)
+            splash:go(splash.args.url)
+            splash:on_response_reset()
+            splash:go(splash.args.url)
+            return x
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '1')
 
 
 class CallLaterTest(BaseLuaRenderTest):
