@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+import six
 
 import lupa
 from ipykernel.kernelapp import IPKernelApp
@@ -156,7 +157,7 @@ class SplashKernel(Kernel):
             reply, result, ct = result
             if result:
                 data = {
-                    'text/plain': result if isinstance(result, basestring) else str(result),
+                    'text/plain': result if isinstance(result, six.text_type) else str(result),
                 }
                 if isinstance(result, BinaryCapsule):
                     data[result.content_type] = result.as_b64()
