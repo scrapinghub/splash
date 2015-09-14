@@ -1850,7 +1850,8 @@ but allow up to 15 seconds for the first request:
         end
     end)
 
-See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`.
+See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-request-reset`.
 
 .. note::
 
@@ -1941,7 +1942,8 @@ Example 3 - extract all cookies set by website without reading response body
         return cookies
     end
 
-See also: :ref:`splash-on-request`, :ref:`splash-on-response`.
+See also: :ref:`splash-on-request`, :ref:`splash-on-response`,
+:ref:`splash-on-response-headers-reset`.
 
 .. note::
 
@@ -1986,11 +1988,54 @@ response received by splash.
 * ``cookies`` - cookies in .har format
 
 
-See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`.
+See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-response-reset`.
 
 .. note::
 
     :ref:`splash-on-response` doesn't support named arguments.
+
+
+.. _splash-on-request-reset:
+
+splash:on_request_reset
+-----------------------
+
+Remove all callbacks registered by :ref:`splash-on-request`.
+
+**Signature:** ``splash:on_request_reset()``
+
+**Returns:** nil
+
+**Async:** no.
+
+
+.. _splash-on-response-headers-reset:
+
+splash:on_response_headers_reset
+--------------------------------
+
+Remove all callbacks registered by :ref:`splash-on-response-headers`.
+
+**Signature:** ``splash:on_response_headers_reset()``
+
+**Returns:** nil
+
+**Async:** no.
+
+
+.. _splash-on-response-reset:
+
+splash:on_response_reset
+------------------------
+
+Remove all callbacks registered by :ref:`splash-on-response`.
+
+**Signature:** ``splash:on_response_reset()``
+
+**Returns:** nil
+
+**Async:** no.
 
 
 .. _splash-version:
