@@ -160,25 +160,25 @@ class HttpHeadersTest(test_render.BaseRenderTest):
     def test_http_POST_request_from_splash(self):
         formbody = {"param1": "one", "param2": "two"}
 
-        def check_res(s, r):
-            s.assertStatusCode(r, 200)
-            s.assertIn("param2=two&amp;param1=one", r.text)
-
         r = self.request({
             "url": self.mockurl("postrequest"),
             "formdata": formbody,
             "body": urllib.urlencode(formbody),
             "http_method": "POST"
         })
-        check_res(self, r)
+        self.assertStatusCode(r, 200)
+        self.assertIn("param2=two&amp;param1=one", r.text)
 
-        # no method, but there is body so should be POST
+
+    def test_http_go_POST_missing_method(self):
+        formbody = {"param1": "one", "param2": "two"}
         r = self.request({
             "url": self.mockurl("postrequest"),
             "body": urllib.urlencode(formbody),
             "baseurl": "foo"
         })
-        check_res(self, r)
+        self.assertStatusCode(r, 400)
+        self.assertIn('Bad HTTP method. Request has body but method is GET', r.text)
 
     def test_bad_http_method(self):
         r = self.request({

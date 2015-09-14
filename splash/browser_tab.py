@@ -289,10 +289,8 @@ class BrowserTab(QObject):
         """
         self.store_har_timing("_onStarted")
 
-        if body and http_method not in ["POST", "PUT"]:
-            # if someone gives body but forgets method
-            # QT will raise exceptions
-            http_method = "POST"
+        if body and http_method.upper() not in ["POST", "PUT"]:
+            raise BadOption("Bad HTTP method. Request has body but method is {}".format(http_method))
 
         if baseurl:
             # If baseurl is used, we download the page manually,

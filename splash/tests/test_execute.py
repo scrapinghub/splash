@@ -146,6 +146,17 @@ class SplashGoTest(BaseLuaRenderTest):
         self.assertIn("param2=bar&amp;param1=foo", resp.text)
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
+    def test_splash_go_body_and_invalid_method(self):
+        resp = self.request_lua("""
+        function main(splash)
+          ok, reason = splash:go{splash.args.url, http_method="GET", body="something",
+                                 baseurl="foo"}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('Bad HTTP method. Request has body but method is GET', resp.text)
+
     def test_splash_POST_json(self):
         json_payload = '{"name": "Frank", "address": "Elmwood Avenue 112"}'
         resp = self.request_lua("""
