@@ -76,7 +76,7 @@ def parse_opts():
     op.add_option("--lua-sandbox-allowed-modules", default="",
         help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
-        help="verbosity level; valid values are integers from 0 to 5")
+        help="verbosity level; valid values are integers from 0 to 5 (default: %default)")
     op.add_option("--version", action="store_true",
         help="print Splash version number and exit")
 
@@ -122,18 +122,17 @@ def bump_nofile_limit():
 def log_splash_version():
     import twisted
     from twisted.python import log
-    import sip
-    from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-    from PyQt4.QtWebKit import qWebKitVersion
     from splash import lua
+    from splash.qtutils import get_versions
 
     log.msg("Splash version: %s" % __version__)
 
+    verdict = get_versions()
     versions = [
-        "Qt %s" % QT_VERSION_STR,
-        "PyQt %s" % PYQT_VERSION_STR,
-        "WebKit %s" % qWebKitVersion(),
-        "sip %s" % sip.SIP_VERSION_STR,
+        "Qt %s" % verdict['qt'],
+        "PyQt %s" % verdict['pyqt'],
+        "WebKit %s" % verdict['webkit'],
+        "sip %s" % verdict['sip'],
         "Twisted %s" % twisted.version.short(),
     ]
 
@@ -141,6 +140,7 @@ def log_splash_version():
         versions.append(lua.get_version())
 
     log.msg(", ".join(versions))
+    log.msg("Python %s" % sys.version.replace("\n", ""))
 
 
 def manhole_server(portnum=None, username=None, password=None):
@@ -300,16 +300,16 @@ def _default_proxy_factory(proxy_profiles_path):
     from twisted.python import log
     from splash import proxy
 
-    if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
-        log.msg("--proxy-profiles-path does not exist or it is not a folder; "
-                "proxy won't be used")
-        proxy_profiles_enabled = False
-    else:
-        proxy_profiles_enabled = proxy_profiles_path is not None
+    if proxy_profiles_path is not None:
+        if os.path.isdir(proxy_profiles_path):
+            log.msg("proxy profiles support is enabled, "
+                    "proxy profiles path: %s" % proxy_profiles_path)
+        else:
+            log.msg("--proxy-profiles-path does not exist or it is not a folder; "
+                    "proxy won't be used")
+            proxy_profiles_path = None
 
-    if proxy_profiles_enabled:
-        log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
-        return functools.partial(proxy.ProfilesSplashProxyFactory, proxy_profiles_path)
+    return functools.partial(proxy.get_factory, proxy_profiles_path)
 
 
 def _check_js_profiles_path(js_profiles_path):

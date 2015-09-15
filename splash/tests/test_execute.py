@@ -11,6 +11,9 @@ import requests
 import pytest
 lupa = pytest.importorskip("lupa")
 
+from splash import __version__ as splash_version
+from splash.har_builder import HarBuilder
+
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
@@ -1565,6 +1568,105 @@ class GoTest(BaseLuaRenderTest):
         self.assertNotIn("'Value 3'", data["res3"])
 
 
+class ResourceTimeoutTest(BaseLuaRenderTest):
+
+    def test_resource_timeout_aborts_first(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(req) req:set_timeout(0.1) end)
+            local ok, err = splash:go{splash.args.url}
+            return {err=err}
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'err': 'render_error'})
+
+    def test_resource_timeout_attribute(self):
+        # request should be cancelled
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = 0.1
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('render_error', resp.json()['message'])
+
+    def test_resource_timeout_attribute_priority(self):
+        # set_timeout should take a priority
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = 0.1
+            splash:on_request(function(req) req:set_timeout(10) end)
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=4")})
+        self.assertStatusCode(resp, 200)
+
+    def test_resource_timeout_read(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local default = splash.resource_timeout
+            splash.resource_timeout = 0.1
+            local updated = splash.resource_timeout
+            return {default=default, updated=updated}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"default": 0, "updated": 0.1})
+
+    def test_resource_timeout_zero(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = 0
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=1")})
+        self.assertStatusCode(resp, 200)
+
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = nil
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=1")})
+        self.assertStatusCode(resp, 200)
+
+    def test_resource_timeout_negative(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.resource_timeout = -1
+            assert(splash:go(splash.args.url))
+        end
+        """, {"url": self.mockurl("slow.gif?n=1")})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('splash.resource_timeout', resp.json()['message'])
+
+
+class ResultStatusCodeTest(BaseLuaRenderTest):
+    def test_set_result_status_code(self):
+        for code in [200, 404, 500, 999]:
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_result_status_code(tonumber(splash.args.code))
+                return "hello"
+            end
+            """, {'code': code})
+            self.assertStatusCode(resp, code)
+            self.assertEqual(resp.text, 'hello')
+
+    def test_invalid_code(self):
+        for code in ["foo", "", {'x': 3}, 0, -200, 195, 1000]:
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_result_status_code(splash.args.code)
+                return "hello"
+            end
+            """, {'code': code})
+            self.assertStatusCode(resp, 400)
+            self.assertIn('splash:set_result_status_code() argument must be', resp.text)
+
+
 class SetUserAgentTest(BaseLuaRenderTest):
     def test_set_user_agent(self):
         resp = self.request_lua("""
@@ -2032,6 +2134,73 @@ class HarTest(BaseLuaRenderTest):
         har = resp.json()["log"]
         self.assertEqual(har["entries"], [])
 
+    def test_har_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:go(splash.args.url)
+            local har1 = splash:har()
+            splash:har_reset()
+            local har2 = splash:har()
+            splash:go(splash.args.url)
+            local har3 = splash:har()
+            return {har1, har2, har3}
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        har1 = resp.json()["1"]
+        har2 = resp.json()["2"]
+        har3 = resp.json()["3"]
+
+        self.assertEqual(len(har1['log']['entries']), 2)
+        self.assertEqual(har2['log']['entries'], [])
+        self.assertEqual(len(har3['log']['entries']), 1)
+
+    def test_har_reset_argument(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            local har1 = splash:har()
+            splash:go(splash.args.url)
+            local har2 = splash:har{reset=true}
+            local har3 = splash:har()
+            splash:go(splash.args.url)
+            local har4 = splash:har()
+            return {har1, har2, har3, har4}
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        har1 = resp.json()["1"]
+        har2 = resp.json()["2"]
+        har3 = resp.json()["3"]
+        har4 = resp.json()["4"]
+
+        self.assertEqual(len(har1['log']['entries']), 1)
+        self.assertEqual(len(har2['log']['entries']), 2)
+        self.assertEqual(har3['log']['entries'], [])
+        self.assertEqual(len(har4['log']['entries']), 1)
+
+    def test_har_reset_inprogress(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.5)
+            local har1 = splash:har{reset=true}
+            splash:wait(2.5)
+            local har2 = splash:har()
+            return {har1, har2}
+        end
+        """, {'url': self.mockurl("show-image?n=2.0&js=0.1")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        har1, har2 = data["1"]["log"], data["2"]["log"]
+
+        self.assertEqual(len(har1['entries']), 2)
+        self.assertEqual(har1['entries'][0]['_splash_processing_state'],
+                         HarBuilder.REQUEST_FINISHED)
+        self.assertEqual(har1['entries'][1]['_splash_processing_state'],
+                         HarBuilder.REQUEST_HEADERS_RECEIVED)
+
 
 class AutoloadTest(BaseLuaRenderTest):
     def test_autoload(self):
@@ -2087,6 +2256,27 @@ class AutoloadTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 400)
+
+    def test_autoload_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:autoload([[window.FOO = 'foo']])
+            splash:autoload([[window.BAR = 'bar']])
+
+            splash:go(splash.args.url)
+            local foo1 = splash:evaljs("window.FOO")
+            local bar1 = splash:evaljs("window.BAR")
+
+            splash:autoload_reset()
+            splash:go(splash.args.url)
+            local foo2 = splash:evaljs("window.FOO")
+            local bar2 = splash:evaljs("window.BAR")
+
+            return {foo1=foo1, bar1=bar1, foo2=foo2, bar2=bar2}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"foo1": "foo", "bar1": "bar"})
 
 
 class HttpGetTest(BaseLuaRenderTest):
@@ -2474,3 +2664,15 @@ end
                                 splash:go(splash.args.url)
                                 splash:set_viewport_full()
                                 """, url=self.mockurl('delay'))
+
+
+class VersionTest(BaseLuaRenderTest):
+    def test_version(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local version = splash:get_version()
+            return version.major .. '.' .. version.minor
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, splash_version)

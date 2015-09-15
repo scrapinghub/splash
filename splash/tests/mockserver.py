@@ -237,15 +237,37 @@ class SlowGif(Resource):
 
 
 class ShowImage(Resource):
+    """
+    Show a 50x50 black image.
+
+    GET arguments:
+
+    * n - emulate slow image; it will take `n` seconds to load the image;
+    * js - inject image using JS only after `js` seconds.
+    """
     isLeaf = True
 
     def render_GET(self, request):
         token = random.random()  # prevent caching
         n = getarg(request, "n", 0, type=float)
-        return """<html><body>
-        <img id='foo' width=50 heigth=50 src="/slow.gif?n=%s&rnd=%s">
-        </body></html>
-        """ % (n, token)
+        js = getarg(request, "js", 0, type=float)
+
+        img = (
+            "<img id='foo' width=50 heigth=50 "
+            "     src='/slow.gif?n=%s&rnd=%s'>" % (n, token)
+        )
+        if not js:
+            return "<html><body>%s</body></html>" % img
+        else:
+            return """
+            <html><body id="body">
+            <script>
+            setTimeout(function(){
+                document.getElementById('body').innerHTML="%s";
+            }, %s);
+            </script>
+            </body></html>
+            """ % (img, js * 1000)
 
 
 class IframeResource(Resource):

@@ -1,10 +1,10 @@
 .. _splash-jupyter:
 
-Splash and IPython (Jupyter)
-============================
+Splash and Jupyter
+==================
 
-Splash provides a custom IPython_ (Jupyter_) kernel for Lua. Together
-with IPython (Jupyter) notebook_ frontend it forms an interactive
+Splash provides a custom Jupyter_ (previously known as IPython_) kernel for Lua.
+Together with Jupyter notebook_ frontend it forms an interactive
 web-based development environment for Splash Scripts with syntax highlighting,
 smart code completion, context-aware help, inline images support and a real
 live WebKit browser window with Web Inspector enabled, controllable from
@@ -29,7 +29,8 @@ If you're on Linux, Jupyter server with Splash kernel enabled
 will be available at http://0.0.0.0:8888.
 
 If you use boot2docker_, run ``$ boot2docker ip`` to get the ip address,
-the visit http://<ip-returned-by-boot2docker>:8888.
+the visit http://<ip-returned-by-boot2docker>:8888. If you use
+docker-machine_, run ``$ docker-machine ip <your machine>`` to get the ip.
 
 By default, notebooks are stored in a Docker container; they are destroyed
 when you restart an image. To persist notebooks you can mount a local folder
@@ -46,9 +47,9 @@ Currently to enable live Webkit window you must install Splash
 in a "manual way" - see :ref:`manual-install-ubuntu`.
 
 1. Install IPython/Jupyter with notebook feature. Splash kernel requires
-   IPython 3.x::
+   IPython 4.x::
 
-       $ pip install 'ipython[notebook] >= 3.0.0, < 4.0'
+       $ pip install 'ipython[notebook] >= 4.0.0, < 5.0'
 
 2. Let IPython know about Splash kernel by running the following command::
 
@@ -60,7 +61,7 @@ create a new Splash notebook using "New" button.
 From Notebook to HTTP API
 -------------------------
 
-After you finished developing the script using an IPython Notebook,
+After you finished developing the script using a Jupyter Notebook,
 you may want to convert it to a form suitable for submitting
 to Splash HTTP API (see :ref:`execute`).
 
@@ -83,10 +84,10 @@ to parallelize the work.
 
 There are some gotchas:
 
-1. When you run an IPython cell and then run another IPython cell there
+1. When you run a notebook cell and then run another notebook cell there
    is a delay between runs; the effect is similar to inserting
    :ref:`splash-wait` calls at the beginning of each cell.
-2. Regardless of :ref:`sandbox <lua-sandbox>` settings, scripts in IPython
+2. Regardless of :ref:`sandbox <lua-sandbox>` settings, scripts in Jupyter
    notebook are **not** sandboxed. Usually it is not a problem,
    but some functions may be unavailable in HTTP API if sandbox is enabled.
 
@@ -95,3 +96,4 @@ There are some gotchas:
 .. _notebook: http://ipython.org/notebook.html
 .. _Docker: http://docker.io
 .. _Boot2Docker: http://boot2docker.io/
+.. _docker-machine: https://docs.docker.com/machine/

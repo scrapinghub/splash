@@ -7,8 +7,7 @@ from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QByteArray
 from twisted.python import log
 from splash.cookies import SplashCookieJar
-from splash.har.log import HarLog
-
+from splash.har_builder import HarBuilder
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
 
@@ -51,29 +50,32 @@ class SplashQWebPage(QWebPage):
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
-        self.har_log = HarLog()
         self.cookiejar = SplashCookieJar(self)
         self.callbacks = {
-            'on_request': [],
-            "on_response_headers": []
+            "on_request": [],
+            "on_response_headers": [],
+            "on_response": [],
         }
+        self.mainFrame().urlChanged.connect(self.on_url_changed)
+        self.mainFrame().titleChanged.connect(self.on_title_changed)
+        self.mainFrame().loadFinished.connect(self.on_load_finished)
+        self.mainFrame().initialLayoutCompleted.connect(self.on_layout_completed)
+        self.har = HarBuilder()
 
-        self.mainFrame().urlChanged.connect(self.onUrlChanged)
-        self.mainFrame().titleChanged.connect(self.onTitleChanged)
-        self.mainFrame().loadFinished.connect(self.onLoadFinished)
-        self.mainFrame().initialLayoutCompleted.connect(self.onLayoutCompleted)
+    def reset_har(self):
+        self.har.reset()
 
-    def onTitleChanged(self, title):
-        self.har_log.store_title(title)
+    def on_title_changed(self, title):
+        self.har.store_title(title)
 
-    def onUrlChanged(self, url):
-        self.har_log.store_url(url.toString())
+    def on_url_changed(self, url):
+        self.har.store_url(url)
 
-    def onLoadFinished(self, ok):
-        self.har_log.store_timing("onLoad")
+    def on_load_finished(self, ok):
+        self.har.store_timing("onLoad")
 
-    def onLayoutCompleted(self):
-        self.har_log.store_timing("onContentLoad")
+    def on_layout_completed(self):
+        self.har.store_timing("onContentLoad")
 
     def acceptNavigationRequest(self, webFrame, networkRequest, navigationType):
         if self.navigation_locked:

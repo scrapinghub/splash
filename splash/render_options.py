@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import json
 from splash import defaults
+from splash.utils import path_join_secure
 
 
 class BadOption(Exception):
@@ -166,10 +167,14 @@ class RenderOptions(object):
 
         if js_profiles_path is None:
             raise BadOption('Javascript profiles are not enabled')
-        profile_dir = os.path.join(js_profiles_path, js_profile)
-        if not profile_dir.startswith(js_profiles_path + os.path.sep):
+
+        try:
+            profile_dir = path_join_secure(js_profiles_path, js_profile)
+        except ValueError as e:
             # security check fails
+            print(e)
             raise BadOption('Javascript profile does not exist')
+
         if not os.path.isdir(profile_dir):
             raise BadOption('Javascript profile does not exist')
         return profile_dir

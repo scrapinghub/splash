@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import base64
-import copy
 import functools
 import json
 import os
@@ -16,7 +15,6 @@ from twisted.python import log
 
 from splash import defaults
 from splash.har.qt import cookies2har
-from splash.har.utils import without_private
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2ascii
 from splash.render_options import validate_size_str
@@ -69,7 +67,6 @@ class BrowserTab(QObject):
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
-        self._history = []
         self._autoload_scripts = []
 
         self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
@@ -118,7 +115,7 @@ class BrowserTab(QObject):
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
-        settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
+        settings.setAttribute(QWebSettings.LocalStorageEnabled, False)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
@@ -165,6 +162,10 @@ class BrowserTab(QObject):
     def set_resource_timeout(self, timeout):
         """ Set a default timeout for HTTP requests, in seconds. """
         self.web_page.resource_timeout = timeout
+
+    def get_resource_timeout(self):
+        """ Get a default timeout for HTTP requests, in seconds. """
+        return self.web_page.resource_timeout
 
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,
@@ -333,6 +334,10 @@ class BrowserTab(QObject):
         """ Register a callback for an event """
         self.web_page.callbacks[event].append(callback)
 
+    def clear_callbacks(self, event):
+        """ Unreguster all callbacks for an event """
+        del self.web_page.callbacks[event][:]
+
     # def remove_callback(self, event, callback):
     #     """ Unregister a callback for an event """
     #     self.web_page.callbacks[event].remove(callback)
@@ -439,7 +444,6 @@ class BrowserTab(QObject):
         happens. If onerror is callable then in case of a render error the
         timer is cancelled and this callable is called.
         """
-
         timer = QTimer()
         timer.setSingleShot(True)
         timer_callback = functools.partial(self._on_wait_timeout,
@@ -488,12 +492,7 @@ class BrowserTab(QObject):
             self._cancel_timer(timer)
 
     def _on_url_changed(self, url):
-        # log history
-        url = unicode(url.toString())
-        cause_ev = self.web_page.har_log._prev_entry(url, -1)
-        if cause_ev:
-            self._history.append(without_private(cause_ev.data))
-
+        self.web_page.har.store_redirect(unicode(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def run_js_file(self, filename, handle_errors=True):
@@ -517,7 +516,7 @@ class BrowserTab(QObject):
         """ Execute JS code before each page load """
         self._autoload_scripts.append(js_source)
 
-    def no_autoload(self):
+    def autoload_reset(self):
         """ Remove all scripts scheduled for auto-loading """
         self._autoload_scripts = []
 
@@ -654,7 +653,7 @@ class BrowserTab(QObject):
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
-        self.web_page.har_log.store_timing(name)
+        self.web_page.har.store_timing(name)
 
     def _jsconsole_enable(self):
         # TODO: add public interface or make console available by default
@@ -732,27 +731,30 @@ class BrowserTab(QObject):
         self.store_har_timing("_onIframesRendered")
         return result
 
-    def har(self):
+    def har(self, reset=False):
         """ Return HAR information """
         self.logger.log("getting HAR", min_level=3)
-        return self.web_page.har_log.todict()
+        res = self.web_page.har.todict()
+        if reset:
+            self.har_reset()
+        return res
+
+    def har_reset(self):
+        """ Drop current HAR information """
+        self.logger.log("HAR information is reset", min_level=3)
+        return self.web_page.reset_har()
 
     def history(self):
         """ Return history of 'main' HTTP requests """
         self.logger.log("getting history", min_level=3)
-        return copy.deepcopy(self._history)
+        return self.web_page.har.get_history()
 
     def last_http_status(self):
         """
         Return HTTP status code of the currently loaded webpage
         or None if it is not available.
         """
-        if not self._history:
-            return
-        try:
-            return self._history[-1]["response"]["status"]
-        except KeyError:
-            return
+        return self.web_page.har.get_last_http_status()
 
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()

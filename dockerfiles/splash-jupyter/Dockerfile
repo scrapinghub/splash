@@ -17,7 +17,7 @@ RUN add-apt-repository -y ppa:chris-lea/zeromq && \
         libzmq3-dev \
         libsqlite3-dev && \
     /usr/local/bin/pip install --no-cache-dir \
-        ipython[notebook]==3.2.1 && \
+        ipython[notebook]==4.0.0 && \
     apt-get remove -y --purge \
         python-dev \
         build-essential \

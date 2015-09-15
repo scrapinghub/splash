@@ -11,12 +11,14 @@ an HTTP proxy (see :mod:`splash.proxy_server`).
 from __future__ import absolute_import
 import re
 import os
+import urlparse
 import ConfigParser
 
 from PyQt4.QtNetwork import QNetworkProxy
 
 from splash.render_options import BadOption
 from splash.qtutils import create_proxy, validate_proxy_type
+from splash.utils import path_join_secure
 
 
 class _BlackWhiteSplashProxyFactory(object):
@@ -33,12 +35,12 @@ class _BlackWhiteSplashProxyFactory(object):
     def queryProxy(self, query=None, *args, **kwargs):
         protocol = unicode(query.protocolTag())
         url = unicode(query.url().toString())
-        if self.shouldUseProxyList(protocol, url):
-            return self._customProxyList()
+        if self.should_use_proxy_list(protocol, url):
+            return self._get_custom_proxy_list()
 
-        return self._defaultProxyList()
+        return self._get_default_proxy_list()
 
-    def shouldUseProxyList(self, protocol, url):
+    def should_use_proxy_list(self, protocol, url):
         if not self.proxy_list:
             return False
 
@@ -54,10 +56,10 @@ class _BlackWhiteSplashProxyFactory(object):
 
         return not bool(self.whitelist)
 
-    def _defaultProxyList(self):
+    def _get_default_proxy_list(self):
         return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
 
-    def _customProxyList(self):
+    def _get_custom_proxy_list(self):
         return [
             create_proxy(host, port, username, password, type)
             for host, port, username, password,type in self.proxy_list
@@ -98,36 +100,35 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
 
     def __init__(self, proxy_profiles_path, profile_name):
         self.proxy_profiles_path = proxy_profiles_path
-        blacklist, whitelist, proxy_list = self._getFilterParams(profile_name)
+        blacklist, whitelist, proxy_list = self._get_filter_params(profile_name)
         super(ProfilesSplashProxyFactory, self).__init__(blacklist, whitelist, proxy_list)
 
-    def _getFilterParams(self, profile_name=None):
+    def _get_filter_params(self, profile_name=None):
         """
         Return (blacklist, whitelist, proxy_list) tuple
         loaded from profile ``profile_name``.
         """
         if profile_name is None:
             profile_name = 'default'
-            ini_path = self._getIniPath(profile_name)
+            ini_path = self._get_ini_path(profile_name)
             if not os.path.isfile(ini_path):
                 profile_name = 'none'
 
         if profile_name == 'none':
             return [], [], []
-        ini_path = self._getIniPath(profile_name)
-        return self._parseIni(ini_path)
+        ini_path = self._get_ini_path(profile_name)
+        return self._parse_ini(ini_path)
 
-    def _getIniPath(self, profile_name):
-        proxy_profiles_path = os.path.abspath(self.proxy_profiles_path)
+    def _get_ini_path(self, profile_name):
         filename = profile_name + '.ini'
-        ini_path = os.path.abspath(os.path.join(proxy_profiles_path, filename))
-        if not ini_path.startswith(proxy_profiles_path + os.path.sep):
+        try:
+            return path_join_secure(self.proxy_profiles_path, filename)
+        except ValueError as e:
             # security check fails
+            print(e)
             raise BadOption(self.NO_PROXY_PROFILE_MSG)
-        else:
-            return ini_path
 
-    def _parseIni(self, ini_path):
+    def _parse_ini(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
             raise BadOption(self.NO_PROXY_PROFILE_MSG)
@@ -158,6 +159,49 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
                        proxy.get('username'), proxy.get('password'),
                        proxy.get('type'))]
         return blacklist, whitelist, proxy_list
+
+
+class DirectSplashProxyFactory(object):
+    """
+    This proxy factory will set the proxy passed to a render request
+    using a parameter.
+
+    If GET parameter is a fully qualified URL, use the specified proxy.
+    The syntax to specify the proxy is:
+    [protocol://][user:password@]proxyhost[:port])
+
+    Where protocol is either ``http`` or ``socks5``. If port is not specified,
+    it's assumed to be 1080.
+    """
+    def __init__(self, proxy):
+        url = urlparse.urlparse(proxy)
+        if url.scheme and url.scheme in ('http', 'socks5') and url.hostname:
+            self.proxy = create_proxy(
+                url.hostname,
+                url.port or 1080,
+                username=url.username,
+                password=url.password,
+                type=url.scheme.upper()
+            )
+        else:
+            raise BadOption('Invalid proxy URL format.')
+
+    def queryProxy(self, *args, **kwargs):
+        return [self.proxy]
+
+
+def get_factory(ini_path, parameter):
+    """
+    Returns the appropriate factory depending on the value of
+    ini_path and parameter
+    """
+    if parameter and re.match('^\w+://', parameter):
+        return DirectSplashProxyFactory(parameter)
+    else:
+        if ini_path:
+            return ProfilesSplashProxyFactory(ini_path, parameter)
+        else:
+            return None
 
 
 def _get_lines(config_parser, section, option, default):
