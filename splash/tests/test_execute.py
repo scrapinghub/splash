@@ -219,6 +219,30 @@ class SplashGoTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
         self.assertIn("formdata and body cannot be passed", resp.text)
 
+    def test_formdata_in_bad_format(self):
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = "alfaomega"
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 baseurl="http://loc",
+                                 formdata=formdata}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("formdata argument for go() must be Lua table", resp.text)
+
+    def test_POST_body_not_string(self):
+        resp = self.request_lua("""
+        function main(splash)
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 baseurl="http://loc", body={a=1}}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("request body must be string", resp.text)
+
 class ResultContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
         resp = self.request_lua("""
