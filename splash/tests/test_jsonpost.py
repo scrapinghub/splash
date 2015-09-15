@@ -169,7 +169,6 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         self.assertStatusCode(r, 200)
         self.assertIn("param2=two&amp;param1=one", r.text)
 
-
     def test_http_go_POST_missing_method(self):
         formbody = {"param1": "one", "param2": "two"}
         r = self.request({
@@ -178,7 +177,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "baseurl": "foo"
         })
         self.assertStatusCode(r, 400)
-        self.assertIn('Bad HTTP method. Request has body but method is GET', r.text)
+        self.assertIn('GET request should not have a body', r.text)
 
     def test_bad_http_method(self):
         r = self.request({
@@ -186,7 +185,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "http_method": "FOO"
         })
         self.assertStatusCode(r, 400)
-        self.assertIn("not allowed", r.text)
+        self.assertIn('Unsupported HTTP method FOO', r.text)
 
     # def test_cookie_after_redirect(self):
     #     headers = {'Cookie': 'foo=bar'}

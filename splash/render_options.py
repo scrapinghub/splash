@@ -4,8 +4,6 @@ import os
 import json
 from splash import defaults
 
-from splash.qtutils import OPERATION_QT_CONSTANTS
-
 
 class BadOption(Exception):
     pass
@@ -141,12 +139,16 @@ class RenderOptions(object):
 
     def get_http_method(self):
         method = self.get("http_method", "GET")
-        if method.upper() not in OPERATION_QT_CONSTANTS:
-            raise BadOption("HTTP method {} not allowed".format(method))
+        if method.upper() not in ["POST", "GET"]:
+            raise BadOption("Unsupported HTTP method {}".format(method))
         return method
 
     def get_body(self):
-        return self.get("body", None)
+        body = self.get("body", None)
+        method = self.get("http_method", "GET").upper()
+        if method == 'GET' and body:
+            raise BadOption("GET request should not have a body")
+        return body
 
     def get_render_all(self, wait=None):
         result = self._get_bool("render_all", False)

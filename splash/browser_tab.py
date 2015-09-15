@@ -22,8 +22,6 @@ from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2as
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 
-from splash.render_options import BadOption
-
 
 def skip_if_closing(meth):
     @functools.wraps(meth)
@@ -288,9 +286,6 @@ class BrowserTab(QObject):
         address tab and pressing Enter.
         """
         self.store_har_timing("_onStarted")
-
-        if body and http_method.upper() not in ["POST", "PUT"]:
-            raise BadOption("Bad HTTP method. Request has body but method is {}".format(http_method))
 
         if baseurl:
             # If baseurl is used, we download the page manually,
@@ -839,18 +834,15 @@ class _SplashHttpClient(QObject):
                       headers=None):
         # XXX: The caller must ensure self._delete_reply is called in a callback
         request = self.request_obj(url, headers=headers, body=body)
+        method = method.upper()
 
-        if method.upper() not in OPERATION_QT_CONSTANTS:
-            raise ValueError("Invalid HTTP method: '{}'".format(method))
+        if method not in ["POST", "GET"]:
+            raise NotImplementedError()
 
-        operation = getattr(self.network_manager, method.lower())
-
-        if body and method.upper() in ["POST", "PUT"]:
-            reply = operation(request, body)
-        elif body:
-            raise ValueError("Request with method {} should not have body".format(method))
+        if body and method == "POST":
+            reply = self.network_manager.post(request, body)
         else:
-            reply = operation(request)
+            reply = self.network_manager.get(request)
 
         reply.finished.connect(callback)
         self._replies.add(reply)

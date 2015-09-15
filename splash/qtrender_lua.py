@@ -27,8 +27,7 @@ from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
     set_request_url,
-    create_proxy,
-    OPERATION_QT_CONSTANTS
+    create_proxy
 )
 from splash.lua_runtime import SplashLuaRuntime
 
@@ -349,8 +348,9 @@ class Splash(object):
         if url is None:
             raise ScriptError("'url' is required for splash:go")
 
-        if http_method.upper() not in OPERATION_QT_CONSTANTS:
-            raise ScriptError("incorrect HTTP method: {}".format(http_method))
+        http_method = http_method.upper()
+        if http_method not in ["POST", "GET"]:
+            raise ScriptError("Unsupported HTTP method {}".format(http_method))
 
         if formdata and body:
             raise ScriptError("formdata and body cannot be passed to go() in one call")
@@ -369,6 +369,9 @@ class Splash(object):
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
+
+        if http_method == "GET" and body:
+            raise ScriptError("GET request cannot have body")
 
         cmd_id = next(self._command_ids)
 

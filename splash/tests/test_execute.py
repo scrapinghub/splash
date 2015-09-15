@@ -155,7 +155,7 @@ class SplashGoTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
-        self.assertIn('Bad HTTP method. Request has body but method is GET', resp.text)
+        self.assertIn('GET request cannot have body', resp.text)
 
     def test_splash_POST_json(self):
         json_payload = '{"name": "Frank", "address": "Elmwood Avenue 112"}'
@@ -201,7 +201,7 @@ class SplashGoTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
-        self.assertIn("incorrect HTTP method", resp.text)
+        self.assertIn('Unsupported HTTP method BAD', resp.text)
 
     def test_formdata_and_body_error(self):
         resp = self.request_lua("""
@@ -215,7 +215,6 @@ class SplashGoTest(BaseLuaRenderTest):
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
         self.assertIn("formdata and body cannot be passed", resp.text)
-
 
 class ResultContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
