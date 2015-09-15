@@ -232,6 +232,14 @@ def monitor_maxrss(maxrss):
     def check_maxrss():
         if get_ru_maxrss() > maxrss * (1024 ** 2):
             log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
+
+            # XXX: for some reason twisted qt5 reactor can stop without
+            # finishing the Python process. This is a hack to exit anyways.
+            def force_shutdown():
+                log.msg("Reactor didn't stop cleanly, doing unclean shutdown.")
+                os._exit(0)
+            reactor.callLater(2.0, force_shutdown)
+
             reactor.stop()
 
     if maxrss:
