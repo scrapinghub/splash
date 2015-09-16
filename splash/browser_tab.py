@@ -834,14 +834,13 @@ class _SplashHttpClient(QObject):
 
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
-        # XXX: The caller must ensure self._delete_reply is called in a callback
-        request = self.request_obj(url, headers=headers, body=body)
-        method = method.upper()
-
-        if method not in ["POST", "GET"]:
+        # XXX: The caller must ensure self._delete_reply is called in a callback.
+        if method.upper() not in ["POST", "GET"]:
             raise NotImplementedError()
 
-        if body and method == "POST":
+        request = self.request_obj(url, headers=headers, body=body)
+
+        if method.upper() == "POST":
             reply = self.network_manager.post(request, body)
         else:
             reply = self.network_manager.get(request)

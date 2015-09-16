@@ -141,7 +141,7 @@ class SplashGoTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
           formdata = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="POST", formdata=formdata}
+          ok, reason = assert(splash:go{splash.args.url, http_method="POST", formdata=formdata})
           return splash:html()
         end
         """, {"url": self.mockurl('postrequest')})
@@ -166,9 +166,9 @@ class SplashGoTest(BaseLuaRenderTest):
             function main(splash)
               headers = {}
               headers["content-type"] =  "application/json"
-              ok, reason = splash:go{splash.args.url, http_method="POST",
+              ok, reason = assert(splash:go{splash.args.url, http_method="POST",
                                      body='%s',
-                                     headers=headers}
+                                     headers=headers})
               return splash:html()
             end
         """ % json_payload, {"url": self.mockurl('postrequest')})
@@ -176,6 +176,17 @@ class SplashGoTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertIn("application/json", resp.text)
         self.assertIn(json_payload, resp.text)
+
+    def test_go_POST_without_body(self):
+        resp = self.request_lua("""
+            function main(splash)
+              ok, reason = assert(splash:go{splash.args.url, http_method="POST",
+                                     headers=headers,
+                                     body=""})
+              return splash:html()
+            end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 200)
 
     def test_splash_go_POST_baseurl(self):
         # if baseurl is passed request is processed differently
