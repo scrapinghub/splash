@@ -499,22 +499,44 @@ class Splash(BaseExposedObject):
     def private_jsfunc(self, func):
         return _WrappedJavascriptFunction(self, func)
 
-    @command(async=True)
-    def http_get(self, url, headers=None, follow_redirects=True):
+    def _http_request(self, url, headers, follow_redirects=True, body=None, browser_command="http_get"):
         if url is None:
-            raise ScriptError("'url' is required for splash:http_get")
+            raise ScriptError("'url' is required for {}".format(browser_command))
 
         def callback(reply):
             reply_har = reply2har(reply, include_content=True, binary_content=True)
             cmd.return_result(self.lua.python2lua(reply_har))
 
-        cmd = AsyncBrowserCommand("http_get", dict(
+        command_args = dict(
             url=url,
             callback=callback,
             headers=self.lua.lua2python(headers, max_depth=3),
-            follow_redirects=follow_redirects,
-        ))
+            follow_redirects=follow_redirects
+        )
+        if browser_command == "http_post":
+            command_args.update(dict(body=body))
+        cmd = AsyncBrowserCommand(browser_command, command_args)
         return cmd
+
+    @command(async=True)
+    def http_get(self, url, headers=None, follow_redirects=True):
+        return self._http_request(url, headers, follow_redirects)
+
+    @command(async=True)
+    def http_post(self, url, headers=None, follow_redirects=True, body=None):
+        """
+
+        :param url: string with url to fetch
+        :param headers: dict, if None {"content-type": "application/x-www-form-urlencoded"} will be added later
+        :param follow_redirects: boolean
+        :param body: string with body to be sent in request
+        :return: AysncBrowserCommand http_post
+        """
+        body = self.lua.lua2python(body, max_depth=3)
+        if body and not isinstance(body, basestring):
+            raise ScriptError("body argument for http_post must be string")
+
+        return self._http_request(url, headers, follow_redirects, body, browser_command="http_post")
 
     @command(async=True)
     def autoload(self, source_or_url=None, source=None, url=None):

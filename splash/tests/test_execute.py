@@ -2384,6 +2384,39 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
 
 
+class HttpPostTest(BaseLuaRenderTest):
+    def test_post(self):
+        resp = self.request_lua("""
+        function main(splash)
+            body = "foo=one&bar=two"
+            return assert(splash:http_post{url=splash.args.url, body=body})
+        end
+        """, {"url": self.mockurl("postrequest")})
+        self.assertStatusCode(resp, 200)
+        content = resp.json()
+        self.assertTrue(content["ok"])
+        self.assertIn("foo=one&bar=two", content["content"]["text"])
+
+    def test_post_body_not_string(self):
+        resp = self.request_lua("""
+        function main(splash)
+            body = {alfa=12}
+            return assert(splash:http_post{url=splash.args.url, body=body})
+        end
+        """, {"url": self.mockurl("postrequest")})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("body argument for http_post must be string", resp.text)
+
+    def test_post_without_body(self):
+        resp = self.request_lua("""
+        function main(splash)
+            body = ""
+            return assert(splash:http_post{url=splash.args.url, body=body})
+        end
+        """, {"url": self.mockurl("postrequest")})
+        self.assertStatusCode(resp, 200)
+
+
 class NavigationLockingTest(BaseLuaRenderTest):
     def test_lock_navigation(self):
         url = self.mockurl("jsredirect")
