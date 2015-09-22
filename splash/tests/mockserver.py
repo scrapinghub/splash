@@ -148,6 +148,7 @@ BadRelatedResource = _html_resource("""
 EggSpamScript = _html_resource("function egg(){return 'spam';}")
 
 
+
 class BaseUrl(Resource):
 
     def render_GET(self, request):
@@ -412,6 +413,19 @@ class GetResource(Resource):
 </body>
 </html>
 """ % (headers, payload)).encode('utf-8')
+
+
+JsPostResource = _html_resource("""
+<html>
+<body>
+<form action="/postrequest" method="POST">
+    <input type="hidden" value="i-am-hidden"/>
+    <input type="submit" value="go"/>
+</form>
+<script>document.querySelector('form').submit();</script>
+</body>
+</html>
+""")
 
 
 ExternalIFrameResource = _html_resource("""
@@ -710,6 +724,7 @@ class Root(Resource):
         self.putChild(b"jsconfirm", JsConfirm())
         self.putChild(b"jsinterval", JsInterval())
         self.putChild(b"jsviewport", JsViewport())
+        self.putChild(b"jspost", JsPostResource())
         self.putChild(b"tall", TallPage())
         self.putChild(b"red-green", RedGreenPage())
         self.putChild(b"baseurl", BaseUrl())

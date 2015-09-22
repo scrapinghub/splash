@@ -215,5 +215,21 @@ class ProxyInParameterTest(BaseHtmlProxyTest):
         r1 = self.request({'url': self.mockurl('jsrender')})
         self.assertNotProxied(r1.text)
 
-        r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port})
+        r2 = self.request({
+            'url': self.mockurl('jsrender'),
+            'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port
+        })
         self.assertProxied(r2.text)
+
+    def test_proxy_post(self):
+        r1 = self.request({'url': self.mockurl('jspost'), 'wait': '0.1'})
+        self.assertNotProxied(r1.text)
+        self.assertIn('application/x-www-form-urlencoded', r1.text)
+
+        r2 = self.request({
+            'url': self.mockurl('jspost'),
+            'wait': '0.1',
+            'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port
+        })
+        self.assertProxied(r2.text)
+        self.assertIn('application/x-www-form-urlencoded', r2.text)
