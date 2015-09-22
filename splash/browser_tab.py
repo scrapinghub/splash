@@ -335,7 +335,7 @@ class BrowserTab(QObject):
         self.web_page.callbacks[event].append(callback)
 
     def clear_callbacks(self, event):
-        """ Unreguster all callbacks for an event """
+        """ Unregister all callbacks for an event """
         del self.web_page.callbacks[event][:]
 
     # def remove_callback(self, event, callback):
