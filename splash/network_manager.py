@@ -4,7 +4,6 @@ import itertools
 import functools
 from datetime import datetime
 import traceback
-from contextlib import contextmanager
 
 from PyQt4.QtCore import QTimer
 from PyQt4.QtNetwork import (
@@ -66,6 +65,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.finished.connect(self._on_finished)
         self.verbosity = verbosity
         self._reply_timeout_timers = {}  # requestId => timer
+        self._default_proxy = self.proxy()
 
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
@@ -83,45 +83,47 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         """
         start_time = datetime.utcnow()
 
+        # Proxies are managed per-request, so we're restoring a default
+        # before each request. This assumes all requests go through
+        # this method.
+        self._clear_proxy()
+
         request, req_id = self._wrap_request(request)
         self._handle_custom_headers(request)
         self._handle_request_cookies(request)
 
-        with self._proxy_applied(request):
-            self._run_webpage_callbacks(request, 'on_request',
-                                        request, operation, outgoingData)
+        self._run_webpage_callbacks(request, 'on_request',
+                                    request, operation, outgoingData)
 
-            if hasattr(request, 'custom_proxy'):
-                self.setProxy(request.custom_proxy)
+        self._handle_custom_proxies(request)
 
-            har = self._get_har(request)
-            if har is not None:
-                har.store_new_request(
-                    req_id=req_id,
-                    start_time=start_time,
-                    operation=operation,
-                    request=request,
-                    outgoingData=outgoingData,
-                )
-
-            reply = super(ProxiedQNetworkAccessManager, self).createRequest(
-                operation, request, outgoingData
+        har = self._get_har(request)
+        if har is not None:
+            har.store_new_request(
+                req_id=req_id,
+                start_time=start_time,
+                operation=operation,
+                request=request,
+                outgoingData=outgoingData,
             )
 
-            if hasattr(request, 'timeout'):
-                timeout = request.timeout * 1000
-                if timeout:
-                    self._set_reply_timeout(reply, timeout)
+        reply = super(ProxiedQNetworkAccessManager, self).createRequest(
+            operation, request, outgoingData
+        )
 
-            if har is not None:
-                har.store_new_reply(req_id, reply)
+        if hasattr(request, 'timeout'):
+            timeout = request.timeout * 1000
+            if timeout:
+                self._set_reply_timeout(reply, timeout)
 
-            reply.error.connect(self._on_reply_error)
-            reply.finished.connect(self._on_reply_finished)
-            # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
-            reply.metaDataChanged.connect(self._on_reply_headers)
-            reply.downloadProgress.connect(self._on_reply_download_progress)
+        if har is not None:
+            har.store_new_reply(req_id, reply)
 
+        reply.error.connect(self._on_reply_error)
+        reply.finished.connect(self._on_reply_finished)
+        # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
+        reply.metaDataChanged.connect(self._on_reply_headers)
+        reply.downloadProgress.connect(self._on_reply_download_progress)
         return reply
 
     def _set_reply_timeout(self, reply, timeout_ms):
@@ -150,21 +152,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if timer and timer.isActive():
             timer.stop()
 
-    @contextmanager
-    def _proxy_applied(self, request):
-        """
-        This context manager temporary sets a proxy based on request options.
-        """
-        old_proxy = self.proxy()
-        splash_proxy_factory = self._get_webpage_attribute(request, 'splash_proxy_factory')
-        if splash_proxy_factory:
-            proxy_query = QNetworkProxyQuery(request.url())
-            proxy = splash_proxy_factory.queryProxy(proxy_query)[0]
-            self.setProxy(proxy)
-        try:
-            yield
-        finally:
-            self.setProxy(old_proxy)
+    def _clear_proxy(self):
+        """ Init default proxy """
+        self.setProxy(self._default_proxy)
 
     def _wrap_request(self, request):
         req = QNetworkRequest(request)
@@ -173,6 +163,18 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if hasattr(request, 'timeout'):
             req.timeout = request.timeout
         return req, req_id
+
+    def _handle_custom_proxies(self, request):
+        # proxies set in proxy profiles or `proxy` HTTP argument
+        splash_proxy_factory = self._get_webpage_attribute(request, 'splash_proxy_factory')
+        if splash_proxy_factory:
+            proxy_query = QNetworkProxyQuery(request.url())
+            proxy = splash_proxy_factory.queryProxy(proxy_query)[0]
+            self.setProxy(proxy)
+
+        # proxies set in on_request
+        if hasattr(request, 'custom_proxy'):
+            self.setProxy(request.custom_proxy)
 
     def _handle_custom_headers(self, request):
         if self._get_webpage_attribute(request, "skip_custom_headers"):

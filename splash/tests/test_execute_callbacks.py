@@ -100,6 +100,33 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertNotProxied(html_1)
         self.assertProxied(html_2)
 
+    def test_set_proxy_twice(self):
+        proxy_port = self.ts.mock_proxy_port
+        resp = self.request_lua("""
+        function main(splash)
+            local first = true
+            splash:on_request(function(request)
+                if first then
+                    request:set_proxy{
+                        host="0.0.0.0",
+                        port=splash.args.proxy_port
+                    }
+                    first = false
+                end
+            end)
+            assert(splash:go(splash.args.url))
+            local html_1 = splash:html()
+
+            assert(splash:go(splash.args.url))
+            local html_2 = splash:html()
+            return html_1, html_2
+        end
+        """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        self.assertStatusCode(resp, 200)
+        html_1, html_2 = resp.json()
+        self.assertProxied(html_1)
+        self.assertNotProxied(html_2)
+
     def test_request_outside_callback(self):
         resp = self.request_lua("""
         function main(splash)
