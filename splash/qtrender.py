@@ -5,10 +5,7 @@ import functools
 import pprint
 from splash import defaults
 from splash.browser_tab import BrowserTab
-
-
-class RenderError(Exception):
-    pass
+from splash.exceptions import RenderError
 
 
 def stop_on_error(meth):
@@ -132,7 +129,13 @@ class DefaultRenderScript(RenderScript):
             )
 
     def on_goto_load_error(self, error_info):
-        self.return_error(RenderError(repr(error_info)))
+        ex = RenderError({
+            'type': error_info.type,
+            'code': error_info.code,
+            'text': error_info.text,
+            'url': error_info.url
+        })
+        self.return_error(ex)
 
     @stop_on_error
     def _loadFinishedOK(self):

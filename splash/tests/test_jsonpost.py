@@ -99,20 +99,20 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "url": self.mockurl("getrequest"),
             "headers": "foo",
         })
-        self.assertStatusCode(r, 400)
+        self.assertJsonError(r, 400, 'BadOption')
 
     def test_bad_headers_list(self):
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("foo", ), ("bar", {"hello": "world"})],
         })
-        self.assertStatusCode(r, 400)
+        self.assertJsonError(r, 400, 'BadOption')
 
         r = self.request({
             "url": self.mockurl("getrequest"),
             "headers": [("bar", {"hello": "world"})],
         })
-        self.assertStatusCode(r, 400)
+        self.assertJsonError(r, 400, 'BadOption')
 
     def test_get_user_agent(self):
         headers = {'User-Agent': 'Mozilla123'}
@@ -176,5 +176,5 @@ class RenderInvalidJsonJsonPostTest(test_render.BaseRenderTest):
         invalid_json = "\'{"
         headers = {"content-type": "application/json; charset=UTF-8"}
         resp = self.post({}, payload=invalid_json, headers=headers)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("Invalid JSON", resp.text)
+        data = self.assertJsonError(resp, 400, 'BadOption')
+        self.assertEqual(data['info']['type'], 'invalid_json')

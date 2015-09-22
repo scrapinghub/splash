@@ -98,6 +98,14 @@ class BaseRenderTest(unittest.TestCase):
         msg = (response.status_code, truncated(response.content, 1000))
         self.assertEqual(response.status_code, code, msg)
 
+    def assertJsonError(self, response, code, type=None):
+        self.assertStatusCode(response, code)
+        data = response.json()
+        self.assertEqual(data['error'], code)
+        if type is not None:
+            self.assertEqual(data['type'], type)
+        return data
+
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")

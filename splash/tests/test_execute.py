@@ -1507,8 +1507,10 @@ class ResourceTimeoutTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
         end
         """, {"url": self.mockurl("slow.gif?n=4")})
-        self.assertStatusCode(resp, 400)
-        self.assertIn('render_error', resp.json()['message'])
+        data = self.assertJsonError(resp, 400, 'ScriptError')
+        # assert not data
+        # self.assertStatusCode(resp, 400)
+        # self.assertIn('render_error', resp.json()['message'])
 
     def test_resource_timeout_attribute_priority(self):
         # set_timeout should take a priority
@@ -1557,8 +1559,8 @@ class ResourceTimeoutTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
         end
         """, {"url": self.mockurl("slow.gif?n=1")})
-        self.assertStatusCode(resp, 400)
-        self.assertIn('splash.resource_timeout', resp.json()['message'])
+        data = self.assertJsonError(resp, 400, 'ScriptError')
+        # self.assertIn('splash.resource_timeout', resp.json()['message'])
 
 
 class ResultStatusCodeTest(BaseLuaRenderTest):
