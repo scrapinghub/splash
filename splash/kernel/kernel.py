@@ -9,9 +9,9 @@ from jupyter_client.kernelspec import install_kernel_spec
 from twisted.internet import defer
 
 import splash
-from splash.lua import get_version, get_main_sandboxed, get_main, parse_lua_error
+from splash.lua import get_version, get_main_sandboxed, get_main, parse_wrapped_lua_error
 from splash.browser_tab import BrowserTab
-from splash.lua_runner import ScriptError
+from splash.exceptions import ScriptError
 from splash.lua_runtime import SplashLuaRuntime
 from splash.qtrender_lua import Splash, MainCoroutineRunner
 from splash.qtutils import init_qt_app
@@ -184,7 +184,7 @@ class SplashKernel(Kernel):
             try:
                 failure.raiseException()
             except (lupa.LuaSyntaxError, lupa.LuaError, ScriptError) as e:
-                tp, line_num, message = parse_lua_error(e)
+                tp, line_num, message = parse_wrapped_lua_error(e)
                 text = "<%s error> [input]:%s: %s" % (tp, line_num, message)
             except Exception as e:
                 text = repr(e)

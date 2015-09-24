@@ -4,11 +4,14 @@ import os
 import re
 import functools
 import datetime
+
 from twisted.python import log
 try:
     import lupa
 except ImportError:
     lupa = None
+
+from splash.exceptions import ScriptError
 
 _supported = None
 _lua = None
@@ -114,9 +117,15 @@ def _get_entrypoint(lua, script):
 
 def _check_main(main):
     if main is None:
-        raise ValueError("'main' function is not found")
+        raise ScriptError({
+            "type": ScriptError.MAIN_NOT_FOUND_ERROR,
+            "message": "'main' function is not found",
+        })
     if lupa.lua_type(main) != 'function':
-        raise ValueError("'main' is not a function")
+        raise ScriptError({
+            "type": ScriptError.BAD_MAIN_ERROR,
+            "message": "'main' is not a function",
+        })
 
 
 def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=10):
@@ -241,7 +250,7 @@ _RUNTIME_ERROR_RE = re.compile('^unhandled Lua error: \[string "<python>"\]:(\d+
 _RERAISED_JS_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+JsError\(u?[\'"](.+)[\'"],\)$')
 _RERAISED_SCRIPT_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+Error\(u?[\'"](.+)[\'"],\)$')
 
-def parse_lua_error(e):
+def parse_wrapped_lua_error(e):
     full_msg = str(e)
     error_type = "syntax"
     m = _SYNTAX_ERROR_RE.match(full_msg)
@@ -259,3 +268,34 @@ def parse_lua_error(e):
     line_num = int(m.group(1))
     error = m.group(2)
     return error_type, line_num, error.strip()
+
+
+
+_LUA_ERROR_RE = re.compile(r'^(\[string\s+".*?"\]):(\d+):\s+(.*)$')
+
+def parse_error_message(error_text):
+    r"""
+    Split Lua error message into 'source', 'line_number' and 'error'.
+    If error message can't be parsed, an empty dict is returned.
+
+    This function is not reliable because error text is ambiguous.
+
+    >>> info = parse_error_message('[string "function main(splash)\r..."]:2: /app/splash.lua:81: ValueError(\'could not convert string to float: sdf\'')
+    >>> print(info['line_number'])
+    2
+    >>> print(repr(info['source']))
+    '[string "function main(splash)\r..."]'
+    >>> print(info['error'])
+    /app/splash.lua:81: ValueError('could not convert string to float: sdf'
+
+    >>> parse_error_message('dfsadf')
+    {}
+    """
+    m = _LUA_ERROR_RE.match(error_text)
+    if not m:
+        return {}
+    return {
+        'source': m.group(1),
+        'line_number': int(m.group(2)),
+        'error': m.group(3)
+    }

@@ -19,6 +19,7 @@ from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2ascii
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
+from splash.exceptions import JsError, OneShotCallbackError
 
 
 def skip_if_closing(meth):
@@ -29,16 +30,6 @@ def skip_if_closing(meth):
             return
         return meth(self, *args, **kwargs)
     return wrapped
-
-
-class OneShotCallbackError(Exception):
-    """ A one shot callback was called more than once. """
-    pass
-
-
-class JsError(Exception):
-    """ JavaScript error, raised as a Python exception """
-    pass
 
 
 class BrowserTab(QObject):
@@ -556,13 +547,38 @@ class BrowserTab(QObject):
                 return {error: false, result: eval(script_text)}
             }
             catch(e){
-                return {error: true, error_repr: e.toString()}
+                return {
+                    error: true,
+                    errorType: e.name,
+                    errorMessage: e.message,
+                    errorRepr: e.toString(),
+                }
             }
         })(%(script_text)s)
         """ % dict(script_text=escaped)
         res = qt2py(frame.evaluateJavaScript(wrapped))
+
+        if not isinstance(res, dict):
+            raise JsError({
+                'type': "unknown",
+                'js_error_message': res,
+                'message': "unknown JS error: {!r}".format(res)
+            })
+
         if res.get("error", False):
-            raise JsError(res.get("error_repr", "unknown JS error"))
+            err_message = res.get('errorMessage')
+            err_type = res.get('errorType', '<custom JS error>')
+            err_repr = res.get('errorRepr', "<unknown JS error>")
+            if err_message is None:
+                err_message = err_repr
+            raise JsError({
+                'type': 'js_error',
+                'js_error_type': err_type,
+                'js_error_message': err_message,
+                'js_error': err_repr,
+                'message': "JS error: {!r}".format(err_repr)
+            })
+
         return res.get("result", None)
 
     def runjs(self, js_source, handle_errors=True):
@@ -647,7 +663,8 @@ class BrowserTab(QObject):
         def cancel_callback():
             callback_proxy.cancel(reason='javascript window object cleared')
 
-        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped, min_level=2)
+        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped,
+                        min_level=3)
         frame.javaScriptWindowObjectCleared.connect(cancel_callback)
         frame.evaluateJavaScript(wrapped)
 
@@ -988,7 +1005,7 @@ class OneShotCallbackProxy(QObject):
     @pyqtSlot('QVariantMap')
     def resume(self, value=None):
         if self._used_up:
-            raise OneShotCallbackError("resume() called on a one shot" \
+            raise OneShotCallbackError("resume() called on a one shot"
                                        " callback that was already used up.")
 
         self._use_up()
@@ -997,7 +1014,7 @@ class OneShotCallbackProxy(QObject):
     @pyqtSlot(str, bool)
     def error(self, message, raise_=False):
         if self._used_up:
-            raise OneShotCallbackError("error() called on a one shot" \
+            raise OneShotCallbackError("error() called on a one shot"
                                        " callback that was already used up.")
 
         self._use_up()
@@ -1010,7 +1027,7 @@ class OneShotCallbackProxy(QObject):
 
     def _timed_out(self):
         self._use_up()
-        self._errback("One shot callback timed out while waiting for" \
+        self._errback("One shot callback timed out while waiting for"
                       " resume() or error().", raise_=False)
 
     def _use_up(self):

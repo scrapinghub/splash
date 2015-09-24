@@ -383,9 +383,10 @@ class DemoUI(_ValidatingResource):
         if not url.lower().startswith('http'):
             url = 'http://' + url
         url = url.encode('utf8')
-        params = {k:v for k,v in params.items() if v is not None}
+        params = {k: v for k, v in params.items() if v is not None}
 
-        request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
+        # disable "phases" HAR Viewer feature
+        request.addCookie('phaseInterval', 120000)
 
         LUA_EDITOR = """
           <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
@@ -496,6 +497,14 @@ class DemoUI(_ValidatingResource):
                     <textarea style="width: 100%%;" rows=15 id="renderedHTML"></textarea>
                     <br>
                 </div>
+
+                <div id="errorMessage" style="display:none">
+                    <h4>HTTP Error <span id='errorStatus'></span></h4>
+                    <h4>Type: <span id='errorType'></span></h4>
+                    <p id='errorDescription' class="errorMessage"></p>
+                    <p id='errorMessageText' class="errorMessage"></p>
+                    <pre id='errorData'></pre>
+                </div>
             </div>
 
             <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
@@ -575,33 +584,58 @@ class DemoUI(_ValidatingResource):
                     "type": "POST",
                     "data": JSON.stringify(params)
                 }).done(function(data){
+                    if (!data){
+                        $("#status").text("Empty result");
+                        return;
+                    }
+
                     var har = data['har'];
                     var png = data['png'];
+                    var jpeg = data['jpeg'];
                     var html = data['html'];
 
-                    viewer.appendPreview(har);
+                    if (har){
+                        viewer.appendPreview(har);
+                    }
                     $("#status").text("Building UI..");
-
-                    $(".pagePreview img").attr("src", "data:image/png;base64,"+png);
-
+                    if (png) {
+                        $(".pagePreview img").attr("src", "data:image/png;base64," + png);
+                    }
+                    if (jpeg) {
+                        $(".pagePreview img").attr("src", "data:image/jpeg;base64," + jpeg);
+                    }
                     $("#renderedHTML").val(html);
                     $(".pagePreview").show();
-                }).fail(function(data){
+                    $("#status").text("Success");
+                }).fail(function(xhr, status, err){
+                    $("#errorStatus").text(xhr.status + " (" + err + ")");
+                    var err = xhr.responseJSON;
+                    var resp = JSON.stringify(err, null, 4);
+                    $("#errorData").text(resp);
+                    $("#errorMessage").show();
                     $("#status").text("Error occured");
+                    $("#errorMessageText").text(err['info']['message']);
+                    $("#errorDescription").text(err['description']);
+
+                    var errType = err['type'];
+                    if (err['info']['type']){
+                        errType += ' -> ' + err['info']['type'];
+                    }
+                    $("#errorType").text(errType);
                 });
             });
             </script>
         </body>
         </html>
         """ % dict(
-            version = splash.__version__,
-            params = json.dumps(params),
-            url = url,
-            theme = BOOTSTRAP_THEME,
-            cm_options = CODEMIRROR_OPTIONS,
-            cm_resources = CODEMIRROR_RESOURCES if self.lua_enabled else "",
-            endpoint = "execute" if self.lua_enabled else "render.json",
-            lua_editor = LUA_EDITOR if self.lua_enabled else "",
+            version=splash.__version__,
+            params=json.dumps(params),
+            url=url,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES if self.lua_enabled else "",
+            endpoint="execute" if self.lua_enabled else "render.json",
+            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )
 
 
@@ -670,6 +704,7 @@ end
 """.strip()
 
     def render_GET(self, request):
+        """ Index page """
         LUA_EDITOR = """
         <div class="input-group col-lg-10">
           <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
@@ -756,10 +791,10 @@ end
             </div>
         </body>
         </html>""" % dict(
-            version = splash.__version__,
-            theme = BOOTSTRAP_THEME,
-            cm_options = CODEMIRROR_OPTIONS,
-            cm_resources = CODEMIRROR_RESOURCES,
-            lua_editor = LUA_EDITOR if self.lua_enabled else "",
+            version=splash.__version__,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES,
+            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )
         return result.encode('utf8')

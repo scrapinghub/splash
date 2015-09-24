@@ -4,7 +4,7 @@ import unittest
 import pytest
 lupa = pytest.importorskip("lupa")
 
-from splash.lua import lua2python, python2lua
+from splash.lua import lua2python, python2lua, parse_lua_error
 
 
 @pytest.mark.usefixtures("lua")
@@ -154,3 +154,4 @@ class LuaPythonConversionTest(unittest.TestCase):
         arr = python2lua(self.lua, [3, 4])
         arr2 = func(arr)
         self.assertEqual(lua2python(self.lua, arr2), [3, 4, "bar"])
+
