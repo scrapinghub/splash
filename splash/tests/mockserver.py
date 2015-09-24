@@ -6,6 +6,7 @@ import optparse
 import urllib
 import base64
 import random
+from functools import wraps
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web import proxy, http
@@ -27,6 +28,15 @@ def getarg(request, name, default=_REQUIRED, type=str):
         return default
 
 
+def finish_render(func):
+    @wraps(func)
+    def wrapper(self, request):
+        request.write(func(self, request))
+        request.finish()
+        return NOT_DONE_YET
+    return wrapper
+
+
 def _html_resource(html):
 
     class HtmlResource(Resource):
@@ -38,6 +48,7 @@ def _html_resource(html):
             self.http_port = http_port
             self.https_port = https_port
 
+        @finish_render
         def render(self, request):
             return self.template % dict(
                 http_port=self.http_port,
@@ -144,6 +155,7 @@ EggSpamScript = _html_resource("function egg(){return 'spam';}")
 
 class BaseUrl(Resource):
 
+    @finish_render
     def render_GET(self, request):
         return """
 <html>
@@ -286,6 +298,7 @@ class IframeResource(Resource):
         self.putChild("nested.html", self.NestedIframeContent())
         self.http_port = http_port
 
+    @finish_render
     def render(self, request):
         return """
 <html>
@@ -343,6 +356,8 @@ window.onload = function(){
 
     class ScriptJs(Resource):
         isLeaf = True
+
+        @finish_render
         def render(self, request):
             request.setHeader("Content-Type", "application/javascript")
             iframe_html = " SAME_DOMAIN <iframe src='/iframes/6.html'>js iframe created by document.write in external script doesn't work</iframe>"
@@ -350,6 +365,8 @@ window.onload = function(){
 
     class OtherDomainScript(Resource):
         isLeaf = True
+
+        @finish_render
         def render(self, request):
             request.setHeader("Content-Type", "application/javascript")
             return "document.write(' OTHER_DOMAIN ');"
@@ -358,6 +375,7 @@ window.onload = function(){
 class PostResource(Resource):
     """ Return a HTML file with all HTTP headers and the POST data """
 
+    @finish_render
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
@@ -381,6 +399,7 @@ class PostResource(Resource):
 class GetResource(Resource):
     """ Return a HTML file with all HTTP headers and all GET arguments """
 
+    @finish_render
     def render_GET(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
@@ -667,6 +686,7 @@ class Index(Resource):
     def __init__(self, rootChildren):
         self.rootChildren = rootChildren
 
+    @finish_render
     def render(self, request):
 
         links = "\n".join([
