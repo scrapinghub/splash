@@ -240,13 +240,15 @@ class ErrorsTest(BaseLuaRenderTest):
 
     def test_syntax_error(self):
         resp = self.request_lua("function main(splash) sdhgfsajhdgfjsahgd end")
-        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR,
-                               message="syntax error")
+        # XXX: message='syntax error' is not checked because older Lua 5.2
+        # versions have problems with error messages.
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
 
     def test_syntax_error_toplevel(self):
         resp = self.request_lua("sdg; function main(splash) sdhgfsajhdgfjsahgd end")
-        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR,
-                               message="syntax error")
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
+        # XXX: message='syntax error' is not checked because older Lua 5.2
+        # versions have problems with error messages.
 
     def test_unicode_error(self):
         resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))

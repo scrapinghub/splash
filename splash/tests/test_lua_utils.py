@@ -4,7 +4,7 @@ import unittest
 import pytest
 lupa = pytest.importorskip("lupa")
 
-from splash.lua import lua2python, python2lua, parse_lua_error
+from splash.lua import lua2python, python2lua
 
 
 @pytest.mark.usefixtures("lua")
