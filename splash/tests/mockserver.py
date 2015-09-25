@@ -569,6 +569,13 @@ class HttpRedirectResource(Resource):
         request.setHeader(b"location", url)
         return "%s redirect to %s" % (code, url)
 
+    def render_POST(self, request):
+        request.setResponseCode(301)
+        payload = request.content.getvalue() if request.content is not None else ''
+        url = '/getrequest?%s' % payload
+        request.setHeader(b"location", url)
+        return "redirect to %s" % url
+
 
 class JsRedirectTo(Resource):
     """ Do a JS redirect to an URL passed in "url" GET argument. """

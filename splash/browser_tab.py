@@ -880,6 +880,11 @@ class _SplashHttpClient(QObject):
                 callback()
                 return
 
+            # handle redirects after POST request
+            if method.upper() == "POST":
+                method = "GET"
+                body = None
+
             redirect_url = reply.url().resolved(redirect_url)
             self.request(
                 url=redirect_url,

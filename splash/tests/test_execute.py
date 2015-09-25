@@ -9,6 +9,7 @@ import time
 from PIL import Image
 import requests
 import pytest
+
 lupa = pytest.importorskip("lupa")
 
 from splash import __version__ as splash_version
@@ -35,7 +36,6 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
 
 
 class MainFunctionTest(BaseLuaRenderTest):
-
     def test_return_json(self):
         resp = self.request_lua("""
         function main(splash)
@@ -254,6 +254,7 @@ class SplashGoTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
         self.assertIn("request body must be string", resp.text)
 
+
 class ResultContentTypeTest(BaseLuaRenderTest):
     def test_content_type(self):
         resp = self.request_lua("""
@@ -342,7 +343,6 @@ class ResultHeaderTest(BaseLuaRenderTest):
 
 
 class ErrorsTest(BaseLuaRenderTest):
-
     def test_syntax_error(self):
         resp = self.request_lua("function main(splash) sdhgfsajhdgfjsahgd end")
         self.assertStatusCode(resp, 400)
@@ -468,7 +468,7 @@ class ErrorsTest(BaseLuaRenderTest):
         function main(splash)        -- 2
            splash:wait{timeout=0.7}  -- 3 <--
         end                          -- 4
-        """)                       # -- 5
+        """)  # -- 5
         self.assertErrorLineNumber(resp, 3)
 
     def test_pcall_wrong_keyword_arguments(self):
@@ -487,7 +487,6 @@ class ErrorsTest(BaseLuaRenderTest):
 
 
 class EnableDisableJSTest(BaseLuaRenderTest):
-
     def test_disablejs(self):
         resp = self.request_lua("""
         function main(splash)
@@ -550,7 +549,6 @@ class EnableDisableJSTest(BaseLuaRenderTest):
 
 
 class ImageRenderTest(BaseLuaRenderTest):
-
     def test_disable_images_attr(self):
         resp = self.request_lua("""
         function main(splash)
@@ -599,7 +597,6 @@ class ImageRenderTest(BaseLuaRenderTest):
 
 
 class EvaljsTest(BaseLuaRenderTest):
-
     def _evaljs_request(self, js):
         return self.request_lua("""
         function main(splash)
@@ -751,7 +748,6 @@ class EvaljsTest(BaseLuaRenderTest):
 
 
 class WaitForResumeTest(BaseLuaRenderTest):
-
     def _wait_for_resume_request(self, js, timeout=1):
         return self.request_lua("""
         function main(splash)
@@ -844,7 +840,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {
             "value": [1, 2, 'red', 'blue'],
             "value_type": "table"}
-        )
+                         )
 
     def test_return_dict(self):
         resp = self._wait_for_resume_request("""
@@ -854,9 +850,9 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "value": {'stomach':'empty', 'brain':'crazy'},
+            "value": {'stomach': 'empty', 'brain': 'crazy'},
             "value_type": "table"}
-        )
+                         )
 
     def test_return_additional_keys(self):
         resp = self.request_lua("""
@@ -1216,7 +1212,6 @@ class JsfuncTest(BaseLuaRenderTest):
 
 
 class WaitTest(BaseLuaRenderTest):
-
     def wait(self, wait_args, request_args=None):
         code = """
         function main(splash)
@@ -1415,7 +1410,6 @@ class JsonPostArgsTest(ArgsTest):
 
 
 class GoTest(BaseLuaRenderTest):
-
     def go_status(self, url):
         resp = self.request_lua("""
         function main(splash)
@@ -1604,7 +1598,6 @@ class GoTest(BaseLuaRenderTest):
 
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
-
     def test_resource_timeout_aborts_first(self):
         resp = self.request_lua("""
         function main(splash)
@@ -1858,7 +1851,6 @@ class CookiesTest(BaseLuaRenderTest):
 
 
 class CurrentUrlTest(BaseLuaRenderTest):
-
     def request_url(self, url, wait=0.0):
         return self.request_lua("""
         function main(splash)
@@ -1896,10 +1888,8 @@ class CurrentUrlTest(BaseLuaRenderTest):
 
 
 class DisableScriptsTest(BaseLuaRenderTest):
-
     def test_nolua(self):
         with SplashServer(extra_args=['--disable-lua']) as splash:
-
             # Check that Lua is disabled in UI
             resp = requests.get(splash.url("/"))
             self.assertStatusCode(resp, 200)
@@ -1916,7 +1906,6 @@ class DisableScriptsTest(BaseLuaRenderTest):
 
 
 class SandboxTest(BaseLuaRenderTest):
-
     def assertTooMuchCPU(self, resp):
         self.assertStatusCode(resp, 400)
         self.assertIn("script uses too much CPU", resp.text)
@@ -2416,6 +2405,29 @@ class HttpPostTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("postrequest")})
         self.assertStatusCode(resp, 200)
 
+    def test_redirect_after_post_in_go(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{url=splash.args.url, body=body, http_method="POST"})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("http-redirect")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("GET request", resp.text)
+
+    def test_redirect_after_post_in_http_post(self):
+        post_body = "foo=bar&alfa=beta"
+        resp = self.request_lua("""
+            function main(splash)
+                return assert(splash:http_post{url=splash.args.url, body='%s'})
+            end
+            """ % post_body, {"url": self.mockurl("http-redirect")})
+        self.assertStatusCode(resp, 200)
+        content = resp.json()
+        self.assertIn("GET request", content["content"]["text"])
+        self.assertIn(post_body, content["url"])
+        self.assertEqual(content["status"], 200)
+
 
 class NavigationLockingTest(BaseLuaRenderTest):
     def test_lock_navigation(self):
@@ -2498,13 +2510,13 @@ class SetContentTest(BaseLuaRenderTest):
         resp = self.request_lua(script, {"base": self.mockurl("")})
         self.assertStatusCode(resp, 200)
         img = Image.open(StringIO(resp.content))
-        self.assertEqual((0,0,0,255), img.getpixel((10, 10)))
+        self.assertEqual((0, 0, 0, 255), img.getpixel((10, 10)))
 
         # the same, but with a bad base URL
         resp = self.request_lua(script, {"base": ""})
         self.assertStatusCode(resp, 200)
         img = Image.open(StringIO(resp.content))
-        self.assertNotEqual((0,0,0,255), img.getpixel((10, 10)))
+        self.assertNotEqual((0, 0, 0, 255), img.getpixel((10, 10)))
 
     def test_url(self):
         resp = self.request_lua("""
@@ -2650,7 +2662,7 @@ end
             ('{1, -100}', 'Viewport is out of range'),
             ('{0, 100}', 'Viewport is out of range'),
             ('{99999, 100}', 'Viewport is out of range'),
-            ]
+        ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
