@@ -28,7 +28,11 @@ def getarg(request, name, default=_REQUIRED, type=str):
         return default
 
 
-def finish_render(func):
+def use_chunked_encoding(func):
+    """
+    A workaround for Twisted issue.
+    See https://github.com/scrapinghub/splash/issues/52#issuecomment-73488224.
+    """
     @wraps(func)
     def wrapper(self, request):
         request.write(func(self, request))
@@ -48,7 +52,7 @@ def _html_resource(html):
             self.http_port = http_port
             self.https_port = https_port
 
-        @finish_render
+        @use_chunked_encoding
         def render(self, request):
             return self.template % dict(
                 http_port=self.http_port,
@@ -155,7 +159,7 @@ EggSpamScript = _html_resource("function egg(){return 'spam';}")
 
 class BaseUrl(Resource):
 
-    @finish_render
+    @use_chunked_encoding
     def render_GET(self, request):
         return """
 <html>
@@ -176,6 +180,7 @@ class BaseUrl(Resource):
 
         isLeaf = True
 
+        @use_chunked_encoding
         def render_GET(self, request):
             request.setHeader("Content-Type", "application/javascript")
             return 'document.getElementById("p1").innerHTML="After";'
@@ -188,6 +193,7 @@ class SetCookie(Resource):
     """
     isLeaf = True
 
+    @use_chunked_encoding
     def render_GET(self, request):
         key = getarg(request, "key")
         value = getarg(request, "value")
@@ -207,6 +213,8 @@ class SetCookie(Resource):
 class GetCookie(Resource):
     """ Return a cookie with key=key """
     isLeaf = False
+
+    @use_chunked_encoding
     def render_GET(self, request):
         value = request.getCookie(getarg(request, "key")) or ""
         return value
@@ -260,6 +268,7 @@ class ShowImage(Resource):
     """
     isLeaf = True
 
+    @use_chunked_encoding
     def render_GET(self, request):
         token = random.random()  # prevent caching
         n = getarg(request, "n", 0, type=float)
@@ -298,7 +307,7 @@ class IframeResource(Resource):
         self.putChild("nested.html", self.NestedIframeContent())
         self.http_port = http_port
 
-    @finish_render
+    @use_chunked_encoding
     def render(self, request):
         return """
 <html>
@@ -357,7 +366,7 @@ window.onload = function(){
     class ScriptJs(Resource):
         isLeaf = True
 
-        @finish_render
+        @use_chunked_encoding
         def render(self, request):
             request.setHeader("Content-Type", "application/javascript")
             iframe_html = " SAME_DOMAIN <iframe src='/iframes/6.html'>js iframe created by document.write in external script doesn't work</iframe>"
@@ -366,7 +375,7 @@ window.onload = function(){
     class OtherDomainScript(Resource):
         isLeaf = True
 
-        @finish_render
+        @use_chunked_encoding
         def render(self, request):
             request.setHeader("Content-Type", "application/javascript")
             return "document.write(' OTHER_DOMAIN ');"
@@ -375,7 +384,7 @@ window.onload = function(){
 class PostResource(Resource):
     """ Return a HTML file with all HTTP headers and the POST data """
 
-    @finish_render
+    @use_chunked_encoding
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
@@ -399,7 +408,7 @@ class PostResource(Resource):
 class GetResource(Resource):
     """ Return a HTML file with all HTTP headers and all GET arguments """
 
-    @finish_render
+    @use_chunked_encoding
     def render_GET(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
@@ -606,6 +615,7 @@ class JsRedirectTo(Resource):
     """ Do a JS redirect to an URL passed in "url" GET argument. """
     isLeaf = True
 
+    @use_chunked_encoding
     def render_GET(self, request):
         next_url = urllib.unquote(getarg(request, "url"))
         return """
@@ -617,6 +627,8 @@ class JsRedirectTo(Resource):
 
 
 class CP1251Resource(Resource):
+
+    @use_chunked_encoding
     def render_GET(self, request):
         request.setHeader("Content-Type", "text/html; charset=windows-1251")
         return u'''
@@ -631,6 +643,8 @@ class CP1251Resource(Resource):
 
 class Subresources(Resource):
     """ Embedded css and image """
+
+    @use_chunked_encoding
     def render_GET(self, request):
         return """<html><head>
                 <link rel="stylesheet" href="style.css?_rnd={0}" />
@@ -650,18 +664,24 @@ class Subresources(Resource):
         return self
 
     class StyleSheet(Resource):
+
+        @use_chunked_encoding
         def render_GET(self, request):
             request.setHeader("Content-Type", "text/css; charset=utf-8")
             print "Request Style!"
             return "body { background-color: red; }"
 
     class Image(Resource):
+
+        @use_chunked_encoding
         def render_GET(self, request):
             request.setHeader("Content-Type", "image/gif")
             return base64.decodestring('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
 class SetHeadersResource(Resource):
+
+    @use_chunked_encoding
     def render_GET(self, request):
         for k, values in request.args.iteritems():
             for v in values:
@@ -669,12 +689,16 @@ class SetHeadersResource(Resource):
         return ""
 
 class InvalidContentTypeResource(Resource):
+
+    @use_chunked_encoding
     def render_GET(self, request):
         request.setHeader("Content-Type", "ABRACADABRA: text/html; charset=windows-1251")
         return u'''проверка'''.encode('cp1251')
 
 
 class InvalidContentTypeResource2(Resource):
+
+    @use_chunked_encoding
     def render_GET(self, request):
         request.setHeader(b"Content-Type", b"text-html; charset=utf-8")
         return b"ok"
@@ -686,7 +710,7 @@ class Index(Resource):
     def __init__(self, rootChildren):
         self.rootChildren = rootChildren
 
-    @finish_render
+    @use_chunked_encoding
     def render(self, request):
 
         links = "\n".join([
