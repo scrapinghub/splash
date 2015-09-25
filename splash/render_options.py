@@ -4,10 +4,7 @@ import os
 import json
 from splash import defaults
 from splash.utils import path_join_secure
-
-
-class BadOption(Exception):
-    pass
+from splash.exceptions import BadOption
 
 
 class RenderOptions(object):
@@ -20,6 +17,16 @@ class RenderOptions(object):
     def __init__(self, data, max_timeout):
         self.data = data
         self.max_timeout = max_timeout
+
+    @classmethod
+    def raise_error(cls, argument, description, type='bad_argument', **kwargs):
+        params = {
+            'type': type,
+            'argument': argument,
+            'description': description
+        }
+        params.update(kwargs)
+        raise BadOption(params)
 
     @classmethod
     def fromrequest(cls, request, max_timeout):
@@ -39,7 +46,11 @@ class RenderOptions(object):
                     try:
                         data.update(json.load(request.content, encoding='utf8'))
                     except ValueError as e:
-                        raise BadOption("Invalid JSON: '{}'".format(e.message))
+                        raise BadOption({
+                            'type': 'invalid_json',
+                            'description': "Can't decode JSON",
+                            'message': str(e),
+                        })
 
                 # 3. js_source from application/javascript POST requests
                 if 'application/javascript' in content_type:
@@ -73,12 +84,15 @@ class RenderOptions(object):
                     try:
                         value = type(value)
                     except ValueError:
-                        raise BadOption("Argument %r is not of expected value" % (name))
+                        msg = "Argument %r has a wrong type" % (name,)
+                        self.raise_error(name, msg, required_type=type.__name__)
             if range is not None and not (range[0] <= value <= range[1]):
-                raise BadOption("Argument %r out of range (%d-%d)" % (name, range[0], range[1]))
+                self.raise_error(name, 'Argument is out of the allowed range',
+                                 min=range[0], max=range[1], value=value)
             return value
         elif default is self._REQUIRED:
-            raise BadOption("Missing argument: %s" % name)
+            self.raise_error(name, 'Required argument is missing: %s' % name,
+                             type='argument_required')
         else:
             return default
 
@@ -129,10 +143,15 @@ class RenderOptions(object):
 
     def get_scale_method(self):
         scale_method = self.get("scale_method", defaults.IMAGE_SCALE_METHOD)
-        if scale_method not in ('raster', 'vector'):
-            raise BadOption(
-                "Invalid 'scale_method' (must be 'raster' or 'vector'): %s" %
-                scale_method)
+        allowed_scale_methods = ['raster', 'vector']
+        if scale_method not in allowed_scale_methods:
+            self.raise_error(
+                argument='scale_method',
+                description="Invalid 'scale_method': %s" % scale_method,
+                allowed=allowed_scale_methods,
+                received=scale_method,
+            )
+
         return scale_method
 
     def get_quality(self):
@@ -147,7 +166,8 @@ class RenderOptions(object):
     def get_render_all(self, wait=None):
         result = self._get_bool("render_all", False)
         if result == 1 and wait == 0:
-            raise BadOption("Pass non-zero 'wait' to render full webpage")
+            self.raise_error("render_all",
+                             "Pass non-zero 'wait' to render full webpage")
         return result
 
     def get_lua_source(self):
@@ -159,17 +179,19 @@ class RenderOptions(object):
             return js_profile
 
         if js_profiles_path is None:
-            raise BadOption('Javascript profiles are not enabled')
+            self.raise_error('js',
+                             'Javascript profiles are not enabled on server')
 
         try:
             profile_dir = path_join_secure(js_profiles_path, js_profile)
         except ValueError as e:
             # security check fails
             print(e)
-            raise BadOption('Javascript profile does not exist')
+            self.raise_error('js', 'Javascript profile does not exist')
 
         if not os.path.isdir(profile_dir):
-            raise BadOption('Javascript profile does not exist')
+            self.raise_error('js', 'Javascript profile does not exist')
+
         return profile_dir
 
     def get_headers(self):
@@ -179,12 +201,20 @@ class RenderOptions(object):
             return headers
 
         if not isinstance(headers, (list, tuple, dict)):
-            raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
+            self.raise_error(
+                argument='headers',
+                description="'headers' must be either a JSON array of "
+                            "(name, value) pairs or a JSON object"
+            )
 
         if isinstance(headers, (list, tuple)):
             for el in headers:
                 if not (isinstance(el, (list, tuple)) and len(el) == 2 and all(isinstance(e, basestring) for e in el)):
-                    raise BadOption("'headers' must be either JSON array of (name, value) pairs or JSON object")
+                    self.raise_error(
+                        argument='headers',
+                        description="'headers' must be either a JSON array of "
+                                    "(name, value) pairs or a JSON object"
+                    )
 
         return headers
 
@@ -193,12 +223,13 @@ class RenderOptions(object):
 
         if viewport == 'full':
             if wait == 0:
-                raise BadOption("Pass non-zero 'wait' to render full webpage")
+                self.raise_error("viewport",
+                                 "Pass non-zero 'wait' to render full webpage")
         else:
             try:
                 validate_size_str(viewport)
             except ValueError as e:
-                raise BadOption(str(e))
+                self.raise_error("viewport", str(e))
         return viewport
 
     def get_filters(self, pool=None, adblock_rules=None):
@@ -217,12 +248,18 @@ class RenderOptions(object):
             if hasattr(network_manager, 'adblock_rules'):
                 adblock_rules = network_manager.adblock_rules
                 if adblock_rules is None:
-                    raise BadOption("Invalid filter names: %s" % filter_names)
+                    self.raise_error(
+                        "filters",
+                        "Invalid filter names: %s" % (filter_names,)
+                    )
 
         if adblock_rules is not None:
             unknown_filters = adblock_rules.get_unknown_filters(filter_names)
             if unknown_filters:
-                raise BadOption("Invalid filter names: %s" % unknown_filters)
+                self.raise_error(
+                    "filters",
+                    "Invalid filter names: %s" % (unknown_filters,)
+                )
 
         return filter_names
 

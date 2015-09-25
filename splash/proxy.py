@@ -16,9 +16,13 @@ import ConfigParser
 
 from PyQt4.QtNetwork import QNetworkProxy
 
-from splash.render_options import BadOption
+from splash.render_options import RenderOptions
 from splash.qtutils import create_proxy, validate_proxy_type
 from splash.utils import path_join_secure
+
+
+def _raise_proxy_error(description, **kwargs):
+    RenderOptions.raise_error("proxy", description, **kwargs)
 
 
 class _BlackWhiteSplashProxyFactory(object):
@@ -126,34 +130,37 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         except ValueError as e:
             # security check fails
             print(e)
-            raise BadOption(self.NO_PROXY_PROFILE_MSG)
+            _raise_proxy_error(self.NO_PROXY_PROFILE_MSG)
 
     def _parse_ini(self, ini_path):
         parser = ConfigParser.ConfigParser(allow_no_value=True)
         if not parser.read(ini_path):
-            raise BadOption(self.NO_PROXY_PROFILE_MSG)
+            _raise_proxy_error(self.NO_PROXY_PROFILE_MSG)
 
         blacklist = _get_lines(parser, 'rules', 'blacklist', [])
         whitelist = _get_lines(parser, 'rules', 'whitelist', [])
         try:
             proxy = dict(parser.items('proxy'))
         except ConfigParser.NoSectionError:
-            raise BadOption("Invalid proxy profile: no [proxy] section found")
+            _raise_proxy_error("Invalid proxy profile: no [proxy] section found")
 
         try:
             host = proxy['host']
         except KeyError:
-            raise BadOption("Invalid proxy profile: [proxy] host is not found")
+            _raise_proxy_error("Invalid proxy profile: [proxy] host is not found")
 
         try:
             port = int(proxy['port'])
         except KeyError:
-            raise BadOption("Invalid proxy profile: [proxy] port is not found")
+            _raise_proxy_error("Invalid proxy profile: [proxy] port is not found")
         except ValueError:
-            raise BadOption("Invalid proxy profile: [proxy] port is incorrect")
+            _raise_proxy_error("Invalid proxy profile: [proxy] port is not found")
 
         if 'type' in proxy:
-            validate_proxy_type(proxy['type'])
+            try:
+                validate_proxy_type(proxy['type'])
+            except ValueError as e:
+                _raise_proxy_error(str(e))
 
         proxy_list = [(host, port,
                        proxy.get('username'), proxy.get('password'),
@@ -184,7 +191,7 @@ class DirectSplashProxyFactory(object):
                 type=url.scheme.upper()
             )
         else:
-            raise BadOption('Invalid proxy URL format.')
+            _raise_proxy_error('Invalid proxy URL format.')
 
     def queryProxy(self, *args, **kwargs):
         return [self.proxy]

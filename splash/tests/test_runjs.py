@@ -63,8 +63,9 @@ test('Changed');"""
             'url': self.mockurl('jsrender'),
             'js': '../../filters'
         })
-        self.assertStatusCode(resp, 400)
-        self.assertIn("does not exist", resp.json()['message'])
+        data = self.assertJsonError(resp, 400, "BadOption")
+        self.assertEqual(data['info']['argument'], 'js')
+        self.assertIn("does not exist", data['info']['description'])
 
     def test_js_external_iframe(self):
         # by default, cross-domain access is disabled, so this does nothing

@@ -112,7 +112,7 @@ end
 -- Create a Lua wrapper for a Python object.
 --
 -- * Lua methods are created for Python methods wrapped in @command.
--- * Async methods are wrapped to `coroutine.yield`.
+-- * Async methods are wrapped with `coroutine.yield`.
 -- * Lua <-> Python error handling is fixed.
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.

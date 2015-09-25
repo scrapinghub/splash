@@ -15,14 +15,13 @@ import splash
 from splash.browser_tab import JsError
 from splash.lua_runner import (
     BaseScriptRunner,
-    ScriptError,
     ImmediateResult,
-    AsyncCommand
+    AsyncCommand,
 )
 from splash.qtrender import RenderScript, stop_on_error
-from splash.lua import get_main, get_main_sandboxed
+from splash.lua import get_main, get_main_sandboxed, parse_error_message
 from splash.har.qt import reply2har, request2har
-from splash.render_options import BadOption, RenderOptions
+from splash.render_options import RenderOptions
 from splash.utils import truncated, BinaryCapsule, requires_attr
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
@@ -31,6 +30,7 @@ from splash.qtutils import (
     create_proxy,
     get_versions)
 from splash.lua_runtime import SplashLuaRuntime
+from splash.exceptions import ScriptError
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -55,6 +55,8 @@ def command(async=False, can_raise_async=False, table_argument=False,
         table_argument = True
 
     def decorator(meth):
+        meth = detailed_exceptions()(meth)
+
         if not table_argument:
             meth = lupa.unpacks_lua_table_method(meth)
 
@@ -130,18 +132,15 @@ def is_lua_property(meth):
 
 def can_raise(meth):
     """
-    Decorator for preserving Python exceptions raised in Python
+    Decorator for preserving Python exception objects raised in Python
     methods called from Lua.
     """
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         try:
             return meth(self, *args, **kwargs)
-        except ScriptError as e:
-            self._exceptions.append(e)
-            raise
         except BaseException as e:
-            self._exceptions.append(ScriptError(e))
+            self._exceptions.append(e)
             raise
     return wrapper
 
@@ -167,6 +166,28 @@ def exceptions_as_return_values(meth):
             return False, repr(e)
     wrapper._returns_error_flag = True
     return wrapper
+
+
+def detailed_exceptions(method_name=None):
+    """
+    Add method name and a default error type to the error info.
+    """
+    def decorator(meth):
+        _name = meth.__name__ if method_name is None else method_name
+
+        @functools.wraps(meth)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return meth(self, *args, **kwargs)
+            except ScriptError as e:
+                info = e.args[0]
+                if not isinstance(info, dict):
+                    raise
+                info.setdefault('type', ScriptError.SPLASH_LUA_ERROR)
+                info.setdefault('splash_method', _name)
+                raise e
+        return wrapper
+    return decorator
 
 
 def get_commands(obj):
@@ -239,7 +260,9 @@ class _WrappedJavascriptFunction(object):
             catch(e){
                 return {
                     error: true,
-                    error_repr: e.toString(),
+                    errorType: e.name,
+                    errorMessage: e.message,
+                    errorRepr: e.toString(),
                 }
             }
         })(%(func_text)s)
@@ -249,10 +272,27 @@ class _WrappedJavascriptFunction(object):
         res = self.tab.evaljs(wrapper_script)
 
         if not isinstance(res, dict):
-            raise ScriptError("[lua] unknown error during JS function call: %r; %r" % (res, wrapper_script))
+            raise ScriptError({
+                'type': ScriptError.UNKNOWN_ERROR,
+                'js_error_message': res,
+                'message': "unknown error during JS function call: "
+                           "{!r}; {!r}".format(res, wrapper_script)
+            })
 
-        if res["error"]:
-            raise ScriptError("[lua] error during JS function call: %r" % (res.get("error_repr", "<unknown error>"),))
+        if res.get("error", False):
+            err_message = res.get('errorMessage')
+            err_type = res.get('errorType', '<custom JS error>')
+            err_repr = res.get('errorRepr', '<unknown JS error>')
+            if err_message is None:
+                err_message = err_repr
+            raise ScriptError({
+                'type': ScriptError.JS_ERROR,
+                'js_error_type': err_type,
+                'js_error_message': err_message,
+                'js_error': err_repr,
+                'message': "error during JS function call: "
+                           "{!r}".format(err_repr)
+            })
 
         return res.get("result")
 
@@ -283,7 +323,12 @@ class BaseExposedObject(object):
         self.tmp_storage = lua.table_from({})  # a workaround for callbacks
 
     def clear(self):
+        self.lua.remove_allowed_object(self)
         self.lua = None
+        # self._exceptions = None
+        self.tmp_storage = None
+        self.lua_properties = None
+        self.commands = None
 
     @classmethod
     @contextlib.contextmanager
@@ -347,7 +392,10 @@ class Splash(BaseExposedObject):
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
         time = float(time)
         if time < 0:
-            raise BadOption("splash:wait time can't be negative")
+            raise ScriptError({
+                "argument": "time",
+                "message": "splash:wait() time can't be negative",
+            })
 
         def success():
             cmd.return_result(True)
@@ -359,17 +407,20 @@ class Splash(BaseExposedObject):
             cmd.return_result(None, self._error_info_to_lua(error_info))
 
         cmd = AsyncBrowserCommand("wait", dict(
-            time_ms = time*1000,
-            callback = success,
-            onredirect = redirect if cancel_on_redirect else False,
-            onerror = error if cancel_on_error else False,
+            time_ms=time*1000,
+            callback=success,
+            onredirect=redirect if cancel_on_redirect else False,
+            onerror=error if cancel_on_error else False,
         ))
         return cmd
 
     @command(async=True)
     def go(self, url, baseurl=None, headers=None):
         if url is None:
-            raise ScriptError("'url' is required for splash:go")
+            raise ScriptError({
+                "argument": "url",
+                "message": "'url' is required for splash:go",
+            })
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
@@ -443,7 +494,12 @@ class Splash(BaseExposedObject):
 
     @command()
     def evaljs(self, snippet):
-        return self.tab.evaljs(snippet)
+        try:
+            return self.tab.evaljs(snippet)
+        except JsError as e:
+            info = e.args[0]
+            info['type'] = ScriptError.JS_ERROR
+            raise ScriptError(info)
 
     @command()
     def runjs(self, snippet):
@@ -451,7 +507,10 @@ class Splash(BaseExposedObject):
             self.tab.runjs(snippet)
             return True
         except JsError as e:
-            return None, e.args[0]
+            info = e.args[0]
+            info['type'] = ScriptError.JS_ERROR
+            info['splash_method'] = 'runjs'
+            return None, info
 
     @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
@@ -476,7 +535,10 @@ class Splash(BaseExposedObject):
     @command(async=True)
     def http_get(self, url, headers=None, follow_redirects=True):
         if url is None:
-            raise ScriptError("'url' is required for splash:http_get")
+            raise ScriptError({
+                "argument": "url",
+                "message": "'url' is required for splash:http_get"
+            })
 
         def callback(reply):
             reply_har = reply2har(reply, include_content=True, binary_content=True)
@@ -493,7 +555,9 @@ class Splash(BaseExposedObject):
     @command(async=True)
     def autoload(self, source_or_url=None, source=None, url=None):
         if len([a for a in [source_or_url, source, url] if a is not None]) != 1:
-            raise ScriptError("splash:autoload requires a single argument")
+            raise ScriptError({
+                "message": "splash:autoload requires a single argument",
+            })
 
         if source_or_url is not None:
             source_or_url = source_or_url.strip()
@@ -591,25 +655,38 @@ class Splash(BaseExposedObject):
     @command()
     def set_result_content_type(self, content_type):
         if not isinstance(content_type, basestring):
-            raise ScriptError("splash:set_result_content_type() argument must be a string")
+            raise ScriptError({
+                "argument": "content_type",
+                "message": "splash:set_result_content_type() argument "
+                           "must be a string",
+            })
         self._result_content_type = content_type
 
     @command()
     def set_result_status_code(self, code):
         if not isinstance(code, int) or not (200 <= code <= 999):
-            raise ScriptError("splash:set_result_status_code() argument must be a number 200 <= code <= 999")
+            raise ScriptError({
+                "argument": "code",
+                "message": "splash:set_result_status_code() argument must be "
+                           "a number 200 <= code <= 999",
+            })
         self._result_status_code = code
 
     @command()
     def set_result_header(self, name, value):
         if not all([isinstance(h, basestring) for h in [name, value]]):
-            raise ScriptError("splash:set_result_header() arguments must be strings")
+            raise ScriptError({
+                "message": "splash:set_result_header() arguments "
+                           "must be strings"
+            })
 
         try:
             name = name.decode('utf-8').encode('ascii')
             value = value.decode('utf-8').encode('ascii')
         except UnicodeEncodeError:
-            raise ScriptError("splash:set_result_header() arguments must be ascii")
+            raise ScriptError({
+                "message": "splash:set_result_header() arguments must be ascii"
+            })
 
         header = (name, value)
         self._result_headers.append(header)
@@ -617,7 +694,10 @@ class Splash(BaseExposedObject):
     @command()
     def set_user_agent(self, value):
         if not isinstance(value, basestring):
-            raise ScriptError("splash:set_user_agent() argument must be a string")
+            raise ScriptError({
+                "argument": "value",
+                "message": "splash:set_user_agent() argument must be a string",
+            })
         self.tab.set_user_agent(value)
 
     @command(table_argument=True)
@@ -660,7 +740,9 @@ class Splash(BaseExposedObject):
             timeout = 0
         timeout = float(timeout)
         if timeout < 0:
-            raise ScriptError("splash.resource_timeout can't be negative")
+            raise ScriptError({
+                "message": "splash.resource_timeout can't be negative"
+            })
         self.tab.set_resource_timeout(timeout)
 
     @command()
@@ -719,16 +801,28 @@ class Splash(BaseExposedObject):
         if delay is None:
             delay = 0
         if not isinstance(delay, (float, int)):
-            raise ScriptError("splash:call_later delay must be a number")
+            raise ScriptError({
+                "argument": "delay",
+                "message": "splash:call_later delay must be a number",
+                "splash_method": "call_later",
+            })
         delay = int(float(delay)*1000)
         if delay < 0:
-            raise ScriptError("splash:call_later delay must be >= 0")
+            raise ScriptError({
+                "argument": "delay",
+                "message": "splash:call_later delay must be >= 0",
+                "splash_method": "call_later",
+            })
         if lupa.lua_type(callback) != 'function':
-            raise ScriptError("splash:call_later callback is not a function")
+            raise ScriptError({
+                "argument": "callback",
+                "message": "splash:call_later callback is not a function",
+                "splash_method": "call_later",
+            })
 
         qtimer = QTimer(self.tab)
         qtimer.setSingleShot(True)
-        timer = _ExposedTimer(self.lua, qtimer)
+        timer = _ExposedTimer(self, qtimer)
         run_coro = self.get_coroutine_run_func(
             "splash:call_later", callback, return_error=timer.store_error
         )
@@ -815,10 +909,15 @@ class _ExposedTimer(BaseExposedObject):
     """
     Timer object returned by splash:call_later().
     """
-    def __init__(self, lua, timer):
+    def __init__(self, splash, timer):
         self.timer = timer
         self.errors = []
-        super(_ExposedTimer, self).__init__(lua)
+        super(_ExposedTimer, self).__init__(splash.lua)
+
+        # FIXME: this is a hack.
+        # timer is used outside call_later callbacks, so errors
+        # are reported as main Splash errors.
+        self._exceptions = splash._exceptions
 
     @command()
     def cancel(self):
@@ -831,16 +930,25 @@ class _ExposedTimer(BaseExposedObject):
     @command()
     def reraise(self):
         if self.errors:
-            raise self.errors[-1]
+            ex = self.errors[-1]
+            if isinstance(ex, ScriptError):
+                info = ex.args[0]
+                info['splash_method'] = None
+                info['timer_method'] = 'reraise'
+            raise ex
 
     def store_error(self, error):
         self.errors.append(error)
 
 
-requires_request = requires_attr("request",
-                                 "request is used outside a callback")
-requires_response = requires_attr("response",
-                                  "response is used outside a callback")
+requires_request = requires_attr(
+    "request",
+    lambda self, meth, attr_name: self._on_request_required(meth, attr_name)
+)
+requires_response = requires_attr(
+    "response",
+    lambda self, meth, attr_name: self._on_response_required(meth, attr_name)
+)
 
 
 class _ExposedRequest(BaseExposedObject):
@@ -857,6 +965,14 @@ class _ExposedRequest(BaseExposedObject):
     def clear(self):
         super(_ExposedRequest, self).clear()
         self.request = None
+
+    def _on_request_required(self, meth, attr_name):
+        raise ScriptError({
+            "message": "request is used outside a callback",
+            "type": ScriptError.SPLASH_LUA_ERROR,
+            "splash_method": None,
+            "response_method": meth.__name__,
+        })
 
     @command()
     @requires_request
@@ -884,7 +1000,12 @@ class _ExposedRequest(BaseExposedObject):
     def set_timeout(self, timeout):
         timeout = float(timeout)
         if timeout < 0:
-            raise ScriptError("request:set_timeout() argument can't be < 0")
+            raise ScriptError({
+                "argument": "timeout",
+                "splash_method": "on_request",
+                "request_method": "set_timeout",
+                "message": "request:set_timeout() argument can't be < 0"
+            })
         self.request.timeout = timeout
 
 
@@ -910,6 +1031,14 @@ class _ExposedResponse(BaseExposedObject):
     def clear(self):
         super(_ExposedResponse, self).clear()
         self.request = None
+
+    def _on_response_required(self, meth, attr_name):
+        raise ScriptError({
+            "message": "response is used outside a callback",
+            "type": ScriptError.SPLASH_LUA_ERROR,
+            "splash_method": None,
+            "response_method": meth.__name__,
+        })
 
 
 class _ExposedBoundResponse(_ExposedResponse):
@@ -971,13 +1100,44 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         ))
 
     def on_lua_error(self, lua_exception):
-        ex = self.splash.get_real_exception()
-        if not ex:
+        py_exception = self.splash.get_real_exception()
+
+        if not py_exception:
             return
-        self.log("[lua] LuaError is caused by %r" % ex)
-        if isinstance(ex, ScriptError):
-            ex.enrich_from_lua_error(lua_exception)
-        raise ex
+
+        py_exception = self._make_script_error(py_exception)
+        self.log("[lua] LuaError is caused by %r" % py_exception)
+
+        if not isinstance(py_exception, ScriptError):
+            # XXX: we only know how to handle ScriptError
+            self.log("[lua] returning Lua error as-is")
+            return
+
+        # Remove internal details from the Lua error message
+        # and add cleaned up information to the error info.
+        py_info = py_exception.args[0]
+        lua_info = parse_error_message(lua_exception.args[0])
+        if isinstance(py_info, dict) and 'message' in py_info:
+            py_info.update(lua_info)
+            py_info['error'] = py_info['message']  # replace Lua error message
+            if 'line_number' in lua_info and 'source' in lua_info:
+                py_info['message'] = "%s:%s: %s" % (
+                    lua_info['source'], lua_info['line_number'],
+                    py_info['error']
+                )
+            else:
+                py_info['message'] = py_info['error']
+
+        raise ScriptError(py_info)
+
+    def _make_script_error(self, ex):
+        if not isinstance(ex, (TypeError, ValueError)):
+            return ex
+
+        return ScriptError({
+            'type': ScriptError.SPLASH_LUA_ERROR,
+            'message': ex.args[0],
+        })
 
 
 class LuaRender(RenderScript):
@@ -1005,8 +1165,28 @@ class LuaRender(RenderScript):
 
         try:
             main_coro = self.get_main_coro(lua_source)
-        except (ValueError, lupa.LuaSyntaxError, lupa.LuaError) as e:
-            raise ScriptError("lua_source: " + repr(e))
+        except lupa.LuaSyntaxError as e:
+            # XXX: is this code active?
+            # It looks like we're always getting LuaError
+            # because of sandbox and coroutine handling code.
+            raise ScriptError({
+                'type': ScriptError.SYNTAX_ERROR,
+                'message': e.args[0],
+            })
+        except lupa.LuaError as e:
+            # Error happened before starting coroutine
+            info = parse_error_message(e.args[0])
+            info.update({
+                "type": ScriptError.LUA_INIT_ERROR,
+                "message": e.args[0],
+            })
+            raise ScriptError(info)
+        # except ValueError as e:
+        #     # XXX: when does it happen?
+        #     raise ScriptError({
+        #         "type": ScriptError.UNKNOWN_ERROR,
+        #         "message": repr(e),
+        #     })
 
         self.runner.start(
             main_coro=main_coro,
