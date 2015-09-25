@@ -154,7 +154,6 @@ remove_builddeps () {
         zlib1g-dev \
         libc-dev \
         libjpeg-turbo8-dev \
-        libpython2.7-minimal \
         libcurl3 \
         gcc cpp binutils perl && \
     apt-get autoremove -y && \
