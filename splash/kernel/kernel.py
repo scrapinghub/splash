@@ -10,9 +10,8 @@ from jupyter_client.kernelspec import install_kernel_spec
 from twisted.internet import defer
 
 import splash
-from splash.lua import get_version, get_main_sandboxed, get_main, parse_lua_error
+from splash.lua import get_version, get_main_sandboxed, get_main
 from splash.browser_tab import BrowserTab
-from splash.lua_runner import ScriptError
 from splash.lua_runtime import SplashLuaRuntime
 from splash.qtrender_lua import Splash, MainCoroutineRunner
 from splash.qtutils import init_qt_app
@@ -24,6 +23,7 @@ from splash.kernel.kernelbase import Kernel
 from splash.utils import BinaryCapsule
 from splash.kernel.completer import Completer
 from splash.kernel.inspections import Inspector
+from splash.kernel.errors import error_repr
 
 
 def install(user=True):
@@ -184,11 +184,8 @@ class SplashKernel(Kernel):
             text = "<unknown error>"
             try:
                 failure.raiseException()
-            except (lupa.LuaSyntaxError, lupa.LuaError, ScriptError) as e:
-                tp, line_num, message = parse_lua_error(e)
-                text = "<%s error> [input]:%s: %s" % (tp, line_num, message)
             except Exception as e:
-                text = repr(e)
+                text = error_repr(e)
             reply = {
                 'status': 'error',
                 'execution_count': self.execution_count,

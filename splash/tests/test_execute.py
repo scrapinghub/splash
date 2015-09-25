@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import re
 from base64 import standard_b64decode
-import json
 import unittest
 from io import BytesIO
 import numbers
@@ -11,6 +11,8 @@ from PIL import Image
 import requests
 import six
 import pytest
+from splash.exceptions import ScriptError
+
 lupa = pytest.importorskip("lupa")
 
 from splash import __version__ as splash_version
@@ -31,9 +33,15 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         q.update(query or {})
         return self.request(q)
 
-    def assertErrorLineNumber(self, resp, linenum):
-        self.assertStatusCode(resp, 400)
-        self.assertIn(":%d:" % linenum, resp.text)
+    def assertScriptError(self, resp, subtype, message=None):
+        err = self.assertJsonError(resp, 400, 'ScriptError')
+        self.assertEqual(err['info']['type'], subtype)
+        if message is not None:
+            self.assertRegexpMatches(err['info']['message'], message)
+        return err
+
+    def assertErrorLineNumber(self, resp, line_number):
+        self.assertEqual(resp.json()['info']['line_number'], line_number)
 
 
 class MainFunctionTest(BaseLuaRenderTest):
@@ -112,18 +120,18 @@ class MainFunctionTest(BaseLuaRenderTest):
 
     def test_no_main(self):
         resp = self.request_lua("x=1")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("function is not found", resp.text)
+        self.assertScriptError(resp, ScriptError.MAIN_NOT_FOUND_ERROR,
+                               message="function is not found")
 
     def test_bad_main(self):
         resp = self.request_lua("main=1")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
+        self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
+                               message="is not a function")
 
     def test_ugly_main(self):
         resp = self.request_lua("main={coroutine=123}")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
+        self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
+                               message="is not a function")
 
     def test_nasty_main(self):
         resp = self.request_lua("""
@@ -134,8 +142,8 @@ class MainFunctionTest(BaseLuaRenderTest):
           }
         end}
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("is not a function", resp.text)
+        self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
+                               message="is not a function")
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):
@@ -168,8 +176,9 @@ class ResultContentTypeTest(BaseLuaRenderTest):
           return "hi!"
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("argument must be a string", resp.text)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='argument must be a string')
+        self.assertEqual(err['info']['splash_method'], 'set_result_content_type')
 
         resp = self.request_lua("""
         function main(splash)
@@ -177,8 +186,7 @@ class ResultContentTypeTest(BaseLuaRenderTest):
           return "hi!"
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("set_result_content_type", resp.text)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_bad_content_type_func(self):
         resp = self.request_lua("""
@@ -187,8 +195,9 @@ class ResultContentTypeTest(BaseLuaRenderTest):
           return "hi!"
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("argument must be a string", resp.text)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='argument must be a string')
+        self.assertEqual(err['info']['splash_method'], 'set_result_content_type')
 
 
 class ResultHeaderTest(BaseLuaRenderTest):
@@ -210,7 +219,9 @@ class ResultHeaderTest(BaseLuaRenderTest):
             return "hi!"
         end
         """)
-        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='arguments must be strings')
+        self.assertEqual(err['info']['splash_method'], 'set_result_header')
         self.assertErrorLineNumber(resp, 3)
 
     def test_unicode_headers_raise_bad_request(self):
@@ -220,34 +231,52 @@ class ResultHeaderTest(BaseLuaRenderTest):
             return "hi!"
         end
         """)
-        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='must be ascii')
+        self.assertEqual(err['info']['splash_method'], 'set_result_header')
         self.assertErrorLineNumber(resp, 3)
-        self.assertIn("must be ascii", resp.text)
 
 
 class ErrorsTest(BaseLuaRenderTest):
 
     def test_syntax_error(self):
         resp = self.request_lua("function main(splash) sdhgfsajhdgfjsahgd end")
-        self.assertStatusCode(resp, 400)
+        # XXX: message='syntax error' is not checked because older Lua 5.2
+        # versions have problems with error messages.
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
 
     def test_syntax_error_toplevel(self):
         resp = self.request_lua("sdg; function main(splash) sdhgfsajhdgfjsahgd end")
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
+        # XXX: message='syntax error' is not checked because older Lua 5.2
+        # versions have problems with error messages.
 
     def test_unicode_error(self):
         resp = self.request_lua(u"function main(splash) 'привет' end")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("unexpected symbol", resp.text)
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR,
+                               message="unexpected symbol")
 
     def test_user_error(self):
-        resp = self.request_lua("""
-        function main(splash)
-          error("User Error Happened")
+        resp = self.request_lua("""     -- 1
+        function main(splash)           -- 2
+          error("User Error Happened")  -- 3  <-
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("User Error Happened", resp.text)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="User Error Happened")
+        self.assertErrorLineNumber(resp, 3)
+
+    @pytest.mark.xfail(reason="not implemented, nice to have")
+    def test_user_error_table(self):
+        resp = self.request_lua("""           -- 1
+        function main(splash)                 -- 2
+          error({tp="user error", msg=123})   -- 3  <-
+        end
+        """)
+        err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
+        self.assertEqual(err['info']['error'],
+                         {'tp': 'user error', 'msg': 123})
+        self.assertErrorLineNumber(resp, 3)
 
     def test_bad_splash_attribute(self):
         resp = self.request_lua("""
@@ -266,12 +295,12 @@ class ErrorsTest(BaseLuaRenderTest):
 
     def test_return_splash(self):
         resp = self.request_lua("function main(splash) return splash end")
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR)
 
     def test_return_function(self):
-        resp = self.request_lua("function main(splash) return function() end end")
-        self.assertStatusCode(resp, 400)
-        self.assertIn("function objects are not allowed", resp.text)
+        resp = self.request_lua("function main(s) return function() end end")
+        self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
+                               message="function objects are not allowed")
 
     def test_return_coroutine(self):
         resp = self.request_lua("""
@@ -279,8 +308,8 @@ class ErrorsTest(BaseLuaRenderTest):
           return coroutine.create(function() end)
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("(a nil value)", resp.text)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="(a nil value)")
 
     def test_return_coroutine_nosandbox(self):
         with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
@@ -294,48 +323,50 @@ class ErrorsTest(BaseLuaRenderTest):
                     """
                 },
             )
-            self.assertStatusCode(resp, 400)
-            self.assertIn("function objects are not allowed", resp.text)
+            self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
+                                   message="function objects are not allowed")
 
     def test_return_started_coroutine(self):
-        resp = self.request_lua("""
-        function main(splash)
-          local co = coroutine.create(function()
-            coroutine.yield()
+        resp = self.request_lua("""               -- 1
+        function main(splash)                     -- 2
+          local co = coroutine.create(function()  -- 3  <-
+            coroutine.yield()                     -- 4
           end)
           coroutine.resume(co)
           return co
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("(a nil value)", resp.text)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="(a nil value)")
+        self.assertErrorLineNumber(resp, 3)
 
     def test_return_started_coroutine_nosandbox(self):
         with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
             resp = requests.get(
                 url=splash.url("execute"),
                 params={
-                    'lua_source': """
-                        function main(splash)
-                          local co = coroutine.create(function()
-                            coroutine.yield()
-                          end)
-                          coroutine.resume(co)
-                          return co
-                        end
+                    'lua_source': """                            -- 1
+                        function main(splash)                    -- 2
+                          local co = coroutine.create(function() -- 3
+                            coroutine.yield()                    -- 4
+                          end)                                   -- 5
+                          coroutine.resume(co)                   -- 6
+                          return co                              -- 7
+                        end                                      -- 8
                     """
                 },
             )
-            self.assertStatusCode(resp, 400)
-            self.assertIn("thread objects are not allowed", resp.text)
+            self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
+                                   message="thread objects are not allowed")
 
     def test_error_line_number_attribute_access(self):
-        resp = self.request_lua("""
-        function main(splash)
-           local x = 5
-           splash.set_result_content_type("hello")
-        end
+        resp = self.request_lua("""                -- 1
+        function main(splash)                      -- 2
+           local x = 5                             -- 3
+           splash.set_result_content_type("hello") -- 4
+        end                                        -- 5
         """)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 4)
 
     def test_error_line_number_bad_argument(self):
@@ -345,14 +376,16 @@ class ErrorsTest(BaseLuaRenderTest):
            splash:set_result_content_type(48)
         end
         """)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 4)
 
     def test_error_line_number_wrong_keyword_argument(self):
-        resp = self.request_lua("""  -- 1
-        function main(splash)        -- 2
-           splash:wait{timeout=0.7}  -- 3 <--
-        end                          -- 4
-        """)                       # -- 5
+        resp = self.request_lua("""                         -- 1
+        function main(splash)                               -- 2
+           splash:set_result_content_type{content_type=48}  -- 3  <--
+        end                                                 -- 4
+        """)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 3)
 
     def test_pcall_wrong_keyword_arguments(self):
@@ -500,13 +533,11 @@ class EvaljsTest(BaseLuaRenderTest):
             expected['res'] = result
         self.assertEqual(resp.json(), expected)
 
-    def assertEvaljsError(self, js, error_parts="JsError"):
+    def assertEvaljsError(self, js, subtype=ScriptError.JS_ERROR, message=None):
         resp = self._evaljs_request(js)
-        self.assertStatusCode(resp, 400)
-        if isinstance(error_parts, (bytes, six.text_type)):
-            error_parts = [error_parts]
-        for part in error_parts:
-            self.assertIn(part, resp.text)
+        err = self.assertScriptError(resp, subtype, message)
+        self.assertEqual(err['info']['splash_method'], 'evaljs')
+        return err
 
     def test_numbers(self):
         self.assertEvaljsResult("1.0", 1.0, "number")
@@ -570,12 +601,16 @@ class EvaljsTest(BaseLuaRenderTest):
             "table"
         )
 
+    def test_function_direct_unwrapped(self):
+        # XXX: this is invaild syntax
+        self.assertEvaljsError("function(){return 5}", message='SyntaxError')
+
     def test_function_direct(self):
-        # XXX: functions are not returned by QT
-        self.assertEvaljsError("function(){return 5}")
+        # XXX: functions are returned as empty tables by QT
+        self.assertEvaljsResult("(function(){return 5})", {}, "table")
 
     def test_object_with_function(self):
-        # XXX: complex objects are unsupported
+        # XXX: complex objects like function values are unsupported
         self.assertEvaljsError('{"x":2, "y": function(){}}')
 
     def test_function_call(self):
@@ -596,26 +631,27 @@ class EvaljsTest(BaseLuaRenderTest):
         )
 
     def test_syntax_error(self):
-        self.assertEvaljsError("x--4", ["JsError", "SyntaxError"])
+        err = self.assertEvaljsError("x--4")
+        self.assertEqual(err['info']['js_error_type'], 'SyntaxError')
 
     def test_throw_string(self):
-        self.assertEvaljsError(
-            "(function(){throw 'ABC'})();",
-            ["JsError", "ABC"],
-        )
-        self.assertEvaljsError("throw 'ABC'", ["JsError", "ABC"])
+        err = self.assertEvaljsError("(function(){throw 'ABC'})();")
+        self.assertEqual(err['info']['js_error_type'], '<custom JS error>')
+        self.assertEqual(err['info']['js_error_message'], 'ABC')
+
+        err = self.assertEvaljsError("throw 'ABC'")
+        self.assertEqual(err['info']['js_error_type'], '<custom JS error>')
+        self.assertEqual(err['info']['js_error_message'], 'ABC')
 
     def test_throw_error(self):
-        self.assertEvaljsError(
-            "(function(){throw new Error('ABC')})();",
-            ["JsError", "ABC"],
-        )
-        self.assertEvaljsError("throw new Error('ABC')", ["JsError", "Error: ABC"])
+        err = self.assertEvaljsError("(function(){throw new Error('ABC')})();")
+        self.assertEqual(err['info']['js_error_type'], 'Error')
+        self.assertEqual(err['info']['js_error_message'], 'ABC')
 
 
 class WaitForResumeTest(BaseLuaRenderTest):
 
-    def _wait_for_resume_request(self, js, timeout=1):
+    def _wait_for_resume_request(self, js, timeout=1.0):
         return self.request_lua("""
         function main(splash)
             local result, error = splash:wait_for_resume([[%s]], %.1f)
@@ -717,7 +753,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            "value": {'stomach':'empty', 'brain':'crazy'},
+            "value": {'stomach': 'empty', 'brain': 'crazy'},
             "value_type": "table"}
         )
 
@@ -777,8 +813,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 500);
             }
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn('no main() function defined', resp.text)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message=r"no main\(\) function defined")
 
     def test_js_syntax_error(self):
         resp = self._wait_for_resume_request("""
@@ -789,8 +825,9 @@ class WaitForResumeTest(BaseLuaRenderTest):
                 }, 500);
             }
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn('SyntaxError', resp.text)
+        # XXX: why is it LUA_ERROR, not JS_ERROR? Should we change that?
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="SyntaxError")
 
     def test_navigation_cancels_resume(self):
         resp = self._wait_for_resume_request("""
@@ -867,9 +904,10 @@ class RunjsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {
-            "err": "SyntaxError: Unexpected token '('",
-        })
+        err = resp.json()['err']
+        self.assertEqual(err['type'], ScriptError.JS_ERROR)
+        self.assertEqual(err['js_error_type'], 'SyntaxError')
+        self.assertEqual(err['splash_method'], 'runjs')
 
     def test_runjs_exception(self):
         resp = self.request_lua("""
@@ -879,9 +917,11 @@ class RunjsTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {
-            "err": "ReferenceError: Can't find variable: y",
-        })
+        err = resp.json()['err']
+        self.assertEqual(err['type'], ScriptError.JS_ERROR)
+        self.assertEqual(err['js_error_type'], 'ReferenceError')
+        self.assertRegexpMatches(err['message'], "Can't find variable")
+        self.assertEqual(err['splash_method'], 'runjs')
 
 
 class JsfuncTest(BaseLuaRenderTest):
@@ -952,11 +992,9 @@ class JsfuncTest(BaseLuaRenderTest):
             return func()
         end
         """)
-        self.assertStatusCode(resp, 400)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'ABC'", resp.text)
-        else:
-            self.assertIn("error during JS function call: u'ABC'", resp.text)
+        err = self.assertScriptError(resp, ScriptError.JS_ERROR)
+        self.assertEqual(err['info']['js_error_message'], 'ABC')
+        self.assertEqual(err['info']['js_error_type'], '<custom JS error>')
 
     def test_throw_pcall(self):
         resp = self.request_lua("""
@@ -981,11 +1019,20 @@ class JsfuncTest(BaseLuaRenderTest):
             return func()
         end
         """)
-        self.assertStatusCode(resp, 400)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'Error: ABC'", resp.text)
-        else:
-            self.assertIn("error during JS function call: u'Error: ABC'", resp.text)
+        err = self.assertScriptError(resp, ScriptError.JS_ERROR)
+        self.assertEqual(err['info']['js_error_message'], 'ABC')
+        self.assertEqual(err['info']['js_error_type'], 'Error')
+
+    def test_throw_error_empty(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local func = splash:jsfunc("function(){throw new Error()}")
+            return func()
+        end
+        """)
+        err = self.assertScriptError(resp, ScriptError.JS_ERROR)
+        self.assertEqual(err['info']['js_error_message'], '')
+        self.assertEqual(err['info']['js_error_type'], 'Error')
 
     def test_throw_error_pcall(self):
         resp = self.request_lua("""
@@ -1010,9 +1057,8 @@ class JsfuncTest(BaseLuaRenderTest):
             return func()
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call", resp.text)
-        self.assertIn("SyntaxError", resp.text)
+        err = self.assertScriptError(resp, ScriptError.JS_ERROR)
+        self.assertEqual(err['info']['js_error_type'], 'SyntaxError')
 
     def test_js_syntax_error_brace(self):
         resp = self.request_lua("""
@@ -1021,9 +1067,8 @@ class JsfuncTest(BaseLuaRenderTest):
             return func()
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("error during JS function call", resp.text)
-        self.assertIn("SyntaxError", resp.text)
+        err = self.assertScriptError(resp, ScriptError.JS_ERROR)
+        self.assertEqual(err['info']['js_error_type'], 'SyntaxError')
 
     def test_array_result(self):
         self.assertJsfuncResult(
@@ -1063,13 +1108,15 @@ class JsfuncTest(BaseLuaRenderTest):
         )
 
     def test_jsfunc_attributes(self):
-        resp = self.request_lua("""
-        function main(splash)
-            local func = splash:jsfunc("function(){return 123}")
-            return func.source
+        resp = self.request_lua("""                                 -- 1
+        function main(splash)                                       -- 2
+            local func = splash:jsfunc("function(){return 123}")    -- 3
+            return func.source                                      -- 4  <-
         end
         """)
-        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                                     message="attempt to index")
+        self.assertEqual(err['info']['line_number'], 4)
 
     def test_private_jsfunc_not_available(self):
         resp = self.request_lua("""
@@ -1081,13 +1128,14 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertEqual(resp.json()[u'ok'], True)
 
     def test_private_jsfunc_attributes(self):
-        resp = self.request_lua("""
-        function main(splash)
-            local func = splash:private_jsfunc("function(){return 123}")
-            return func.source
+        resp = self.request_lua("""                                      -- 1
+        function main(splash)                                            -- 2
+            local func = splash:private_jsfunc("function(){return 123}") -- 3 <-
+            return func.source                                           -- 4
         end
         """)
-        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
+        self.assertEqual(err['info']['line_number'], 3)
 
 
 class WaitTest(BaseLuaRenderTest):
@@ -1116,7 +1164,8 @@ class WaitTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
 
         resp = self.wait("(1)", {"timeout": 0.1})
-        self.assertStatusCode(resp, 504)
+        err = self.assertJsonError(resp, 504, "GlobalTimeoutError")
+        self.assertEqual(err['info']['timeout'], 0.1)
 
     def test_wait_success(self):
         resp = self.wait("(0.01)")
@@ -1175,11 +1224,11 @@ class WaitTest(BaseLuaRenderTest):
 
     def test_wait_badarg(self):
         resp = self.wait('{time="sdf"}')
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_wait_badarg2(self):
         resp = self.wait('{time="sdf"}')
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_wait_good_string(self):
         resp = self.wait('{time="0.01"}')
@@ -1188,19 +1237,19 @@ class WaitTest(BaseLuaRenderTest):
 
     def test_wait_noargs(self):
         resp = self.wait('()')
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_wait_time_missing(self):
         resp = self.wait('{cancel_on_redirect=false}')
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_wait_unknown_args(self):
         resp = self.wait('{ttime=0.5}')
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_wait_negative(self):
         resp = self.wait('(-0.2)')
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
 
 class ArgsTest(BaseLuaRenderTest):
@@ -1236,8 +1285,8 @@ class ArgsTest(BaseLuaRenderTest):
     def test_filters_validation(self):
         # 'global' known arguments are still validated
         resp = self.args_request({"filters": 'foo,bar'})
-        self.assertStatusCode(resp, 400)
-        self.assertIn("Invalid filter names", resp.text)
+        err = self.assertJsonError(resp, 400, "BadOption")
+        self.assertEqual(err['info']['argument'], 'filters')
 
 
 class JsonPostUnicodeTest(BaseLuaRenderTest):
@@ -1343,11 +1392,13 @@ class GoTest(BaseLuaRenderTest):
 
     def test_nourl(self):
         resp = self.request_lua("function main(splash) splash:go() end")
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_nourl_args(self):
         resp = self.request_lua("function main(splash) splash:go(splash.args.url) end")
-        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message="required")
+        self.assertEqual(err['info']['argument'], 'url')
 
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
     def test_go_error(self):
@@ -1509,8 +1560,8 @@ class ResourceTimeoutTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
         end
         """, {"url": self.mockurl("slow.gif?n=4")})
-        self.assertStatusCode(resp, 400)
-        self.assertIn('render_error', resp.json()['message'])
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message='render_error')
 
     def test_resource_timeout_attribute_priority(self):
         # set_timeout should take a priority
@@ -1559,8 +1610,9 @@ class ResourceTimeoutTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
         end
         """, {"url": self.mockurl("slow.gif?n=1")})
-        self.assertStatusCode(resp, 400)
-        self.assertIn('splash.resource_timeout', resp.json()['message'])
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='splash.resource_timeout')
+        self.assertEqual(err['info']['line_number'], 3)
 
 
 class ResultStatusCodeTest(BaseLuaRenderTest):
@@ -1583,8 +1635,9 @@ class ResultStatusCodeTest(BaseLuaRenderTest):
                 return "hello"
             end
             """, {'code': code})
-            self.assertStatusCode(resp, 400)
-            self.assertIn('splash:set_result_status_code() argument must be', resp.text)
+            err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+            self.assertEqual(err['info']['splash_method'],
+                             'set_result_status_code')
 
 
 class SetUserAgentTest(BaseLuaRenderTest):
@@ -1619,6 +1672,13 @@ class SetUserAgentTest(BaseLuaRenderTest):
             self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
             self.assertIn("'user-agent': 'Foozilla'", data["res2"])
             self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+
+    def test_error(self):
+        resp = self.request_lua("""
+        function main(splash) splash:set_user_agent(123) end
+        """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertEqual(err['info']['splash_method'], 'set_user_agent')
 
 
 class CookiesTest(BaseLuaRenderTest):
@@ -1806,13 +1866,13 @@ class DisableScriptsTest(BaseLuaRenderTest):
 
 class SandboxTest(BaseLuaRenderTest):
 
-    def assertTooMuchCPU(self, resp):
-        self.assertStatusCode(resp, 400)
-        self.assertIn("script uses too much CPU", resp.text)
+    def assertTooMuchCPU(self, resp, subtype=ScriptError.LUA_ERROR):
+        return self.assertScriptError(resp, subtype,
+                                      message="script uses too much CPU")
 
-    def assertTooMuchMemory(self, resp):
-        self.assertStatusCode(resp, 400)
-        self.assertIn("script uses too much memory", resp.text)
+    def assertTooMuchMemory(self, resp, subtype=ScriptError.LUA_ERROR):
+        return self.assertScriptError(resp, subtype,
+                                      message="script uses too much memory")
 
     def test_sandbox_string_function(self):
         resp = self.request_lua("""
@@ -1820,9 +1880,9 @@ class SandboxTest(BaseLuaRenderTest):
             return string.rep("x", 10000)
         end
         """)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="nil value")
         self.assertErrorLineNumber(resp, 3)
-        self.assertIn("rep", resp.text)
-        self.assertIn("(a nil value)", resp.text)
 
     def test_sandbox_string_method(self):
         resp = self.request_lua("""
@@ -1830,8 +1890,9 @@ class SandboxTest(BaseLuaRenderTest):
             return ("x"):rep(10000)
         end
         """)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="attempt to index constant")
         self.assertErrorLineNumber(resp, 3)
-        self.assertIn("attempt to index constant", resp.text)
 
     # TODO: strings should use a sandboxed string module as a metatable
     @pytest.mark.xfail
@@ -1866,7 +1927,7 @@ class SandboxTest(BaseLuaRenderTest):
             return 5
         end
         """)
-        self.assertTooMuchCPU(resp)
+        self.assertTooMuchCPU(resp, ScriptError.LUA_INIT_ERROR)
 
     def test_infinite_loop_memory(self):
         resp = self.request_lua("""
@@ -1878,8 +1939,9 @@ class SandboxTest(BaseLuaRenderTest):
             return t
         end
         """)
-        self.assertStatusCode(resp, 400)
-        self.assertIn("too much", resp.text)  # it can be either memory or CPU
+        # it can be either memory or CPU
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="too much")
 
     def test_memory_attack(self):
         resp = self.request_lua("""
@@ -1903,7 +1965,7 @@ class SandboxTest(BaseLuaRenderTest):
             return s
         end
         """)
-        self.assertTooMuchMemory(resp)
+        self.assertTooMuchMemory(resp, ScriptError.LUA_INIT_ERROR)
 
     def test_billion_laughs(self):
         resp = self.request_lua("""
@@ -1923,7 +1985,7 @@ class SandboxTest(BaseLuaRenderTest):
         s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s s = s .. s
         function main() end
         """)
-        self.assertTooMuchMemory(resp)
+        self.assertTooMuchMemory(resp, ScriptError.LUA_INIT_ERROR)
 
     def test_disable_sandbox(self):
         # dofile function should be always sandboxed
@@ -1977,8 +2039,8 @@ class RequireTest(BaseLuaRenderTest):
             return splash:get_document_title()
         end
         """ % dict(set_title=self._set_title("TEST")))
-        self.assertStatusCode(resp, 400)
-        self.assertIn("get_document_title", resp.text)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="get_document_title")
         self.assertNoRequirePathsLeaked(resp)
 
     def test_require_unsafe(self):
@@ -1986,6 +2048,7 @@ class RequireTest(BaseLuaRenderTest):
         local Splash = require("splash")
         function main(splash) return "hello" end
         """)
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
         self.assertErrorLineNumber(resp, 2)
         self.assertNoRequirePathsLeaked(resp)
 
@@ -1995,6 +2058,7 @@ class RequireTest(BaseLuaRenderTest):
         local secret = require("secret")
         function main(splash) return "hello" end
         """)
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
         self.assertErrorLineNumber(resp, 3)
         self.assertNoRequirePathsLeaked(resp)
 
@@ -2003,6 +2067,7 @@ class RequireTest(BaseLuaRenderTest):
         local foobar = require("foobar")
         function main(splash) return "hello" end
         """)
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
         self.assertNoRequirePathsLeaked(resp)
         self.assertErrorLineNumber(resp, 2)
 
@@ -2011,6 +2076,7 @@ class RequireTest(BaseLuaRenderTest):
         local non_existing = require("non_existing")
         function main(splash) return "hello" end
         """)
+        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
         self.assertNoRequirePathsLeaked(resp)
         self.assertErrorLineNumber(resp, 2)
 
@@ -2179,7 +2245,8 @@ class AutoloadTest(BaseLuaRenderTest):
             splash:autoload()
         end
         """)
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 3)
 
     def test_autoload_reset(self):
         resp = self.request_lua("""
@@ -2270,7 +2337,7 @@ class HttpGetTest(BaseLuaRenderTest):
             splash:http_get()
         end
         """)
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
 
 class NavigationLockingTest(BaseLuaRenderTest):
@@ -2480,38 +2547,27 @@ end
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(1, nil)', 'TypeError.*a number is required', None),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(nil, 1)', 'TypeError.*a number is required', None),
-            ('{nil, 1}', 'TypeError.*a number is required', None),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
-             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('()', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(1)', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(1, nil)', 'a number is required'),
+            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('(nil, 1)', 'a number is required'),
+            ('{nil, 1}', 'a number is required'),
+            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'TypeError.*a number is required', None),
-            ('{100, {}}', 'TypeError.*a number is required', None),
+            ('{100, "a"}', 'a number is required'),
+            ('{100, {}}', 'a number is required'),
 
             ('{100, -1}', 'Viewport is out of range', None),
             ('{100, 0}', 'Viewport is out of range', None),

@@ -26,7 +26,7 @@ class Base:
         @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
         def test_render_error(self):
             r = self.request({"url": "http://non-existent-host/"})
-            self.assertStatusCode(r, 400)
+            err = self.assertJsonError(r, 400)
 
         def test_self(self):
             # make sure mixin order is correct
@@ -51,7 +51,7 @@ class EmulatedJsRedirectTest(Base.EmulationMixin, test_redirects.JsRedirectTest)
             "url": self.mockurl("jsredirect-non-existing"),
             "wait": 2.,
         })
-        self.assertStatusCode(r, 400)
+        self.assertJsonError(r, 400)
 
 
 class EmulatedMetaRedirectTest(Base.EmulationMixin, test_redirects.MetaRedirectTest):

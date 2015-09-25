@@ -167,7 +167,7 @@ def path_join_secure(base, *paths):
     return path
 
 
-def requires_attr(attr_name, error_msg):
+def requires_attr(attr_name, raiser):
     """
     Methods wrapped in this decorator raise an error if a required
     attribute is not set.
@@ -176,7 +176,7 @@ def requires_attr(attr_name, error_msg):
         @functools.wraps(meth)
         def wrapper(self, *args, **kwargs):
             if getattr(self, attr_name, None) is None:
-                raise ValueError(error_msg)
+                raiser(self, meth, attr_name)
             return meth(self, *args, **kwargs)
         return wrapper
     return decorator
