@@ -245,32 +245,7 @@ def python2lua(lua, obj, max_depth=100):
     return obj
 
 
-_SYNTAX_ERROR_RE = re.compile('^error loading code: \[string "<python>"\]:(\d+):(.+)')
-_RUNTIME_ERROR_RE = re.compile('^unhandled Lua error: \[string "<python>"\]:(\d+):(.+)')
-_RERAISED_JS_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+JsError\(u?[\'"](.+)[\'"],\)$')
-_RERAISED_SCRIPT_ERROR_RE = re.compile('^\[string "<python>"\]:(\d+):.+Error\(u?[\'"](.+)[\'"],\)$')
-
-def parse_wrapped_lua_error(e):
-    full_msg = str(e)
-    error_type = "syntax"
-    m = _SYNTAX_ERROR_RE.match(full_msg)
-    if not m:
-        error_type = "runtime"
-        m = _RUNTIME_ERROR_RE.match(full_msg)
-    if not m:
-        error_type = "js"
-        m = _RERAISED_JS_ERROR_RE.match(full_msg)
-    if not m:
-        error_type = "runtime"
-        m = _RERAISED_SCRIPT_ERROR_RE.match(full_msg)
-    if not m:
-        return "unknown", -1, full_msg
-    line_num = int(m.group(1))
-    error = m.group(2)
-    return error_type, line_num, error.strip()
-
-
-
+_SYNTAX_ERROR_RE = re.compile(r'^error loading code: (\[string ".*?"\]):(\d+):\s+(.+)$')
 _LUA_ERROR_RE = re.compile(r'^(\[string\s+".*?"\]):(\d+):\s+(.*)$')
 
 def parse_error_message(error_text):
@@ -280,20 +255,35 @@ def parse_error_message(error_text):
 
     This function is not reliable because error text is ambiguous.
 
-    >>> info = parse_error_message('[string "function main(splash)\r..."]:2: /app/splash.lua:81: ValueError(\'could not convert string to float: sdf\'')
-    >>> print(info['line_number'])
-    2
-    >>> print(repr(info['source']))
-    '[string "function main(splash)\r..."]'
-    >>> print(info['error'])
-    /app/splash.lua:81: ValueError('could not convert string to float: sdf'
+    Parse runtime error messages::
 
-    >>> parse_error_message('dfsadf')
-    {}
+        >>> info = parse_error_message('[string "function main(splash)\r..."]:2: /app/splash.lua:81: ValueError(\'could not convert string to float: sdf\'')
+        >>> print(info['line_number'])
+        2
+        >>> print(repr(info['source']))
+        '[string "function main(splash)\r..."]'
+        >>> print(info['error'])
+        /app/splash.lua:81: ValueError('could not convert string to float: sdf'
+
+        >>> parse_error_message('dfsadf')
+        {}
+
+    Parse syntax errors::
+
+        >>> info = parse_error_message("error loading code: [string \"<python>\"]:1: syntax error near 'ction'")
+        >>> info['line_number']
+        1
+        >>> print(info['error'])
+        syntax error near 'ction'
+
     """
     m = _LUA_ERROR_RE.match(error_text)
     if not m:
+        m = _SYNTAX_ERROR_RE.match(error_text)
+
+    if not m:
         return {}
+
     return {
         'source': m.group(1),
         'line_number': int(m.group(2)),
