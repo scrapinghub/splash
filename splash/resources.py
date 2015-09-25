@@ -18,13 +18,17 @@ from twisted.python import log
 
 import splash
 from splash.qtrender import (
-    HtmlRender, PngRender, JsonRender, HarRender, RenderError, JpegRender
+    HtmlRender, PngRender, JsonRender, HarRender, JpegRender
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
 from splash import sentry
-from splash.render_options import RenderOptions, BadOption
+from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
+from splash.exceptions import (
+    BadOption, RenderError, InternalError,
+    GlobalTimeoutError, UnsupportedContentType,
+)
 
 if lua_is_supported():
     from splash.qtrender_lua import LuaRender
@@ -37,7 +41,7 @@ class _ValidatingResource(Resource):
         try:
             return Resource.render(self, request)
         except BadOption as e:
-            return self._write_error(request, 400, str(e))
+            return self._write_error(request, 400, e)
 
     def _write_error_content(self, request, code, content, content_type='text/plain'):
         request.setHeader("content-type", content_type)
@@ -45,12 +49,21 @@ class _ValidatingResource(Resource):
         request.write(content)
         return "\n"
 
-    def _write_error(self, request, code, message):
+    def _write_error(self, request, code, exc):
         """Can be overridden by subclasses format errors differently"""
-        return self._write_error_content(request, code, json.dumps({
+        err = {
             "error": code,
-            "message": message,
-        }), content_type="application/json")
+            "type": exc.__class__.__name__,
+            "description": (exc.__doc__ or '').strip(),
+            "info": None,
+        }
+        if len(exc.args) == 1:
+            err['info'] = exc.args[0]
+        elif len(exc.args) > 1:
+            err['info'] = exc.args
+
+        return self._write_error_content(request, code, json.dumps(err),
+                                         content_type="application/json")
 
 
 class BaseRenderResource(_ValidatingResource):
@@ -81,7 +94,7 @@ class BaseRenderResource(_ValidatingResource):
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
         pool_d.addCallback(self._cancel_timer, timer)
         pool_d.addCallback(self._write_output, request, options=render_options.data)
-        pool_d.addErrback(self._on_timeout_error, request)
+        pool_d.addErrback(self._on_timeout_error, request, timeout=timeout)
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
@@ -96,8 +109,13 @@ class BaseRenderResource(_ValidatingResource):
             return self.render_GET(request)
 
         content_type = request.getHeader('content-type')
-        if not any(ct in content_type for ct in ['application/javascript', 'application/json']):
-            return self._write_error(request, 415, "Request content-type not supported")
+        supported_types = ['application/javascript', 'application/json']
+        if not any(ct in content_type for ct in supported_types):
+            ex = UnsupportedContentType({
+                'supported': supported_types,
+                'received': content_type,
+            })
+            return self._write_error(request, 415, ex)
 
         return self.render_GET(request)
 
@@ -154,22 +172,25 @@ class BaseRenderResource(_ValidatingResource):
         }
         log.msg(json.dumps(msg), system="events")
 
-    def _on_timeout_error(self, failure, request):
+    def _on_timeout_error(self, failure, request, timeout=None):
         failure.trap(defer.CancelledError)
-        return self._write_error(request, 504, "Timeout exceeded rendering page")
+        ex = GlobalTimeoutError({'timeout': timeout})
+        return self._write_error(request, 504, ex)
 
     def _on_render_error(self, failure, request):
         failure.trap(RenderError)
-        return self._write_error(request, 502, "Error rendering page")
+        return self._write_error(request, 502, failure.value)
 
     def _on_internal_error(self, failure, request):
         log.err()
         sentry.capture(failure)
-        return self._write_error(request, 500, failure.getErrorMessage())
+        # only propagate str value to avoid exposing internal details
+        ex = InternalError(str(failure.value))
+        return self._write_error(request, 500, ex)
 
     def _on_bad_request(self, failure, request):
         failure.trap(BadOption)
-        return self._write_error(request, 400, str(failure.value))
+        return self._write_error(request, 400, failure.value)
 
     def _finish_request(self, _, request):
         if not request._disconnected:
@@ -362,9 +383,10 @@ class DemoUI(_ValidatingResource):
         if not url.lower().startswith('http'):
             url = 'http://' + url
         url = url.encode('utf8')
-        params = {k:v for k,v in params.items() if v is not None}
+        params = {k: v for k, v in params.items() if v is not None}
 
-        request.addCookie('phaseInterval', 120000)  # disable "phases" HAR Viewer feature
+        # disable "phases" HAR Viewer feature
+        request.addCookie('phaseInterval', 120000)
 
         LUA_EDITOR = """
           <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
@@ -475,6 +497,14 @@ class DemoUI(_ValidatingResource):
                     <textarea style="width: 100%%;" rows=15 id="renderedHTML"></textarea>
                     <br>
                 </div>
+
+                <div id="errorMessage" style="display:none">
+                    <h4>HTTP Error <span id='errorStatus'></span></h4>
+                    <h4>Type: <span id='errorType'></span></h4>
+                    <p id='errorDescription' class="errorMessage"></p>
+                    <p id='errorMessageText' class="errorMessage"></p>
+                    <pre id='errorData'></pre>
+                </div>
             </div>
 
             <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
@@ -554,33 +584,58 @@ class DemoUI(_ValidatingResource):
                     "type": "POST",
                     "data": JSON.stringify(params)
                 }).done(function(data){
+                    if (!data){
+                        $("#status").text("Empty result");
+                        return;
+                    }
+
                     var har = data['har'];
                     var png = data['png'];
+                    var jpeg = data['jpeg'];
                     var html = data['html'];
 
-                    viewer.appendPreview(har);
+                    if (har){
+                        viewer.appendPreview(har);
+                    }
                     $("#status").text("Building UI..");
-
-                    $(".pagePreview img").attr("src", "data:image/png;base64,"+png);
-
+                    if (png) {
+                        $(".pagePreview img").attr("src", "data:image/png;base64," + png);
+                    }
+                    if (jpeg) {
+                        $(".pagePreview img").attr("src", "data:image/jpeg;base64," + jpeg);
+                    }
                     $("#renderedHTML").val(html);
                     $(".pagePreview").show();
-                }).fail(function(data){
+                    $("#status").text("Success");
+                }).fail(function(xhr, status, err){
+                    $("#errorStatus").text(xhr.status + " (" + err + ")");
+                    var err = xhr.responseJSON;
+                    var resp = JSON.stringify(err, null, 4);
+                    $("#errorData").text(resp);
+                    $("#errorMessage").show();
                     $("#status").text("Error occured");
+                    $("#errorMessageText").text(err['info']['message']);
+                    $("#errorDescription").text(err['description']);
+
+                    var errType = err['type'];
+                    if (err['info']['type']){
+                        errType += ' -> ' + err['info']['type'];
+                    }
+                    $("#errorType").text(errType);
                 });
             });
             </script>
         </body>
         </html>
         """ % dict(
-            version = splash.__version__,
-            params = json.dumps(params),
-            url = url,
-            theme = BOOTSTRAP_THEME,
-            cm_options = CODEMIRROR_OPTIONS,
-            cm_resources = CODEMIRROR_RESOURCES if self.lua_enabled else "",
-            endpoint = "execute" if self.lua_enabled else "render.json",
-            lua_editor = LUA_EDITOR if self.lua_enabled else "",
+            version=splash.__version__,
+            params=json.dumps(params),
+            url=url,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES if self.lua_enabled else "",
+            endpoint="execute" if self.lua_enabled else "render.json",
+            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )
 
 
@@ -649,6 +704,7 @@ end
 """.strip()
 
     def render_GET(self, request):
+        """ Index page """
         LUA_EDITOR = """
         <div class="input-group col-lg-10">
           <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
@@ -735,10 +791,10 @@ end
             </div>
         </body>
         </html>""" % dict(
-            version = splash.__version__,
-            theme = BOOTSTRAP_THEME,
-            cm_options = CODEMIRROR_OPTIONS,
-            cm_resources = CODEMIRROR_RESOURCES,
-            lua_editor = LUA_EDITOR if self.lua_enabled else "",
+            version=splash.__version__,
+            theme=BOOTSTRAP_THEME,
+            cm_options=CODEMIRROR_OPTIONS,
+            cm_resources=CODEMIRROR_RESOURCES,
+            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )
         return result.encode('utf8')

@@ -120,25 +120,25 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
     def test_insecure(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': '../this-is-not-a-proxy-profile'})
-        self.assertStatusCode(r, 400)
-        self.assertEqual(r.json(), {
-            "message": ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG,
-            "error": 400,
-        })
+        data = self.assertJsonError(r, 400, 'BadOption')
+        self.assertEqual(
+            data['info']['description'],
+            ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG
+        )
 
     def test_nonexisting(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'nonexisting'})
-        self.assertStatusCode(r, 400)
-        self.assertEqual(r.json(), {
-            "message": ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG,
-            "error": 400,
-        })
+        data = self.assertJsonError(r, 400, 'BadOption')
+        self.assertEqual(
+            data['info']['description'],
+            ProfilesSplashProxyFactory.NO_PROXY_PROFILE_MSG
+        )
 
     def test_no_proxy_settings(self):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'no-proxy-settings'})
-        self.assertStatusCode(r, 400)
+        self.assertJsonError(r, 400, 'BadOption')
 
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
@@ -212,5 +212,21 @@ class ProxyInParameterTest(BaseHtmlProxyTest):
         r1 = self.request({'url': self.mockurl('jsrender')})
         self.assertNotProxied(r1.text)
 
-        r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port})
+        r2 = self.request({
+            'url': self.mockurl('jsrender'),
+            'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port
+        })
         self.assertProxied(r2.text)
+
+    def test_proxy_post(self):
+        r1 = self.request({'url': self.mockurl('jspost'), 'wait': '0.1'})
+        self.assertNotProxied(r1.text)
+        self.assertIn('application/x-www-form-urlencoded', r1.text)
+
+        r2 = self.request({
+            'url': self.mockurl('jspost'),
+            'wait': '0.1',
+            'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port
+        })
+        self.assertProxied(r2.text)
+        self.assertIn('application/x-www-form-urlencoded', r2.text)

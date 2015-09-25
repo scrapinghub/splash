@@ -6,6 +6,7 @@ from io import BytesIO
 
 import pytest
 from PIL import Image
+from splash.exceptions import ScriptError
 
 from splash.tests.test_proxy import BaseHtmlProxyTest
 from .test_execute import BaseLuaRenderTest
@@ -100,6 +101,33 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertNotProxied(html_1)
         self.assertProxied(html_2)
 
+    def test_set_proxy_twice(self):
+        proxy_port = self.ts.mock_proxy_port
+        resp = self.request_lua("""
+        function main(splash)
+            local first = true
+            splash:on_request(function(request)
+                if first then
+                    request:set_proxy{
+                        host="0.0.0.0",
+                        port=splash.args.proxy_port
+                    }
+                    first = false
+                end
+            end)
+            assert(splash:go(splash.args.url))
+            local html_1 = splash:html()
+
+            assert(splash:go(splash.args.url))
+            local html_2 = splash:html()
+            return html_1, html_2
+        end
+        """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        self.assertStatusCode(resp, 200)
+        html_1, html_2 = resp.json()
+        self.assertProxied(html_1)
+        self.assertNotProxied(html_2)
+
     def test_request_outside_callback(self):
         resp = self.request_lua("""
         function main(splash)
@@ -112,9 +140,24 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             return "ok"
         end
         """, {'url': self.mockurl("jsrender")})
-        self.assertStatusCode(resp, 400)
         self.assertErrorLineNumber(resp, 8)
-        self.assertIn("request is used outside a callback", resp.content)
+
+    @pytest.mark.xfail(
+        reason="error messages are poor for objects created in callbacks")
+    def test_request_outside_callback_error_type(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local req = nil
+            splash:on_request(function(request)
+                req = request
+            end)
+            assert(splash:go(splash.args.url))
+            req:abort()
+            return "ok"
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               message="request is used outside a callback")
 
     def test_set_header(self):
         resp = self.request_lua("""
@@ -201,6 +244,23 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 400)
         self.assertIn("response is used outside a callback", resp.text)
+
+    @pytest.mark.xfail(
+        reason="error messages are poor for objects created in callbacks")
+    def test_response_used_outside_callback_error_type(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res = nil
+            splash:on_response_headers(function(response)
+                res = response
+            end)
+            splash:http_get(splash.args.url)
+            res:abort()
+            return "ok"
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               message="response is used outside a callback")
 
     def test_get_headers(self):
         headers = {
@@ -292,6 +352,9 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
                 splash:on_response_headers(%s)
             end
             """ % arg)
+            # FIXME: it is LUA_ERROR, not a SPLASH_LUA_ERROR because
+            # an error is raised by a Lua wrapper.
+            self.assertScriptError(resp, ScriptError.LUA_ERROR)
             self.assertErrorLineNumber(resp, 3)
 
     def test_on_response_headers_reset(self):
@@ -415,6 +478,9 @@ class OnResponseTest(BaseLuaRenderTest):
                 splash:on_response(%s)
             end
             """ % arg)
+            # FIXME: it is LUA_ERROR, not a SPLASH_LUA_ERROR because
+            # an error is raised by a Lua wrapper.
+            self.assertScriptError(resp, ScriptError.LUA_ERROR)
             self.assertErrorLineNumber(resp, 3)
 
     def test_on_response_reset(self):
@@ -467,14 +533,18 @@ class CallLaterTest(BaseLuaRenderTest):
             splash:call_later(function() x = 2 end, -1)
         end
         """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 3)
+        self.assertEqual(err['info']['splash_method'], 'call_later')
 
         resp = self.request_lua("""
         function main(splash)
             splash:call_later(function() x = 2 end, 'foo')
         end
         """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 3)
+        self.assertEqual(err['info']['splash_method'], 'call_later')
 
     def test_bad_callback(self):
         resp = self.request_lua("""
@@ -482,7 +552,9 @@ class CallLaterTest(BaseLuaRenderTest):
             splash:call_later(5, 1.0)
         end
         """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 3)
+        self.assertEqual(err['info']['splash_method'], 'call_later')
 
     def test_attributes_not_exposed(self):
         resp = self.request_lua("""
@@ -594,7 +666,10 @@ class CallLaterTest(BaseLuaRenderTest):
             return "ok"
         end
         """)
-        self.assertErrorLineNumber(resp, 4)
+        err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
+        self.assertErrorLineNumber(resp, 7)
+        # FIXME: errors are poor for objects other than 'splash'.
+        self.assertNotIn("ScriptError({", err['info']['message'])
 
     def test_error_unhandled_no_reraise(self):
         resp = self.request_lua("""
