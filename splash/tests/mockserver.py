@@ -213,7 +213,7 @@ class SetCookie(Resource):
             </body></html>
             """ % next_url).encode('utf-8')
         else:
-            return "ok"
+            return b"ok"
 
 
 class GetCookie(Resource):
@@ -222,7 +222,8 @@ class GetCookie(Resource):
 
     @use_chunked_encoding
     def render_GET(self, request):
-        value = request.getCookie(getarg(request, b"key").encode('utf-8')) or b""
+        key = getarg(request, b"key").encode('utf-8')
+        value = request.getCookie(key) or b""
         return value
 
 
