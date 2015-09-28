@@ -223,7 +223,7 @@ class SplashGoTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
-        self.assertIn('Unsupported HTTP method BAD', resp.text)
+        self.assertIn('Unsupported HTTP method: BAD', resp.text)
 
     def test_formdata_and_body_error(self):
         resp = self.request_lua("""
@@ -2467,7 +2467,7 @@ class HttpPostTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl("postrequest")})
         self.assertStatusCode(resp, 400)
-        self.assertIn("body argument for http_post must be string", resp.text)
+        self.assertIn("body argument for splash:http_post() must be string", resp.text)
 
     def test_post_without_body(self):
         resp = self.request_lua("""

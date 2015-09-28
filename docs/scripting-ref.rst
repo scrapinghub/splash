@@ -840,7 +840,7 @@ To load a webpage to the browser use :ref:`splash-go`.
 .. _splash-http-post:
 
 splash:http_post
----------------
+----------------
 
 Send an HTTP POST request and return a response without loading
 the result to the browser window.

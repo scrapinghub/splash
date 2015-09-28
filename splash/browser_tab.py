@@ -532,7 +532,7 @@ class BrowserTab(QObject):
         self.http_client.post(url,
                               callback=callback,
                               headers=headers,
-                              follow_redirects=True,
+                              follow_redirects=follow_redirects,
                               body=body)
 
     def evaljs(self, js_source, handle_errors=True):
