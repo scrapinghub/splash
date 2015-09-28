@@ -160,14 +160,14 @@ class RenderOptions(object):
     def get_http_method(self):
         method = self.get("http_method", "GET")
         if method.upper() not in ["POST", "GET"]:
-            raise BadOption("Unsupported HTTP method {}".format(method))
+            self.raise_error("http_method", "Unsupported HTTP method {}".format(method))
         return method
 
     def get_body(self):
         body = self.get("body", None)
         method = self.get("http_method", "GET").upper()
         if method == 'GET' and body:
-            raise BadOption("GET request should not have a body")
+            self.raise_error("body", "GET request should not have a body")
         return body
 
     def get_render_all(self, wait=None):
