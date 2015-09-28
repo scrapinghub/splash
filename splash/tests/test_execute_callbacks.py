@@ -206,6 +206,20 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, '1')
 
+    def test_errors_in_callbacks_ignored(self):
+        # TODO: check that error is logged
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(req)
+                error("hello{world}")
+            end)
+            splash:go(splash.args.url)
+            return "ok"
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'ok')
+
 
 class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_get_header(self):
