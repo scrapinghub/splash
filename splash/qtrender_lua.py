@@ -461,7 +461,6 @@ class Splash(BaseExposedObject):
                                    "message": "formdata argument for go() must be Lua table"})
 
         elif body:
-            body = self.lua.lua2python(body, max_depth=3)
             if not isinstance(body, basestring):
                 raise ScriptError({"argument": "body",
                                    "message": "request body must be string"})
@@ -617,7 +616,6 @@ class Splash(BaseExposedObject):
         :param body: string with body to be sent in request
         :return: AysncBrowserCommand http_post
         """
-        body = self.lua.lua2python(body, max_depth=3)
         if body and not isinstance(body, basestring):
             raise ScriptError({"argument": "body",
                                "message": "body argument for splash:http_post() must be string"})
