@@ -304,7 +304,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 # should we raise errors here?
                 # https://github.com/scrapinghub/splash/issues/161
                 self.log("error in %s callback" % event_name, min_level=1)
-                self.log(traceback.format_exc(), min_level=1)
+                # Log the traceback. It requires escaping because
+                # self.log uses str.format.
+                tb = traceback.format_exc().replace('{', '{{').replace('}', '}}')
+                self.log(tb, min_level=1)
 
     def log(self, msg, reply=None, min_level=2):
         if self.verbosity < min_level:
