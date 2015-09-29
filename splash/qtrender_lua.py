@@ -6,6 +6,7 @@ import resource
 import contextlib
 import time
 import sys
+from urllib import urlencode
 import twisted
 
 from PyQt4.QtCore import QTimer
@@ -34,7 +35,6 @@ from splash.exceptions import ScriptError
 
 
 class AsyncBrowserCommand(AsyncCommand):
-
     def __repr__(self):
         kwargs = self.kwargs.copy()
         if 'callback' in kwargs:
@@ -73,19 +73,23 @@ def command(async=False, can_raise_async=False, table_argument=False,
         meth._can_raise_async = can_raise_async
         meth._sets_callback = sets_callback
         return meth
+
     return decorator
 
 
 def lua_property(name):
     """ Decorator for marking methods that make attributes available to Lua """
+
     def decorator(meth):
         def setter(method):
             meth._setter_method = method.__name__
             return method
+
         meth._is_lua_property = True
         meth._name = name
         meth.lua_setter = setter
         return meth
+
     return decorator
 
 
@@ -94,6 +98,7 @@ def emits_lua_objects(meth):
     This decorator makes method convert results to
     native Lua formats when possible
     """
+
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
@@ -102,6 +107,7 @@ def emits_lua_objects(meth):
             return tuple(py2lua(r) for r in res)
         else:
             return py2lua(res)
+
     return wrapper
 
 
@@ -112,11 +118,13 @@ def first_argument_from_storage(meth):
     as a first argument. It is a workaround for Lupa issue
     (see https://github.com/scoder/lupa/pull/49).
     """
+
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         arg = self.tmp_storage[1]
         del self.tmp_storage[1]
         return meth(self, arg, *args, **kwargs)
+
     return wrapper
 
 
@@ -135,6 +143,7 @@ def can_raise(meth):
     Decorator for preserving Python exception objects raised in Python
     methods called from Lua.
     """
+
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         try:
@@ -142,6 +151,7 @@ def can_raise(meth):
         except BaseException as e:
             self._exceptions.append(e)
             raise
+
     return wrapper
 
 
@@ -154,6 +164,7 @@ def exceptions_as_return_values(meth):
     and raise an error when needed. In Splash this is done by
     splash/lua_modules/splash.lua unwraps_errors decorator.
     """
+
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         try:
@@ -164,6 +175,7 @@ def exceptions_as_return_values(meth):
                 return True, result
         except Exception as e:
             return False, repr(e)
+
     wrapper._returns_error_flag = True
     return wrapper
 
@@ -172,6 +184,7 @@ def detailed_exceptions(method_name=None):
     """
     Add method name and a default error type to the error info.
     """
+
     def decorator(meth):
         _name = meth.__name__ if method_name is None else method_name
 
@@ -186,7 +199,9 @@ def detailed_exceptions(method_name=None):
                 info.setdefault('type', ScriptError.SPLASH_LUA_ERROR)
                 info.setdefault('splash_method', _name)
                 raise e
+
         return wrapper
+
     return decorator
 
 
@@ -231,6 +246,7 @@ class _WrappedJavascriptFunction(object):
     JavaScript functions wrapper. It allows to call JS functions
     with arguments.
     """
+
     def __init__(self, splash, source):
         """
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
@@ -407,7 +423,7 @@ class Splash(BaseExposedObject):
             cmd.return_result(None, self._error_info_to_lua(error_info))
 
         cmd = AsyncBrowserCommand("wait", dict(
-            time_ms=time*1000,
+            time_ms=time * 1000,
             callback=success,
             onredirect=redirect if cancel_on_redirect else False,
             onerror=error if cancel_on_error else False,
@@ -415,15 +431,46 @@ class Splash(BaseExposedObject):
         return cmd
 
     @command(async=True)
-    def go(self, url, baseurl=None, headers=None):
+    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
+
         if url is None:
             raise ScriptError({
                 "argument": "url",
                 "message": "'url' is required for splash:go",
             })
 
+        http_method = http_method.upper()
+        if http_method not in ["POST", "GET"]:
+            raise ScriptError({
+                "argument": "http_method",
+                "message": "Unsupported HTTP method: {}".format(http_method)
+            })
+
+        if formdata and body:
+            raise ScriptError({
+                "argument": "body",
+                "message": "formdata and body cannot be passed to go() in one call"
+            })
+
+        elif formdata:
+            body = self.lua.lua2python(formdata, max_depth=3)
+            if isinstance(body, dict):
+                body = urlencode(body)
+            else:
+                raise ScriptError({"argument": "formdata",
+                                   "message": "formdata argument for go() must be Lua table"})
+
+        elif body:
+            if not isinstance(body, basestring):
+                raise ScriptError({"argument": "body",
+                                   "message": "request body must be string"})
+
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
+
+        if http_method == "GET" and body:
+            raise ScriptError({"argument": "body",
+                               "message": "GET request cannot have body"})
 
         def success():
             try:
@@ -444,7 +491,9 @@ class Splash(BaseExposedObject):
             baseurl=baseurl,
             callback=success,
             errback=error,
-            headers=self.lua.lua2python(headers, max_depth=3),
+            http_method=http_method,
+            body=body,
+            headers=self.lua.lua2python(headers, max_depth=3)
         ))
         return cmd
 
@@ -532,25 +581,46 @@ class Splash(BaseExposedObject):
     def private_jsfunc(self, func):
         return _WrappedJavascriptFunction(self, func)
 
-    @command(async=True)
-    def http_get(self, url, headers=None, follow_redirects=True):
+    def _http_request(self, url, headers, follow_redirects=True, body=None, browser_command="http_get"):
         if url is None:
             raise ScriptError({
                 "argument": "url",
-                "message": "'url' is required for splash:http_get"
+                "message": "'url' is required for splash:{}".format(browser_command)
             })
 
         def callback(reply):
             reply_har = reply2har(reply, include_content=True, binary_content=True)
             cmd.return_result(self.lua.python2lua(reply_har))
 
-        cmd = AsyncBrowserCommand("http_get", dict(
+        command_args = dict(
             url=url,
             callback=callback,
             headers=self.lua.lua2python(headers, max_depth=3),
-            follow_redirects=follow_redirects,
-        ))
+            follow_redirects=follow_redirects
+        )
+        if browser_command == "http_post":
+            command_args.update(dict(body=body))
+        cmd = AsyncBrowserCommand(browser_command, command_args)
         return cmd
+
+    @command(async=True)
+    def http_get(self, url, headers=None, follow_redirects=True):
+        return self._http_request(url, headers, follow_redirects)
+
+    @command(async=True)
+    def http_post(self, url, headers=None, follow_redirects=True, body=None):
+        """
+        :param url: string with url to fetch
+        :param headers: dict, if None {"content-type": "application/x-www-form-urlencoded"} will be added later
+        :param follow_redirects: boolean
+        :param body: string with body to be sent in request
+        :return: AysncBrowserCommand http_post
+        """
+        if body and not isinstance(body, basestring):
+            raise ScriptError({"argument": "body",
+                               "message": "body argument for splash:http_post() must be string"})
+
+        return self._http_request(url, headers, follow_redirects, body, browser_command="http_post")
 
     @command(async=True)
     def autoload(self, source_or_url=None, source=None, url=None):
@@ -768,6 +838,7 @@ class Splash(BaseExposedObject):
         """
         Register a Lua callback to be called when a resource is requested.
         """
+
         def _callback(request, operation, outgoing_data):
             with _ExposedRequest.wraps(self.lua, request, operation, outgoing_data) as req:
                 callback(req)
@@ -806,7 +877,7 @@ class Splash(BaseExposedObject):
                 "message": "splash:call_later delay must be a number",
                 "splash_method": "call_later",
             })
-        delay = int(float(delay)*1000)
+        delay = int(float(delay) * 1000)
         if delay < 0:
             raise ScriptError({
                 "argument": "delay",
@@ -895,6 +966,7 @@ class Splash(BaseExposedObject):
         Return a function which runs as coroutine and can be used
         instead of `callback`.
         """
+
         def func(*coro_args):
             def log(message, min_level=None):
                 self.tab.logger.log("[%s] %s" % (name, message), min_level)
@@ -902,6 +974,7 @@ class Splash(BaseExposedObject):
             runner = SplashCoroutineRunner(self.lua, self, log, False)
             coro = self.lua.create_coroutine(callback)
             runner.start(coro, coro_args, return_result, return_error)
+
         return func
 
 
@@ -909,6 +982,7 @@ class _ExposedTimer(BaseExposedObject):
     """
     Timer object returned by splash:call_later().
     """
+
     def __init__(self, splash, timer):
         self.timer = timer
         self.errors = []
@@ -1043,6 +1117,7 @@ class _ExposedResponse(BaseExposedObject):
 
 class _ExposedBoundResponse(_ExposedResponse):
     """ Response object exposed to Lua in on_response_headers callback. """
+
     def __init__(self, lua, reply, har_entry=None):
         super(_ExposedBoundResponse, self).__init__(lua, reply, har_entry)
         self.response = reply
@@ -1061,6 +1136,7 @@ class SplashCoroutineRunner(BaseScriptRunner):
     """
     Utility class for running Splash async functions (e.g. callbacks).
     """
+
     def __init__(self, lua, splash, log, sandboxed):
         self.splash = splash
         super(SplashCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
@@ -1086,6 +1162,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
     """
     Utility class for running main Splash Lua coroutine.
     """
+
     def start(self, main_coro, return_result=None, return_error=None):
         self.splash.clear_exceptions()
         args = [self.splash.get_wrapped()]
@@ -1141,7 +1218,6 @@ class MainCoroutineRunner(SplashCoroutineRunner):
 
 
 class LuaRender(RenderScript):
-
     default_min_log_level = 2
 
     @stop_on_error

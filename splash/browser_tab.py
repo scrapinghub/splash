@@ -391,7 +391,7 @@ class BrowserTab(QObject):
             self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
-        request = self.http_client.request_obj(url, headers=headers)
+        request = self.http_client.request_obj(url, headers=headers, body=body)
         meth = OPERATION_QT_CONSTANTS[http_method]
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
@@ -527,6 +527,13 @@ class BrowserTab(QObject):
             headers=headers,
             follow_redirects=follow_redirects
         )
+
+    def http_post(self, url, callback, headers=None, follow_redirects=True, body=None):
+        self.http_client.post(url,
+                              callback=callback,
+                              headers=headers,
+                              follow_redirects=follow_redirects,
+                              body=body)
 
     def evaljs(self, js_source, handle_errors=True):
         """
@@ -806,7 +813,7 @@ class _SplashHttpClient(QObject):
         """ Set User-Agent header for future requests """
         self.web_page.custom_user_agent = value
 
-    def request_obj(self, url, headers=None):
+    def request_obj(self, url, headers=None, body=None):
         """ Return a QNetworkRequest object """
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
@@ -815,6 +822,11 @@ class _SplashHttpClient(QObject):
         if headers is not None:
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
+
+        if body and not request.hasRawHeader("content-type"):
+            # there is POST body but no content-type
+            # QT will set this header, but it will complain so better to do this here
+            request.setRawHeader("content-type", "application/x-www-form-urlencoded")
 
         return request
 
@@ -838,19 +850,32 @@ class _SplashHttpClient(QObject):
     def get(self, url, callback, headers=None, follow_redirects=True):
         """ Send a GET HTTP request; call the callback with the reply. """
         cb = functools.partial(
-            self._on_get_finished,
+            self._return_reply,
             callback=callback,
             url=url,
         )
         self.request(url, cb, headers=headers, follow_redirects=follow_redirects)
 
+    def post(self, url, callback, headers=None, follow_redirects=True, body=None):
+        """ Send HTTP POST request;
+        """
+        cb = functools.partial(self._return_reply, callback=callback, url=url)
+        self.request(url, cb, headers=headers, follow_redirects=follow_redirects, body=body,
+                     method="POST")
+
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
         # XXX: The caller must ensure self._delete_reply is called in a callback.
-        if method != 'GET':
+        if method.upper() not in ["POST", "GET"]:
             raise NotImplementedError()
-        request = self.request_obj(url, headers=headers)
-        reply = self.network_manager.get(request)
+
+        request = self.request_obj(url, headers=headers, body=body)
+
+        if method.upper() == "POST":
+            reply = self.network_manager.post(request, body)
+        else:
+            reply = self.network_manager.get(request)
+
         reply.finished.connect(callback)
         self._replies.add(reply)
         return reply
@@ -872,6 +897,11 @@ class _SplashHttpClient(QObject):
                 callback()
                 return
 
+            # handle redirects after POST request
+            if method.upper() == "POST":
+                method = "GET"
+                body = None
+
             redirect_url = reply.url().resolved(redirect_url)
             self.request(
                 url=redirect_url,
@@ -885,7 +915,7 @@ class _SplashHttpClient(QObject):
         finally:
             self._delete_reply(reply)
 
-    def _on_get_finished(self, callback, url):
+    def _return_reply(self, callback, url):
         reply = self.sender()
         callback(reply)
 

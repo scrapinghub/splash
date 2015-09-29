@@ -157,6 +157,35 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         self.assertStatusCode(r, 200)
         self.assertIn("bar", r.text)
 
+    def test_http_POST_request_from_splash(self):
+        formbody = {"param1": "one", "param2": "two"}
+
+        r = self.request({
+            "url": self.mockurl("postrequest"),
+            "body": urllib.urlencode(formbody),
+            "http_method": "POST"
+        })
+        self.assertStatusCode(r, 200)
+        self.assertIn("param2=two&amp;param1=one", r.text)
+
+    def test_http_go_POST_missing_method(self):
+        formbody = {"param1": "one", "param2": "two"}
+        r = self.request({
+            "url": self.mockurl("postrequest"),
+            "body": urllib.urlencode(formbody),
+            "baseurl": "foo"
+        })
+        self.assertStatusCode(r, 400)
+        self.assertIn('GET request should not have a body', r.text)
+
+    def test_bad_http_method(self):
+        r = self.request({
+            "url": self.mockurl("postrequest"),
+            "http_method": "FOO"
+        })
+        self.assertStatusCode(r, 400)
+        self.assertIn('Unsupported HTTP method FOO', r.text)
+
     # def test_cookie_after_redirect(self):
     #     headers = {'Cookie': 'foo=bar'}
     #     query = urllib.urlencode({"url": self.mockurl("get-cookie?key=foo")})
