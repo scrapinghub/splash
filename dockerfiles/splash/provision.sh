@@ -113,10 +113,10 @@ install_pyqt5 () {
 install_python_deps () {
     # Install python-level dependencies.
     pip3 install -U pip && \
-    pip3 install -U https://github.com/twisted/twisted/archive/a5108c0db829847bbfd4bf427868eb0b13da0465.zip#egg=twisted && \
     pip3 install \
         qt5reactor-fork==0.2 \
-        psutil==3.1.1 \
+        psutil==3.2.1 \
+        Twisted==15.4.0 \
         adblockparser==0.4 \
         xvfbwrapper==0.2.4 \
         lupa==1.1 \

@@ -113,7 +113,8 @@ How to run Splash in production?
 Easy Way
 ~~~~~~~~
 
-If you want to get started quickly take a look at Aquarium_ or use
+If you want to get started quickly take a look at Aquarium_
+(which is a Splash setup without many of the pitfalls) or use
 a hosted solution like `ScrapingHub's <http://scrapinghub.com/splash/>`__.
 
 Don't forget to use resource timeous in your client code (see
