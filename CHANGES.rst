@@ -1,6 +1,43 @@
 Changes
 =======
 
+1.8 (2015-09-29)
+----------------
+
+New features:
+
+* POST requests support: :ref:`http_method <arg-http-method>` and
+  :ref:`body <arg-body>` arguments for render endpoints;
+  new :ref:`splash-go` arguments: ``body``, ``http_method`` and ``formdata``;
+  new :ref:`splash-http-post` method.
+* Errors are now returned in JSON format; error mesages became more detailed;
+  Splash UI now displays detailed error information.
+* new :ref:`splash-call-later` method which allows to schedule tasks in future;
+* new :ref:`splash-on-response` method allows to register a callback to be
+  executed after each response;
+* proxy can now be set directly, without using proxy profiles - there is a new
+  :ref:`proxy <arg-proxy>` argument for render endpoints;
+* more detailed :ref:`splash-go` errors: a new "render_error" error type can
+  be reported;
+* new :ref:`splash-set-result-status-code` method;
+* new :ref:`splash-resource-timeout` attribute as a shortcut for
+  ``request:set_timeout`` in :ref:`splash-on-request`;
+* new :ref:`splash-get-version` method;
+* new :ref:`splash-autoload-reset`, :ref:`splash-on-response-reset`,
+  :ref:`splash-on-request-reset`, :ref:`splash-on-response-headers-reset`,
+  :ref:`splash-har-reset` methods and a new ``reset=true`` argument for
+  :ref:`splash-har`. They are most useful with Splash-Jupyter.
+
+Bug fixes and improvements:
+
+* fixed an issue: proxies were not applied for POST requests;
+* improved argument validation for various methods;
+* more detailed logs;
+* it is now possible to load a combatibility shim for window.localStorage;
+* code coverage integration;
+* improved Splash-Jupyter tests;
+* Splash-Jupyter is upgraded to Jupyter 4.0.
+
 1.7 (2015-08-06)
 ----------------
 

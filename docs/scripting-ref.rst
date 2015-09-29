@@ -2090,7 +2090,7 @@ Remove all callbacks registered by :ref:`splash-on-response`.
 **Async:** no.
 
 
-.. _splash-version:
+.. _splash-get-version:
 
 splash:get_version
 ------------------
