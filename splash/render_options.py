@@ -168,13 +168,11 @@ class RenderOptions(object):
         return method
 
     def get_body(self):
-        body = self.get("body", None)
+        body = self.get("body", None, to_bytes)
         method = self.get("http_method", "GET").upper()
         if method == 'GET' and body:
             self.raise_error("body", "GET request should not have a body")
-        if body is None:
-            return body
-        return to_bytes(body)
+        return body
 
     def get_render_all(self, wait=None):
         result = self._get_bool("render_all", False)

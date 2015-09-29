@@ -183,7 +183,10 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "http_method": "POST"
         })
         self.assertStatusCode(r, 200)
-        self.assertIn("param2=two&amp;param1=one", r.text)
+        self.assertTrue(
+            "param2=two&amp;param1=one" in r.text or
+            "param1=one&amp;param2=two" in r.text
+        , r.text)
 
     def test_http_go_POST_missing_method(self):
         formbody = {"param1": "one", "param2": "two"}
