@@ -162,7 +162,6 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
         r = self.request({
             "url": self.mockurl("postrequest"),
-            "formdata": formbody,
             "body": urllib.urlencode(formbody),
             "http_method": "POST"
         })
