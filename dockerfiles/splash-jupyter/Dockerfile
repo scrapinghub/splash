@@ -1,6 +1,4 @@
-FROM scrapinghub/splash:master
-# XXX: after each release a new branch named X.Y should be created,
-# and FROM should be changed to FROM scrapinghub/splash:X.Y
+FROM scrapinghub/splash:1.8
 
 # Install, use dev tools, and then clean up in one RUN transaction
 # to minimize image size.
