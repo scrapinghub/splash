@@ -12,6 +12,7 @@ _trial_temp
 .splash-cache*
 .coverage
 env*
+.cache/
 htmlcov/
 
 # IPython notebooks

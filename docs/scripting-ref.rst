@@ -20,7 +20,7 @@ splash:go
 Go to an URL. This is similar to entering an URL in a browser
 address bar, pressing Enter and waiting until page loads.
 
-**Signature:** ``ok, reason = splash:go{url, baseurl=nil, headers=nil}``
+**Signature:** ``ok, reason = splash:go{url, baseurl=nil, headers=nil, http_method="GET", body=nil, formdata=nil}``
 
 **Parameters:**
 
@@ -30,6 +30,11 @@ address bar, pressing Enter and waiting until page loads.
   loaded from ``baseurl``: relative resource paths will be relative
   to ``baseurl``, and the browser will think ``baseurl`` is in address bar;
 * headers - a Lua table with HTTP headers to add/replace in the initial request.
+* http_method - optional, string with HTTP method to use when visiting url,
+  defaults to GET, Splash also supports POST.
+* body - optional, string with body for POST request
+* formdata - Lua table that will be converted to urlencoded POST body and sent
+  with header ``content-type: application/x-www-form-urlencoded``
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
@@ -794,7 +799,7 @@ i.e. no earlier than some of the async functions is called.
 splash:http_get
 ---------------
 
-Send an HTTP request and return a response without loading
+Send an HTTP GET request and return a response without loading
 the result to the browser window.
 
 **Signature:** ``response = splash:http_get{url, headers=nil, follow_redirects=true}``
@@ -825,6 +830,53 @@ for successful responses and false when error happened:
 
     local reply = splash:http_get("some-bad-url")
     -- reply.ok == false
+
+This method doesn't change the current page contents and URL.
+To load a webpage to the browser use :ref:`splash-go`.
+
+.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
+
+.. _splash-http-post:
+
+splash:http_post
+----------------
+
+Send an HTTP POST request and return a response without loading
+the result to the browser window.
+
+**Signature:** ``response = splash:http_post{url, headers=nil, follow_redirects=true, body=nil}``
+
+**Parameters:**
+
+* url - URL to load;
+* headers - a Lua table with HTTP headers to add/replace in the initial request;
+* follow_redirects - whether to follow HTTP redirects.
+* body - string with body of request, if you intend to send form submission,
+  body should be urlencoded.
+
+**Returns:** a Lua table with the response in `HAR response`_ format.
+
+**Async:** yes.
+
+Example of form submission:
+
+.. code-block:: lua
+
+    local reply = splash:http_post{url="http://example.com", body="user=Frank&password=hunter2"}
+    -- reply.content.text contains raw HTML data
+    -- reply.status contains HTTP status code, as a number
+    -- see HAR docs for more info
+
+Example of JSON POST request:
+
+.. code-block:: lua
+
+    local reply = splash:http_post{url="http://example.com/post", body='{"alfa": "beta"}',
+                                   headers={["content-type"]="application/json"}}
+
+
+In addition to all HAR fields the response contains "ok" flag which is true
+for successful responses and false when error happened.
 
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.

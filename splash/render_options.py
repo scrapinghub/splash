@@ -162,10 +162,19 @@ class RenderOptions(object):
         return self.get("quality", defaults.JPEG_QUALITY, type=int, range=(0, 100))
 
     def get_http_method(self):
-        return self.get("http_method", "GET")
+        method = self.get("http_method", "GET")
+        if method.upper() not in ["POST", "GET"]:
+            self.raise_error("http_method", "Unsupported HTTP method {}".format(method))
+        return method
 
     def get_body(self):
-        return self.get("body", None, type=bytes)
+        body = self.get("body", None)
+        method = self.get("http_method", "GET").upper()
+        if method == 'GET' and body:
+            self.raise_error("body", "GET request should not have a body")
+        if body is None:
+            return body
+        return to_bytes(body)
 
     def get_render_all(self, wait=None):
         result = self._get_bool("render_all", False)

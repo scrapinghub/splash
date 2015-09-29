@@ -156,6 +156,18 @@ headers : JSON array or object : optional
     "User-Agent" header is special: is is used for all outgoing requests,
     unlike other headers.
 
+.. _arg-body:
+
+body : string : optional
+    Body of HTTP POST request to be sent if method is POST.
+    Default ``content-type`` header for POST requests is ``application/x-www-form-urlencoded``.
+
+.. _arg-method:
+
+http_method : string : optional
+    HTTP method of outgoing Splash request. Default method is GET. Splash also
+    supports POST.
+
 
 Examples
 ~~~~~~~~

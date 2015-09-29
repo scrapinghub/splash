@@ -399,6 +399,7 @@ class PostResource(Resource):
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
+        request.setHeader(b"Content-Type", b"text/plain; charset=utf-8")
         headers = request.getAllHeaders()
         payload = request.content.getvalue() if request.content is not None else b''
         return ("""
@@ -618,8 +619,15 @@ class HttpRedirectResource(Resource):
         code = request.args[b'code'][0].decode('utf-8')
         url = '/getrequest?http_code=%s' % code
         request.setResponseCode(int(code))
-        request.setHeader(b"location", url.encode('utf-8'))
-        return ("%s redirect to %s" % (code, url)).encode('utf-8')
+        request.setHeader(b"location", url.encode('latin1'))
+        return ("%s redirect to %s" % (code, url)).encode('latin1')
+
+    def render_POST(self, request):
+        request.setResponseCode(301)
+        payload = request.content.getvalue() if request.content is not None else ''
+        url = ('/getrequest?%s' % payload).encode('latin1')
+        request.setHeader(b"location", url)
+        return b"redirect to " + url
 
 
 class JsRedirectTo(Resource):
