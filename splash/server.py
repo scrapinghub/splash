@@ -64,6 +64,8 @@ def parse_opts():
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
+    op.add_option("--disable-private-mode", action="store_true", default=not defaults.PRIVATE_MODE,
+        help="disable private mode (WARNING: data may leak between requests)" + _bool_default[not defaults.PRIVATE_MODE])
     op.add_option("--disable-xvfb", action="store_true", default=False,
         help="disable Xvfb auto start")
     op.add_option("--disable-lua", action="store_true", default=False,
@@ -245,6 +247,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
+                          private_mode=True,
                           ui_enabled=True,
                           lua_enabled=True,
                           lua_sandbox_enabled=True,
@@ -260,7 +263,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
-    _set_global_render_settings(js_disable_cross_domain_access)
+    _set_global_render_settings(js_disable_cross_domain_access, private_mode)
     return splash_server(
         portnum=portnum,
         slots=slots,
@@ -321,14 +324,18 @@ def _check_js_profiles_path(js_profiles_path):
     return js_profiles_path
 
 
-def _set_global_render_settings(js_disable_cross_domain_access):
-    from PyQt4.QtWebKit import QWebSecurityOrigin
+def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
+    from PyQt4.QtWebKit import QWebSecurityOrigin, QWebSettings
     if js_disable_cross_domain_access is False:
         # In order to enable cross domain requests it is necessary to add
         # the http and https to the local scheme, this way all the urls are
         # seen as inside the same security origin.
         for scheme in ['http', 'https']:
             QWebSecurityOrigin.addLocalScheme(scheme)
+
+    settings = QWebSettings.globalSettings()
+    settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, private_mode)
+    settings.setAttribute(QWebSettings.LocalStorageEnabled, not private_mode)
 
 
 def main():
@@ -363,6 +370,7 @@ def main():
             proxy_portnum=opts.proxy_portnum,
             filters_path=opts.filters_path,
             allowed_schemes=opts.allowed_schemes,
+            private_mode=not opts.disable_private_mode,
             ui_enabled=not opts.disable_ui,
             lua_enabled=not opts.disable_lua,
             lua_sandbox_enabled=not opts.disable_lua_sandbox,
