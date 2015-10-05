@@ -80,6 +80,7 @@ CACHE_PATH = '.splash-cache'
 # security options
 ALLOWED_SCHEMES = ['http', 'https', 'data', 'ftp', 'sftp', 'ws', 'wss']
 JS_CROSS_DOMAIN_ENABLED = False
+PRIVATE_MODE = True
 
 # logging
 VERBOSITY = 1
