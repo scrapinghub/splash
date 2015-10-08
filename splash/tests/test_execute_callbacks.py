@@ -3,7 +3,11 @@ from __future__ import absolute_import
 from urllib import urlencode
 import base64
 from io import BytesIO
+
+import pytest
 from PIL import Image
+from splash.exceptions import ScriptError
+
 from splash.tests.test_proxy import BaseHtmlProxyTest
 from .test_execute import BaseLuaRenderTest
 
@@ -97,6 +101,33 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertNotProxied(html_1)
         self.assertProxied(html_2)
 
+    def test_set_proxy_twice(self):
+        proxy_port = self.ts.mock_proxy_port
+        resp = self.request_lua("""
+        function main(splash)
+            local first = true
+            splash:on_request(function(request)
+                if first then
+                    request:set_proxy{
+                        host="0.0.0.0",
+                        port=splash.args.proxy_port
+                    }
+                    first = false
+                end
+            end)
+            assert(splash:go(splash.args.url))
+            local html_1 = splash:html()
+
+            assert(splash:go(splash.args.url))
+            local html_2 = splash:html()
+            return html_1, html_2
+        end
+        """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        self.assertStatusCode(resp, 200)
+        html_1, html_2 = resp.json()
+        self.assertProxied(html_1)
+        self.assertNotProxied(html_2)
+
     def test_request_outside_callback(self):
         resp = self.request_lua("""
         function main(splash)
@@ -109,9 +140,24 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             return "ok"
         end
         """, {'url': self.mockurl("jsrender")})
-        self.assertStatusCode(resp, 400)
         self.assertErrorLineNumber(resp, 8)
-        self.assertIn("request is used outside a callback", resp.content)
+
+    @pytest.mark.xfail(
+        reason="error messages are poor for objects created in callbacks")
+    def test_request_outside_callback_error_type(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local req = nil
+            splash:on_request(function(request)
+                req = request
+            end)
+            assert(splash:go(splash.args.url))
+            req:abort()
+            return "ok"
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               message="request is used outside a callback")
 
     def test_set_header(self):
         resp = self.request_lua("""
@@ -128,6 +174,43 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
         self.assertIn("'custom-header': 'some-val'", resp.text)
         self.assertIn("'user-agent': 'Fooozilla'", resp.text)
+
+    def test_bad_callback(self):
+        for arg in '', '"foo"', '123':
+            resp = self.request_lua("""
+            function main(splash)
+                splash:on_request(%s)
+            end
+            """ % arg)
+            self.assertErrorLineNumber(resp, 3)
+
+    def test_on_request_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            x = 0
+            splash:on_request(function(req) x = x + 1 end)
+            splash:go(splash.args.url)
+            splash:on_request_reset()
+            splash:go(splash.args.url)
+            return x
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '1')
+
+    def test_errors_in_callbacks_ignored(self):
+        # TODO: check that error is logged
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(req)
+                error("hello{world}")
+            end)
+            splash:go(splash.args.url)
+            return "ok"
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'ok')
 
 
 class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
@@ -174,7 +257,24 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 400)
-        self.assertIn("response is used outside callback", resp.text)
+        self.assertIn("response is used outside a callback", resp.text)
+
+    @pytest.mark.xfail(
+        reason="error messages are poor for objects created in callbacks")
+    def test_response_used_outside_callback_error_type(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res = nil
+            splash:on_response_headers(function(response)
+                res = response
+            end)
+            splash:http_get(splash.args.url)
+            res:abort()
+            return "ok"
+        end
+        """, {'url': self.mockurl("jsrender")})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               message="response is used outside a callback")
 
     def test_get_headers(self):
         headers = {
@@ -233,7 +333,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             self.assertIn(k, result)
             self.assertIsInstance(result[k], v[0])
             if v[1]:
-                self.assertEqual(result[k], v[1], "{} should equal {}".format(k, v[1]))
+                self.assertEqual(result[k], v[1])
 
     def test_request_in_callback(self):
         mocked_url = self.mockurl("set-header?" + urlencode({"alfa": "beta"}))
@@ -258,3 +358,359 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertEqual(resp["url"], mocked_url)
         self.assertEqual(resp["method"], "GET")
         self.assertEqual(resp["headers"], {"hello": "world"})
+
+    def test_bad_callback(self):
+        for arg in '', '"foo"', '123':
+            resp = self.request_lua("""
+            function main(splash)
+                splash:on_response_headers(%s)
+            end
+            """ % arg)
+            # FIXME: it is LUA_ERROR, not a SPLASH_LUA_ERROR because
+            # an error is raised by a Lua wrapper.
+            self.assertScriptError(resp, ScriptError.LUA_ERROR)
+            self.assertErrorLineNumber(resp, 3)
+
+    def test_on_response_headers_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            x = 0
+            splash:on_response_headers(function(resp) x = x + 1 end)
+            splash:go(splash.args.url)
+            splash:on_response_headers_reset()
+            splash:go(splash.args.url)
+            return x
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '1')
+
+
+class OnResponseTest(BaseLuaRenderTest):
+    maxDiff = 2000
+
+    def test_on_response(self):
+        url = self.mockurl("show-image")
+        resp = self.request_lua("""
+        function main(splash)
+            local result = {}
+            splash:on_response(function(response)
+                local resp_info = {
+                    ctype = response.headers['Content-Type'],
+                    url = response.url,
+                    info = response.info,
+                    status = response.status,
+                    request = response.request,
+                }
+                result[#result+1] = resp_info
+            end)
+            assert(splash:go(splash.args.url))
+            return {
+                result = result,
+                har = splash:har(),
+            }
+        end
+        """, {'url': url})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(len(data['result']), 2, data['result'])
+
+        e1, e2 = data['result']['1'], data['result']['2']
+
+        entries = data['har']['log']['entries']
+        self.assertEqual(len(entries), 2, entries)
+        h1, h2 = entries[0], entries[1]
+
+        self.assertEqual(e1['info'], h1['response'])
+        self.assertEqual(e2['info'], h2['response'])
+
+        self.assertEqual(e1['ctype'], 'text/html')
+        self.assertEqual(e2['ctype'], 'image/gif')
+
+        self.assertEqual(e1['status'], 200)
+        self.assertEqual(e2['status'], 200)
+
+        self.assertEqual(e1['url'], url)
+
+        self.assertEqual(e1['request']['url'], url)
+        self.assertEqual(
+            e1['request']['headers'],
+            {el['name']: el['value'] for el in h1['request']['headers']}
+        )
+        self.assertEqual(e1['request']['method'], 'GET')
+        self.assertEqual(e1['request']['cookies'], h1['request']['cookies'])
+
+    def test_async_wait(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local value = 0
+            splash:on_response(function(response)
+                splash:wait(0.1)
+                value = value + 1
+            end)
+            assert(splash:go(splash.args.url))
+            local v1 = value
+            splash:wait(0.3)
+            local v2 = value
+            return {v1, v2}
+        end
+        """, {'url': self.mockurl("show-image")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'1': 0, '2': 2})
+
+    def test_call_later_from_on_response(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local htmls = {}
+            splash:on_response(function(response)
+                htmls[#htmls+1] = {before=true, html=splash:html()}
+                splash:call_later(function()
+                    htmls[#htmls+1] = {before=false, html=splash:html()}
+                end, 0.1)
+            end)
+            assert(splash:go(splash.args.url))
+            splash:wait(0.2)
+            return htmls
+        end
+        """, {'url': self.mockurl("jsredirect")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 4, data)
+        self.assertEqual(
+            [data[k]['before'] for k in '1234'],
+            [True, True, False, False]
+        )
+        self.assertNotIn("JS REDIRECT TARGET", data['1']['html'])
+        self.assertNotIn("JS REDIRECT TARGET", data['2']['html'])
+        self.assertIn("JS REDIRECT TARGET", data['3']['html'])
+        self.assertIn("JS REDIRECT TARGET", data['4']['html'])
+
+    def test_bad_callback(self):
+        for arg in '', '"foo"', '123':
+            resp = self.request_lua("""
+            function main(splash)
+                splash:on_response(%s)
+            end
+            """ % arg)
+            # FIXME: it is LUA_ERROR, not a SPLASH_LUA_ERROR because
+            # an error is raised by a Lua wrapper.
+            self.assertScriptError(resp, ScriptError.LUA_ERROR)
+            self.assertErrorLineNumber(resp, 3)
+
+    def test_on_response_reset(self):
+        resp = self.request_lua("""
+        function main(splash)
+            x = 0
+            splash:on_response(function(resp) x = x + 1 end)
+            splash:go(splash.args.url)
+            splash:on_response_reset()
+            splash:go(splash.args.url)
+            return x
+        end
+        """, {'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '1')
+
+
+class CallLaterTest(BaseLuaRenderTest):
+    def test_call_later(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            splash:call_later(function() x = 2 end, 0.1)
+            local x1 = x
+            splash:wait(0.2)
+            local x2 = x
+            return {x1=x1, x2=x2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 2})
+
+    def test_zero_delay(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            splash:call_later(function() x = 2 end)
+            local x1 = x
+            splash:wait(0.01)
+            local x2 = x
+            return {x1=x1, x2=x2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 2})
+
+    def test_bad_delay(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:call_later(function() x = 2 end, -1)
+        end
+        """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertEqual(err['info']['splash_method'], 'call_later')
+
+        resp = self.request_lua("""
+        function main(splash)
+            splash:call_later(function() x = 2 end, 'foo')
+        end
+        """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertEqual(err['info']['splash_method'], 'call_later')
+
+    def test_bad_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:call_later(5, 1.0)
+        end
+        """)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 3)
+        self.assertEqual(err['info']['splash_method'], 'call_later')
+
+    def test_attributes_not_exposed(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function() end, 1.0)
+            return {
+                timer=timer.timer,
+                lua=timer.lua,
+                singleShot=timer.singleShot,
+            }
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {})
+
+    def test_cancel(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            local timer = splash:call_later(function() x = 2 end, 0.1)
+            timer:cancel()
+            local x1 = x
+            splash:wait(0.2)
+            local x2 = x
+            return {x1=x1, x2=x2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 1})
+
+    def test_is_pending(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            local timer = splash:call_later(function() x = 2 end, 0.1)
+            local r1 = timer:is_pending()
+            splash:wait(0.2)
+            local r2 = timer:is_pending()
+            return {r1=r1, r2=r2}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'r1': True, 'r2': False})
+
+    def test_is_pending_async(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function()
+                splash:wait(1.0)
+            end)
+            splash:wait(0.1)
+            -- timer should be 'executing', not pending at this point
+            return {pending=timer:is_pending()}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'pending': False})
+
+    def test_call_later_chain(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 0
+            local function tick()
+               x = x + 1
+               if x < 5 then
+                   splash:call_later(tick, 0.01)
+               end
+            end
+            splash:call_later(tick, 0.0)
+            local x1 = x
+            splash:wait(0.2)
+            local x2 = x
+            splash:wait(0.2)
+            local x3 = x
+            return {x1=x1, x2=x2, x3=x3}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 0, 'x2': 5, 'x3': 5})
+
+    def test_wait(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local x = 1
+            splash:call_later(function()
+                x = 2
+                splash:wait(0.2)
+                x = 3
+            end, 0.0)
+            local x1 = x
+            splash:wait(0.1)
+            local x2 = x
+            splash:wait(0.15)
+            local x3 = x
+            return {x1=x1, x2=x2, x3=x3}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'x1': 1, 'x2': 2, 'x3': 3})
+
+    def test_error_unhandled_reraise(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function()
+                error("hello")
+            end, 0.1)
+            splash:wait(0.2)
+            timer:reraise()
+            return "ok"
+        end
+        """)
+        err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
+        self.assertErrorLineNumber(resp, 7)
+        # FIXME: errors are poor for objects other than 'splash'.
+        self.assertNotIn("ScriptError({", err['info']['message'])
+
+    def test_error_unhandled_no_reraise(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local timer = splash:call_later(function() error("hello") end, 0.1)
+            splash:wait(0.2)
+            return "ok"
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "ok")
+
+    def test_error_handled_in_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local status = "unknown"
+            local timer = splash:call_later(function()
+                if pcall(function() error("hello") end) then
+                    status = "no_errors"
+                else
+                    status = "error"
+                end
+            end, 0.1)
+            splash:wait(0.2)
+            timer:reraise()
+            return status
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "error")

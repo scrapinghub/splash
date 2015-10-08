@@ -11,6 +11,10 @@ from splash import config
 from splash import xvfb, __version__
 from splash.qtutils import init_qt_app
 
+
+settings = config.Settings()
+
+
 def install_qtreactor(verbose):
     init_qt_app(verbose)
     import qt4reactor
@@ -18,7 +22,6 @@ def install_qtreactor(verbose):
 
 
 def parse_opts():
-    settings = config.Settings()
     _bool_default = {True:' (default)', False: ''}
 
     op = optparse.OptionParser()
@@ -67,6 +70,8 @@ def parse_opts():
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
+    op.add_option("--disable-private-mode", action="store_true", default=not settings.PRIVATE_MODE,
+        help="disable private mode (WARNING: data may leak between requests)" + _bool_default[not settings.PRIVATE_MODE])
     op.add_option("--disable-xvfb", action="store_true", default=False,
         help="disable Xvfb auto start")
     op.add_option("--disable-lua", action="store_true", default=False,
@@ -79,7 +84,7 @@ def parse_opts():
     op.add_option("--lua-sandbox-allowed-modules", default="",
         help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
     op.add_option("-v", "--verbosity", type=int, default=settings.VERBOSITY,
-        help="verbosity level; valid values are integers from 0 to 5")
+        help="verbosity level; valid values are integers from 0 to 5 (default: %default)")
     op.add_option("--version", action="store_true",
         help="print Splash version number and exit")
 
@@ -125,18 +130,17 @@ def bump_nofile_limit():
 def log_splash_version():
     import twisted
     from twisted.python import log
-    import sip
-    from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-    from PyQt4.QtWebKit import qWebKitVersion
     from splash import lua
+    from splash.qtutils import get_versions
 
     log.msg("Splash version: %s" % __version__)
 
+    verdict = get_versions()
     versions = [
-        "Qt %s" % QT_VERSION_STR,
-        "PyQt %s" % PYQT_VERSION_STR,
-        "WebKit %s" % qWebKitVersion(),
-        "sip %s" % sip.SIP_VERSION_STR,
+        "Qt %s" % verdict['qt'],
+        "PyQt %s" % verdict['pyqt'],
+        "WebKit %s" % verdict['webkit'],
+        "sip %s" % verdict['sip'],
         "Twisted %s" % twisted.version.short(),
     ]
 
@@ -144,6 +148,7 @@ def log_splash_version():
         versions.append(lua.get_version())
 
     log.msg(", ".join(versions))
+    log.msg("Python %s" % sys.version.replace("\n", ""))
 
 
 def manhole_server(portnum=None, username=None, password=None):
@@ -248,6 +253,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
+                          private_mode=True,
                           ui_enabled=True,
                           lua_enabled=True,
                           lua_sandbox_enabled=True,
@@ -263,7 +269,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
     manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
-    _set_global_render_settings(js_disable_cross_domain_access)
+    _set_global_render_settings(js_disable_cross_domain_access, private_mode)
     return splash_server(
         portnum=portnum,
         slots=slots,
@@ -303,16 +309,16 @@ def _default_proxy_factory(proxy_profiles_path):
     from twisted.python import log
     from splash import proxy
 
-    if proxy_profiles_path is not None and not os.path.isdir(proxy_profiles_path):
-        log.msg("--proxy-profiles-path does not exist or it is not a folder; "
-                "proxy won't be used")
-        proxy_profiles_enabled = False
-    else:
-        proxy_profiles_enabled = proxy_profiles_path is not None
+    if proxy_profiles_path is not None:
+        if os.path.isdir(proxy_profiles_path):
+            log.msg("proxy profiles support is enabled, "
+                    "proxy profiles path: %s" % proxy_profiles_path)
+        else:
+            log.msg("--proxy-profiles-path does not exist or it is not a folder; "
+                    "proxy won't be used")
+            proxy_profiles_path = None
 
-    if proxy_profiles_enabled:
-        log.msg("proxy profiles support is enabled, proxy profiles path: %s" % proxy_profiles_path)
-        return functools.partial(proxy.ProfilesSplashProxyFactory, proxy_profiles_path)
+    return functools.partial(proxy.get_factory, proxy_profiles_path)
 
 
 def _check_js_profiles_path(js_profiles_path):
@@ -324,14 +330,18 @@ def _check_js_profiles_path(js_profiles_path):
     return js_profiles_path
 
 
-def _set_global_render_settings(js_disable_cross_domain_access):
-    from PyQt4.QtWebKit import QWebSecurityOrigin
+def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
+    from PyQt4.QtWebKit import QWebSecurityOrigin, QWebSettings
     if js_disable_cross_domain_access is False:
         # In order to enable cross domain requests it is necessary to add
         # the http and https to the local scheme, this way all the urls are
         # seen as inside the same security origin.
         for scheme in ['http', 'https']:
             QWebSecurityOrigin.addLocalScheme(scheme)
+
+    settings = QWebSettings.globalSettings()
+    settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, private_mode)
+    settings.setAttribute(QWebSettings.LocalStorageEnabled, not private_mode)
 
 
 def main():
@@ -372,6 +382,7 @@ def main():
             proxy_portnum=opts.proxy_portnum,
             filters_path=opts.filters_path,
             allowed_schemes=opts.allowed_schemes,
+            private_mode=not opts.disable_private_mode,
             ui_enabled=not opts.disable_ui,
             lua_enabled=not opts.disable_lua,
             lua_sandbox_enabled=not opts.disable_lua_sandbox,

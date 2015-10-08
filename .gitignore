@@ -11,6 +11,8 @@ _trial_temp
 .ipynb_checkpoints
 .splash-cache*
 .coverage
+.cache/
+htmlcov/
 
 # IPython notebooks
 /notebooks/

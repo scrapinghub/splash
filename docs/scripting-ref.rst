@@ -20,7 +20,7 @@ splash:go
 Go to an URL. This is similar to entering an URL in a browser
 address bar, pressing Enter and waiting until page loads.
 
-**Signature:** ``ok, reason = splash:go{url, baseurl=nil, headers=nil}``
+**Signature:** ``ok, reason = splash:go{url, baseurl=nil, headers=nil, http_method="GET", body=nil, formdata=nil}``
 
 **Parameters:**
 
@@ -30,13 +30,18 @@ address bar, pressing Enter and waiting until page loads.
   loaded from ``baseurl``: relative resource paths will be relative
   to ``baseurl``, and the browser will think ``baseurl`` is in address bar;
 * headers - a Lua table with HTTP headers to add/replace in the initial request.
+* http_method - optional, string with HTTP method to use when visiting url,
+  defaults to GET, Splash also supports POST.
+* body - optional, string with body for POST request
+* formdata - Lua table that will be converted to urlencoded POST body and sent
+  with header ``content-type: application/x-www-form-urlencoded``
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 page load; ``reason`` provides an information about error type.
 
 **Async:** yes, unless the navigation is locked.
 
-Four types of errors are reported (``ok`` can be ``nil`` in 4 cases):
+Five types of errors are reported (``ok`` can be ``nil`` in 5 cases):
 
 1. There is a network error: a host doesn't exist, server dropped connection,
    etc. In this case ``reason`` is ``"network<code>"``. A list of possible
@@ -47,7 +52,9 @@ Four types of errors are reported (``ok`` can be ``nil`` in 4 cases):
    HTTP 404 Not Found ``reason`` is ``"http404"``.
 3. Navigation is locked (see :ref:`splash-lock-navigation`); ``reason``
    is ``"navigation_locked"``.
-4. If Splash can't decide what caused the error, just ``"error"`` is returned.
+4. Splash can't render the main page (e.g. because the first request was
+   aborted) - ``reason`` is ``render_error``.
+5. If Splash can't decide what caused the error, just ``"error"`` is returned.
 
 .. _Qt docs: http://doc.qt.io/qt-5/qnetworkreply.html#NetworkError-enum
 
@@ -708,15 +715,92 @@ is not a constant.
 If :ref:`splash-autoload` is called multiple times then all its scripts
 are executed on page load, in order they were added.
 
+To revert Splash not to execute anything on page load use
+:ref:`splash-autoload-reset`.
+
 See also: :ref:`splash-evaljs`, :ref:`splash-runjs`, :ref:`splash-jsfunc`,
-:ref:`splash-wait-for-resume`.
+:ref:`splash-wait-for-resume`, :ref:`splash-autoload-reset`.
+
+
+.. _splash-autoload-reset:
+
+splash:autoload_reset
+---------------------
+
+Unregister all scripts previously set by :ref:`splash-autoload`.
+
+**Signature:** ``splash:autoload_reset()``
+
+**Returns:** nil
+
+**Async:** no
+
+After :ref:`splash-autoload-reset` call scripts set by :ref:`splash-autoload`
+won't be loaded in future requests; one can use :ref:`splash-autoload` again
+to setup a different set of scripts.
+
+Already loaded scripts are not removed from the current page context.
+
+See also: :ref:`splash-autoload`.
+
+
+.. _splash-call-later:
+
+splash:call_later
+-----------------
+
+Arrange for the callback to be called after the given delay seconds.
+
+**Signature:** ``timer = splash:call_later(callback, delay)``
+
+**Parameters:**
+
+* callback - function to run;
+* delay - delay, in seconds;
+
+**Returns:** a handle which allows to cancel pending timer or reraise
+  exceptions happened in a callback.
+
+**Async:** no.
+
+Example 1 - take two HTML snapshots, at 1.5s and 2.5s after page
+loading starts:
+
+.. code-block:: lua
+
+    function main(splash)
+        local snapshots = {}
+        local timer = splash:call_later(function()
+            snapshots["a"] = splash:html()
+            splash:wait(1.0)
+            snapshots["b"] = splash:html()
+        end, 1.5)
+        assert(splash:go(splash.args.url))
+        splash:wait(3.0)
+        timer:reraise()
+        return snapshots
+    end
+
+:ref:`splash-call-later` returns a handle (a ``timer``). To cancel pending
+task use its ``timer:cancel()`` method. If a callback is already
+started ``timer:cancel()`` has no effect.
+
+By default, exceptions raised in :ref:`splash-call-later` callback
+stop the callback, but don't stop the main script. To reraise these errors
+use ``timer:reraise()``.
+
+:ref:`splash-call-later` arranges callback to be executed in future;
+it never runs it immediately, even if delay is 0. When delay is 0
+callback is executed no earlier than current function yields to event loop,
+i.e. no earlier than some of the async functions is called.
+
 
 .. _splash-http-get:
 
 splash:http_get
 ---------------
 
-Send an HTTP request and return a response without loading
+Send an HTTP GET request and return a response without loading
 the result to the browser window.
 
 **Signature:** ``response = splash:http_get{url, headers=nil, follow_redirects=true}``
@@ -747,6 +831,53 @@ for successful responses and false when error happened:
 
     local reply = splash:http_get("some-bad-url")
     -- reply.ok == false
+
+This method doesn't change the current page contents and URL.
+To load a webpage to the browser use :ref:`splash-go`.
+
+.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
+
+.. _splash-http-post:
+
+splash:http_post
+----------------
+
+Send an HTTP POST request and return a response without loading
+the result to the browser window.
+
+**Signature:** ``response = splash:http_post{url, headers=nil, follow_redirects=true, body=nil}``
+
+**Parameters:**
+
+* url - URL to load;
+* headers - a Lua table with HTTP headers to add/replace in the initial request;
+* follow_redirects - whether to follow HTTP redirects.
+* body - string with body of request, if you intend to send form submission,
+  body should be urlencoded.
+
+**Returns:** a Lua table with the response in `HAR response`_ format.
+
+**Async:** yes.
+
+Example of form submission:
+
+.. code-block:: lua
+
+    local reply = splash:http_post{url="http://example.com", body="user=Frank&password=hunter2"}
+    -- reply.content.text contains raw HTML data
+    -- reply.status contains HTTP status code, as a number
+    -- see HAR docs for more info
+
+Example of JSON POST request:
+
+.. code-block:: lua
+
+    local reply = splash:http_post{url="http://example.com/post", body='{"alfa": "beta"}',
+                                   headers={["content-type"]="application/json"}}
+
+
+In addition to all HAR fields the response contains "ok" flag which is true
+for successful responses and false when error happened.
 
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
@@ -1005,12 +1136,19 @@ See also: :ref:`splash-png`. Note that `splash:jpeg()` is often
 splash:har
 ----------
 
-**Signature:** ``har = splash:har()``
+**Signature:** ``har = splash:har{reset=false}``
+
+**Parameters:**
+
+* reset - optional; when ``true``, reset HAR records after taking a snapshot.
 
 **Returns:** information about pages loaded, events happened,
 network requests sent and responses received in HAR_ format.
 
 **Async:** no.
+
+Use :ref:`splash-har` to get information about network requests and
+other Splash activity.
 
 If your script returns the result of ``splash:har()`` in a top-level
 ``"har"`` key then Splash UI will give you a nice diagram with network
@@ -1023,8 +1161,41 @@ information (similar to "Network" tabs in Firefox or Chrome developer tools):
          return {har=splash:har()}
      end
 
+By default, when several requests are made (e.g. :ref:`splash-go` is called
+multiple times), HAR data is accumulated and combined into a single object
+(logs are still grouped by page).
+
+If you want only updated information use ``reset`` parameter: it drops
+all existing logs and start recording from scratch:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url1))
+         local har1 = splash:har{reset=true}
+         assert(splash:go(splash.args.url2))
+         local har2 = splash:har()
+         return {har1=har1, har2=har2}
+     end
+
+See also: :ref:`splash-har-reset`.
+
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 
+
+.. _splash-har-reset:
+
+splash:har_reset
+----------------
+
+**Signature:** ``splash:har_reset()``
+
+**Returns:** nil.
+
+**Async:** no.
+
+Drops all internally stored HAR_ records. It is similar to
+``splash:har{reset=true}``, but doesn't return anything.
 
 .. _splash-history:
 
@@ -1235,6 +1406,52 @@ After calling this method the navigation away from the page becomes
 permitted. Note that the pending navigation requests suppressed
 by :ref:`splash-lock-navigation` won't be reissued.
 
+.. _splash-set-result-status-code:
+
+splash:set_result_status_code
+-----------------------------
+
+Set HTTP status code of a result returned to a client.
+
+**Signature:** ``splash:set_result_status_code(code)``
+
+**Parameters:**
+
+* code - HTTP status code (a number 200 <= code <= 999).
+
+**Returns:** nil.
+
+**Async:** no.
+
+Use this function to signal errors or other conditions to splash client
+using HTTP status codes.
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         local ok, reason = splash:go("http://www.example.com")
+         if reason == "http500" then
+             splash:set_result_status_code(503)
+             splash:set_result_header("Retry-After", 10)
+             return ''
+         end
+         return splash:png()
+     end
+
+Be careful with this function: some proxies can be configured to
+process responses differently based on their status codes. See e.g. nginx
+`proxy_next_upstream <http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream>`_
+option.
+
+In case of unhandled Lua errors HTTP status code is set to 400 regardless
+of the value set with :ref:`splash-set-result-status-code`.
+
+See also: :ref:`splash-set-result-status-code`,
+:ref:`splash-set-result-header`.
+
+
 .. _splash-set-result-content-type:
 
 splash:set_result_content_type
@@ -1337,6 +1554,33 @@ result in an HTTP header:
          splash:set_result_content_type("image/png")
          return screenshot
      end
+
+See also: :ref:`splash-set-result-status-code`,
+:ref:`splash-set-result-content-type`.
+
+.. _splash-resource-timeout:
+
+splash.resource_timeout
+-----------------------
+
+Set a default timeout for network requests, in seconds.
+
+**Signature:** ``splash.resource_timeout = value``
+
+Example - abort requests to remote resources if they take more than 10 seconds:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash.resource_timeout = 10.0
+         assert(splash:go(splash.args.url))
+         return splash:png()
+     end
+
+Zero or nil value means "no timeout".
+
+Request timeouts set in :ref:`splash-on-request` using
+``request:set_timeout`` have a priority over :ref:`splash-resource-timeout`.
 
 
 .. _splash-images-enabled:
@@ -1578,7 +1822,7 @@ one of the ``request`` methods:
   See also: :ref:`splash-set-custom-headers`.
 * ``request:set_timeout(timeout)`` - set a timeout for this request,
   in seconds. If response is not fully received after the timeout,
-  request is aborted.
+  request is aborted. See also: :ref:`splash-resource-timeout`.
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.
@@ -1644,25 +1888,33 @@ request to Splash:
         }
     end)
 
-Example 6 - discard requests which take longer than 5 seconds to complete:
+Example 6 - discard requests which take longer than 5 seconds to complete,
+but allow up to 15 seconds for the first request:
 
 .. code-block:: lua
 
+    local first = true
+    splash.resource_timeout = 5
     splash:on_request(function(request)
-        request:set_timeout(5.0)
+        if first then
+            request:set_timeout(15.0)
+            first = false
+        end
     end)
 
+See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-request-reset`.
 
 .. note::
 
-    `splash:on_request` method doesn't support named arguments.
+    :ref:`splash-on-request` doesn't support named arguments.
 
 .. _splash-on-response-headers:
 
 splash:on_response_headers
 --------------------------
 
-Register a function to be called after response headers are received, before 
+Register a function to be called after response headers are received, before
 response body is read.
 
 **Signature:** ``splash:on_response_headers(callback)``
@@ -1675,9 +1927,10 @@ response body is read.
 ``response`` contains following fields:
 
 * ``url`` - requested URL;
+* ``status`` - HTTP status code
 * ``headers`` - HTTP headers of response
 * ``info`` - a table with response data in `HAR response`_ format
-* ``request`` - a table with request information 
+* ``request`` - a table with request information
 
 
 These fields are for information only; changing them doesn't change
@@ -1710,7 +1963,7 @@ Example 1 - log content-type headers of all responses received while rendering
         assert(splash:go(splash.args.url))
         return all_headers
     end
-    
+
 Example 2 - abort reading body of all responses with content type ``text/css``
 
 .. code-block:: lua
@@ -1740,6 +1993,138 @@ Example 3 - extract all cookies set by website without reading response body
         assert(splash:go(splash.args.url))
         return cookies
     end
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response`,
+:ref:`splash-on-response-headers-reset`.
+
+.. note::
+
+    :ref:`splash-on-response-headers` doesn't support named arguments.
+
+.. _splash-on-response:
+
+splash:on_response
+------------------
+
+Register a function to be called after response is downloaded.
+
+**Signature:** ``splash:on_response(callback)``
+
+**Returns:** nil.
+
+**Async:** no.
+
+:ref:`splash-on-response` callback receives a single ``response`` argument.
+``response`` contains following fields:
+
+* ``url`` - requested URL;
+* ``status`` - HTTP status code
+* ``headers`` - HTTP headers of response
+* ``info`` - a table with response data in `HAR response`_ format
+* ``request`` - a table with request information
+
+.. note::
+
+    Currently you can't read response body in a :ref:`splash-on-response`
+    callback.
+
+These fields are for information only; changing them doesn't change
+response received by splash.
+
+``response.request`` available in a callback contains the following attributes:
+
+* ``url`` - requested URL - can be different from response URL in case there is
+  redirect
+* ``headers`` - HTTP headers of request
+* ``method`` HTTP method of request
+* ``cookies`` - cookies in .har format
+
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-response-reset`.
+
+.. note::
+
+    :ref:`splash-on-response` doesn't support named arguments.
+
+
+.. _splash-on-request-reset:
+
+splash:on_request_reset
+-----------------------
+
+Remove all callbacks registered by :ref:`splash-on-request`.
+
+**Signature:** ``splash:on_request_reset()``
+
+**Returns:** nil
+
+**Async:** no.
+
+
+.. _splash-on-response-headers-reset:
+
+splash:on_response_headers_reset
+--------------------------------
+
+Remove all callbacks registered by :ref:`splash-on-response-headers`.
+
+**Signature:** ``splash:on_response_headers_reset()``
+
+**Returns:** nil
+
+**Async:** no.
+
+
+.. _splash-on-response-reset:
+
+splash:on_response_reset
+------------------------
+
+Remove all callbacks registered by :ref:`splash-on-response`.
+
+**Signature:** ``splash:on_response_reset()``
+
+**Returns:** nil
+
+**Async:** no.
+
+
+.. _splash-get-version:
+
+splash:get_version
+------------------
+
+Get Splash major and minor version.
+
+**Signature:** ``version_info = splash:get_version()``
+
+**Returns:** A table with version information.
+
+**Async:** no.
+
+As of now, this table contains:
+
+* ``splash`` - (string) Splash version
+* ``major`` - (int) Splash major version
+* ``minor`` - (int) Splash minor version
+* ``python`` - (string) Python version
+* ``qt`` - (string) Qt version
+* ``pyqt`` - (string) PyQt version
+* ``webkit`` - (string) WebKit version
+* ``sip`` - (string) SIP version
+* ``twisted`` - (string) Twisted version
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+         local version = splash:get_version()
+         if version.major < 2 and version.minor < 8 then
+             error("Splash 1.8 or newer required")
+         end
+     end
 
 .. _splash-args:
 

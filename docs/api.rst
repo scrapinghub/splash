@@ -71,7 +71,13 @@ wait : float : optional
 .. _arg-proxy:
 
 proxy : string : optional
-  Proxy profile name. See :ref:`Proxy Profiles`.
+  Proxy profile name or proxy URL. See :ref:`Proxy Profiles`.
+
+  A proxy URL should have the following format:
+  ``[protocol://][user:password@]proxyhost[:port])``
+
+  Where protocol is either ``http`` or ``socks5``. If port is not specified,
+  the port 1080 is used by default.
 
 .. _arg-js:
 
@@ -149,6 +155,18 @@ headers : JSON array or object : optional
 
     "User-Agent" header is special: is is used for all outgoing requests,
     unlike other headers.
+
+.. _arg-body:
+
+body : string : optional
+    Body of HTTP POST request to be sent if method is POST.
+    Default ``content-type`` header for POST requests is ``application/x-www-form-urlencoded``.
+
+.. _arg-http-method:
+
+http_method : string : optional
+    HTTP method of outgoing Splash request. Default method is GET. Splash also
+    supports POST.
 
 
 Examples

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import base64
-import copy
 import functools
 import json
 import os
@@ -16,11 +15,11 @@ from twisted.python import log
 
 from splash.config import settings
 from splash.har.qt import cookies2har
-from splash.har.utils import without_private
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2ascii
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
+from splash.exceptions import JsError, OneShotCallbackError
 
 
 def skip_if_closing(meth):
@@ -31,16 +30,6 @@ def skip_if_closing(meth):
             return
         return meth(self, *args, **kwargs)
     return wrapped
-
-
-class OneShotCallbackError(Exception):
-    """ A one shot callback was called more than once. """
-    pass
-
-
-class JsError(Exception):
-    """ JavaScript error, raised as a Python exception """
-    pass
 
 
 class BrowserTab(QObject):
@@ -69,7 +58,6 @@ class BrowserTab(QObject):
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._js_console = None
-        self._history = []
         self._autoload_scripts = []
 
         self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
@@ -117,8 +105,6 @@ class BrowserTab(QObject):
         settings = web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.PluginsEnabled, False)
-        settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, True)
-        settings.setAttribute(QWebSettings.LocalStorageEnabled, False)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
@@ -165,6 +151,10 @@ class BrowserTab(QObject):
     def set_resource_timeout(self, timeout):
         """ Set a default timeout for HTTP requests, in seconds. """
         self.web_page.resource_timeout = timeout
+
+    def get_resource_timeout(self):
+        """ Get a default timeout for HTTP requests, in seconds. """
+        return self.web_page.resource_timeout
 
     def set_images_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,
@@ -333,6 +323,10 @@ class BrowserTab(QObject):
         """ Register a callback for an event """
         self.web_page.callbacks[event].append(callback)
 
+    def clear_callbacks(self, event):
+        """ Unregister all callbacks for an event """
+        del self.web_page.callbacks[event][:]
+
     # def remove_callback(self, event, callback):
     #     """ Unregister a callback for an event """
     #     self.web_page.callbacks[event].remove(callback)
@@ -395,7 +389,7 @@ class BrowserTab(QObject):
             self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
-        request = self.http_client.request_obj(url, headers=headers)
+        request = self.http_client.request_obj(url, headers=headers, body=body)
         meth = OPERATION_QT_CONSTANTS[http_method]
         if body is None:  # PyQT doesn't support body=None
             self.web_page.mainFrame().load(request, meth)
@@ -439,7 +433,6 @@ class BrowserTab(QObject):
         happens. If onerror is callable then in case of a render error the
         timer is cancelled and this callable is called.
         """
-
         timer = QTimer()
         timer.setSingleShot(True)
         timer_callback = functools.partial(self._on_wait_timeout,
@@ -488,12 +481,7 @@ class BrowserTab(QObject):
             self._cancel_timer(timer)
 
     def _on_url_changed(self, url):
-        # log history
-        url = unicode(url.toString())
-        cause_ev = self.web_page.har_log._prev_entry(url, -1)
-        if cause_ev:
-            self._history.append(without_private(cause_ev.data))
-
+        self.web_page.har.store_redirect(unicode(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def run_js_file(self, filename, handle_errors=True):
@@ -517,7 +505,7 @@ class BrowserTab(QObject):
         """ Execute JS code before each page load """
         self._autoload_scripts.append(js_source)
 
-    def no_autoload(self):
+    def autoload_reset(self):
         """ Remove all scripts scheduled for auto-loading """
         self._autoload_scripts = []
 
@@ -538,6 +526,13 @@ class BrowserTab(QObject):
             follow_redirects=follow_redirects
         )
 
+    def http_post(self, url, callback, headers=None, follow_redirects=True, body=None):
+        self.http_client.post(url,
+                              callback=callback,
+                              headers=headers,
+                              follow_redirects=follow_redirects,
+                              body=body)
+
     def evaljs(self, js_source, handle_errors=True):
         """
         Run JS code in page context and return the result.
@@ -557,13 +552,38 @@ class BrowserTab(QObject):
                 return {error: false, result: eval(script_text)}
             }
             catch(e){
-                return {error: true, error_repr: e.toString()}
+                return {
+                    error: true,
+                    errorType: e.name,
+                    errorMessage: e.message,
+                    errorRepr: e.toString(),
+                }
             }
         })(%(script_text)s)
         """ % dict(script_text=escaped)
         res = qt2py(frame.evaluateJavaScript(wrapped))
+
+        if not isinstance(res, dict):
+            raise JsError({
+                'type': "unknown",
+                'js_error_message': res,
+                'message': "unknown JS error: {!r}".format(res)
+            })
+
         if res.get("error", False):
-            raise JsError(res.get("error_repr", "unknown JS error"))
+            err_message = res.get('errorMessage')
+            err_type = res.get('errorType', '<custom JS error>')
+            err_repr = res.get('errorRepr', "<unknown JS error>")
+            if err_message is None:
+                err_message = err_repr
+            raise JsError({
+                'type': 'js_error',
+                'js_error_type': err_type,
+                'js_error_message': err_message,
+                'js_error': err_repr,
+                'message': "JS error: {!r}".format(err_repr)
+            })
+
         return res.get("result", None)
 
     def runjs(self, js_source, handle_errors=True):
@@ -648,13 +668,14 @@ class BrowserTab(QObject):
         def cancel_callback():
             callback_proxy.cancel(reason='javascript window object cleared')
 
-        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped, min_level=2)
+        self.logger.log("wait_for_resume wrapped script:\n%s" % wrapped,
+                        min_level=3)
         frame.javaScriptWindowObjectCleared.connect(cancel_callback)
         frame.evaluateJavaScript(wrapped)
 
     def store_har_timing(self, name):
         self.logger.log("HAR event: %s" % name, min_level=3)
-        self.web_page.har_log.store_timing(name)
+        self.web_page.har.store_timing(name)
 
     def _jsconsole_enable(self):
         # TODO: add public interface or make console available by default
@@ -732,27 +753,30 @@ class BrowserTab(QObject):
         self.store_har_timing("_onIframesRendered")
         return result
 
-    def har(self):
+    def har(self, reset=False):
         """ Return HAR information """
         self.logger.log("getting HAR", min_level=3)
-        return self.web_page.har_log.todict()
+        res = self.web_page.har.todict()
+        if reset:
+            self.har_reset()
+        return res
+
+    def har_reset(self):
+        """ Drop current HAR information """
+        self.logger.log("HAR information is reset", min_level=3)
+        return self.web_page.reset_har()
 
     def history(self):
         """ Return history of 'main' HTTP requests """
         self.logger.log("getting history", min_level=3)
-        return copy.deepcopy(self._history)
+        return self.web_page.har.get_history()
 
     def last_http_status(self):
         """
         Return HTTP status code of the currently loaded webpage
         or None if it is not available.
         """
-        if not self._history:
-            return
-        try:
-            return self._history[-1]["response"]["status"]
-        except KeyError:
-            return
+        return self.web_page.har.get_last_http_status()
 
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
@@ -787,7 +811,7 @@ class _SplashHttpClient(QObject):
         """ Set User-Agent header for future requests """
         self.web_page.custom_user_agent = value
 
-    def request_obj(self, url, headers=None):
+    def request_obj(self, url, headers=None, body=None):
         """ Return a QNetworkRequest object """
         request = QNetworkRequest()
         request.setUrl(QUrl(url))
@@ -796,6 +820,11 @@ class _SplashHttpClient(QObject):
         if headers is not None:
             self.web_page.skip_custom_headers = True
             self._set_request_headers(request, headers)
+
+        if body and not request.hasRawHeader("content-type"):
+            # there is POST body but no content-type
+            # QT will set this header, but it will complain so better to do this here
+            request.setRawHeader("content-type", "application/x-www-form-urlencoded")
 
         return request
 
@@ -819,19 +848,32 @@ class _SplashHttpClient(QObject):
     def get(self, url, callback, headers=None, follow_redirects=True):
         """ Send a GET HTTP request; call the callback with the reply. """
         cb = functools.partial(
-            self._on_get_finished,
+            self._return_reply,
             callback=callback,
             url=url,
         )
         self.request(url, cb, headers=headers, follow_redirects=follow_redirects)
 
+    def post(self, url, callback, headers=None, follow_redirects=True, body=None):
+        """ Send HTTP POST request;
+        """
+        cb = functools.partial(self._return_reply, callback=callback, url=url)
+        self.request(url, cb, headers=headers, follow_redirects=follow_redirects, body=body,
+                     method="POST")
+
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
         # XXX: The caller must ensure self._delete_reply is called in a callback.
-        if method != 'GET':
+        if method.upper() not in ["POST", "GET"]:
             raise NotImplementedError()
-        request = self.request_obj(url, headers=headers)
-        reply = self.network_manager.get(request)
+
+        request = self.request_obj(url, headers=headers, body=body)
+
+        if method.upper() == "POST":
+            reply = self.network_manager.post(request, body)
+        else:
+            reply = self.network_manager.get(request)
+
         reply.finished.connect(callback)
         self._replies.add(reply)
         return reply
@@ -853,6 +895,11 @@ class _SplashHttpClient(QObject):
                 callback()
                 return
 
+            # handle redirects after POST request
+            if method.upper() == "POST":
+                method = "GET"
+                body = None
+
             redirect_url = reply.url().resolved(redirect_url)
             self.request(
                 url=redirect_url,
@@ -866,7 +913,7 @@ class _SplashHttpClient(QObject):
         finally:
             self._delete_reply(reply)
 
-    def _on_get_finished(self, callback, url):
+    def _return_reply(self, callback, url):
         reply = self.sender()
         callback(reply)
 
@@ -986,7 +1033,7 @@ class OneShotCallbackProxy(QObject):
     @pyqtSlot('QVariantMap')
     def resume(self, value=None):
         if self._used_up:
-            raise OneShotCallbackError("resume() called on a one shot" \
+            raise OneShotCallbackError("resume() called on a one shot"
                                        " callback that was already used up.")
 
         self._use_up()
@@ -995,7 +1042,7 @@ class OneShotCallbackProxy(QObject):
     @pyqtSlot(str, bool)
     def error(self, message, raise_=False):
         if self._used_up:
-            raise OneShotCallbackError("error() called on a one shot" \
+            raise OneShotCallbackError("error() called on a one shot"
                                        " callback that was already used up.")
 
         self._use_up()
@@ -1008,7 +1055,7 @@ class OneShotCallbackProxy(QObject):
 
     def _timed_out(self):
         self._use_up()
-        self._errback("One shot callback timed out while waiting for" \
+        self._errback("One shot callback timed out while waiting for"
                       " resume() or error().", raise_=False)
 
     def _use_up(self):

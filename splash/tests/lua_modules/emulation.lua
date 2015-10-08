@@ -38,18 +38,16 @@ function Splash:go_and_wait(args)
   end
 
   -- set a resource timeout
-  if args.resource_timeout ~= nil then
-    self:on_request(function(request)
-      request:set_timeout(args.resource_timeout)
-    end)
-  end
+  self.resource_timeout = args.resource_timeout
 
   local ok, reason = self:go{url=url, baseurl=args.baseurl}
   if not ok then
     -- render.xxx endpoints don't return HTTP errors as errors,
     -- so here we also only raising an exception is an error is not
     -- caused by a 4xx or 5xx HTTP response.
-    if string.sub(reason, 0,4) ~= 'http' then
+    if reason == 'render_error' or reason == 'error' then
+      self:set_result_status_code(502)
+    elseif string.sub(reason, 0,4) ~= 'http' then
       error(reason)
     end
   end

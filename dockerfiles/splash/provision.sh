@@ -67,9 +67,9 @@ install_python_deps () {
     # Install python-level dependencies.
     pip install -U pip && \
     /usr/local/bin/pip install --no-cache-dir \
-        Twisted==15.2.1 \
+        Twisted==15.4.0 \
         qt4reactor==1.6 \
-        psutil==3.1.1 \
+        psutil==3.2.1 \
         adblockparser==0.4 \
         re2==0.2.21 \
         xvfbwrapper==0.2.4 \

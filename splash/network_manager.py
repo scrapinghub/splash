@@ -4,7 +4,6 @@ import itertools
 import functools
 from datetime import datetime
 import traceback
-from contextlib import contextmanager
 
 from PyQt4.QtCore import QTimer
 from PyQt4.QtNetwork import (
@@ -17,8 +16,6 @@ from PyQt4.QtNetwork import (
 from twisted.python import log
 
 from splash.qtutils import qurl2ascii, REQUEST_ERRORS, get_request_webframe
-from splash import har
-from splash.har import qt as har_qt
 from splash.request_middleware import (
     AdblockMiddleware,
     AllowedDomainsMiddleware,
@@ -62,24 +59,21 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     _REQUEST_ID = QNetworkRequest.User + 1
 
-    REQUEST_CREATED = "created"
-    REQUEST_FINISHED = "finished"
-    REQUEST_HEADERS_RECEIVED = "headers"
-
     def __init__(self, verbosity):
         super(ProxiedQNetworkAccessManager, self).__init__()
-        self.sslErrors.connect(self._sslErrors)
-        self.finished.connect(self._finished)
+        self.sslErrors.connect(self._on_ssl_errors)
+        self.finished.connect(self._on_finished)
         self.verbosity = verbosity
         self._reply_timeout_timers = {}  # requestId => timer
+        self._default_proxy = self.proxy()
 
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
-    def _sslErrors(self, reply, errors):
+    def _on_ssl_errors(self, reply, errors):
         reply.ignoreSslErrors()
 
-    def _finished(self, reply):
+    def _on_finished(self, reply):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
@@ -89,61 +83,56 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         """
         start_time = datetime.utcnow()
 
-        request = self._wrapRequest(request)
+        # Proxies are managed per-request, so we're restoring a default
+        # before each request. This assumes all requests go through
+        # this method.
+        self._clear_proxy()
+
+        request, req_id = self._wrap_request(request)
         self._handle_custom_headers(request)
         self._handle_request_cookies(request)
 
-        with self._proxyApplied(request):
-            callbacks = self._getWebPageAttribute(request, "callbacks")
-            if callbacks and 'on_request' in callbacks:
-                for cb in callbacks["on_request"]:
-                    try:
-                        cb(request, operation, outgoingData)
-                    except:
-                        # Unhandled exceptions in createRequest method cause
-                        # segfaults, so we log all errors.
-                        self.log("error in on_resource_requested callback", min_level=1)
-                        self.log(traceback.format_exc(), min_level=1)
+        self._run_webpage_callbacks(request, 'on_request',
+                                    request, operation, outgoingData)
 
-            if hasattr(request, 'custom_proxy'):
-                self.setProxy(request.custom_proxy)
+        self._handle_custom_proxies(request)
 
-            har_entry = self._harEntry(request, create=True)
-            if har_entry is not None:
-                har_entry.update(self._initialHarData(
-                    start_time=start_time,
-                    operation=operation,
-                    request=request,
-                    outgoingData=outgoingData
-                ))
-
-            reply = super(ProxiedQNetworkAccessManager, self).createRequest(
-                operation, request, outgoingData
+        har = self._get_har(request)
+        if har is not None:
+            har.store_new_request(
+                req_id=req_id,
+                start_time=start_time,
+                operation=operation,
+                request=request,
+                outgoingData=outgoingData,
             )
 
-            if hasattr(request, 'timeout'):
-                timeout = request.timeout * 1000
-                if timeout:
-                    self._setReplyTimeout(reply, timeout)
+        reply = super(ProxiedQNetworkAccessManager, self).createRequest(
+            operation, request, outgoingData
+        )
 
-            if har_entry is not None:
-                har_entry["response"].update(har_qt.reply2har(reply))
+        if hasattr(request, 'timeout'):
+            timeout = request.timeout * 1000
+            if timeout:
+                self._set_reply_timeout(reply, timeout)
 
-            reply.error.connect(self._handleError)
-            reply.finished.connect(self._handleFinished)
-            # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
-            reply.metaDataChanged.connect(self._handleMetaData)
-            reply.downloadProgress.connect(self._handleDownloadProgress)
+        if har is not None:
+            har.store_new_reply(req_id, reply)
 
+        reply.error.connect(self._on_reply_error)
+        reply.finished.connect(self._on_reply_finished)
+        # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
+        reply.metaDataChanged.connect(self._on_reply_headers)
+        reply.downloadProgress.connect(self._on_reply_download_progress)
         return reply
 
-    def _setReplyTimeout(self, reply, timeout_ms):
-        request_id = self._getRequestId(reply.request())
+    def _set_reply_timeout(self, reply, timeout_ms):
+        request_id = self._get_request_id(reply.request())
         # reply is used as a parent for the timer in order to destroy
         # the timer when reply is destroyed. It segfaults otherwise.
         timer = QTimer(reply)
         timer.setSingleShot(True)
-        timer_callback = functools.partial(self._onReplyTimeout,
+        timer_callback = functools.partial(self._on_reply_timeout,
                                            reply=reply,
                                            timer=timer,
                                            request_id=request_id)
@@ -151,83 +140,53 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._reply_timeout_timers[request_id] = timer
         timer.start(timeout_ms)
 
-    def _onReplyTimeout(self, reply, timer, request_id):
+    def _on_reply_timeout(self, reply, timer, request_id):
         self._reply_timeout_timers.pop(request_id)
         self.log("timed out, aborting: {url}", reply, min_level=1)
         # FIXME: set proper error code
         reply.abort()
 
-    def _cancelReplyTimer(self, reply):
-        request_id = self._getRequestId(reply.request())
+    def _cancel_reply_timer(self, reply):
+        request_id = self._get_request_id(reply.request())
         timer = self._reply_timeout_timers.pop(request_id, None)
         if timer and timer.isActive():
             timer.stop()
 
-    @contextmanager
-    def _proxyApplied(self, request):
-        """
-        This context manager temporary sets a proxy based on request options.
-        """
-        old_proxy = self.proxy()
-        splash_proxy_factory = self._getWebPageAttribute(request, 'splash_proxy_factory')
+    def _clear_proxy(self):
+        """ Init default proxy """
+        self.setProxy(self._default_proxy)
+
+    def _wrap_request(self, request):
+        req = QNetworkRequest(request)
+        req_id = next(self._request_ids)
+        req.setAttribute(self._REQUEST_ID, req_id)
+        if hasattr(request, 'timeout'):
+            req.timeout = request.timeout
+        return req, req_id
+
+    def _handle_custom_proxies(self, request):
+        # proxies set in proxy profiles or `proxy` HTTP argument
+        splash_proxy_factory = self._get_webpage_attribute(request, 'splash_proxy_factory')
         if splash_proxy_factory:
             proxy_query = QNetworkProxyQuery(request.url())
             proxy = splash_proxy_factory.queryProxy(proxy_query)[0]
             self.setProxy(proxy)
-        try:
-            yield
-        finally:
-            self.setProxy(old_proxy)
 
-    def _wrapRequest(self, request):
-        req = QNetworkRequest(request)
-        req.setAttribute(self._REQUEST_ID, next(self._request_ids))
-        if hasattr(request, 'timeout'):
-            req.timeout = request.timeout
-        return req
-
-    def _initialHarData(self, start_time, operation, request, outgoingData):
-        """ Return initial values for HAR entry """
-        return {
-            '_tmp': {
-                'start_time': start_time,
-                'request_start_sending_time': start_time,
-                'request_sent_time': start_time,
-                'response_start_time': start_time,
-
-                # 'outgoingData': outgoingData,
-                'state': self.REQUEST_CREATED,
-            },
-            "startedDateTime": har.format_datetime(start_time),
-            "request": har_qt.request2har(request, operation, outgoingData),
-            "response": {
-                "bodySize": -1,
-            },
-            "cache": {},
-            "timings": {
-                "blocked": -1,
-                "dns": -1,
-                "connect": -1,
-                "ssl": -1,
-
-                "send": 0,
-                "wait": 0,
-                "receive": 0,
-            },
-            "time": 0,
-        }
+        # proxies set in on_request
+        if hasattr(request, 'custom_proxy'):
+            self.setProxy(request.custom_proxy)
 
     def _handle_custom_headers(self, request):
-        if self._getWebPageAttribute(request, "skip_custom_headers"):
+        if self._get_webpage_attribute(request, "skip_custom_headers"):
             # XXX: this hack assumes that new requests between
             # BrowserTab._create_request and this function are not possible,
             # i.e. we don't give control to the event loop in between.
             # Unfortunately we can't store this flag on a request itself
             # because a new QNetworkRequest instance is created by QWebKit.
-            self._setWebPageAttribute(request, "skip_custom_headers", False)
+            self._set_webpage_attribute(request, "skip_custom_headers", False)
             return
 
-        headers = self._getWebPageAttribute(request, "custom_headers")
+        headers = self._get_webpage_attribute(request, "custom_headers")
 
         if isinstance(headers, dict):
             headers = headers.items()
@@ -238,145 +197,117 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _handle_request_cookies(self, request):
         jar = QNetworkCookieJar()
         self.setCookieJar(jar)
-        cookiejar = self._getWebPageAttribute(request, "cookiejar")
+        cookiejar = self._get_webpage_attribute(request, "cookiejar")
         if cookiejar is not None:
             cookiejar.update_cookie_header(request)
 
     def _handle_reply_cookies(self, reply):
-        cookiejar = self._getWebPageAttribute(reply.request(), "cookiejar")
+        cookiejar = self._get_webpage_attribute(reply.request(), "cookiejar")
         if cookiejar is not None:
             cookiejar.fill_from_reply(reply)
 
-    def _getRequestId(self, request=None):
+    def _get_request_id(self, request=None):
         if request is None:
             request = self.sender().request()
         return request.attribute(self._REQUEST_ID).toPyObject()
 
-    def _harEntry(self, request=None, create=False):
+    def _get_har(self, request=None):
         """
-        Return a mutable dictionary for request/response
-        information storage.
+        Return HarBuilder instance.
+        :rtype: splash.har_builder.HarBuilder | None
         """
         if request is None:
             request = self.sender().request()
+        return self._get_webpage_attribute(request, "har")
 
-        har_log = self._getWebPageAttribute(request, "har_log")
-        if har_log is None:
-            return
-        return har_log.get_mutable_entry(self._getRequestId(request), create)
-
-    def _getWebPageAttribute(self, request, attribute):
+    def _get_webpage_attribute(self, request, attribute):
         web_frame = get_request_webframe(request)
         if web_frame:
             return getattr(web_frame.page(), attribute, None)
 
-    def _setWebPageAttribute(self, request, attribute, value):
+    def _set_webpage_attribute(self, request, attribute, value):
         web_frame = get_request_webframe(request)
         if web_frame:
             return setattr(web_frame.page(), attribute, value)
 
-    def _handleError(self, error_id):
+    def _on_reply_error(self, error_id):
         if error_id != QNetworkReply.OperationCanceledError:
             error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
             self.log('Download error %d: %s ({url})' % (error_id, error_msg),
                      self.sender(), min_level=2)
 
-    def _handleFinished(self):
+    def _on_reply_finished(self):
         reply = self.sender()
-        self._cancelReplyTimer(reply)
-        har_entry = self._harEntry()
-        if har_entry is not None:
-            har_entry["_tmp"]["state"] = self.REQUEST_FINISHED
+        request = reply.request()
+        self._cancel_reply_timer(reply)
+        har = self._get_har()
+        har_entry = None
+        if har is not None:
+            req_id = self._get_request_id()
+            har.store_reply_finished(req_id, reply)
+            # We're passing HAR entry because reply object itself doesn't
+            # have all information.
+            har_entry = har.get_entry(req_id)
 
-            now = datetime.utcnow()
-            start_time = har_entry['_tmp']['start_time']
-            response_start_time = har_entry['_tmp']['response_start_time']
-
-            receive_time = har.get_duration(response_start_time, now)
-            total_time = har.get_duration(start_time, now)
-
-            har_entry["timings"]["receive"] = receive_time
-            har_entry["time"] = total_time
-
-            if not har_entry["timings"]["send"]:
-                wait_time = har_entry["timings"]["wait"]
-                har_entry["timings"]["send"] = total_time - receive_time - wait_time
-                if har_entry["timings"]["send"] < 1e-6:
-                    har_entry["timings"]["send"] = 0
-
-            har_entry["response"].update(har_qt.reply2har(reply))
-
+        self._run_webpage_callbacks(request, "on_response", reply, har_entry)
         self.log("Finished downloading {url}", reply)
 
-    def _handleMetaData(self):
+    def _on_reply_headers(self):
         """Signal emitted before reading response body, after getting headers
         """
         reply = self.sender()
+        request = reply.request()
         self._handle_reply_cookies(reply)
+        self._run_webpage_callbacks(request, "on_response_headers", reply)
 
-        callbacks = self._getWebPageAttribute(reply.request(), "callbacks")
-
-        if callbacks and "on_response_headers" in callbacks:
-            for cb in callbacks["on_response_headers"]:
-                try:
-                    cb(reply)
-                except:
-                    # TODO unhandled exceptions in lua callbacks
-                    # should we raise errors here?
-                    # https://github.com/scrapinghub/splash/issues/161
-                    self.log("error in on_response_headers callback", min_level=1)
-                    self.log(traceback.format_exc(), min_level=1)
-
-        har_entry = self._harEntry()
-        if har_entry is not None:
-            if har_entry["_tmp"]["state"] == self.REQUEST_FINISHED:
-                self.log("Headers received for {url}; ignoring", reply, min_level=3)
-                return
-
-            har_entry["_tmp"]["state"] = self.REQUEST_HEADERS_RECEIVED
-            har_entry["response"].update(har_qt.reply2har(reply))
-
-            now = datetime.utcnow()
-            request_sent = har_entry["_tmp"]["request_sent_time"]
-            har_entry["_tmp"]["response_start_time"] = now
-            har_entry["timings"]["wait"] = har.get_duration(request_sent, now)
+        har = self._get_har()
+        if har is not None:
+            har.store_reply_headers_received(self._get_request_id(), reply)
 
         self.log("Headers received for {url}", reply, min_level=3)
 
-    def _handleDownloadProgress(self, received, total):
-        har_entry = self._harEntry()
-        if har_entry is not None:
-            har_entry["response"]["bodySize"] = int(received)
+    def _on_reply_download_progress(self, received, total):
+        har = self._get_har()
+        if har is not None:
+            req_id = self._get_request_id()
+            har.store_reply_download_progress(req_id, received, total)
 
         if total == -1:
             total = '?'
-        self.log("Downloaded %d/%s of {url}" % (received, total), self.sender(), min_level=4)
+        self.log("Downloaded %d/%s of {url}" % (received, total),
+                 self.sender(), min_level=4)
 
-    def _handleUploadProgress(self, sent, total):
-        har_entry = self._harEntry()
-        if har_entry is not None:
-            har_entry["request"]["bodySize"] = int(sent)
-
-            now = datetime.utcnow()
-            if sent == 0:
-                # it is a moment the sending is started
-                start_time = har_entry["_tmp"]["request_start_time"]
-                har_entry["_tmp"]["request_start_sending_time"] = now
-                har_entry["timings"]["blocked"] = har.get_duration(start_time, now)
-
-            har_entry["_tmp"]["request_sent_time"] = now
-
-            if sent == total:
-                har_entry["_tmp"]["response_start_time"] = now
-                start_sending_time = har_entry["_tmp"]["request_start_sending_time"]
-                har_entry["timings"]["send"] = har.get_duration(start_sending_time, now)
+    def _on_reply_upload_progress(self, sent, total):
+        # FIXME: is it used?
+        har = self._get_har()
+        if har is not None:
+            req_id = self._get_request_id()
+            har.store_request_upload_progress(req_id, sent, total)
 
         if total == -1:
             total = '?'
-        self.log("Uploaded %d/%s of {url}" % (sent, total), self.sender(), min_level=4)
+        self.log("Uploaded %d/%s of {url}" % (sent, total),
+                 self.sender(), min_level=4)
 
-    def _getRenderOptions(self, request):
-        return self._getWebPageAttribute(request, 'render_options')
+    def _get_render_options(self, request):
+        return self._get_webpage_attribute(request, 'render_options')
+
+    def _run_webpage_callbacks(self, request, event_name, *args):
+        callbacks = self._get_webpage_attribute(request, "callbacks")
+        if not callbacks:
+            return
+        for cb in callbacks.get(event_name, []):
+            try:
+                cb(*args)
+            except:
+                # TODO unhandled exceptions in lua callbacks
+                # should we raise errors here?
+                # https://github.com/scrapinghub/splash/issues/161
+                self.log("error in %s callback" % event_name, min_level=1)
+                # Log the traceback. It requires escaping because
+                # self.log uses str.format.
+                tb = traceback.format_exc().replace('{', '{{').replace('}', '}}')
+                self.log(tb, min_level=1)
 
     def log(self, msg, reply=None, min_level=2):
         if self.verbosity < min_level:
@@ -432,16 +363,16 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     def run_response_middlewares(self):
         reply = self.sender()
         reply.metaDataChanged.disconnect(self.run_response_middlewares)
-        render_options = self._getRenderOptions(reply.request())
+        render_options = self._get_render_options(reply.request())
         if render_options:
             for middleware in self.response_middlewares:
                 middleware.process(reply, render_options)
 
     def createRequest(self, operation, request, outgoingData=None):
-        render_options = self._getRenderOptions(request)
+        render_options = self._get_render_options(request)
         if render_options:
-            for filter in self.request_middlewares:
-                request = filter.process(request, render_options, operation, outgoingData)
+            for middleware in self.request_middlewares:
+                request = middleware.process(request, render_options, operation, outgoingData)
         reply = super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
         if render_options:
             reply.metaDataChanged.connect(self.run_response_middlewares)

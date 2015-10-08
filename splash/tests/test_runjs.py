@@ -41,22 +41,31 @@ test('Changed');"""
 
     def test_js_profile(self):
         js_source = """test('abc');"""
-        params = {'url': self.mockurl("jsrender"), 'js' : 'test'}
+        params = {'url': self.mockurl("jsrender"), 'js': 'test'}
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], "abc")
 
     def test_js_profile_another_lib(self):
         js_source = """test2('abc');"""
-        params = {'url': self.mockurl("jsrender"), 'js' : 'test'}
+        params = {'url': self.mockurl("jsrender"), 'js': 'test'}
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], "abcabc")
 
     def test_js_utf8_lib(self):
         js_source = """console.log(test_utf8('abc')); test_utf8('abc');"""
-        params = {'url': self.mockurl("jsrender"), 'js' : 'test', 'console': '1'}
+        params = {'url': self.mockurl("jsrender"), 'js': 'test', 'console': '1'}
         r = self._runjs_request(js_source, params=params).json()
         self.assertEqual(r['script'], u'abc\xae')
         self.assertEqual(r['console'], [u'abc\xae'])
+
+    def test_js_nonexisting(self):
+        resp = self._runjs_request("console.log('hello');", params={
+            'url': self.mockurl('jsrender'),
+            'js': '../../filters'
+        })
+        data = self.assertJsonError(resp, 400, "BadOption")
+        self.assertEqual(data['info']['argument'], 'js')
+        self.assertIn("does not exist", data['info']['description'])
 
     def test_js_external_iframe(self):
         # by default, cross-domain access is disabled, so this does nothing
@@ -84,7 +93,7 @@ test('Changed');"""
 
     def test_js_invalid_profile(self):
         js_source = """test('abc');"""
-        params = {'url': self.mockurl("jsrender"), 'js' : 'not_a_profile'}
+        params = {'url': self.mockurl("jsrender"), 'js': 'not_a_profile'}
         r = self._runjs_request(js_source, params=params)
         self.assertStatusCode(r, 400)
 

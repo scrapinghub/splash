@@ -154,3 +154,4 @@ class LuaPythonConversionTest(unittest.TestCase):
         arr = python2lua(self.lua, [3, 4])
         arr2 = func(arr)
         self.assertEqual(lua2python(self.lua, arr2), [3, 4, "bar"])
+
