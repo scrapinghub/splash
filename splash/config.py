@@ -1,24 +1,61 @@
 # -*- coding: utf-8 -*-
 
+import __builtin__
+import ast
+import ConfigParser
 import os
-import yaml
+
 from . import defaults
 
 
+class ConfigError(Exception):
+    pass
+
+# CONFIG_PATH is the user supplied config file path.
+try:
+    # hack to make CONFIG_PATH available from splash.server.main
+    CONFIG_PATH = __builtin__.CONFIG_PATH
+except AttributeError:
+    CONFIG_PATH = None
+
+
 class Settings(object):
+    """Handles config files and default values of config settings."""
+
+    NO_CONFIG_FILE_MSG = "Config file doesn't exist at %s"
 
     def __init__(self):
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        config_file_path = os.path.join(root_dir, 'config.yml')
+        self.config_path = CONFIG_PATH
         self.defaults = {}
         for name in dir(defaults):
             if name.isupper():
                 self.defaults[name] = getattr(defaults, name)
-        try:
-            with open(config_file_path, 'rb') as config_file:
-                self.cfg = yaml.load(config_file)
-        except IOError:
+        parser = ConfigParser.SafeConfigParser()
+        # don't convert keys to lowercase.
+        parser.optionxform = str
+        if parser.read(self._get_configfile_paths()):
+            # Safely evaluate configuration values.
+            self.cfg = {key: ast.literal_eval(val) for (key, val) in parser.items('settings')}
+        else:
             self.cfg = {}
+
+    def _get_configfile_paths(self):
+        """Returns a list of config file paths."""
+        if self.config_path:
+            config_dir_path = os.path.abspath(os.path.expanduser(self.config_path))
+            configfile_path = os.path.abspath(os.path.join(config_dir_path, 'splash.cfg'))
+            if not os.path.isfile(configfile_path):
+                # file doesn't exist
+                raise ConfigError(self.NO_CONFIG_FILE_MSG % configfile_path)
+            else:
+                return configfile_path
+        else:
+            xdg_config_home = os.environ.get('XDG_CONFIG_HOME') or \
+                os.path.expanduser('~/.config')
+            return ['/etc/splash.cfg',
+                    'C:\\splash\splash.cfg',
+                    os.path.join(xdg_config_home, 'splash.cfg'),
+                    os.path.expanduser('~/.splash.cfg')]
 
     def __getattr__(self, item):
         val = self.cfg.get(item, None)

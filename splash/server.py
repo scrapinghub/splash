@@ -7,7 +7,7 @@ import traceback
 import signal
 import functools
 
-from splash.config import settings
+from splash import config
 from splash import xvfb, __version__
 from splash.qtutils import init_qt_app
 
@@ -18,9 +18,12 @@ def install_qtreactor(verbose):
 
 
 def parse_opts():
+    settings = config.Settings()
     _bool_default = {True:' (default)', False: ''}
 
     op = optparse.OptionParser()
+    op.add_option("--config-path",
+                  help="path to a folder with a config file named splash.cfg")
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
         help="exit if max RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
@@ -336,6 +339,12 @@ def main():
     if opts.version:
         print(__version__)
         sys.exit(0)
+
+    # hack to make CONFIG_PATH available in splash.config
+    if opts.config_path:
+        import __builtin__
+        __builtin__.CONFIG_PATH = opts.config_path
+        reload(config)
 
     start_logging(opts)
     log_splash_version()
