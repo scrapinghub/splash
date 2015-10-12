@@ -350,10 +350,8 @@ def main():
         print(__version__)
         sys.exit(0)
 
-    # hack to make CONFIG_PATH available in splash.config
     if opts.config_path:
-        import __builtin__
-        __builtin__.CONFIG_PATH = opts.config_path
+        config.CONFIG_PATH = opts.config_path
         reload(config)
 
     start_logging(opts)

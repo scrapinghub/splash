@@ -11,12 +11,7 @@ from . import defaults
 class ConfigError(Exception):
     pass
 
-# CONFIG_PATH is the user supplied config file path.
-try:
-    # hack to make CONFIG_PATH available from splash.server.main
-    CONFIG_PATH = __builtin__.CONFIG_PATH
-except AttributeError:
-    CONFIG_PATH = None
+global CONFIG_PATH
 
 
 class Settings(object):
@@ -25,7 +20,11 @@ class Settings(object):
     NO_CONFIG_FILE_MSG = "Config file doesn't exist at %s"
 
     def __init__(self):
-        self.config_path = CONFIG_PATH
+        try:
+            self.config_path = CONFIG_PATH
+        except NameError:
+            # CONFIG_PATH is not defined. User hasn't passed in a config file.
+            self.config_path = None
         self.defaults = {}
         for name in dir(defaults):
             if name.isupper():
