@@ -115,11 +115,11 @@ install_python_deps () {
     pip3 install -U pip && \
     pip3 install \
         qt5reactor-fork==0.2 \
-        psutil==3.2.1 \
+        psutil==3.2.2 \
         Twisted==15.4.0 \
         adblockparser==0.4 \
-        xvfbwrapper==0.2.4 \
-        lupa==1.1 \
+        xvfbwrapper==0.2.5 \
+        lupa==1.2 \
         funcparserlib==0.3.6 \
         Pillow==2.9.0 && \
     pip3 install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2

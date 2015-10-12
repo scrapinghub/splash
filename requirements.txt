@@ -9,5 +9,5 @@ xvfbwrapper
 Pillow
 
 # for scripting support
-lupa >= 1.1
+lupa >= 1.2
 funcparserlib >= 0.3.6
