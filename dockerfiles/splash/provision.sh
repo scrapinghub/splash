@@ -69,11 +69,11 @@ install_python_deps () {
     /usr/local/bin/pip install --no-cache-dir \
         Twisted==15.4.0 \
         qt4reactor==1.6 \
-        psutil==3.2.1 \
+        psutil==3.2.2 \
         adblockparser==0.4 \
         re2==0.2.21 \
-        xvfbwrapper==0.2.4 \
-        lupa==1.1 \
+        xvfbwrapper==0.2.5 \
+        lupa==1.2 \
         funcparserlib==0.3.6 \
         Pillow==2.9.0
 }

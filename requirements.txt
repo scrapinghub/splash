@@ -9,7 +9,7 @@ xvfbwrapper
 Pillow
 
 # for scripting support
-lupa >= 1.1
+lupa >= 1.2
 funcparserlib >= 0.3.6
 
 # the following libraries are only required by tests
