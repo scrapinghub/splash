@@ -444,6 +444,14 @@ class GetResource(Resource):
 """ % (headers, payload)).encode('utf-8')
 
 
+class EchoUrl(Resource):
+    def render_GET(self, request):
+        return request.uri
+
+    def getChild(self, name, request):
+        return self
+
+
 JsPostResource = _html_resource("""
 <html>
 <body>
@@ -796,6 +804,7 @@ class Root(Resource):
         self.putChild(b"rgb-stripes", RgbStripesPage())
         self.putChild(b"subresources", Subresources())
         self.putChild(b"set-header", SetHeadersResource())
+        self.putChild(b"echourl", EchoUrl())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

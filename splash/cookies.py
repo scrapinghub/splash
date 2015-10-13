@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from PyQt5.QtCore import QDateTime, Qt, QUrl
+from PyQt5.QtCore import QDateTime, Qt
 from PyQt5.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
 
 from splash.utils import to_unicode, to_bytes
+from splash.qtutils import to_qurl
 
 
 class SplashCookieJar(QNetworkCookieJar):
@@ -38,7 +39,7 @@ class SplashCookieJar(QNetworkCookieJar):
             new_cookies = [c for c in all_cookies if
                            to_unicode(bytes(c.name())) != name]
         else:
-            remove_cookies = self.cookiesForUrl(QUrl(url))
+            remove_cookies = self.cookiesForUrl(to_qurl(url))
             if name is not None:
                 remove_cookies = [c for c in remove_cookies if
                                   to_unicode(bytes(c.name())) == name]

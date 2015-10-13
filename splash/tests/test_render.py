@@ -285,6 +285,13 @@ class RenderHtmlTest(Base.RenderTest):
             r.text
         )
 
+    def test_path_encoding(self):
+        r = self.request({'url': self.mockurl(u'echourl/例/')})
+        self.assertTrue('/echourl/%E4%BE%8B' in r.text)
+
+        r = self.request({'url': self.mockurl(u'echourl/%E4%BE%8B/')})
+        self.assertTrue('/echourl/%E4%BE%8B' in r.text)
+
     def test_result_encoding(self):
         r1 = requests.get(self.mockurl('cp1251'))
         self.assertStatusCode(r1, 200)

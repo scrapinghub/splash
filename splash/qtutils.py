@@ -17,7 +17,7 @@ from PyQt5.QtWebKitWidgets import QWebFrame
 from twisted.python import log
 import six
 
-from splash.utils import truncated
+from splash.utils import truncated, to_bytes
 
 
 OPERATION_NAMES = {
@@ -142,9 +142,15 @@ def qurl2ascii(url):
     return url
 
 
+def to_qurl(s):
+    if isinstance(s, QUrl):
+        return s
+    return QUrl.fromEncoded(to_bytes(s, encoding='utf8'))
+
+
 def set_request_url(request, url):
     """ Set an URL for a QNetworkRequest """
-    request.setUrl(QUrl(url))
+    request.setUrl(to_qurl(url))
 
 
 def drop_request(request):

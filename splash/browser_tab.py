@@ -7,7 +7,7 @@ import os
 import weakref
 import uuid
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, QUrl, pyqtSlot
+from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
@@ -19,7 +19,7 @@ from splash import defaults
 from splash.har.qt import cookies2har
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
-                            qurl2ascii)
+                            qurl2ascii, to_qurl)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError
@@ -234,7 +234,7 @@ class BrowserTab(QObject):
             errback=errback,
         )
         self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
-        self.web_page.mainFrame().setContent(data, mime_type, QUrl(baseurl))
+        self.web_page.mainFrame().setContent(data, mime_type, to_qurl(baseurl))
 
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
@@ -823,7 +823,7 @@ class _SplashHttpClient(QObject):
     def request_obj(self, url, headers=None, body=None):
         """ Return a QNetworkRequest object """
         request = QNetworkRequest()
-        request.setUrl(QUrl(url))
+        request.setUrl(to_qurl(url))
         request.setOriginatingObject(self.web_page.mainFrame())
 
         if headers is not None:
