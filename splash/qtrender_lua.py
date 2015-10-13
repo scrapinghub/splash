@@ -165,7 +165,10 @@ def can_raise(meth):
         try:
             return meth(self, *args, **kwargs)
         except BaseException as e:
-            self.exceptions.append(e)
+            if self.exceptions is None:
+                print("Ignoring exception:", e)
+            else:
+                self.exceptions.append(e)
             raise
 
     return wrapper
