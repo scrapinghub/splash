@@ -5,6 +5,25 @@ local sandbox = {}
 
 sandbox.allowed_require_names = {}
 
+-- 6.4 String Manipulation
+-- http://www.lua.org/manual/5.2/manual.html#6.4
+local _string = {
+  byte = string.byte,
+  char = string.char,
+  find = string.find,
+  format = string.format,
+--  gmatch = string.gmatch,     -- can be CPU intensive
+--  gsub = string.gsub,         -- can be CPU intensive; can result in arbitrary native code execution (in 5.1)?
+  len = string.len,
+  lower = string.lower,
+--  match = string.match,       -- can be CPU intensive
+--  rep = string.rep,           -- can eat memory
+  reverse = string.reverse,
+  sub = string.sub,
+  upper = string.upper,  
+}
+
+
 sandbox.env = {
   --
   -- 6.1 Basic Functions
@@ -47,21 +66,7 @@ sandbox.env = {
   --
   -- 6.4 String Manipulation
   -- http://www.lua.org/manual/5.2/manual.html#6.4
-  string = {
-    byte = string.byte,
-    char = string.char,
-    find = string.find,
-    format = string.format,
---    gmatch = string.gmatch,     -- can be CPU intensive
---    gsub = string.gsub,         -- can be CPU intensive; can result in arbitrary native code execution (in 5.1)?
-    len = string.len,
-    lower = string.lower,
---    match = string.match,       -- can be CPU intensive
---    rep = string.rep,           -- can eat memory
-    reverse = string.reverse,
-    sub = string.sub,
-    upper = string.upper,
-  },
+  string = _string,
 
   --
   -- 6.5 Table Manipulation
@@ -144,15 +149,26 @@ sandbox.env = {
 -- Fix metatables. Some of the functions are available
 -- via metatables of primitive types; disable them all.
 --
+local mt_fixed = false
 sandbox.fix_metatables = function()
-  -- 1. TODO: change string metatable to the sandboxed version
-  --    (it is now just disabled)
-  debug.setmetatable('', nil)
+  if mt_fixed then 
+    return 
+  end
+  
+  -- Fix string metatable: provide common functions 
+  -- from string module.
+  local mt = {__index={}}
+  for k, v in pairs(_string) do
+    mt['__index'][k] = v
+  end
+  debug.setmetatable('', mt)
 
   -- 2. Make sure there are no other metatables:
   debug.setmetatable(1, nil)
   debug.setmetatable(function() end, nil)
   debug.setmetatable(true, nil)
+  
+  mt_fixed = true
 end
 
 

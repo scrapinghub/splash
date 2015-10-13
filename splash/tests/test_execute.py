@@ -1997,11 +1997,9 @@ class SandboxTest(BaseLuaRenderTest):
         end
         """)
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                               message="attempt to index constant")
+                               message="nil value")
         self.assertErrorLineNumber(resp, 3)
 
-    # TODO: strings should use a sandboxed string module as a metatable
-    @pytest.mark.xfail
     def test_non_sandboxed_string_method(self):
         resp = self.request_lua("""
         function main(self)
