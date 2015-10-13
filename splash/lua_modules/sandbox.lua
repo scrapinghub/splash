@@ -149,12 +149,7 @@ sandbox.env = {
 -- Fix metatables. Some of the functions are available
 -- via metatables of primitive types; disable them all.
 --
-local mt_fixed = false
 sandbox.fix_metatables = function()
-  if mt_fixed then 
-    return 
-  end
-  
   -- Fix string metatable: provide common functions 
   -- from string module.
   local mt = {__index={}}
@@ -167,8 +162,6 @@ sandbox.fix_metatables = function()
   debug.setmetatable(1, nil)
   debug.setmetatable(function() end, nil)
   debug.setmetatable(true, nil)
-  
-  mt_fixed = true
 end
 
 
