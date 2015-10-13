@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from PyQt4.QtCore import QDateTime, Qt, QUrl
+from PyQt4.QtCore import QDateTime, Qt
 from PyQt4.QtNetwork import QNetworkRequest, QNetworkCookie, QNetworkCookieJar
+
+from splash.qtutils import to_qurl
 
 
 class SplashCookieJar(QNetworkCookieJar):
@@ -36,7 +38,7 @@ class SplashCookieJar(QNetworkCookieJar):
         if url is None:
             new_cookies = [c for c in all_cookies if bytes(c.name()) != name]
         else:
-            remove_cookies = self.cookiesForUrl(QUrl(url))
+            remove_cookies = self.cookiesForUrl(to_qurl(url))
             if name is not None:
                 remove_cookies = [c for c in remove_cookies if bytes(c.name()) == name]
             to_remove = {self._cookie_fp(c) for c in remove_cookies}

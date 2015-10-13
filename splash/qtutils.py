@@ -8,7 +8,6 @@ import itertools
 import sys
 import time
 
-
 from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
                           QRegExp, QString, QUrl, QVariant)
 from PyQt4.QtGui import QApplication
@@ -141,9 +140,19 @@ def qurl2ascii(url):
     return url
 
 
+def to_qurl(s):
+    if isinstance(s, QUrl):
+        return s
+
+    if isinstance(s, unicode):
+        s = s.encode('utf-8')
+
+    return QUrl.fromEncoded(s)
+
+
 def set_request_url(request, url):
     """ Set an URL for a QNetworkRequest """
-    request.setUrl(QUrl(url))
+    request.setUrl(to_qurl(url))
 
 
 def drop_request(request):
