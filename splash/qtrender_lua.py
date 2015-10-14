@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function
 import json
+import base64
 import functools
 import resource
 import contextlib
 import time
 import sys
 from urllib import urlencode
-import twisted
 
+import twisted
 from PyQt4.QtCore import QTimer
 import lupa
 
@@ -45,6 +46,21 @@ class AsyncBrowserCommand(AsyncCommand):
         return "%s(id=%r, name=%r, kwargs=%s)" % (
             self.__class__.__name__, self.id, self.name, kwargs_repr
         )
+
+
+class StoredExceptions(object):
+    def __init__(self):
+        self._exceptions = []
+
+    def append(self, ex):
+        self._exceptions.append(ex)
+
+    def clear(self):
+        self._exceptions[:] = []
+
+    def get_last(self):
+        if self._exceptions:
+            return self._exceptions[-1]
 
 
 def command(async=False, can_raise_async=False, table_argument=False,
@@ -149,7 +165,10 @@ def can_raise(meth):
         try:
             return meth(self, *args, **kwargs)
         except BaseException as e:
-            self._exceptions.append(e)
+            if self.exceptions is None:
+                print("Ignoring exception:", e)
+            else:
+                self.exceptions.append(e)
             raise
 
     return wrapper
@@ -255,7 +274,7 @@ class _WrappedJavascriptFunction(object):
         self.lua = splash.lua
         self.tab = splash.tab
         self.source = source
-        self._exceptions = splash._exceptions
+        self.exceptions = splash.exceptions
 
     @exceptions_as_return_values
     @can_raise
@@ -318,7 +337,7 @@ class BaseExposedObject(object):
     _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage']
     _attribute_whitelist = []
 
-    def __init__(self, lua):
+    def __init__(self, lua, exceptions):
         self.lua = lua
         commands = get_commands(self)
         self.commands = lua.python2lua(commands)
@@ -335,25 +354,25 @@ class BaseExposedObject(object):
         )
         lua.add_allowed_object(self, self.attr_whitelist)
 
-        self._exceptions = []
+        self.exceptions = exceptions
         self.tmp_storage = lua.table_from({})  # a workaround for callbacks
 
     def clear(self):
         self.lua.remove_allowed_object(self)
         self.lua = None
-        # self._exceptions = None
         self.tmp_storage = None
         self.lua_properties = None
         self.commands = None
+        self.exceptions = None
 
     @classmethod
     @contextlib.contextmanager
-    def wraps(cls, lua, *args, **kwargs):
+    def wraps(cls, lua, exceptions, *args, **kwargs):
         """
         Context manager which returns a wrapped object
         suitable for using in Lua code.
         """
-        obj = cls(lua, *args, **kwargs)
+        obj = cls(lua, exceptions, *args, **kwargs)
         try:
             with lua.object_allowed(obj, obj.attr_whitelist):
                 yield obj
@@ -370,7 +389,7 @@ class Splash(BaseExposedObject):
     _result_status_code = 200
     _attribute_whitelist = ['args']
 
-    def __init__(self, lua, tab, render_options=None, sandboxed=False):
+    def __init__(self, lua, exceptions, tab, render_options=None, sandboxed=False):
         """
         :param SplashLuaRuntime lua: Lua wrapper
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
@@ -389,7 +408,7 @@ class Splash(BaseExposedObject):
         self.tab = tab
         self._result_headers = []
 
-        super(Splash, self).__init__(lua)
+        super(Splash, self).__init__(lua, exceptions)
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
@@ -840,7 +859,8 @@ class Splash(BaseExposedObject):
         """
 
         def _callback(request, operation, outgoing_data):
-            with _ExposedRequest.wraps(self.lua, request, operation, outgoing_data) as req:
+            exceptions = StoredExceptions()  # FIXME: exceptions are discarded
+            with _ExposedRequest.wraps(self.lua, exceptions, request, operation, outgoing_data) as req:
                 callback(req)
 
         self.tab.register_callback("on_request", _callback)
@@ -849,7 +869,8 @@ class Splash(BaseExposedObject):
     @command(sets_callback=True)
     def private_on_response_headers(self, callback):
         def _callback(reply):
-            with _ExposedBoundResponse.wraps(self.lua, reply) as resp:
+            exceptions = StoredExceptions()  # FIXME: exceptions are discarded
+            with _ExposedBoundResponse.wraps(self.lua, exceptions, reply) as resp:
                 callback(resp)
 
         self.tab.register_callback("on_response_headers", _callback)
@@ -858,7 +879,8 @@ class Splash(BaseExposedObject):
     @command(sets_callback=True)
     def private_on_response(self, callback):
         def _callback(reply, har_entry):
-            resp = _ExposedResponse(self.lua, reply, har_entry)
+            exceptions = StoredExceptions()  # FIXME: exceptions are discarded
+            resp = _ExposedResponse(self.lua, exceptions, reply, har_entry)
             run_coro = self.get_coroutine_run_func(
                 "splash:on_response", callback, [resp]
             )
@@ -893,7 +915,11 @@ class Splash(BaseExposedObject):
 
         qtimer = QTimer(self.tab)
         qtimer.setSingleShot(True)
-        timer = _ExposedTimer(self, qtimer)
+
+        # timer is used outside call_later callbacks, so errors
+        # are reported as main Splash errors.
+        timer = _ExposedTimer(self.lua, self.exceptions, qtimer)
+
         run_coro = self.get_coroutine_run_func(
             "splash:call_later", callback, return_error=timer.store_error
         )
@@ -932,13 +958,6 @@ class Splash(BaseExposedObject):
         if res == "http200":
             return "render_error"
         return res
-
-    def get_real_exception(self):
-        if self._exceptions:
-            return self._exceptions[-1]
-
-    def clear_exceptions(self):
-        self._exceptions[:] = []
 
     def result_content_type(self):
         if self._result_content_type is None:
@@ -983,15 +1002,10 @@ class _ExposedTimer(BaseExposedObject):
     Timer object returned by splash:call_later().
     """
 
-    def __init__(self, splash, timer):
+    def __init__(self, lua, exceptions, timer):
         self.timer = timer
-        self.errors = []
-        super(_ExposedTimer, self).__init__(splash.lua)
-
-        # FIXME: this is a hack.
-        # timer is used outside call_later callbacks, so errors
-        # are reported as main Splash errors.
-        self._exceptions = splash._exceptions
+        self.callback_exceptions = []
+        super(_ExposedTimer, self).__init__(lua, exceptions)
 
     @command()
     def cancel(self):
@@ -1003,8 +1017,8 @@ class _ExposedTimer(BaseExposedObject):
 
     @command()
     def reraise(self):
-        if self.errors:
-            ex = self.errors[-1]
+        if self.callback_exceptions:
+            ex = self.callback_exceptions[-1]
             if isinstance(ex, ScriptError):
                 info = ex.args[0]
                 info['splash_method'] = None
@@ -1012,7 +1026,7 @@ class _ExposedTimer(BaseExposedObject):
             raise ex
 
     def store_error(self, error):
-        self.errors.append(error)
+        self.callback_exceptions.append(error)
 
 
 requires_request = requires_attr(
@@ -1029,8 +1043,8 @@ class _ExposedRequest(BaseExposedObject):
     """ QNetworkRequest wrapper for Lua """
     _attribute_whitelist = ['info']
 
-    def __init__(self, lua, request, operation, outgoing_data):
-        super(_ExposedRequest, self).__init__(lua)
+    def __init__(self, lua, exceptions, request, operation, outgoing_data):
+        super(_ExposedRequest, self).__init__(lua, exceptions)
         self.request = request
         self.info = self.lua.python2lua(
             request2har(request, operation, outgoing_data)
@@ -1087,8 +1101,8 @@ class _ExposedResponse(BaseExposedObject):
     """ Response object exposed to Lua in on_response callback """
     _attribute_whitelist = ["headers", "info", "request"]
 
-    def __init__(self, lua, reply, har_entry=None):
-        super(_ExposedResponse, self).__init__(lua)
+    def __init__(self, lua, exceptions, reply, har_entry=None):
+        super(_ExposedResponse, self).__init__(lua, exceptions)
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
         _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
@@ -1118,8 +1132,10 @@ class _ExposedResponse(BaseExposedObject):
 class _ExposedBoundResponse(_ExposedResponse):
     """ Response object exposed to Lua in on_response_headers callback. """
 
-    def __init__(self, lua, reply, har_entry=None):
-        super(_ExposedBoundResponse, self).__init__(lua, reply, har_entry)
+    def __init__(self, lua, exceptions, reply, har_entry=None):
+        super(_ExposedBoundResponse, self).__init__(
+            lua, exceptions, reply, har_entry
+        )
         self.response = reply
 
     def clear(self):
@@ -1130,6 +1146,41 @@ class _ExposedBoundResponse(_ExposedResponse):
     @requires_response
     def abort(self):
         self.response.abort()
+
+
+class Extras(BaseExposedObject):
+    """
+    Extra features exposed to Lua via custom modules.
+
+    TODO: users should be able to expose their own plugins
+    """
+    def __init__(self, lua, exceptions):
+        super(Extras, self).__init__(lua, exceptions)
+        wrapper = self.lua.eval("require('extras')")
+        self._wrapped = wrapper._create(self)
+
+    @command()
+    def base64_encode(self, data):
+        if not isinstance(data, bytes):
+            data = data.encode('utf8')
+        return base64.b64encode(data)
+
+    @command()
+    def base64_decode(self, data):
+        return base64.b64decode(data)
+
+    @command(table_argument=True)
+    def json_encode(self, obj):
+        return json.dumps(self.lua.lua2python(obj))
+
+    @command()
+    def json_decode(self, s):
+        return json.loads(s)
+
+    def inject_to_globals(self):
+        self.lua.add_to_globals("__extras", self._wrapped)
+        self.lua.add_allowed_module("base64")
+        self.lua.add_allowed_module("json")
 
 
 class SplashCoroutineRunner(BaseScriptRunner):
@@ -1162,9 +1213,17 @@ class MainCoroutineRunner(SplashCoroutineRunner):
     """
     Utility class for running main Splash Lua coroutine.
     """
+    def __init__(self, lua, splash, log, sandboxed):
+        self.exceptions = splash.exceptions
+        super(MainCoroutineRunner, self).__init__(
+            lua=lua,
+            splash=splash,
+            log=log,
+            sandboxed=sandboxed
+        )
 
     def start(self, main_coro, return_result=None, return_error=None):
-        self.splash.clear_exceptions()
+        self.exceptions.clear()
         args = [self.splash.get_wrapped()]
         super(MainCoroutineRunner, self).start(main_coro, args, return_result, return_error)
 
@@ -1177,7 +1236,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         ))
 
     def on_lua_error(self, lua_exception):
-        py_exception = self.splash.get_real_exception()
+        py_exception = self.exceptions.get_last()
 
         if not py_exception:
             return
@@ -1213,7 +1272,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
 
         return ScriptError({
             'type': ScriptError.SPLASH_LUA_ERROR,
-            'message': ex.args[0],
+            'message': str(ex.args[0]),
         })
 
 
@@ -1223,6 +1282,7 @@ class LuaRender(RenderScript):
     @stop_on_error
     def start(self, lua_source, sandboxed, lua_package_path,
               lua_sandbox_allowed_modules):
+        self.exceptions = StoredExceptions()
         self.log(lua_source)
         self.sandboxed = sandboxed
         self.lua = SplashLuaRuntime(
@@ -1230,7 +1290,9 @@ class LuaRender(RenderScript):
             lua_package_path=lua_package_path,
             lua_sandbox_allowed_modules=lua_sandbox_allowed_modules
         )
-        self.splash = Splash(self.lua, self.tab, self.render_options)
+        self.splash = Splash(self.lua, self.exceptions, self.tab, self.render_options)
+        self.extras = Extras(self.lua, self.exceptions)
+        self.extras.inject_to_globals()
 
         self.runner = MainCoroutineRunner(
             lua=self.lua,
