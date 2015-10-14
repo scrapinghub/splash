@@ -12,6 +12,90 @@ Splash Scripts Reference
 a script can control the browser. Think of it as of an API to
 a single browser tab.
 
+Attributes
+~~~~~~~~~~
+
+.. _splash-args:
+
+splash.args
+-----------
+
+``splash.args`` is a table with incoming parameters. It contains
+merged values from the orignal URL string (GET arguments) and
+values sent using ``application/json`` POST request.
+
+.. _splash-js-enabled:
+
+splash.js_enabled
+-----------------
+
+Enable or disable execution of JavaSript code embedded in the page.
+
+**Signature:** ``splash.js_enabled = true/false``
+
+JavaScript execution is enabled by default.
+
+.. _splash-resource-timeout:
+
+splash.resource_timeout
+-----------------------
+
+Set a default timeout for network requests, in seconds.
+
+**Signature:** ``splash.resource_timeout = number``
+
+Example - abort requests to remote resources if they take more than 10 seconds:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash.resource_timeout = 10.0
+         assert(splash:go(splash.args.url))
+         return splash:png()
+     end
+
+Zero or nil value means "no timeout".
+
+Request timeouts set in :ref:`splash-on-request` using
+``request:set_timeout`` have a priority over :ref:`splash-resource-timeout`.
+
+
+.. _splash-images-enabled:
+
+splash.images_enabled
+---------------------
+
+Enable/disable images.
+
+**Signature:** ``splash.images_enabled = true/false``
+
+By default, images are enabled. Disabling of the images can save a lot
+of network traffic (usually around ~50%) and make rendering faster.
+Note that this option can affect the JavaScript code inside page:
+disabling of the images may change sizes and positions of DOM elements,
+and scripts may read and use them.
+
+Splash uses in-memory cache; cached images will be displayed
+even when images are disabled. So if you load a page, then disable images,
+then load a new page, then likely first page will display all images
+and second page will display some images (the ones common with the first page).
+Splash cache is shared between scripts executed in the same process, so you
+can see some images even if they are disabled at the beginning of the script.
+
+Example:
+
+.. code-block:: lua
+
+     function main(splash)
+         splash.images_enabled = false
+         assert(splash:go("http://example.com"))
+         return {png=splash:png()}
+     end
+
+
+Methods
+~~~~~~~
+
 .. _splash-go:
 
 splash:go
@@ -348,17 +432,6 @@ Compare:
 
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
 :ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
-
-.. _splash-js-enabled:
-
-splash.js_enabled
------------------
-
-Enable or disable execution of JavaSript code embedded in the page.
-
-**Signature:** ``splash.js_enabled = true/false``
-
-JavaScript execution is enabled by default.
 
 .. _splash-runjs:
 
@@ -1557,62 +1630,6 @@ result in an HTTP header:
 See also: :ref:`splash-set-result-status-code`,
 :ref:`splash-set-result-content-type`.
 
-.. _splash-resource-timeout:
-
-splash.resource_timeout
------------------------
-
-Set a default timeout for network requests, in seconds.
-
-**Signature:** ``splash.resource_timeout = value``
-
-Example - abort requests to remote resources if they take more than 10 seconds:
-
-.. code-block:: lua
-
-     function main(splash)
-         splash.resource_timeout = 10.0
-         assert(splash:go(splash.args.url))
-         return splash:png()
-     end
-
-Zero or nil value means "no timeout".
-
-Request timeouts set in :ref:`splash-on-request` using
-``request:set_timeout`` have a priority over :ref:`splash-resource-timeout`.
-
-
-.. _splash-images-enabled:
-
-splash.images_enabled
----------------------
-
-Enable/disable images.
-
-**Signature:** ``splash.images_enabled = true/false``
-
-By default, images are enabled. Disabling of the images can save a lot
-of network traffic (usually around ~50%) and make rendering faster.
-Note that this option can affect the JavaScript code inside page:
-disabling of the images may change sizes and positions of DOM elements,
-and scripts may read and use them.
-
-Splash uses in-memory cache; cached images will be displayed
-even when images are disabled. So if you load a page, then disable images,
-then load a new page, then likely first page will display all images
-and second page will display some images (the ones common with the first page).
-Splash cache is shared between scripts executed in the same process, so you
-can see some images even if they are disabled at the beginning of the script.
-
-Example:
-
-.. code-block:: lua
-
-     function main(splash)
-         splash.images_enabled = false
-         assert(splash:go("http://example.com"))
-         return {png=splash:png()}
-     end
 
 .. _splash-get-viewport-size:
 
@@ -2125,11 +2142,70 @@ Example:
          end
      end
 
-.. _splash-args:
 
-splash.args
------------
+Lua Standard Library
+~~~~~~~~~~~~~~~~~~~~
 
-``splash.args`` is a table with incoming parameters. It contains
-merged values from the orignal URL string (GET arguments) and
-values sent using ``application/json`` POST request.
+When :ref:`Sandbox <lua-sandbox>` is disabled all standard Lua modules
+are available. The following standard Lua 5.2 libraries are available
+to Splash scripts when Sandbox is enabled (default):
+
+* `string <http://www.lua.org/manual/5.2/manual.html#6.4>`_
+* `table <http://www.lua.org/manual/5.2/manual.html#6.5>`_
+* `math <http://www.lua.org/manual/5.2/manual.html#6.6>`_
+* `os <http://www.lua.org/manual/5.2/manual.html#6.9>`_
+
+Aforementioned libraries are pre-imported; there is no need to ``require`` them.
+
+.. note::
+
+    Not all functions from these libraries are currently exposed
+    when :ref:`Sandbox <lua-sandbox>` is enabled.
+
+
+Additional Lua Libraries
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to add more Lua libraries to Splash using
+:ref:`custom-lua-modules` feature. Here are some extra modules
+Splash ships by default.
+
+.. _lib-json:
+
+json
+----
+
+A library to encode data to JSON and decode it from JSON to Lua data
+structure. It provides 2 functions:
+
+* ``json.encode(data)`` - encode ``data``; return a string with
+  its JSON representation.
+
+* ``json.decode(s)`` - decode string ``s`` from JSON; return a decoded
+  object.
+
+Example:
+
+.. code-block:: lua
+
+    json = require("json")
+
+    function main(splash)
+        local resp = splash:http_get("http:/myapi.example.com/resource.json")
+        local decoded = json.decode(resp.content.text)
+        return {myfield=decoded.myfield}
+    end
+
+.. _lib-base64:
+
+base64
+------
+
+A library to encode/decode strings to/from Base64. It provides 2 functions:
+
+* ``base64.encode(s)`` - encode string ``s`` to base64.
+* ``base64.decode(s)`` - decode string ``s`` from base64.
+
+These functions are handy if you need to pass some binary data
+in a JSON request or response.
+

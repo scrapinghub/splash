@@ -2152,13 +2152,14 @@ class RequireTest(BaseLuaRenderTest):
         self.assertNoRequirePathsLeaked(resp)
 
     def test_require_unsafe(self):
-        resp = self.request_lua("""
-        local Splash = require("splash")
-        function main(splash) return "hello" end
-        """)
-        self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
-        self.assertErrorLineNumber(resp, 2)
-        self.assertNoRequirePathsLeaked(resp)
+        for module in ['splash', 'wraputils', 'completer', 'sandbox', 'extras']:
+            resp = self.request_lua("""
+            require('%s')
+            function main(splash) return "hello" end
+            """ % module)
+            self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR)
+            self.assertErrorLineNumber(resp, 2)
+            self.assertNoRequirePathsLeaked(resp)
 
     def test_require_not_whitelisted(self):
         resp = self.request_lua("""

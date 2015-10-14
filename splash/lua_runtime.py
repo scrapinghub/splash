@@ -50,6 +50,19 @@ class SplashLuaRuntime(object):
         if obj in self._allowed_object_attrs:
             del self._allowed_object_attrs[obj]
 
+    def add_allowed_module(self, name):
+        """ Allow to require specified module from Lua """
+        self._sandbox["allowed_require_names"][name] = True
+
+    # def remove_allowed_module(self, name):
+    #     """
+    #     Disallow specified module from Lua.
+    #     By default all modules are prohibited, so it only makes
+    #     sense to call this method if a module was previously added
+    #     by :meth:`add_allowed_module`.
+    #     """
+    #     self._sandbox["allowed_require_names"][name] = False
+
     @contextlib.contextmanager
     def object_allowed(self, obj, attr_whitelist):
         """ Temporarily enable an access to a Python object """
@@ -96,12 +109,12 @@ class SplashLuaRuntime(object):
         return runtime
 
     def _setup_lua_paths(self, lua, lua_package_path):
-        default_path = os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__),
-                'lua_modules'
-            )
-        ) + "/?.lua"
+        root = os.path.join(os.path.dirname(__file__), 'lua_modules')
+        at_root = lambda *p: os.path.abspath(os.path.join(root, *p))
+        default_path = "{root}/?.lua;{libs}/?.lua".format(
+            root=at_root(),
+            libs=at_root('libs')
+        )
         if lua_package_path:
             packages_path = ";".join([default_path, lua_package_path])
         else:
@@ -116,9 +129,8 @@ class SplashLuaRuntime(object):
         return self.eval("require('sandbox')")
 
     def _setup_lua_sandbox(self, allowed_modules):
-        self._sandbox["allowed_require_names"] = self.python2lua(
-            {name: True for name in allowed_modules}
-        )
+        for name in allowed_modules:
+            self.add_allowed_module(name)
 
     def _attr_getter(self, obj, attr_name):
 

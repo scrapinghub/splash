@@ -199,6 +199,7 @@ class BaseRenderResource(_ValidatingResource):
 
     def _on_render_error(self, failure, request):
         failure.trap(RenderError)
+        # log.msg("_on_render_error: %s" % id(request))
         return self._write_error(request, 502, failure.value)
 
     def _on_internal_error(self, failure, request):
@@ -210,12 +211,13 @@ class BaseRenderResource(_ValidatingResource):
 
     def _on_bad_request(self, failure, request):
         failure.trap(BadOption)
+        # log.msg("_on_bad_request: %s" % id(request))
         return self._write_error(request, 400, failure.value)
 
     def _finish_request(self, _, request):
         if not request._disconnected:
             request.finish()
-        #log.msg("_finishRequest: %s" % id(request))
+        # log.msg("_finishRequest: %s" % id(request))
 
     def _get_render(self, request, options):
         raise NotImplementedError()

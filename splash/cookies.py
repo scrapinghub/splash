@@ -66,7 +66,6 @@ class SplashCookieJar(QNetworkCookieJar):
         Replace current cookies with ``cookies``. The argument should
         be a list of Python dicts with cookie data in HAR format.
         """
-        print("init")
         qt_cookies = [self.har_cookie2qt(c) for c in cookies]
         self.setAllCookies(qt_cookies)
 
