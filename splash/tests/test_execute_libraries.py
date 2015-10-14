@@ -4,6 +4,7 @@ import base64
 import json
 
 from splash.exceptions import ScriptError
+from splash.utils import to_bytes, to_unicode
 
 from .test_execute import BaseLuaRenderTest
 
@@ -55,8 +56,7 @@ class JsonTest(BaseLuaRenderTest):
             return {txt=json.decode("helo{")}
         end
         """)
-        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
-                               message='No JSON object could be decoded')
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
 
 class Base64Test(BaseLuaRenderTest):
@@ -69,9 +69,10 @@ class Base64Test(BaseLuaRenderTest):
             end
             """, {'txt': txt})
             self.assertStatusCode(resp, 200)
-            if not isinstance(txt, bytes):
-                txt = txt.encode('utf8')
-            self.assertEqual(resp.json(), {'res': base64.b64encode(txt)})
+            txt = to_bytes(txt)
+            self.assertEqual(resp.json(), {
+                'res': to_unicode(base64.b64encode(txt))
+            })
 
     def test_b64_encode_error(self):
         resp = self.request_lua("""

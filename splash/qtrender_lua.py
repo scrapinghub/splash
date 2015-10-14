@@ -1162,8 +1162,7 @@ class Extras(BaseExposedObject):
 
     @command()
     def base64_encode(self, data):
-        if not isinstance(data, bytes):
-            data = data.encode('utf8')
+        data = to_bytes(data)
         return base64.b64encode(data)
 
     @command()
