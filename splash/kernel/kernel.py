@@ -12,7 +12,9 @@ import splash
 from splash.lua import get_version, get_main_sandboxed, get_main
 from splash.browser_tab import BrowserTab
 from splash.lua_runtime import SplashLuaRuntime
-from splash.qtrender_lua import Splash, MainCoroutineRunner, StoredExceptions
+from splash.qtrender_lua import (
+    Splash, MainCoroutineRunner, StoredExceptions, Extras
+)
 from splash.qtutils import init_qt_app
 from splash.render_options import RenderOptions
 from splash import network_manager
@@ -146,6 +148,9 @@ class SplashKernel(Kernel):
             tab=self.tab
         )
         self.lua.add_to_globals("splash", self.splash.get_wrapped())
+        self.extras = Extras(self.lua, self.exceptions)
+        self.extras.inject_to_globals()
+
         self.runner = DeferredSplashRunner(self.lua, self.splash, self.sandboxed) #, self.log_msg)
         self.completer = Completer(self.lua)
         self.inspector = Inspector(self.lua)

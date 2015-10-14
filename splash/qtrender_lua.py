@@ -1148,6 +1148,41 @@ class _ExposedBoundResponse(_ExposedResponse):
         self.response.abort()
 
 
+class Extras(BaseExposedObject):
+    """
+    Extra features exposed to Lua via custom modules.
+
+    TODO: users should be able to expose their own plugins
+    """
+    def __init__(self, lua, exceptions):
+        super(Extras, self).__init__(lua, exceptions)
+        wrapper = self.lua.eval("require('extras')")
+        self._wrapped = wrapper._create(self)
+
+    @command()
+    def base64_encode(self, data):
+        if not isinstance(data, bytes):
+            data = data.encode('utf8')
+        return base64.b64encode(data)
+
+    @command()
+    def base64_decode(self, data):
+        return base64.b64decode(data)
+
+    @command(table_argument=True)
+    def json_encode(self, obj):
+        return json.dumps(self.lua.lua2python(obj))
+
+    @command()
+    def json_decode(self, s):
+        return json.loads(s)
+
+    def inject_to_globals(self):
+        self.lua.add_to_globals("__extras", self._wrapped)
+        self.lua.add_allowed_module("base64")
+        self.lua.add_allowed_module("json")
+
+
 class SplashCoroutineRunner(BaseScriptRunner):
     """
     Utility class for running Splash async functions (e.g. callbacks).
@@ -1237,7 +1272,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
 
         return ScriptError({
             'type': ScriptError.SPLASH_LUA_ERROR,
-            'message': ex.args[0],
+            'message': str(ex.args[0]),
         })
 
 
@@ -1256,6 +1291,8 @@ class LuaRender(RenderScript):
             lua_sandbox_allowed_modules=lua_sandbox_allowed_modules
         )
         self.splash = Splash(self.lua, self.exceptions, self.tab, self.render_options)
+        self.extras = Extras(self.lua, self.exceptions)
+        self.extras.inject_to_globals()
 
         self.runner = MainCoroutineRunner(
             lua=self.lua,
