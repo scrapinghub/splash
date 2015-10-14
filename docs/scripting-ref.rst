@@ -2142,3 +2142,71 @@ Example:
              error("Splash 1.8 or newer required")
          end
      end
+
+
+Lua Standard Library
+~~~~~~~~~~~~~~~~~~~~
+
+When :ref:`Sandbox <lua-sandbox>` is disabled all standard Lua modules
+are available. The following standard Lua 5.2 libraries are available
+to Splash scripts when Sandbox is enabled (default):
+
+* `string <http://www.lua.org/manual/5.2/manual.html#6.4>`_
+* `table <http://www.lua.org/manual/5.2/manual.html#6.5>`_
+* `math <http://www.lua.org/manual/5.2/manual.html#6.6>`_
+* `os <http://www.lua.org/manual/5.2/manual.html#6.9>`_
+
+Aforementioned libraries are pre-imported; there is no need to ``require`` them.
+
+.. note::
+
+    Not all functions from these libraries are currently exposed
+    when :ref:`Sandbox <lua-sandbox>` is enabled.
+
+
+Additional Lua Libraries
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to add more Lua libraries to Splash using
+:ref:`custom-lua-modules` feature. Here are some extra modules
+Splash ships by default.
+
+.. _lib-json:
+
+json
+----
+
+A library to encode data to JSON and decode it from JSON to Lua data
+structure. It provides 2 functions:
+
+* ``json.encode(data)`` - encode ``data``; return a string with
+  its JSON representation.
+
+* ``json.decode(s)`` - decode string ``s`` from JSON; return a decoded
+  object.
+
+Example:
+
+.. code-block:: lua
+
+    json = require("json")
+
+    function main(splash)
+        local resp = splash:http_get("http:/myapi.example.com/resource.json")
+        local decoded = json.decode(resp.content.text)
+        return {myfield=decoded.myfield}
+    end
+
+.. _lib-base64:
+
+base64
+------
+
+A library to encode/decode strings to/from Base64. It provides 2 functions:
+
+* ``base64.encode(s)`` - encode string ``s`` to base64.
+* ``base64.decode(s)`` - decode string ``s`` from base64.
+
+These functions are handy if you need to pass some binary data
+in a JSON request or response.
+
