@@ -124,7 +124,7 @@ end
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
-local function wrap_exposed_object(py_object, self, private_self, async)
+local function setup_commands(py_object, self, private_self, async)
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -200,6 +200,15 @@ local function setup_property_access(py_object, self, cls)
 end
 
 
+--
+-- Create a Lua wrapper for a Python object.
+--
+local function wrap_exposed_object(py_object, self, cls, private_self, async)
+  setup_commands(py_object, self, private_self, async)
+  setup_property_access(py_object, self, cls)
+end
+
+
 -- Exposed API
 return {
   assertx = assertx,
@@ -209,6 +218,7 @@ return {
   yields_result = yields_result,
   sets_callback = sets_callback,
   is_private_name = is_private_name,
-  wrap_exposed_object = wrap_exposed_object,
+  setup_commands = setup_commands,
   setup_property_access = setup_property_access,
+  wrap_exposed_object = wrap_exposed_object,
 }

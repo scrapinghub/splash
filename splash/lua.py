@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 import os
 import re
 import functools
@@ -151,7 +151,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
             return {l2p(el, depth-1) for el in obj}
 
         if lupa.lua_type(obj) == 'table':
-            if _is_table_a_list(lua, obj):
+            if _table_is_array(lua, obj):
                 res = []
                 prev_key = 0
                 for key, value in obj.items():
@@ -186,15 +186,18 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
     return l2p(obj, depth=max_depth)
 
 
-def _mark_table_as_list(lua, tbl):
-    mt = lua.table(__metatable="list")
+def _mark_table_as_array(lua, tbl):
+    # XXX: the same function is available in Lua as treat.as_array.
+    # XXX: if we want to add to a metatable instead of replacing it,
+    # we must make sure metatable is not shared with other tables.
+    mt = lua.table(__metatable="array")
     lua.eval("setmetatable")(tbl, mt)
     return tbl
 
 
-def _is_table_a_list(lua, tbl):
+def _table_is_array(lua, tbl):
     mt = lua.eval("getmetatable")(tbl)
-    return mt == "list"
+    return mt == "array"
 
 
 def python2lua(lua, obj, max_depth=100):
@@ -217,7 +220,7 @@ def python2lua(lua, obj, max_depth=100):
 
     if isinstance(obj, list):
         tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
-        return _mark_table_as_list(lua, tbl)
+        return _mark_table_as_array(lua, tbl)
 
     if isinstance(obj, unicode):
         # lupa encodes/decodes strings automatically,

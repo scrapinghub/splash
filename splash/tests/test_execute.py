@@ -16,6 +16,7 @@ lupa = pytest.importorskip("lupa")
 
 from splash import __version__ as splash_version
 from splash.har_builder import HarBuilder
+from splash.har.utils import get_body_bytes
 
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
@@ -2384,7 +2385,7 @@ class HttpGetTest(BaseLuaRenderTest):
         function main(splash)
             local reply = splash:http_get(splash.args.url)
             splash:wait(0.1)
-            return reply.content.text
+            return reply.body
         end
         """, {"url": self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
@@ -2393,7 +2394,7 @@ class HttpGetTest(BaseLuaRenderTest):
     def test_bad_url(self):
         resp = self.request_lua("""
         function main(splash)
-            return splash:http_get(splash.args.url)
+            return splash:http_get(splash.args.url).info
         end
         """, {"url": self.mockurl("--bad-url--")})
         self.assertStatusCode(resp, 200)
@@ -2402,42 +2403,44 @@ class HttpGetTest(BaseLuaRenderTest):
     def test_headers(self):
         resp = self.request_lua("""
         function main(splash)
-            return splash:http_get{
+            local resp = splash:http_get{
                 splash.args.url,
                 headers={
                     ["Custom-Header"] = "Header Value",
                 }
             }
+            return resp.info
         end
         """, {"url": self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["status"], 200)
-        self.assertIn("Header Value", data["content"]["text"])
+        self.assertIn(b"Header Value", get_body_bytes(data))
 
     def test_redirects_follow(self):
         resp = self.request_lua("""
         function main(splash)
-            return splash:http_get(splash.args.url)
+            return splash:http_get(splash.args.url).info
         end
         """, {"url": self.mockurl("http-redirect?code=302")})
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["status"], 200)
-        self.assertNotIn("redirect to", data["content"]["text"])
-        self.assertIn("GET request", data["content"]["text"])
+        self.assertNotIn(b"redirect to", get_body_bytes(data))
+        self.assertIn(b"GET request", get_body_bytes(data))
 
     def test_redirects_nofollow(self):
         resp = self.request_lua("""
         function main(splash)
-            return splash:http_get{url=splash.args.url, follow_redirects=false}
+            local resp = splash:http_get{url=splash.args.url, follow_redirects=false}
+            return resp.info
         end
         """, {"url": self.mockurl("http-redirect?code=302")})
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["status"], 302)
         self.assertEqual(data["redirectURL"], "/getrequest?http_code=302")
-        self.assertIn("302 redirect to", data["content"]["text"])
+        self.assertIn("302 redirect to", get_body_bytes(data))
 
     def test_noargs(self):
         resp = self.request_lua("""
@@ -2447,25 +2450,36 @@ class HttpGetTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
+    def test_httpget_nonascii_nonutf8(self):
+        resp = self.request_lua("""
+        base64 = require("base64")
+        function main(splash)
+            local resp = splash:http_get{splash.args.url}
+            return resp.body
+        end
+        """, {"url": self.mockurl("cp1251")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn(u'проверка', resp.content.decode('cp1251'))
+
 
 class HttpPostTest(BaseLuaRenderTest):
     def test_post(self):
         resp = self.request_lua("""
         function main(splash)
             body = "foo=one&bar=two"
-            return assert(splash:http_post{url=splash.args.url, body=body})
+            return splash:http_post{url=splash.args.url, body=body}.info
         end
         """, {"url": self.mockurl("postrequest")})
         self.assertStatusCode(resp, 200)
-        content = resp.json()
-        self.assertTrue(content["ok"])
-        self.assertIn("foo=one&bar=two", content["content"]["text"])
+        info = resp.json()
+        self.assertTrue(info["ok"])
+        self.assertIn(b"foo=one&bar=two", get_body_bytes(info))
 
     def test_post_body_not_string(self):
         resp = self.request_lua("""
         function main(splash)
             body = {alfa=12}
-            return assert(splash:http_post{url=splash.args.url, body=body})
+            return splash:http_post{url=splash.args.url, body=body}
         end
         """, {"url": self.mockurl("postrequest")})
         self.assertStatusCode(resp, 400)
@@ -2475,10 +2489,11 @@ class HttpPostTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
             body = ""
-            return assert(splash:http_post{url=splash.args.url, body=body})
+            return splash:http_post{url=splash.args.url, body=body}.body
         end
         """, {"url": self.mockurl("postrequest")})
         self.assertStatusCode(resp, 200)
+        self.assertIn("POST", resp.text)
 
     def test_redirect_after_post_in_go(self):
         resp = self.request_lua("""
@@ -2494,14 +2509,14 @@ class HttpPostTest(BaseLuaRenderTest):
         post_body = "foo=bar&alfa=beta"
         resp = self.request_lua("""
             function main(splash)
-                return assert(splash:http_post{url=splash.args.url, body='%s'})
+                return splash:http_post{url=splash.args.url, body='%s'}.info
             end
             """ % post_body, {"url": self.mockurl("http-redirect")})
         self.assertStatusCode(resp, 200)
-        content = resp.json()
-        self.assertIn("GET request", content["content"]["text"])
-        self.assertIn(post_body, content["url"])
-        self.assertEqual(content["status"], 200)
+        info = resp.json()
+        self.assertIn(b"GET request", get_body_bytes(info))
+        self.assertIn(post_body, info["url"])
+        self.assertEqual(info["status"], 200)
 
 
 class NavigationLockingTest(BaseLuaRenderTest):

@@ -23,14 +23,21 @@ from splash.lua_runner import (
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed, parse_error_message
 from splash.har.qt import reply2har, request2har
+from splash.har.utils import get_body_bytes
 from splash.render_options import RenderOptions
-from splash.utils import truncated, BinaryCapsule, requires_attr
+from splash.utils import (
+    truncated,
+    BinaryCapsule,
+    requires_attr,
+    SplashJSONEncoder
+)
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
     set_request_url,
     create_proxy,
-    get_versions)
+    get_versions
+)
 from splash.lua_runtime import SplashLuaRuntime
 from splash.exceptions import ScriptError
 
@@ -412,6 +419,8 @@ class Splash(BaseExposedObject):
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
+        self.request_wrapper = self.lua.eval("require('request')")
+        self.response_wrapper = self.lua.eval("require('response')")
 
     @lua_property('js_enabled')
     @command()
@@ -608,8 +617,10 @@ class Splash(BaseExposedObject):
             })
 
         def callback(reply):
-            reply_har = reply2har(reply, include_content=True, binary_content=True)
-            cmd.return_result(self.lua.python2lua(reply_har))
+            resp = _ExposedResponse(self.lua, self.exceptions, reply,
+                                    read_body=True)
+            resp_wrapped = self.response_wrapper._create(resp)
+            cmd.return_result(resp_wrapped)
 
         command_args = dict(
             url=url,
@@ -880,7 +891,8 @@ class Splash(BaseExposedObject):
     def private_on_response(self, callback):
         def _callback(reply, har_entry):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            resp = _ExposedResponse(self.lua, exceptions, reply, har_entry)
+            resp = _ExposedResponse(self.lua, exceptions, reply, har_entry,
+                                    read_body=False)
             run_coro = self.get_coroutine_run_func(
                 "splash:on_response", callback, [resp]
             )
@@ -1098,23 +1110,62 @@ class _ExposedRequest(BaseExposedObject):
 
 
 class _ExposedResponse(BaseExposedObject):
-    """ Response object exposed to Lua in on_response callback """
-    _attribute_whitelist = ["headers", "info", "request"]
+    """
+    Response object exposed to Lua. This Response type doesn't provide methods
+    to manupulate a response.
+    """
+    _attribute_whitelist = ["headers", "request"]
 
-    def __init__(self, lua, exceptions, reply, har_entry=None):
+    def __init__(self, lua, exceptions, reply, har_entry=None, read_body=False):
         super(_ExposedResponse, self).__init__(lua, exceptions)
-        # according to specs HTTP response headers should not contain unicode
-        # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
+
         _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
+
         if har_entry is None:
-            resp_info = reply2har(reply)
+            if read_body:
+                resp_info = reply2har(reply, include_content=True, binary_content=False)
+            else:
+                resp_info = reply2har(reply)
         else:
             resp_info = har_entry['response']
-        self.info = self.lua.python2lua(resp_info)
+        self._info = resp_info
+        self._info_lua = None
+        self._body_binary = None
         self.request = self.lua.python2lua(
             request2har(reply.request(), reply.operation())
         )
+
+    @lua_property("body")
+    @command()
+    def get_body(self):
+        if self._body_binary is None:
+            body = get_body_bytes(self._info)
+            content_type = self._info['content']['mimeType']
+            self._body_binary = BinaryCapsule(body, content_type)
+        return self._body_binary
+
+    @lua_property("info")
+    @command()
+    def get_info(self):
+        if self._info_lua is None:
+            self._info_lua = self.lua.python2lua(self._info)
+        return self._info_lua
+
+    @lua_property("status")
+    @command()
+    def get_status(self):
+        return self._info['status']
+
+    @lua_property("url")
+    @command()
+    def get_url(self):
+        return self._info['url']
+
+    @lua_property("ok")
+    @command()
+    def is_ok(self):
+        return self._info['ok']
 
     def clear(self):
         super(_ExposedResponse, self).clear()
@@ -1130,8 +1181,11 @@ class _ExposedResponse(BaseExposedObject):
 
 
 class _ExposedBoundResponse(_ExposedResponse):
-    """ Response object exposed to Lua in on_response_headers callback. """
-
+    """
+    Response object exposed to Lua. This Response type provides
+    a way to manipulate the response (currently it is possible to
+    abort downloading).
+    """
     def __init__(self, lua, exceptions, reply, har_entry=None):
         super(_ExposedBoundResponse, self).__init__(
             lua, exceptions, reply, har_entry
@@ -1173,16 +1227,29 @@ class Extras(BaseExposedObject):
 
     @command(table_argument=True)
     def json_encode(self, obj):
-        return json.dumps(self.lua.lua2python(obj))
+        pyobj = self.lua.lua2python(obj)
+        return json.dumps(pyobj, cls=SplashJSONEncoder)
 
     @command()
     def json_decode(self, s):
         return json.loads(s)
 
+    @command()
+    def treat_as_binary(self, s, content_type=None):
+        if content_type is None:
+            content_type = 'application/octet-stream'
+        return BinaryCapsule(s, content_type)
+
+    @command()
+    def treat_as_string(self, s):
+        assert isinstance(s, BinaryCapsule)
+        return s.data, s.content_type
+
     def inject_to_globals(self):
         self.lua.add_to_globals("__extras", self._wrapped)
         self.lua.add_allowed_module("base64")
         self.lua.add_allowed_module("json")
+        self.lua.add_allowed_module("treat")
 
 
 class SplashCoroutineRunner(BaseScriptRunner):

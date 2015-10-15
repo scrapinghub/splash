@@ -238,7 +238,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
                 end
             end)
             res = splash:http_get(splash.args.url)
-            return res
+            return res.info
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
