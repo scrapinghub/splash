@@ -171,11 +171,15 @@ end
 local function setup_property_access(py_object, self, cls)
   local setters = {}
   local getters = {}
-  for key, opts in pairs(py_object.lua_properties) do
-    local setter = unwraps_errors(drops_self_argument(py_object[key]))
-    local getter = unwraps_errors(drops_self_argument(py_object[opts.getter_method]))
-    getters[opts.name] = getter
-    setters[opts.name] = setter
+  for name, opts in pairs(py_object.lua_properties) do
+    getters[name] = unwraps_errors(drops_self_argument(py_object[opts.getter]))
+    if opts.setter ~= nil then
+      setters[name] = unwraps_errors(drops_self_argument(py_object[opts.setter]))
+    else
+      setters[name] = function() 
+        error("Attribute " .. name .. " is read-only.", 2)
+      end
+    end
   end
 
   function cls:__newindex(index, value)

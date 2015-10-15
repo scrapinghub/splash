@@ -249,13 +249,13 @@ def get_lua_properties(obj):
     @lua_property and @<getter_method_name>.lua_setter decorators.
     """
     lua_properties = {}
-    for name in dir(obj):
-        value = getattr(obj, name)
+    for attr_name in dir(obj):
+        value = getattr(obj, attr_name)
         if is_lua_property(value):
-            setter_method = getattr(value, '_setter_method')
-            lua_properties[setter_method] = {
-                'name': getattr(value, '_name'),
-                'getter_method': name,
+            property_name = getattr(value, '_name')
+            lua_properties[property_name] = {
+                'getter': attr_name,
+                'setter': getattr(value, '_setter_method', None),
             }
     return lua_properties
 
@@ -347,8 +347,8 @@ class BaseExposedObject(object):
 
         self.attr_whitelist = (
             list(commands.keys()) +
-            list(lua_properties.keys()) +
-            [lua_properties[attr]['getter_method'] for attr in lua_properties] +
+            [lua_properties[attr]['getter'] for attr in lua_properties] +
+            [lua_properties[attr]['setter'] for attr in lua_properties] +
             self._base_attribute_whitelist +
             self._attribute_whitelist
         )
