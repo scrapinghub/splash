@@ -317,21 +317,29 @@ class RenderHtmlTest(Base.RenderTest):
         self.assertResponse200Get(503)
 
     def test_cookies_perserved_after_js_redirect(self):
-        get_cookie_url = self.mockurl("get-cookie?key=foo")
-        q = urllib.urlencode({"key": "foo", "value": "bar", "next": get_cookie_url})
-        url = self.mockurl("set-cookie?%s" % q)
-        resp = self.request({"url": url, "wait": 0.2})
-        self.assertStatusCode(resp, 200)
-        self.assertIn("bar", resp.text)
+        for use_js in "true", "":
+            get_cookie_url = self.mockurl("get-cookie?key=foo")
+            q = urllib.urlencode({
+                "key": "foo",
+                "value": "bar",
+                "next": get_cookie_url,
+                "use_js": use_js,
+            })
+            url = self.mockurl("set-cookie?%s" % q)
+            resp = self.request({"url": url, "wait": 0.2})
+            self.assertStatusCode(resp, 200)
+            self.assertIn("bar", resp.text)
 
     def test_cookies_are_not_shared(self):
-        resp = self.request({"url": self.mockurl("set-cookie?key=egg&value=spam")})
-        self.assertStatusCode(resp, 200)
-        self.assertIn("ok", resp.text)
+        for use_js in "true", "":
+            url = self.mockurl("set-cookie?key=egg&value=spam&use_js=%s" % use_js)
+            resp = self.request({"url": url})
+            self.assertStatusCode(resp, 200)
+            self.assertIn("ok", resp.text)
 
-        resp2 = self.request({"url": self.mockurl("get-cookie?key=egg")})
-        self.assertStatusCode(resp2, 200)
-        self.assertNotIn("spam", resp2.text)
+            resp2 = self.request({"url": self.mockurl("get-cookie?key=egg")})
+            self.assertStatusCode(resp2, 200)
+            self.assertNotIn("spam", resp2.text)
 
     def assertResponse200Get(self, code):
         url = self.mockurl('getrequest') + '?code=%d' % code
