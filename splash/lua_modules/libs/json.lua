@@ -1,4 +1,4 @@
-local json={}
+local json = {}
 
 function json.encode(data)
   return __extras:json_encode(data)

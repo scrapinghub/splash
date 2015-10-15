@@ -1161,6 +1161,8 @@ class Extras(BaseExposedObject):
 
     @command()
     def base64_encode(self, data):
+        if isinstance(data, BinaryCapsule):
+            return data.as_b64()
         if not isinstance(data, bytes):
             data = data.encode('utf8')
         return base64.b64encode(data)
