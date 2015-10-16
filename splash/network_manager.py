@@ -196,11 +196,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             request.setRawHeader(to_bytes(name), to_bytes(value))
 
     def _handle_request_cookies(self, request):
-        jar = QNetworkCookieJar()
-        self.setCookieJar(jar)
         cookiejar = self._get_webpage_attribute(request, "cookiejar")
         if cookiejar is not None:
             cookiejar.update_cookie_header(request)
+            self.setCookieJar(cookiejar)
+        else:
+            self.setCookieJar(QNetworkCookieJar())
 
     def _handle_reply_cookies(self, reply):
         cookiejar = self._get_webpage_attribute(reply.request(), "cookiejar")

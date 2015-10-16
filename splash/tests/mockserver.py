@@ -196,6 +196,7 @@ class SetCookie(Resource):
     """
     Set a cookie with key=key and value=value.
     If "next" GET argument is passed, do a JS redirect to this "next" URL.
+    If "js" is True, set the cookie using JavaScript instead of an http header.
     """
     isLeaf = True
 
@@ -203,15 +204,24 @@ class SetCookie(Resource):
     def render_GET(self, request):
         key = getarg(request, b"key")
         value = getarg(request, b"value")
+        js = getarg(request, b"use_js", False, type=bool)
         next_url = unquote(getarg(request, b"next", ""))
-        request.addCookie(key, value)
+        script = ""
+        if js:
+            script += 'document.cookie = "%s=%s";\n' % (key, value)
+        else:
+            request.addCookie(key, value)
+
         if next_url:
+            script += '''/* Redirecting now.. */
+            location.href = "%s";''' % next_url
+
+        if script:
             return (u"""
             <html><body>
-            Redirecting now..
-            <script> window.location = '%s'; </script>
+            <script>%s</script>
             </body></html>
-            """ % next_url).encode('utf-8')
+            """ % script).encode('utf-8')
         else:
             return b"ok"
 

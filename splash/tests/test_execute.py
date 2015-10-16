@@ -1796,7 +1796,7 @@ class SetUserAgentTest(BaseLuaRenderTest):
 
 
 class CookiesTest(BaseLuaRenderTest):
-    def test_cookies(self):
+    def test_cookies(self, use_js=''):
         resp = self.request_lua("""
         function main(splash)
             local function cookies_after(url)
@@ -1829,8 +1829,8 @@ class CookiesTest(BaseLuaRenderTest):
             return {c0=c0, c1=c1, c2=c2, c3=c3, c4=c4, c5=c5, c6=c6, c7=c7, c8=c8, c9=c9}
         end
         """, {
-            "url_1": self.mockurl("set-cookie?key=foo&value=bar"),
-            "url_2": self.mockurl("set-cookie?key=egg&value=spam"),
+            "url_1": self.mockurl("set-cookie?key=foo&value=bar&use_js=%s" % use_js),
+            "url_2": self.mockurl("set-cookie?key=egg&value=spam&use_js=%s" % use_js),
         })
 
         self.assertStatusCode(resp, 200)
@@ -1862,6 +1862,9 @@ class CookiesTest(BaseLuaRenderTest):
         self.assertEqual(data["c7"], [cookie2])
         self.assertEqual(data["c8"], [])
         self.assertEqual(data["c9"], data["c2"])
+
+    def test_cookies_js(self):
+        self.test_cookies('true')
 
     def test_add_cookie(self):
         resp = self.request_lua("""
