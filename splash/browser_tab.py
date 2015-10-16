@@ -44,7 +44,8 @@ class BrowserTab(QObject):
     and waits until either a callback or an errback is called, then destroys
     a BrowserTab.
 
-    XXX: currently cookies are not shared between "browser tabs".
+    XXX: are cookies shared between "browser tabs"? In real browsers they are,
+    but maybe this is not what we want.
     """
 
     def __init__(self, network_manager, splash_proxy_factory, verbosity,

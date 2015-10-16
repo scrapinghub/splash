@@ -41,7 +41,7 @@ install:
 
 script:
     - py.test --version
-    - py.test --cov=splash --doctest-modules --duration=50 splash
+    - py.test --cov=splash --doctest-modules -n $SPLASH_BUILD_PARALLEL_JOBS --duration=50 splash
 
 after_success:
     - codecov
