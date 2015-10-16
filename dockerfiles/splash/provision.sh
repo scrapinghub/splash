@@ -41,7 +41,7 @@ prepare_install () {
 
 install_deps () {
     # Install package dependencies.
-    apt-add-repository -y ppa:beineri/opt-qt55-trusty && \
+    apt-add-repository -y ppa:beineri/opt-qt551-trusty && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         netbase \
