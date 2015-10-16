@@ -11,6 +11,7 @@ from PIL import Image, ImageChops
 from six.moves.urllib import parse as urlparse
 
 from splash import defaults
+from splash.qtutils import qt_551_plus
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 
@@ -207,7 +208,10 @@ class Base(object):
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
 
-        @pytest.mark.skipif(True, reason="resource_timeout doesn't work in Qt5. See issue #269 for details.")
+        @pytest.mark.skipif(
+            not qt_551_plus(),
+            reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
+        )
         def test_resource_timeout(self):
             resp = self.request({
                 'url': self.mockurl("show-image?n=10"),
@@ -216,7 +220,10 @@ class Base(object):
             })
             self.assertStatusCode(resp, 200)
 
-        @pytest.mark.skipif(True, reason="resource_timeout doesn't work in Qt5. See issue #269 for details.")
+        @pytest.mark.skipif(
+            not qt_551_plus(),
+            reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
+        )
         def test_resource_timeout_abort_first(self):
             resp = self.request({
                 'url': self.mockurl("slow.gif?n=3"),

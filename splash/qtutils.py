@@ -270,3 +270,10 @@ def get_versions():
         'webkit': qWebKitVersion(),
         'sip': SIP_VERSION_STR
     }
+
+
+def qt_551_plus():
+    """ Return True if Qt version is 5.5.1+ """
+    from distutils.version import LooseVersion
+    from PyQt5.QtCore import QT_VERSION_STR
+    return LooseVersion(QT_VERSION_STR) >= LooseVersion("5.5.1")

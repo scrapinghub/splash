@@ -12,6 +12,7 @@ import requests
 import six
 import pytest
 from splash.exceptions import ScriptError
+from splash.qtutils import qt_551_plus
 
 lupa = pytest.importorskip("lupa")
 
@@ -1649,11 +1650,12 @@ class GoTest(BaseLuaRenderTest):
 
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
-    pytestmark = pytest.mark.xfail(
-        run=False,
-        reason="resource_timeout doesn't work in Qt5. "
-               "See issue #269 for details."
-    )
+    if not qt_551_plus():
+        pytestmark = pytest.mark.xfail(
+            run=False,
+            reason="resource_timeout doesn't work in Qt5 < 5.5.1. "
+                   "See issue #269 for details."
+        )
 
     def test_resource_timeout_aborts_first(self):
         resp = self.request_lua("""
