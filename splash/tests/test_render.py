@@ -329,7 +329,7 @@ class RenderHtmlTest(Base.RenderTest):
                 "use_js": use_js,
             })
             url = self.mockurl("set-cookie?%s" % q)
-            resp = self.request({"url": url, "wait": 0.2})
+            resp = self.request({"url": url, "wait": "0.2"})
             self.assertStatusCode(resp, 200)
             self.assertIn("bar", resp.text)
 
