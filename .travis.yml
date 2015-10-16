@@ -22,7 +22,7 @@ matrix:
 
 before_install:
     # install common packages
-    - sudo apt-get install -y zlib1g-dev libssl-dev python-openssl lua5.2-dev
+    - sudo apt-get install -y zlib1g-dev libssl-dev python-openssl liblua5.2-dev
 
     # install QT5 & PyQT5
     - >
