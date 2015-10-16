@@ -261,6 +261,8 @@ class SlowGif(Resource):
 
     def render_GET(self, request):
         request.setHeader(b"Content-Type", b"image/gif")
+        request.setHeader(b"Cache-Control", b"no-cache, must-revalidate")
+        request.setHeader(b"Pragma", b"no-cache")
         request.write(b"GIF89a")
         n = getarg(request, "n", 1, type=float)
         d = deferLater(reactor, n, lambda: (request, n))
