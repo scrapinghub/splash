@@ -1,138 +1,43 @@
 language: python
-
-python:
-    - "2.7_with_system_site_packages"
-    - 3.4
+sudo: required
+dist: trusty
 
 branches:
     only:
         - master
         - /^\d\.\d+$/
 
-env:
-    - SYSTEM_PACKAGES=true QT=qt5.2
-    - SYSTEM_PACKAGES=false QT=qt5.5
-
 matrix:
-    exclude:
-        - python: 3.4
-          env: SYSTEM_PACKAGES=true QT=qt5.2
+    include:
+        - python: "2.7"
+          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
+        - python: "3.4"
+          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
+
 
 before_install:
-    - sudo apt-get install -y lua5.2-dev zlib1g-dev libssl-dev python-openssl
-    # Cached Downloads
-    - sudo mkdir -p /downloads
-    - sudo chmod a+rw /downloads
-    - >
-        if [ ! -f /downloads/sip.tar.gz ]; then \
-            curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.9/sip-4.16.9.tar.gz; \
-        fi
-    - >
-        if [ ! -f /downloads/pyqt5.tar.gz ]; then \
-            curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-5.5/PyQt-gpl-5.5.tar.gz; \
-        fi
-    # - echo '32abc003980599d33ffd789734de4c36  /downloads/sip.tar.gz' | md5sum -c -
-    # - echo '7f2eb79eaf3d7e5e7df5a4e9c8c9340e  /downloads/pyqt5.tar.gz' | md5sum -c -
-    # Builds
-    - sudo mkdir -p /builds
-    - sudo chmod a+rw /builds
-    # QT5
-    - >
-        if [[ "$QT" == "qt5.2" ]]; then \
-            sudo apt-add-repository -y ppa:beineri/opt-qt521; \
-            sudo apt-get update -qq; \
-            sudo apt-get install -qq \
-                qt52base \
-                qt52webkit \
-                libgstreamer0.10-dev \
-                libgstreamer-plugins-base0.10-dev; \
-        fi
-    - >
-        if [[ "$QT" == "qt5.5" ]]; then \
-            sudo apt-add-repository -y ppa:beineri/opt-qt55; \
-            sudo apt-get update -qq; \
-            sudo apt-get install -qq qt55base qt55webkit; \
-        fi
-    # Builds
-    - pushd /builds
-    # SIP
-    - tar xzf /downloads/sip.tar.gz --keep-newer-files
-    - pushd sip-4.16.9
-    - python configure.py
-    - make
-    - sudo make install
-    - popd
-    # PyQt5
-    - tar xzf /downloads/pyqt5.tar.gz --keep-newer-files
-    - pushd PyQt-gpl-5.5
-    - >
-        if [[ "$QT" == "qt5.2" ]]; then \
-            python configure.py -c --qmake "/opt/qt52/bin/qmake" \
-                --confirm-license \
-                --no-designer-plugin \
-                --verbose \
-                -e QtCore \
-                -e QtGui \
-                -e QtWidgets \
-                -e QtNetwork \
-                -e QtWebKit \
-                -e QtWebKitWidgets \
-                -e QtPrintSupport; \
-        fi
-    - >
-        if [[ "$QT" == "qt5.5" ]]; then \
-            python configure.py -c --qmake "/opt/qt55/bin/qmake" \
-                --confirm-license \
-                --no-designer-plugin \
-                --verbose \
-                -e QtCore \
-                -e QtGui \
-                -e QtWidgets \
-                -e QtNetwork \
-                -e QtWebKit \
-                -e QtWebKitWidgets \
-                -e QtPrintSupport; \
-        fi
-    - make
-    - sudo make install
-    - popd
-    # Builds Complete
-    - popd
-    # pip installs
+    # install common packages
+    - sudo bash -x dockerfiles/splash/provision.sh prepare_install
+    - sudo apt-get install -y liblua5.2-dev zlib1g-dev libssl-dev python-openssl
+
+    # install QT5
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_builddeps
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_deps
+
+    # instal PyQT5
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_pyqt5
+
+    # install Python packages
     - sudo chmod -R 777 $VIRTUAL_ENV
-    - >
-        if [[ $SYSTEM_PACKAGES == 'false' ]]; then \
-            pip install -UI \
-                twisted \
-                pyOpenSSL \
-                service_identity \
-                idna \
-                cython \
-                Pillow \
-                jupyter_kernel_test \
-                ipython[notebook] \
-                nose; \
-            pip install -UI --install-option="--with-cython" \
-                https://github.com/kmike/lupa/archive/devel.zip#egg=lupa; \
-        else \
-            sudo apt-get install -y python-twisted python-imaging; \
-        fi
-    - >
-        pip install -U \
-            psutil \
-            requests \
-            jsonschema \
-            strict-rfc3339 \
-            xvfbwrapper \
-            pytest \
-            funcparserlib \
-            qt5reactor-fork \
-            six \
-            pytest-cov \
-            codecov; \
+    - bash -x dockerfiles/splash/provision.sh install_python_deps
+
+    # install Python packages required for tests
+    - pip install -r requirements-dev.txt
+    - pip install -U pytest-cov coverage codecov pytest-xdist
 
 install:
-    - python setup.py install
+    # install Splash
+    - pip install .
 
 script:
     - py.test --version
@@ -140,3 +45,7 @@ script:
 
 after_success:
     - codecov
+
+cache:
+    directories:
+        - $HOME/.cache/pip

@@ -21,10 +21,27 @@ remove_extra -- remove files that are unnecessary to run Splash
 EOF
 }
 
-SIP_VERSION='4.16.9'
-PYQT_VERSION='5.5'
-QT_PATH='/opt/qt55'
+env | grep SPLASH
 
+SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.17"}
+SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.5.1"}
+SPLASH_QT_PATH=${SPLASH_QT_PATH:-"/opt/qt55"}
+SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"1"}
+
+# '2' is not fully supported by this script!
+SPLASH_PYTHON_VERSION=${SPLASH_PYTHON_VERSION:-"3"}
+
+if [[ ${SPLASH_PYTHON_VERSION} == "venv" ]]; then
+    _PYTHON=python
+else
+    _PYTHON=python${SPLASH_PYTHON_VERSION}
+fi
+
+_activate_venv () {
+    if [[ ${SPLASH_PYTHON_VERSION} == "venv" ]]; then
+        source ${VIRTUAL_ENV}/bin/activate
+    fi
+}
 
 prepare_install () {
     # Prepare docker image for installation of packages, docker images are
@@ -41,7 +58,7 @@ prepare_install () {
 
 install_deps () {
     # Install package dependencies.
-    apt-add-repository -y ppa:beineri/opt-qt55-trusty && \
+    apt-add-repository -y ppa:beineri/opt-qt551-trusty && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         netbase \
@@ -75,25 +92,27 @@ install_builddeps () {
 }
 
 install_pyqt5 () {
+    _activate_venv && \
+    ${_PYTHON} --version && \
     mkdir -p /downloads && \
     chmod a+rw /downloads && \
-    curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-${SIP_VERSION}/sip-${SIP_VERSION}.tar.gz && \
-    curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${PYQT_VERSION}/PyQt-gpl-${PYQT_VERSION}.tar.gz && \
+    curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+    curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt-gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
     # TODO: check downloads
     mkdir -p /builds && \
     chmod a+rw /builds && \
     pushd /builds && \
     # SIP
     tar xzf /downloads/sip.tar.gz --keep-newer-files  && \
-    pushd sip-${SIP_VERSION}  && \
-    python3 configure.py  && \
-    make  && \
+    pushd sip-${SPLASH_SIP_VERSION}  && \
+    ${_PYTHON} configure.py  && \
+    make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
     make install  && \
     popd  && \
     # PyQt5
     tar xzf /downloads/pyqt5.tar.gz --keep-newer-files  && \
-    pushd PyQt-gpl-${PYQT_VERSION}  && \
-    python3 configure.py -c --qmake "${QT_PATH}/bin/qmake" --verbose \
+    pushd PyQt-gpl-${SPLASH_PYQT_VERSION}  && \
+    ${_PYTHON} configure.py -c --qmake "${SPLASH_QT_PATH}/bin/qmake" --verbose \
         --confirm-license \
         --no-designer-plugin \
         -e QtCore \
@@ -103,7 +122,7 @@ install_pyqt5 () {
         -e QtWebKit \
         -e QtWebKitWidgets \
         -e QtPrintSupport && \
-    make  && \
+    make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
     make install && \
     popd  && \
     # Builds Complete
@@ -112,8 +131,9 @@ install_pyqt5 () {
 
 install_python_deps () {
     # Install python-level dependencies.
-    pip3 install -U pip && \
-    pip3 install \
+    _activate_venv && \
+    ${_PYTHON} -m pip install -U pip && \
+    ${_PYTHON} -m pip install \
         qt5reactor-fork==0.2 \
         psutil==3.2.2 \
         Twisted==15.4.0 \
@@ -122,8 +142,8 @@ install_python_deps () {
         funcparserlib==0.3.6 \
         Pillow==2.9.0 \
         cython==0.23.4 && \
-    pip3 install --install-option="--with-cython" https://github.com/kmike/lupa/archive/devel.zip#egg=lupa && \
-    pip3 install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
+    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/kmike/lupa/archive/devel.zip#egg=lupa && \
+    ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
 }
 
 install_msfonts() {
@@ -166,11 +186,11 @@ remove_extra () {
     rm -rf \
         /builds \
         /downloads \
-        ${QT_PATH}/examples \
-        ${QT_PATH}/include \
-        ${QT_PATH}/mkspecs \
-        ${QT_PATH}/bin \
-        ${QT_PATH}/doc \
+        ${SPLASH_QT_PATH}/examples \
+        ${SPLASH_QT_PATH}/include \
+        ${SPLASH_QT_PATH}/mkspecs \
+        ${SPLASH_QT_PATH}/bin \
+        ${SPLASH_QT_PATH}/doc \
         /usr/share/perl \
         /usr/share/perl5 \
         /usr/share/man \
