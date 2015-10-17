@@ -127,6 +127,7 @@ before_install:
             qt5reactor-fork \
             six \
             pytest-cov \
+            pytest-xdist \
             codecov; \
 
 install:
@@ -134,7 +135,7 @@ install:
 
 script:
     - py.test --version
-    - py.test --cov=splash --doctest-modules --duration=50 splash
+    - py.test --cov=splash --doctest-modules --duration=50 -n2 splash
 
 after_success:
     - codecov
