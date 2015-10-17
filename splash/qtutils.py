@@ -8,14 +8,16 @@ import itertools
 import sys
 import time
 
-from PyQt4.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
-                          QRegExp, QString, QUrl, QVariant)
-from PyQt4.QtGui import QApplication
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
-from PyQt4.QtWebKit import QWebSettings, QWebFrame
+from PyQt5.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
+                          QUrl, QVariant)
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
+from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWebKitWidgets import QWebFrame
 from twisted.python import log
+import six
 
-from splash.utils import truncated
+from splash.utils import truncated, to_bytes
 
 
 OPERATION_NAMES = {
@@ -28,7 +30,7 @@ OPERATION_NAMES = {
 OPERATION_QT_CONSTANTS = {v:k for k,v in OPERATION_NAMES.items()}
 
 
-# See: http://pyqt.sourceforge.net/Docs/PyQt4/qnetworkreply.html#NetworkError-enum
+# See: http://pyqt.sourceforge.net/Docs/PyQt5/qnetworkreply.html#NetworkError-enum
 REQUEST_ERRORS = {
     QNetworkReply.NoError : 'no error condition. Note: When the HTTP protocol returns a redirect no error will be reported. You can check if there is a redirect with the QNetworkRequest::RedirectionTargetAttribute attribute.',
     QNetworkReply.ConnectionRefusedError : 'the remote server refused the connection (the server is not accepting requests)',
@@ -134,7 +136,7 @@ def get_qt_app():
 
 def qurl2ascii(url):
     """ Convert QUrl to ASCII text suitable for logging """
-    url = unicode(url.toString()).encode('unicode-escape').decode('ascii')
+    url = six.text_type(url.toString()).encode('unicode-escape').decode('ascii')
     if url.lower().startswith('data:'):
         return truncated(url, 80, '...[data uri truncated]')
     return url
@@ -143,11 +145,7 @@ def qurl2ascii(url):
 def to_qurl(s):
     if isinstance(s, QUrl):
         return s
-
-    if isinstance(s, unicode):
-        s = s.encode('utf-8')
-
-    return QUrl.fromEncoded(s)
+    return QUrl.fromEncoded(to_bytes(s, encoding='utf8'))
 
 
 def set_request_url(request, url):
@@ -200,18 +198,8 @@ def qt2py(obj, max_depth=100):
 
     # print(obj, obj.__class__)
 
-    if isinstance(obj, QString):
-        return unicode(obj)
-
     if isinstance(obj, QDateTime):
         return obj.toPyDateTime()
-
-    if isinstance(obj, QRegExp):
-        return {
-            "_jstype": "RegExp",
-            "pattern": unicode(obj.pattern()),
-            "caseSensitive": bool(obj.caseSensitivity()),
-        }
 
     if isinstance(obj, dict):
         return {
@@ -273,8 +261,8 @@ def get_request_webframe(request):
 def get_versions():
     """ Return a dictionary with qt/pyqt/webkit/sip versions """
     from sip import SIP_VERSION_STR
-    from PyQt4.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
-    from PyQt4.QtWebKit import qWebKitVersion
+    from PyQt5.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+    from PyQt5.QtWebKit import qWebKitVersion
 
     return {
         'qt': QT_VERSION_STR,
@@ -282,3 +270,10 @@ def get_versions():
         'webkit': qWebKitVersion(),
         'sip': SIP_VERSION_STR
     }
+
+
+def qt_551_plus():
+    """ Return True if Qt version is 5.5.1+ """
+    from distutils.version import LooseVersion
+    from PyQt5.QtCore import QT_VERSION_STR
+    return LooseVersion(QT_VERSION_STR) >= LooseVersion("5.5.1")

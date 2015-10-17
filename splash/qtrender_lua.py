@@ -7,10 +7,10 @@ import resource
 import contextlib
 import time
 import sys
-from urllib import urlencode
+import six
 
 import twisted
-from PyQt4.QtCore import QTimer
+from PyQt5.QtCore import QTimer
 import lupa
 
 import splash
@@ -24,7 +24,7 @@ from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed, parse_error_message
 from splash.har.qt import reply2har, request2har
 from splash.render_options import RenderOptions
-from splash.utils import truncated, BinaryCapsule, requires_attr
+from splash.utils import truncated, BinaryCapsule, to_bytes, requires_attr
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -95,7 +95,6 @@ def command(async=False, can_raise_async=False, table_argument=False,
 
 def lua_property(name):
     """ Decorator for marking methods that make attributes available to Lua """
-
     def decorator(meth):
         def setter(method):
             meth._setter_method = method.__name__
@@ -114,7 +113,6 @@ def emits_lua_objects(meth):
     This decorator makes method convert results to
     native Lua formats when possible
     """
-
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
@@ -134,7 +132,6 @@ def first_argument_from_storage(meth):
     as a first argument. It is a workaround for Lupa issue
     (see https://github.com/scoder/lupa/pull/49).
     """
-
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         arg = self.tmp_storage[1]
@@ -159,7 +156,6 @@ def can_raise(meth):
     Decorator for preserving Python exception objects raised in Python
     methods called from Lua.
     """
-
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         try:
@@ -183,7 +179,6 @@ def exceptions_as_return_values(meth):
     and raise an error when needed. In Splash this is done by
     splash/lua_modules/splash.lua unwraps_errors decorator.
     """
-
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         try:
@@ -203,7 +198,6 @@ def detailed_exceptions(method_name=None):
     """
     Add method name and a default error type to the error info.
     """
-
     def decorator(meth):
         _name = meth.__name__ if method_name is None else method_name
 
@@ -280,9 +274,9 @@ class _WrappedJavascriptFunction(object):
     @can_raise
     @emits_lua_objects
     def __call__(self, *args):
-        args = self.lua.lua2python(args)
-        args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
-        func_text = json.dumps([self.source], ensure_ascii=False, encoding='utf8')[1:-1]
+        args = self.lua.lua2python(args, binary=False)
+        args_text = json.dumps(args, ensure_ascii=False)[1:-1]
+        func_text = json.dumps([self.source], ensure_ascii=False)[1:-1]
         wrapper_script = """
         (function(func_text){
             try{
@@ -474,22 +468,24 @@ class Splash(BaseExposedObject):
         elif formdata:
             body = self.lua.lua2python(formdata, max_depth=3)
             if isinstance(body, dict):
-                body = urlencode(body)
+                body = six.moves.urllib.parse.urlencode(body)
             else:
-                raise ScriptError({"argument": "formdata",
-                                   "message": "formdata argument for go() must be Lua table"})
+                raise ScriptError({
+                    "argument": "formdata",
+                    "message": "formdata argument for go() must be Lua table"
+                })
 
         elif body:
-            if not isinstance(body, basestring):
+            if not isinstance(body, (six.text_type, bytes)):
                 raise ScriptError({"argument": "body",
                                    "message": "request body must be string"})
-
-        if self.tab.web_page.navigation_locked:
-            return ImmediateResult((None, "navigation_locked"))
 
         if http_method == "GET" and body:
             raise ScriptError({"argument": "body",
                                "message": "GET request cannot have body"})
+
+        if self.tab.web_page.navigation_locked:
+            return ImmediateResult((None, "navigation_locked"))
 
         def success():
             try:
@@ -630,14 +626,17 @@ class Splash(BaseExposedObject):
     def http_post(self, url, headers=None, follow_redirects=True, body=None):
         """
         :param url: string with url to fetch
-        :param headers: dict, if None {"content-type": "application/x-www-form-urlencoded"} will be added later
+        :param headers: dict, if None then
+            {"content-type": "application/x-www-form-urlencoded"} is added.
         :param follow_redirects: boolean
         :param body: string with body to be sent in request
         :return: AysncBrowserCommand http_post
         """
-        if body and not isinstance(body, basestring):
-            raise ScriptError({"argument": "body",
-                               "message": "body argument for splash:http_post() must be string"})
+        if body and not isinstance(body, (six.text_type, bytes)):
+            raise ScriptError({
+                "argument": "body",
+                "message": "body argument for splash:http_post() must be string"
+            })
 
         return self._http_request(url, headers, follow_redirects, body, browser_command="http_post")
 
@@ -666,7 +665,7 @@ class Splash(BaseExposedObject):
                     reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
                     cmd.return_result(None, reason)
                 else:
-                    source = bytes(reply.readAll())
+                    source = bytes(reply.readAll()).decode('utf-8')
                     self.tab.autoload(source)
                     cmd.return_result(True)
 
@@ -682,6 +681,9 @@ class Splash(BaseExposedObject):
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
+        if isinstance(data, six.text_type):
+            data = data.encode('utf8')
+
         def success():
             cmd.return_result(True)
 
@@ -715,7 +717,7 @@ class Splash(BaseExposedObject):
 
     @command(table_argument=True)
     def init_cookies(self, cookies):
-        cookies = self.lua.lua2python(cookies, max_depth=3)
+        cookies = self.lua.lua2python(cookies, binary=False, max_depth=3)
         if isinstance(cookies, dict):
             keys = sorted(cookies.keys())
             cookies = [cookies[k] for k in keys]
@@ -743,7 +745,7 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_result_content_type(self, content_type):
-        if not isinstance(content_type, basestring):
+        if not isinstance(content_type, six.string_types):
             raise ScriptError({
                 "argument": "content_type",
                 "message": "splash:set_result_content_type() argument "
@@ -763,15 +765,15 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_result_header(self, name, value):
-        if not all([isinstance(h, basestring) for h in [name, value]]):
+        if not all([isinstance(h, six.string_types) for h in [name, value]]):
             raise ScriptError({
                 "message": "splash:set_result_header() arguments "
                            "must be strings"
             })
 
         try:
-            name = name.decode('utf-8').encode('ascii')
-            value = value.decode('utf-8').encode('ascii')
+            name = name.encode('ascii')
+            value = value.encode('ascii')
         except UnicodeEncodeError:
             raise ScriptError({
                 "message": "splash:set_result_header() arguments must be ascii"
@@ -782,7 +784,7 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_user_agent(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             raise ScriptError({
                 "argument": "value",
                 "message": "splash:set_user_agent() argument must be a string",
@@ -857,7 +859,6 @@ class Splash(BaseExposedObject):
         """
         Register a Lua callback to be called when a resource is requested.
         """
-
         def _callback(request, operation, outgoing_data):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             with _ExposedRequest.wraps(self.lua, exceptions, request, operation, outgoing_data) as req:
@@ -985,7 +986,6 @@ class Splash(BaseExposedObject):
         Return a function which runs as coroutine and can be used
         instead of `callback`.
         """
-
         def func(*coro_args):
             def log(message, min_level=None):
                 self.tab.logger.log("[%s] %s" % (name, message), min_level)
@@ -1081,7 +1081,7 @@ class _ExposedRequest(BaseExposedObject):
     @command()
     @requires_request
     def set_header(self, name, value):
-        self.request.setRawHeader(name, value)
+        self.request.setRawHeader(to_bytes(name), to_bytes(value))
 
     @command()
     @requires_request
@@ -1099,13 +1099,14 @@ class _ExposedRequest(BaseExposedObject):
 
 class _ExposedResponse(BaseExposedObject):
     """ Response object exposed to Lua in on_response callback """
+
     _attribute_whitelist = ["headers", "info", "request"]
 
     def __init__(self, lua, exceptions, reply, har_entry=None):
         super(_ExposedResponse, self).__init__(lua, exceptions)
         # according to specs HTTP response headers should not contain unicode
         # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
-        _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
+        _headers = {bytes(k): bytes(v) for k, v in reply.rawHeaderPairs()}
         self.headers = self.lua.python2lua(_headers)
         if har_entry is None:
             resp_info = reply2har(reply)
@@ -1161,8 +1162,7 @@ class Extras(BaseExposedObject):
 
     @command()
     def base64_encode(self, data):
-        if not isinstance(data, bytes):
-            data = data.encode('utf8')
+        data = to_bytes(data)
         return base64.b64encode(data)
 
     @command()

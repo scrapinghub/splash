@@ -4,6 +4,8 @@ import os
 import weakref
 import contextlib
 
+import six
+
 from splash.lua import lua2python, python2lua, get_new_runtime
 
 
@@ -71,7 +73,7 @@ class SplashLuaRuntime(object):
             self.remove_allowed_object(obj)
 
     def lua2python(self, *args, **kwargs):
-        kwargs.setdefault("binary", True)
+        kwargs.setdefault("binary", False)
         kwargs.setdefault("strict", True)
         return lua2python(self._lua, *args, **kwargs)
 
@@ -132,10 +134,10 @@ class SplashLuaRuntime(object):
 
     def _attr_getter(self, obj, attr_name):
 
-        if not isinstance(attr_name, basestring):
+        if not isinstance(attr_name, six.string_types):
             raise AttributeError("Non-string lookups are not allowed (requested: %r)" % attr_name)
 
-        if isinstance(attr_name, basestring) and attr_name.startswith("_"):
+        if isinstance(attr_name, six.string_types) and attr_name.startswith("_"):
             raise AttributeError("Access to private attribute %r is not allowed" % attr_name)
 
         if obj not in self._allowed_object_attrs:

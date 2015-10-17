@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
+import six
 
 import lupa
 from ipykernel.kernelapp import IPKernelApp
-from ipykernel.eventloops import loop_qt4
+from ipykernel.eventloops import loop_qt5
 from jupyter_client.kernelspec import install_kernel_spec
 from twisted.internet import defer
 
@@ -166,7 +167,7 @@ class SplashKernel(Kernel):
             reply, result, ct = result
             if result:
                 data = {
-                    'text/plain': result if isinstance(result, basestring) else str(result),
+                    'text/plain': result if isinstance(result, six.text_type) else str(result),
                 }
                 if isinstance(result, BinaryCapsule):
                     data[result.content_type] = result.as_b64()
@@ -275,5 +276,5 @@ def start():
         init_qt_app(verbose=False)
         kernel = IPKernelApp.instance(kernel_class=SplashKernel)
         kernel.initialize()
-        kernel.kernel.eventloop = loop_qt4
+        kernel.kernel.eventloop = loop_qt5
         kernel.start()

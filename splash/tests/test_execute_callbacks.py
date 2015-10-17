@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from urllib import urlencode
 import base64
 from io import BytesIO
 
-import pytest
 from PIL import Image
-from splash.exceptions import ScriptError
+import six
+from six.moves.urllib.parse import urlencode
+import pytest
 
+from splash.exceptions import ScriptError
 from splash.tests.test_proxy import BaseHtmlProxyTest
 from .test_execute import BaseLuaRenderTest
 
@@ -75,7 +76,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         end
         """, {'url': url, 'new_url': new_url})
         self.assertStatusCode(resp, 200)
-        self.assertIn('After', resp.content)
+        self.assertIn('After', resp.content.decode('utf-8'))
 
     def test_set_proxy(self):
         proxy_port = self.ts.mock_proxy_port
@@ -141,6 +142,8 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertErrorLineNumber(resp, 8)
+        self.assertIn("request is used outside a callback",
+                      resp.content.decode('utf-8'))
 
     @pytest.mark.xfail(
         reason="error messages are poor for objects created in callbacks")
@@ -172,8 +175,13 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-        self.assertIn("'custom-header': 'some-val'", resp.text)
-        self.assertIn("'user-agent': 'Fooozilla'", resp.text)
+
+        if six.PY3:
+            self.assertIn("b'custom-header': b'some-val'", resp.text)
+            self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
+        else:
+            self.assertIn("'custom-header': 'some-val'", resp.text)
+            self.assertIn("'user-agent': 'Fooozilla'", resp.text)
 
     def test_bad_callback(self):
         for arg in '', '"foo"', '123':
@@ -298,7 +306,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
         self.assertStatusCode(resp, 200)
 
-        for k, v in headers.iteritems():
+        for k, v in headers.items():
             self.assertIn(k, result)
             self.assertEqual(result[k], headers[k])
 
@@ -308,7 +316,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         }
         mocked_url = self.mockurl("set-header?" + urlencode(headers))
         some_attrs = {
-            "url": (unicode, mocked_url),
+            "url": (six.text_type, mocked_url),
             "status": (int, 200),
             "info": (dict, {}),
             "ok": (bool, True),
@@ -329,7 +337,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertStatusCode(resp, 200)
         result = resp.json()
 
-        for k, v in some_attrs.iteritems():
+        for k, v in some_attrs.items():
             self.assertIn(k, result)
             self.assertIsInstance(result[k], v[0])
             if v[1]:

@@ -9,7 +9,7 @@ def _path(*args):
 
 def get_version():
     filename = _path('splash', '__init__.py')
-    with open(filename, 'r') as fp:
+    with open(filename, 'rb') as fp:
         contents = fp.read().decode('utf8')
         return re.search(r"__version__ = ['\"](.+)['\"]", contents).group(1)
 
@@ -73,7 +73,7 @@ else:
     setup_args['zip_safe'] = False
     setup_args['install_requires'] = [
         'Twisted',
-        'qt4reactor',
+        'qt5reactor-fork',
         'psutil',
         'adblockparser',
         'xvfbwrapper',

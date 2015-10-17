@@ -2,26 +2,28 @@
 import sys
 import array
 from abc import ABCMeta, abstractmethod, abstractproperty
-from cStringIO import StringIO
+from io import BytesIO
 from math import ceil, floor
+import six
 
 from PIL import Image
-from PyQt4.QtCore import QBuffer, QPoint, QRect, QSize, Qt
-from PyQt4.QtGui import QImage, QPainter, QRegion
+from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
+from PyQt5.QtGui import QImage, QPainter, QRegion
 
 from splash import defaults
 
 
 class QtImageRenderer(object):
 
-    # QPainter cannot render a region with any dimension greater than this value.
+    # QPainter cannot render a region with any dimension greater than
+    # this value.
     QPAINTER_MAXSIZE = 32766
 
     def __init__(self, web_page, logger=None, image_format=None,
                  width=None, height=None, scale_method=None):
         """Initialize renderer.
 
-        :type web_page: PyQt4.QtWebKit.QWebPage
+        :type web_page: PyQt5.QtWebKit.QWebPage
         :type logger: splash.browser_tab._BrowserTabLogger
         :type image_format: str {'PNG', 'JPEG'}
         :type width: int
@@ -42,11 +44,11 @@ class QtImageRenderer(object):
         if not (self.is_png() or self.is_jpeg()):
             raise ValueError('Unexpected image format %s, should be PNG or JPEG' %
                              self.image_format)
-        # For JPEG it's okay to use this format as well, but canvas should be white
-        # to remove black areas from image where it was transparent
+        # For JPEG it's okay to use this format as well, but canvas should be
+        # white to remove black areas from image where it was transparent
         self.qt_image_format = QImage.Format_ARGB32
-        # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for pillow,
-        # hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGR'.
+        # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for
+        # Pillow, hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGR'.
         self.pillow_image_format = 'RGBA'
         # mapping is taken from
         # https://github.com/python-pillow/Pillow/blob/2.9.0/libImaging/Pack.c#L526
@@ -61,11 +63,18 @@ class QtImageRenderer(object):
     def qimage_to_pil_image(self, qimage):
         """Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode)."""
         # In our case QImage uses 0xAARRGGBB format stored in host endian order,
-        # we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences used by pillow.
-        buf = qimage.bits().asstring(qimage.numBytes())
+        # we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences used by
+        # Pillow.
+        buf = qimage.bits().asstring(qimage.byteCount())
         if sys.byteorder != "little":
             buf = self.swap_byte_order_i32(buf)
-        return Image.frombytes(
+        # PIL>2.0 doesn't have fromstring. But older ones don't have frombytes.
+        if hasattr(Image, 'frombytes'):
+            frombytes = Image.frombytes
+        else:
+            frombytes = Image.fromstring
+
+        return frombytes(
             self.pillow_image_format,
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
@@ -261,9 +270,9 @@ class QtImageRenderer(object):
             # which is not what we want.
             painter.setViewport(render_rect)
             # painter.setClipRect(web_rect)
-            for i in xrange(tile_conf['horizontal_count']):
+            for i in six.moves.range(tile_conf['horizontal_count']):
                 left = i * tile_qimage.width()
-                for j in xrange(tile_conf['vertical_count']):
+                for j in six.moves.range(tile_conf['vertical_count']):
                     top = j * tile_qimage.height()
                     painter.setViewport(render_rect.translated(-left, -top))
                     self.logger.log("Rendering with viewport=%s"
@@ -344,7 +353,7 @@ class _DummyLogger(object):
         pass
 
 
-class WrappedImage(object):
+class WrappedImage(six.with_metaclass(ABCMeta, object)):
     """
     Base interface for operations with images of rendered webpages.
 
@@ -353,8 +362,6 @@ class WrappedImage(object):
     use one or another.
 
     """
-    __metaclass__ = ABCMeta
-
     @abstractproperty
     def size(self):
         """
@@ -455,13 +462,13 @@ class WrappedPillowImage(WrappedImage):
         self.img = self.img.crop((left, top, right, bottom))
 
     def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
-        buf = StringIO()
+        buf = BytesIO()
         self.img.save(buf, 'png', compress_level=complevel)
         return buf.getvalue()
 
     def to_jpeg(self, quality=None):
         if quality is None:
             quality = defaults.JPEG_QUALITY
-        buf = StringIO()
+        buf = BytesIO()
         self.img.save(buf, 'jpeg', quality=quality)
         return buf.getvalue()

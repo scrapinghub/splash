@@ -11,6 +11,7 @@ from collections import defaultdict
 import functools
 import psutil
 
+import six
 
 _REQUIRED = object()
 
@@ -26,7 +27,7 @@ class BinaryCapsule(object):
         self.content_type = content_type
 
     def as_b64(self):
-        return base64.b64encode(self.data)
+        return base64.b64encode(self.data).decode('utf-8')
 
 
 class SplashJSONEncoder(json.JSONEncoder):
@@ -36,7 +37,35 @@ class SplashJSONEncoder(json.JSONEncoder):
         return super(SplashJSONEncoder, self).default(o)
 
 
+def to_unicode(text, encoding=None, errors='strict'):
+    """Return the unicode representation of a bytes object `text`. If `text`
+    is already an unicode object, return it as-is."""
+    if isinstance(text, six.text_type):
+        return text
+    if not isinstance(text, (bytes, six.text_type)):
+        raise TypeError('to_unicode must receive a bytes, str or unicode '
+                        'object, got %s' % type(text).__name__)
+    if encoding is None:
+        encoding = 'utf-8'
+    return text.decode(encoding, errors)
+
+
+def to_bytes(text, encoding=None, errors='strict'):
+    """Return the binary representation of `text`. If `text`
+    is already a bytes object, return it as-is."""
+    if isinstance(text, bytes):
+        return text
+    if not isinstance(text, six.string_types):
+        raise TypeError('to_bytes must receive a unicode, str or bytes '
+                        'object, got %s' % type(text).__name__)
+    if encoding is None:
+        encoding = 'utf-8'
+    return text.encode(encoding, errors)
+
+
 PID = os.getpid()
+
+
 def get_num_fds():
     proc = psutil.Process(PID)
     try:
@@ -90,7 +119,7 @@ def get_total_phymem():
     """ Return the total amount of physical memory available. """
     try:
         return psutil.virtual_memory().total
-    except AttributeError: # psutil < 2.0
+    except AttributeError:  # psutil < 2.0
         return psutil.phymem_usage().total
 
 

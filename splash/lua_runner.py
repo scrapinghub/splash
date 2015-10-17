@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import abc
 import itertools
+import six
 
 import lupa
 
@@ -33,11 +34,10 @@ class AsyncCommand(object):
         self.dispatcher.dispatch(self.id, *args)
 
 
-class BaseScriptRunner(object):
+class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
     """
     An utility class for running Lua coroutines.
     """
-    __metaclass__ = abc.ABCMeta
     _START_CMD = '__START__'
 
     def __init__(self, lua, log, sandboxed):
@@ -117,7 +117,7 @@ class BaseScriptRunner(object):
                 # previous result is a final result returned from "main"
                 self.log("[lua_runner] returning result")
                 try:
-                    res = self.lua.lua2python(self.result)
+                    res = self.lua.lua2python(self.result, binary=False)
                 except ValueError as e:
                     # can't convert result to a Python object
                     raise ScriptError({

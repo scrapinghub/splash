@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import unittest
+import six
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 
@@ -10,7 +11,10 @@ class HttpRedirectTest(BaseRenderTest):
     def assertRedirectedResponse(self, resp, code):
         self.assertStatusCode(resp, 200)
         self.assertIn("GET request", resp.text)
-        self.assertIn("{'http_code': ['%s']}" % code, resp.text)
+        if six.PY3:
+            self.assertIn("{b'http_code': [b'%s']}" % code, resp.text)
+        else:
+            self.assertIn("{'http_code': ['%s']}" % code, resp.text)
 
     def assertHttpRedirectWorks(self, code):
         resp = self.request({"url": self.mockurl("http-redirect?code=%s" % code)})
@@ -61,15 +65,15 @@ class MetaRedirectTest(BaseRenderTest):
         self.assertNotRedirected(r)
 
     def test_meta_redirect_wait(self):
-        r = self.request({'url': self.mockurl('meta-redirect0'), 'wait': 0.1})
+        r = self.request({'url': self.mockurl('meta-redirect0'), 'wait': '0.1'})
         self.assertRedirected(r)
 
     def test_meta_redirect_delay_wait(self):
-        r = self.request({'url': self.mockurl('meta-redirect1'), 'wait': 0.1})
+        r = self.request({'url': self.mockurl('meta-redirect1'), 'wait': '0.1'})
         self.assertNotRedirected(r)
 
     def test_meta_redirect_delay_wait_enough(self):
-        r = self.request({'url': self.mockurl('meta-redirect1'), 'wait': 0.3})
+        r = self.request({'url': self.mockurl('meta-redirect1'), 'wait': '0.3'})
         self.assertRedirected(r)
 
     def test_meta_redirect_slowload(self):
@@ -79,14 +83,14 @@ class MetaRedirectTest(BaseRenderTest):
     def test_meta_redirect_slowload_wait(self):
         r = self.request({
             'url': self.mockurl('meta-redirect-slowload'),
-            'wait': 0.1,
+            'wait': '0.1',
         })
         self.assertRedirected(r)
 
     def test_meta_redirect_slowload_wait_more(self):
         r = self.request({
             'url': self.mockurl('meta-redirect-slowload'),
-            'wait': 0.3,
+            'wait': '0.3',
         })
         self.assertRedirected(r)
 
@@ -97,14 +101,14 @@ class MetaRedirectTest(BaseRenderTest):
     def test_meta_redirect_slowload2_wait(self):
         r = self.request({
             'url': self.mockurl('meta-redirect-slowload2'),
-            'wait': 0.1,
+            'wait': '0.1',
         })
         self.assertRedirected(r)
 
     def test_meta_redirect_slowload2_wait_more(self):
         r = self.request({
             'url': self.mockurl('meta-redirect-slowload2'),
-            'wait': 0.3,
+            'wait': '0.3',
         })
         self.assertRedirected(r)
 
@@ -124,7 +128,7 @@ class JsRedirectTest(BaseRenderTest):
         self.assertNotRedirected(r)
 
     def test_redirect_wait(self):
-        r = self.request({'url': self.mockurl('jsredirect'), 'wait': 0.1})
+        r = self.request({'url': self.mockurl('jsredirect'), 'wait': '0.1'})
         self.assertRedirected(r)
 
     def test_redirect_onload_nowait(self):
@@ -132,7 +136,7 @@ class JsRedirectTest(BaseRenderTest):
         self.assertNotRedirected(r)
 
     def test_redirect_onload_wait(self):
-        r = self.request({'url': self.mockurl('jsredirect-onload'), 'wait': 0.1})
+        r = self.request({'url': self.mockurl('jsredirect-onload'), 'wait': '0.1'})
         self.assertRedirected(r)
 
     def test_redirect_timer_nowait(self):
@@ -141,12 +145,12 @@ class JsRedirectTest(BaseRenderTest):
 
     def test_redirect_timer_wait(self):
         # jsredirect-timer redirects after 0.1ms
-        r = self.request({'url': self.mockurl('jsredirect-timer'), 'wait': 0.05})
+        r = self.request({'url': self.mockurl('jsredirect-timer'), 'wait': '0.05'})
         self.assertNotRedirected(r)
 
     def test_redirect_timer_wait_enough(self):
         # jsredirect-timer redirects after 0.1s
-        r = self.request({'url': self.mockurl('jsredirect-timer'), 'wait': 0.2})
+        r = self.request({'url': self.mockurl('jsredirect-timer'), 'wait': '0.2'})
         self.assertRedirected(r)
 
     def test_redirect_chain_nowait(self):
@@ -154,7 +158,7 @@ class JsRedirectTest(BaseRenderTest):
         self.assertNotRedirected(r)
 
     def test_redirect_chain_wait(self):
-        r = self.request({'url': self.mockurl('jsredirect-chain'), 'wait': 0.2})
+        r = self.request({'url': self.mockurl('jsredirect-chain'), 'wait': '0.2'})
         self.assertRedirected(r)
 
     def test_redirect_slowimage_nowait(self):
@@ -162,7 +166,7 @@ class JsRedirectTest(BaseRenderTest):
         self.assertRedirected(r)
 
     def test_redirect_slowimage_wait(self):
-        r = self.request({'url': self.mockurl('jsredirect-slowimage'), 'wait': 0.1})
+        r = self.request({'url': self.mockurl('jsredirect-slowimage'), 'wait': '0.1'})
         self.assertRedirected(r)
 
     def test_redirect_slowimage_nowait_baseurl(self):
@@ -176,7 +180,7 @@ class JsRedirectTest(BaseRenderTest):
         r = self.request({
             'url': self.mockurl('jsredirect-slowimage'),
             'baseurl': self.mockurl('/'),
-            'wait': 0.1
+            'wait': '0.1'
         })
         self.assertRedirected(r)
 
@@ -184,7 +188,7 @@ class JsRedirectTest(BaseRenderTest):
     def test_redirect_to_non_existing(self):
         r = self.request({
             "url": self.mockurl("jsredirect-non-existing"),
-            "wait": 2.,
+            "wait": '2.',
         })
         self.assertStatusCode(r, 502)
 

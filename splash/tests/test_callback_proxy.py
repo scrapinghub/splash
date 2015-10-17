@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import functools
 import unittest
 
-from PyQt4.QtTest import QTest
-import pytest
-
 from splash.browser_tab import OneShotCallbackError, OneShotCallbackProxy
+
 
 class OneShotCallbackProxyTest(unittest.TestCase):
     """
