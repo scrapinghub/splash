@@ -12,6 +12,7 @@ import functools
 import psutil
 
 
+MB = 1024*1024
 _REQUIRED = object()
 
 
@@ -86,11 +87,38 @@ def get_ru_maxrss():
     return size
 
 
+def get_mem_usage():
+    """
+    Return RSS usage of the current process (in bytes).
+    >>> MB = 1024*1024
+    >>> 5*MB < get_mem_usage() < 2048*MB
+    True
+    """
+    proc = psutil.Process(os.getpid())
+    try:
+        return proc.memory_info().rss
+    except AttributeError:
+        # psutil < 2.x
+        return proc.get_memory_info()[0]
+
+
+def memory_to_absolute(ratio):
+    """
+    Calculate absolute RSS value given a ratio of total physical memory.
+    If 0 < ratio < 1.0 then ration is considered already absolute and returned
+    as-is.
+    """
+    from splash.utils import get_total_phymem
+    if 0.0 < ratio < 1.0:
+        return get_total_phymem() * ratio / MB
+    return ratio
+
+
 def get_total_phymem():
     """ Return the total amount of physical memory available. """
     try:
         return psutil.virtual_memory().total
-    except AttributeError: # psutil < 2.0
+    except AttributeError:  # psutil < 2.0
         return psutil.phymem_usage().total
 
 

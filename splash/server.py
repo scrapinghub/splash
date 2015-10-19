@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 import os
 import sys
 import optparse
@@ -10,6 +10,8 @@ import functools
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
+from splash.monitors import monitor_currss, monitor_maxrss
+
 
 def install_qtreactor(verbose):
     init_qt_app(verbose)
@@ -24,6 +26,8 @@ def parse_opts():
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
         help="exit if max RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
+    op.add_option("--cleanuprss", type=float, default=0,
+        help="clean WebKit caches if current RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
     op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
         help="port to listen to (default: %default)")
     op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
@@ -102,6 +106,8 @@ def start_logging(opts):
 def splash_started(opts, stderr):
     if opts.logfile:
         stderr.write("Splash started - logging to: %s\n" % opts.logfile)
+    else:
+        stderr.write("Splash started")
 
 
 def bump_nofile_limit():
@@ -221,26 +227,6 @@ def splash_server(portnum, slots, network_manager, max_timeout,
         reactor.listenTCP(proxy_portnum, proxy_server_factory)
 
 
-def monitor_maxrss(maxrss):
-    from twisted.internet import reactor, task
-    from twisted.python import log
-    from splash.utils import get_ru_maxrss, get_total_phymem
-
-    # Support maxrss as a ratio of total physical memory
-    if 0.0 < maxrss < 1.0:
-        maxrss = get_total_phymem() * maxrss / (1024 ** 2)
-
-    def check_maxrss():
-        if get_ru_maxrss() > maxrss * (1024 ** 2):
-            log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
-            reactor.stop()
-
-    if maxrss:
-        log.msg("maxrss limit: %d MB" % maxrss)
-        t = task.LoopingCall(check_maxrss)
-        t.start(60, now=False)
-
-
 def default_splash_server(portnum, max_timeout, slots=None,
                           cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
@@ -354,6 +340,7 @@ def main():
         install_qtreactor(opts.verbosity >= 5)
 
         monitor_maxrss(opts.maxrss)
+        monitor_currss(opts.cleanuprss, opts.verbosity)
         if opts.manhole:
             manhole_server()
 
