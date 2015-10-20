@@ -1,10 +1,10 @@
 --
 -- A wrapper for Response objects returned by Splash
--- 
+--
 local wraputils = require("wraputils")
 local treat = require("libs/treat")
 
-local Response = {}
+local Response = wraputils.create_metatable()
 local Response_private = {}
 
 function Response._create(py_response)
@@ -21,7 +21,7 @@ function Response._create(py_response)
     _request_headers[value["name"]] = value["value"]
   end
   self.request["headers"] = _request_headers
-  
+
   wraputils.wrap_exposed_object(py_response, self, Response, Response_private, false)
   return self
 end

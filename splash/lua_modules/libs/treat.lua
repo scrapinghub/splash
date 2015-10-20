@@ -1,5 +1,7 @@
 local treat = {}
 
+local wraputils = require("wraputils")
+
 --
 -- Mark a string as binary. It means it no longer
 -- can be processed from Lua, but it can be
@@ -37,7 +39,7 @@ end
 function treat.as_array(tbl)
   -- the same function is available in
   -- Splash Python code as lua._mark_table_as_array
-  if type(tbl) ~= 'table' then
+  if type(tbl) ~= 'table' or wraputils.is_wrapped(tbl) then
     error('as_array argument must be a table', 2)
   end
   setmetatable(tbl, {__metatable="array"})

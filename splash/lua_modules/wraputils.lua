@@ -176,7 +176,7 @@ local function setup_property_access(py_object, self, cls)
     if opts.setter ~= nil then
       setters[name] = unwraps_errors(drops_self_argument(py_object[opts.setter]))
     else
-      setters[name] = function() 
+      setters[name] = function()
         error("Attribute " .. name .. " is read-only.", 2)
       end
     end
@@ -209,6 +209,27 @@ local function wrap_exposed_object(py_object, self, cls, private_self, async)
 end
 
 
+--
+-- Return a metatable for a wrapped Python object
+--
+local function create_metatable()
+  return {
+    __wrapped=true
+  }
+end
+
+--
+-- Return true if an object is a wrapped Python object
+--
+local function is_wrapped(obj)
+  local mt = getmetatable(obj)
+  if type(mt) ~= 'table' then
+    return false
+  end
+  return mt.__wrapped == true
+end
+
+
 -- Exposed API
 return {
   assertx = assertx,
@@ -221,4 +242,6 @@ return {
   setup_commands = setup_commands,
   setup_property_access = setup_property_access,
   wrap_exposed_object = wrap_exposed_object,
+  create_metatable = create_metatable,
+  is_wrapped = is_wrapped,
 }

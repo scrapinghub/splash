@@ -3,7 +3,7 @@
 --
 local wraputils = require("wraputils")
 
-local Request = {}
+local Request = wraputils.create_metatable()
 local Request_private = {}
 
 function Request._create(py_request)

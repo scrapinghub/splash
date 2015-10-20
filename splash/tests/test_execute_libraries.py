@@ -126,3 +126,84 @@ class Base64Test(BaseLuaRenderTest):
         end
         """)
         self.assertScriptError(resp, ScriptError.LUA_ERROR)
+
+
+class TreatAsArrayTest(BaseLuaRenderTest):
+    def test_json_encode(self):
+        resp = self.request_lua("""
+        json = require('json')
+        treat = require('treat')
+        function main(splash)
+            local obj = {"foo", "bar"}
+            local arr = treat.as_array({"foo", "bar"})
+            return {obj=json.encode(obj), arr=json.encode(arr)}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        obj = json.loads(data['obj'])
+        arr = json.loads(data['arr'])
+        self.assertEqual(obj, {"1": "foo", "2": "bar"})
+        self.assertEqual(arr, ["foo", "bar"])
+
+    def test_return_main_result(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            return treat.as_array({"foo", "bar"})
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), ["foo", "bar"])
+
+    def test_modify_inplace(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            local obj = {"foo", "bar"}
+            treat.as_array(obj)
+            return obj
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), ["foo", "bar"])
+
+    def test_as_array_not_array(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            return treat.as_array({foo="bar", egg="spam", [1]="baz"})
+        end
+        """)
+        self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR)
+
+        resp = self.request_lua("""
+        treat = require('treat')
+        json = require('json')
+        function main(splash)
+            local res = json.encode(treat.as_array({foo="bar", egg="spam", [1]="baz"}))
+            return res
+        end
+        """)
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+
+    def test_as_array_not_table(self):
+        for obj in ['"foo"', "5.1", "function() end", ""]:
+            resp = self.request_lua("""
+            treat = require('treat')
+            function main(splash)
+                return treat.as_array(%s)
+            end
+            """ % obj)
+            self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                                   "argument must be a table")
+
+    def test_as_array_splash(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            return treat.as_array(splash)
+        end
+        """)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               "argument must be a table")
