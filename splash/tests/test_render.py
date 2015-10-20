@@ -327,29 +327,42 @@ class RenderHtmlTest(Base.RenderTest):
         self.assertResponse200Get(503)
 
     def test_cookies_perserved_after_js_redirect(self):
-        for use_js in "true", "":
-            get_cookie_url = self.mockurl("get-cookie?key=foo")
-            q = urlparse.urlencode({
-                "key": "foo",
-                "value": "bar",
-                "next": get_cookie_url,
-                "use_js": use_js,
-            })
-            url = self.mockurl("set-cookie?%s" % q)
-            resp = self.request({"url": url, "wait": "0.2"})
-            self.assertStatusCode(resp, 200)
-            self.assertIn("bar", resp.text)
+        self.assertCookiesPreserved(use_js=False)
+
+    @pytest.mark.xfail(reason="See https://github.com/scrapinghub/splash/pull/316")
+    def test_js_cookies_perserved_after_js_redirect(self):
+        self.assertCookiesPreserved(use_js=True)
 
     def test_cookies_are_not_shared(self):
-        for use_js in "true", "":
-            url = self.mockurl("set-cookie?key=egg&value=spam&use_js=%s" % use_js)
-            resp = self.request({"url": url})
-            self.assertStatusCode(resp, 200)
-            self.assertIn("ok", resp.text)
+        self.assertCookiesNotShared(use_js=False)
 
-            resp2 = self.request({"url": self.mockurl("get-cookie?key=egg")})
-            self.assertStatusCode(resp2, 200)
-            self.assertNotIn("spam", resp2.text)
+    def test_js_cookies_are_not_shared(self):
+        self.assertCookiesNotShared(use_js=True)
+
+    def assertCookiesPreserved(self, use_js):
+        use_js = "true" if use_js else ""
+        get_cookie_url = self.mockurl("get-cookie?key=foo")
+        q = urlparse.urlencode({
+            "key": "foo",
+            "value": "bar",
+            "next": get_cookie_url,
+            "use_js": use_js,
+        })
+        url = self.mockurl("set-cookie?%s" % q)
+        resp = self.request({"url": url, "wait": "0.2"})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("bar", resp.text)
+
+    def assertCookiesNotShared(self, use_js):
+        use_js = "true" if use_js else ""
+        url = self.mockurl("set-cookie?key=egg&value=spam&use_js=%s" % use_js)
+        resp = self.request({"url": url})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("ok", resp.text)
+
+        resp2 = self.request({"url": self.mockurl("get-cookie?key=egg")})
+        self.assertStatusCode(resp2, 200)
+        self.assertNotIn("spam", resp2.text)
 
     def assertResponse200Get(self, code):
         url = self.mockurl('getrequest') + '?code=%d' % code
