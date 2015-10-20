@@ -188,7 +188,7 @@ class TreatAsArrayTest(BaseLuaRenderTest):
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_as_array_not_table(self):
-        for obj in ['"foo"', "5.1", "function() end", ""]:
+        for obj in ['"foo"', "5.1", "function() end", "", "splash:png()"]:
             resp = self.request_lua("""
             treat = require('treat')
             function main(splash)
