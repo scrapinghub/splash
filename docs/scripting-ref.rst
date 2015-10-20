@@ -884,7 +884,7 @@ the result to the browser window.
 * headers - a Lua table with HTTP headers to add/replace in the initial request;
 * follow_redirects - whether to follow HTTP redirects.
 
-**Returns:** a Lua table with the response in `HAR response`_ format.
+**Returns:** a :ref:`splash-response`.
 
 **Async:** yes.
 
@@ -893,22 +893,10 @@ Example:
 .. code-block:: lua
 
     local reply = splash:http_get("http://example.com")
-    -- reply.content.text contains raw HTML data
-    -- reply.status contains HTTP status code, as a number
-    -- see HAR docs for more info
-
-In addition to all HAR fields the response contains "ok" flag which is true
-for successful responses and false when error happened:
-
-.. code-block:: lua
-
-    local reply = splash:http_get("some-bad-url")
-    -- reply.ok == false
 
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
 
-.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
 
 .. _splash-http-post:
 
@@ -928,7 +916,7 @@ the result to the browser window.
 * body - string with body of request, if you intend to send form submission,
   body should be urlencoded.
 
-**Returns:** a Lua table with the response in `HAR response`_ format.
+**Returns:** a :ref:`splash-response`.
 
 **Async:** yes.
 
@@ -937,9 +925,9 @@ Example of form submission:
 .. code-block:: lua
 
     local reply = splash:http_post{url="http://example.com", body="user=Frank&password=hunter2"}
-    -- reply.content.text contains raw HTML data
+    -- reply.body contains raw HTML data (as a binary object)
     -- reply.status contains HTTP status code, as a number
-    -- see HAR docs for more info
+    -- see Response docs for more info
 
 Example of JSON POST request:
 
@@ -949,13 +937,8 @@ Example of JSON POST request:
                                    headers={["content-type"]="application/json"}}
 
 
-In addition to all HAR fields the response contains "ok" flag which is true
-for successful responses and false when error happened.
-
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
-
-.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
 
 
 .. _splash-set-content:
@@ -1808,6 +1791,10 @@ Register a function to be called before each HTTP request.
 
 **Signature:** ``splash:on_request(callback)``
 
+**Parameters:**
+
+* callback - Lua function to call before each HTTP request.
+
 **Returns:** nil.
 
 **Async:** no.
@@ -1919,12 +1906,12 @@ but allow up to 15 seconds for the first request:
         end
     end)
 
-See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
-:ref:`splash-on-request-reset`.
-
 .. note::
 
     :ref:`splash-on-request` doesn't support named arguments.
+
+See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-request-reset`.
 
 .. _splash-on-response-headers:
 
@@ -1936,36 +1923,31 @@ response body is read.
 
 **Signature:** ``splash:on_response_headers(callback)``
 
+**Parameters:**
+
+* callback - Lua function to call for each response after
+  response headers are received.
+
 **Returns:** nil.
 
 **Async:** no.
 
-:ref:`splash-on-response-headers` callback receives a single ``response`` argument.
-``response`` contains following fields:
+:ref:`splash-on-response-headers` callback receives a single ``response``
+argument (a :ref:`splash-response`).
 
-* ``url`` - requested URL;
-* ``status`` - HTTP status code
-* ``headers`` - HTTP headers of response
-* ``info`` - a table with response data in `HAR response`_ format
-* ``request`` - a table with request information
+:ref:`splash-response-body` is not available in
+a :ref:`splash-on-response-headers` callback because response body is not
+read yet. Thats the point of :ref:`splash-on-response-headers` method: you can
+abort reading of the response body using :ref:`splash-response-abort` method.
 
 
-These fields are for information only; changing them doesn't change
-response received by splash. ``response`` has following methods:
-
-* ``response:abort()`` - aborts reading of response body
+.. XXX: should we allow to access response attributes (not methods)
+   outside a callback?
 
 A callback passed to :ref:`splash-on-response-headers` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`. ``response`` object
-is deleted after exiting from callback, so you cannot use it outside callback.
-
-``response.request`` available in callback contains following attributes:
-
-* ``url`` - requested URL - can be different from response URL in case there is
-  redirect
-* ``headers`` - HTTP headers of request
-* ``method`` HTTP method of request
-* ``cookies`` - cookies in .har format
+is deleted after exiting from a callback, so you cannot use
+it outside a callback.
 
 Example 1 - log content-type headers of all responses received while rendering
 
@@ -2011,12 +1993,12 @@ Example 3 - extract all cookies set by website without reading response body
         return cookies
     end
 
-See also: :ref:`splash-on-request`, :ref:`splash-on-response`,
-:ref:`splash-on-response-headers-reset`.
-
 .. note::
 
     :ref:`splash-on-response-headers` doesn't support named arguments.
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response`,
+:ref:`splash-on-response-headers-reset`, :ref:`splash-response`.
 
 .. _splash-on-response:
 
@@ -2027,42 +2009,28 @@ Register a function to be called after response is downloaded.
 
 **Signature:** ``splash:on_response(callback)``
 
+**Parameters:**
+
+* callback - Lua function to call for each response after it is downloaded.
+
 **Returns:** nil.
 
 **Async:** no.
 
-:ref:`splash-on-response` callback receives a single ``response`` argument.
-``response`` contains following fields:
-
-* ``url`` - requested URL;
-* ``status`` - HTTP status code
-* ``headers`` - HTTP headers of response
-* ``info`` - a table with response data in `HAR response`_ format
-* ``request`` - a table with request information
+:ref:`splash-on-response` callback receives a single ``response`` argument
+(a :ref:`splash-response`).
 
 .. note::
 
-    Currently you can't read response body in a :ref:`splash-on-response`
-    callback.
-
-These fields are for information only; changing them doesn't change
-response received by splash.
-
-``response.request`` available in a callback contains the following attributes:
-
-* ``url`` - requested URL - can be different from response URL in case there is
-  redirect
-* ``headers`` - HTTP headers of request
-* ``method`` HTTP method of request
-* ``cookies`` - cookies in .har format
-
-
-See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
-:ref:`splash-on-response-reset`.
+    Currently you can't access :ref:`splash-response-body`
+    in a :ref:`splash-on-response` callback.
 
 .. note::
 
     :ref:`splash-on-response` doesn't support named arguments.
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-response-reset`, :ref:`splash-response`.
 
 
 .. _splash-on-request-reset:
@@ -2142,71 +2110,3 @@ Example:
              error("Splash 1.8 or newer required")
          end
      end
-
-
-Lua Standard Library
-~~~~~~~~~~~~~~~~~~~~
-
-When :ref:`Sandbox <lua-sandbox>` is disabled all standard Lua modules
-are available. The following standard Lua 5.2 libraries are available
-to Splash scripts when Sandbox is enabled (default):
-
-* `string <http://www.lua.org/manual/5.2/manual.html#6.4>`_
-* `table <http://www.lua.org/manual/5.2/manual.html#6.5>`_
-* `math <http://www.lua.org/manual/5.2/manual.html#6.6>`_
-* `os <http://www.lua.org/manual/5.2/manual.html#6.9>`_
-
-Aforementioned libraries are pre-imported; there is no need to ``require`` them.
-
-.. note::
-
-    Not all functions from these libraries are currently exposed
-    when :ref:`Sandbox <lua-sandbox>` is enabled.
-
-
-Additional Lua Libraries
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-It is possible to add more Lua libraries to Splash using
-:ref:`custom-lua-modules` feature. Here are some extra modules
-Splash ships by default.
-
-.. _lib-json:
-
-json
-----
-
-A library to encode data to JSON and decode it from JSON to Lua data
-structure. It provides 2 functions:
-
-* ``json.encode(data)`` - encode ``data``; return a string with
-  its JSON representation.
-
-* ``json.decode(s)`` - decode string ``s`` from JSON; return a decoded
-  object.
-
-Example:
-
-.. code-block:: lua
-
-    json = require("json")
-
-    function main(splash)
-        local resp = splash:http_get("http:/myapi.example.com/resource.json")
-        local decoded = json.decode(resp.content.text)
-        return {myfield=decoded.myfield}
-    end
-
-.. _lib-base64:
-
-base64
-------
-
-A library to encode/decode strings to/from Base64. It provides 2 functions:
-
-* ``base64.encode(s)`` - encode string ``s`` to base64.
-* ``base64.decode(s)`` - decode string ``s`` from base64.
-
-These functions are handy if you need to pass some binary data
-in a JSON request or response.
-
