@@ -1859,6 +1859,7 @@ class CookiesTest(BaseLuaRenderTest):
         self.assertEqual(data["c8"], [])
         self.assertEqual(data["c9"], data["c2"])
 
+    @pytest.mark.xfail(reason="See https://github.com/scrapinghub/splash/pull/316")
     def test_cookies_js(self):
         self.test_cookies('true')
 
