@@ -271,7 +271,7 @@ It can lead to unexpected results with array-like Lua tables:
         return tbl
     end
 
-This function modifies its argument inplace, but as a shortcut it returns
+**This function modifies its argument inplace**, but as a shortcut it returns
 the same table; it allows to simplify the code:
 
 .. code-block:: lua
