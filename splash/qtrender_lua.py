@@ -148,7 +148,6 @@ def decodes_lua_arguments(encoding, strict=True):
     def decorator(meth):
         @functools.wraps(meth)
         def wrapper(self, *args, **kwargs):
-            print("decodes_lua_arguments", args, kwargs)
             try:
                 args = [
                     self.lua.lua2python(a, **l2p_kw)
