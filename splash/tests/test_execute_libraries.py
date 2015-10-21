@@ -83,6 +83,34 @@ class Base64Test(BaseLuaRenderTest):
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                            message='base64.encode argument must be a string')
 
+    def test_b64_encode_binary(self):
+        hello_b64 = base64.b64encode(u'привет'.encode('cp1251')).decode('ascii')
+        resp = self.request_lua("""
+        base64 = require('base64')
+        treat = require('treat')
+        function main(splash)
+            local hello = base64.decode(splash.args.hello_b64)
+            local hello_binary = treat.as_binary(hello)
+            local eq1 = hello == hello_binary
+            local hello_b64 = base64.encode(hello)
+            local hello_binary_b64 = base64.encode(hello_binary)
+            local eq2 = hello_b64 == hello_binary_b64
+            return {
+                hello_b64 = hello_b64,
+                hello_binary_b64 = hello_binary_b64,
+                eq1 = eq1,
+                eq2 = eq2
+            }
+        end
+        """, {'hello_b64': hello_b64})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'hello_b64': hello_b64,
+            'hello_binary_b64': hello_b64,
+            'eq1': False,
+            'eq2': True,
+        })
+
     def test_b64_decode(self):
         cases = map(base64.b64encode, [
             b'',
