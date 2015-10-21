@@ -10,24 +10,26 @@ from splash.lua import lua2python, python2lua
 @pytest.mark.usefixtures("lua")
 class LuaPythonConversionTest(unittest.TestCase):
 
-    def assertSurvivesConversion(self, obj):
-        lua_obj = python2lua(self.lua, obj)
-        py_obj = lua2python(self.lua, lua_obj)
+    def assertSurvivesConversion(self, obj, encoding='utf8'):
+        lua_obj = python2lua(self.lua, obj, encoding=encoding)
+        py_obj = lua2python(self.lua, lua_obj, encoding=encoding)
         self.assertEqual(obj, py_obj)
+        self.assertEqual(obj.__class__, py_obj.__class__)
 
     def test_numbers(self):
         self.assertSurvivesConversion(5)
         self.assertSurvivesConversion(0)
         self.assertSurvivesConversion(-3.14)
 
-    def test_strings(self):
-        self.assertSurvivesConversion("foo")
-        self.assertSurvivesConversion("")
+    def test_unicode_strings(self):
+        self.assertSurvivesConversion(u"foo")
+        self.assertSurvivesConversion(u"")
 
-    @pytest.mark.xfail
-    def test_unicode(self):
-        # Does it fail because python2lua and lua2python assume
-        # LuaRuntime is in play?
+    def test_byte_strings(self):
+        self.assertSurvivesConversion(b"foo", encoding=None)
+        self.assertSurvivesConversion(b"", encoding=None)
+
+    def test_unicode_nonascii(self):
         self.assertSurvivesConversion(u"привет")
 
     def test_dict(self):

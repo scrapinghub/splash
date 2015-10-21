@@ -207,3 +207,27 @@ class TreatAsArrayTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                "argument must be a table")
+
+
+class TreatAsBinaryTest(BaseLuaRenderTest):
+    def test_main_result(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            return treat.as_binary("hello", "text/x-mytext")
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.content, b"hello")
+        self.assertEqual(resp.headers['content-type'], "text/x-mytext")
+
+    def test_as_binary_error(self):
+        for arg in ["3", "splash", "function() end"]:
+            resp = self.request_lua("""
+            treat = require('treat')
+            function main(splash)
+                return treat.as_binary(%s)
+            end
+            """ % arg)
+            self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                                   "argument must be a string")

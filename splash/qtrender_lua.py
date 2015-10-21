@@ -71,20 +71,27 @@ class StoredExceptions(object):
 
 
 def command(async=False, can_raise_async=False, table_argument=False,
-            sets_callback=False):
+            sets_callback=False, decode_arguments=True):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
         table_argument = True
 
     def decorator(meth):
-        meth = detailed_exceptions()(meth)
+        # input arguments processing:
+        # args | unpack_table | use_storage | decode
+        if decode_arguments:
+            meth = decodes_lua_arguments('utf8')(meth)
+
+        if sets_callback:
+            meth = first_argument_from_storage(meth)
 
         if not table_argument:
             meth = lupa.unpacks_lua_table_method(meth)
 
-        if sets_callback:
-            meth = first_argument_from_storage(meth)
+        # result processing:
+        # result | enrich_exception | ex2retval | store_pyex | to_lua
+        meth = detailed_exceptions()(meth)
 
         meth = exceptions_as_return_values(
             can_raise(
@@ -121,7 +128,6 @@ def emits_lua_objects(meth):
     This decorator makes method convert results to
     native Lua formats when possible
     """
-
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
@@ -132,6 +138,34 @@ def emits_lua_objects(meth):
             return py2lua(res)
 
     return wrapper
+
+
+def decodes_lua_arguments(encoding, strict=True):
+    """
+    This decorator converts function arguments from Lua to Python.
+    """
+    l2p_kw = {'encoding': encoding, 'strict': strict}
+    def decorator(meth):
+        @functools.wraps(meth)
+        def wrapper(self, *args, **kwargs):
+            print("decodes_lua_arguments", args, kwargs)
+            try:
+                args = [
+                    self.lua.lua2python(a, **l2p_kw)
+                    for a in args
+                ]
+                kwargs = {
+                    self.lua.lua2python(k): self.lua.lua2python(v, **l2p_kw)
+                    for (k, v) in kwargs.items()
+                }
+            except ValueError as e:
+                raise ScriptError({
+                    'type': ScriptError.SPLASH_LUA_ERROR,
+                    'message': e.args[0],
+                })
+            return meth(self, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def first_argument_from_storage(meth):
@@ -210,7 +244,6 @@ def detailed_exceptions(method_name=None):
     """
     Add method name and a default error type to the error info.
     """
-
     def decorator(meth):
         _name = meth.__name__ if method_name is None else method_name
 
@@ -286,8 +319,8 @@ class _WrappedJavascriptFunction(object):
     @exceptions_as_return_values
     @can_raise
     @emits_lua_objects
+    @decodes_lua_arguments('utf8')
     def __call__(self, *args):
-        args = self.lua.lua2python(args)
         args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
         func_text = json.dumps([self.source], ensure_ascii=False, encoding='utf8')[1:-1]
         wrapper_script = """
@@ -458,8 +491,13 @@ class Splash(BaseExposedObject):
         ))
         return cmd
 
-    @command(async=True)
+    @command(async=True, decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
+        url = self.lua.lua2python(url, max_depth=1)
+        baseurl = self.lua.lua2python(baseurl, max_depth=1)
+        headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
+        http_method = self.lua.lua2python(http_method, max_depth=1)
+        formdata = self.lua.lua2python(formdata, max_depth=3)
 
         if url is None:
             raise ScriptError({
@@ -481,17 +519,19 @@ class Splash(BaseExposedObject):
             })
 
         elif formdata:
-            body = self.lua.lua2python(formdata, max_depth=3)
+            # XXX: should it be binary or unicode?
+            body = self.lua.lua2python(formdata, max_depth=3, encoding=None)
             if isinstance(body, dict):
                 body = urlencode(body)
             else:
                 raise ScriptError({"argument": "formdata",
-                                   "message": "formdata argument for go() must be Lua table"})
+                                   "message": "formdata argument for go() must be a Lua table"})
 
         elif body:
-            if not isinstance(body, basestring):
+            body = self.lua.lua2python(body, encoding=None, max_depth=2)
+            if not isinstance(body, bytes):
                 raise ScriptError({"argument": "body",
-                                   "message": "request body must be string"})
+                                   "message": "request body must be a string"})
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
@@ -521,7 +561,7 @@ class Splash(BaseExposedObject):
             errback=error,
             http_method=http_method,
             body=body,
-            headers=self.lua.lua2python(headers, max_depth=3)
+            headers=headers,
         ))
         return cmd
 
@@ -595,7 +635,8 @@ class Splash(BaseExposedObject):
             cmd.return_result(self.lua.python2lua(result))
 
         def errback(msg, raise_):
-            cmd.return_result(None, "JavaScript error: %s" % msg, raise_)
+            args = [None, "JavaScript error: %s" % msg, raise_]
+            cmd.return_result(*[self.lua.python2lua(a) for a in args])
 
         cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
@@ -863,12 +904,11 @@ class Splash(BaseExposedObject):
                 'cputime': rusage.ru_utime + rusage.ru_stime,
                 'walltime': time.time()}
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_on_request(self, callback):
         """
         Register a Lua callback to be called when a resource is requested.
         """
-
         def _callback(request, operation, outgoing_data):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             with _ExposedRequest.wraps(self.lua, exceptions, request, operation, outgoing_data) as req:
@@ -877,7 +917,7 @@ class Splash(BaseExposedObject):
         self.tab.register_callback("on_request", _callback)
         return True
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_on_response_headers(self, callback):
         def _callback(reply):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
@@ -887,7 +927,7 @@ class Splash(BaseExposedObject):
         self.tab.register_callback("on_response_headers", _callback)
         return True
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_on_response(self, callback):
         def _callback(reply, har_entry):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
@@ -901,7 +941,7 @@ class Splash(BaseExposedObject):
         self.tab.register_callback("on_response", _callback)
         return True
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_call_later(self, callback, delay=None):
         if delay is None:
             delay = 0
@@ -969,7 +1009,7 @@ class Splash(BaseExposedObject):
         res = "%s%s" % (error_info.type.lower(), error_info.code)
         if res == "http200":
             return "render_error"
-        return res
+        return self.lua.python2lua(res)
 
     def result_content_type(self):
         if self._result_content_type is None:
