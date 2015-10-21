@@ -2477,6 +2477,18 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertEqual(data['ok'], True)
         self.assertEqual(data['headers']['Content-Type'], 'text/html')
 
+    def test_response_attributes_readonly(self):
+        for attr in ["url", "status", "ok"]:
+            resp = self.request_lua("""
+            function main(splash)
+                local resp = splash:http_get{splash.args.url}
+                resp[splash.args.attr] = "foo"
+                return "ok"
+            end
+            """, {"url": self.mockurl("getrequest"), "attr": attr})
+            self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                                   message="read-only")
+
     def test_response_attributes_redirect(self):
         resp = self.request_lua("""
         function main(splash)
