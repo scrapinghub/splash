@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import re
-from base64 import standard_b64decode
+import base64
 import unittest
 from cStringIO import StringIO
 import numbers
@@ -2449,7 +2449,6 @@ class HttpGetTest(BaseLuaRenderTest):
 
     def test_httpget_nonascii_nonutf8(self):
         resp = self.request_lua("""
-        base64 = require("base64")
         function main(splash)
             local resp = splash:http_get{splash.args.url}
             return resp.body
@@ -2457,6 +2456,45 @@ class HttpGetTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("cp1251")})
         self.assertStatusCode(resp, 200)
         self.assertIn(u'проверка', resp.content.decode('cp1251'))
+        self.assertEqual(resp.headers['Content-Type'], "text/html; charset=windows-1251")
+
+    def test_response_attributes_redirected(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local resp = splash:http_get{splash.args.url}
+            return {
+                url=resp.url,
+                status=resp.status,
+                headers=resp.headers,
+                ok=resp.ok,
+            }
+        end
+        """, {"url": self.mockurl("http-redirect?code=302")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data['url'], self.mockurl("getrequest?http_code=302"))
+        self.assertEqual(data['status'], 200)
+        self.assertEqual(data['ok'], True)
+        self.assertEqual(data['headers']['Content-Type'], 'text/html')
+
+    def test_response_attributes_redirect(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local resp = splash:http_get{splash.args.url, follow_redirects=false}
+            return {
+                url=resp.url,
+                status=resp.status,
+                headers=resp.headers,
+                ok=resp.ok,
+            }
+        end
+        """, {"url": self.mockurl("http-redirect?code=302")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data['url'], self.mockurl("http-redirect?code=302"))
+        self.assertEqual(data['status'], 302)
+        self.assertEqual(data['ok'], True)
+        self.assertEqual(data['headers']['Location'], "/getrequest?http_code=302")
 
 
 class HttpPostTest(BaseLuaRenderTest):
@@ -2514,6 +2552,25 @@ class HttpPostTest(BaseLuaRenderTest):
         self.assertIn(b"GET request", get_body_bytes(info))
         self.assertIn(post_body, info["url"])
         self.assertEqual(info["status"], 200)
+
+    def test_response_attributes(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local resp = splash:http_post{splash.args.url}
+            return {
+                url=resp.url,
+                status=resp.status,
+                headers=resp.headers,
+                ok=resp.ok,
+            }
+        end
+        """, {"url": self.mockurl("postrequest")})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data['url'], self.mockurl("postrequest"))
+        self.assertEqual(data['status'], 200)
+        self.assertEqual(data['ok'], True)
+        self.assertEqual(data['headers']['Content-Type'], 'text/plain; charset=utf-8')
 
 
 class NavigationLockingTest(BaseLuaRenderTest):
@@ -2797,7 +2854,7 @@ end
         self.assertEqual(out['before'], [w, h])
         self.assertEqual(out['after'], [w, h])
         # 2000px is hardcoded in that html
-        img = Image.open(StringIO(standard_b64decode(out['png'])))
+        img = Image.open(StringIO(base64.b64decode(out['png'])))
         self.assertEqual(img.size, (w, 2000))
 
     def test_set_viewport_size_changes_contents_size_immediately(self):
