@@ -162,7 +162,8 @@ Error handling example:
 Errors (ok==nil) are only reported when "main" webpage request failed.
 If a request to a related resource failed then no error is reported by
 ``splash:go``. To detect and handle such errors (e.g. broken image/js/css
-links, ajax requests failed to load) use :ref:`splash-har`.
+links, ajax requests failed to load) use :ref:`splash-har`
+or :ref:`splash-on-response`.
 
 ``splash:go`` follows all HTTP redirects before returning the result,
 but it doesn't follow HTML ``<meta http-equiv="refresh" ...>`` redirects or
@@ -1046,7 +1047,7 @@ Return a `width x height` screenshot of a current page in PNG format.
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``
 
-**Returns:** PNG screenshot data.
+**Returns:** PNG screenshot data, as a :ref:`binary object <binary-objects>`.
 
 **Async:** no.
 
@@ -1074,8 +1075,9 @@ rendering and restoring the viewport size afterwards.
 Vector scaling is more performant and produces sharper images, however it may
 cause rendering artifacts, so use it with caution.
 
-If the result of ``splash:png()`` is returned directly as a result of
-"main" function, the screenshot is returned as binary data:
+The result of ``splash:png`` is a :ref:`binary object <binary-objects>`,
+so you can return it directly from "main" function and it will be sent as
+a binary image data with a proper Content-Type header:
 
 .. code-block:: lua
 
@@ -1103,7 +1105,7 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
-See also: :ref:`splash-jpeg`.
+See also: :ref:`splash-jpeg`, :ref:`binary-objects`.
 
 
 .. _splash-jpeg:
@@ -1124,7 +1126,7 @@ Return a `width x height` screenshot of a current page in JPEG format.
   or ``'vector'``
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``
 
-**Returns:** JPEG screenshot data.
+**Returns:** JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
 
 **Async:** no.
 
@@ -1157,8 +1159,9 @@ Values above ``95`` should be avoided; ``quality=100`` disables portions of
 the JPEG compression algorithm, and results in large files with hardly any
 gain in image quality.
 
-If the result of ``splash:jpeg()`` is returned directly as a result of
-"main" function, the screenshot is returned as binary data:
+The result of ``splash:jpeg`` is a :ref:`binary object <binary-objects>`,
+so you can return it directly from "main" function and it will be sent as
+a binary image data with a proper Content-Type header:
 
 .. code-block:: lua
 
@@ -1173,7 +1176,7 @@ If the result of ``splash:jpeg()`` is returned directly as a result of
 
 If the result of ``splash:jpeg()`` is returned as a table value, it is encoded
 to base64 to make it possible to embed in JSON and build a data:uri
-on a client (magic!):
+on a client:
 
 .. code-block:: lua
 
@@ -1182,8 +1185,8 @@ on a client (magic!):
          return {jpeg=splash:jpeg()}
      end
 
-See also: :ref:`splash-png`. Note that `splash:jpeg()` is often
-1.5..2x faster than ``splash:png()``.
+See also: :ref:`splash-png`, :ref:`binary-objects`.
+Note that ``splash:jpeg()`` is often 1.5..2x faster than ``splash:png()``.
 
 .. _splash-har:
 
