@@ -15,9 +15,10 @@ from .test_execute import BaseLuaRenderTest
 class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_request_log(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
-            local urls = {}
-            local requests = {}
+            local urls = treat.as_array({})
+            local requests = treat.as_array({})
             splash:on_request(function(request)
                 requests[#requests+1] = request.info
                 urls[#urls+1] = request.url
@@ -30,11 +31,11 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         requests, urls = resp.json()
 
         # FIXME: it should return lists, and indices should be integer
-        self.assertIn("show-image", urls['1'])
-        self.assertIn("slow.gif", urls['2'])
+        self.assertIn("show-image", urls[0])
+        self.assertIn("slow.gif", urls[1])
 
-        self.assertEqual(requests['1']['method'], 'GET')
-        self.assertEqual(requests['1']['url'], urls['1'])
+        self.assertEqual(requests[0]['method'], 'GET')
+        self.assertEqual(requests[0]['url'], urls[0])
 
     def test_abort_request(self):
         resp = self.request_lua("""
@@ -392,8 +393,9 @@ class OnResponseTest(BaseLuaRenderTest):
     def test_on_response(self):
         url = self.mockurl("show-image")
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
-            local result = {}
+            local result = treat.as_array({})
             splash:on_response(function(response)
                 local resp_info = {
                     ctype = response.headers['Content-Type'],
@@ -415,7 +417,7 @@ class OnResponseTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertEqual(len(data['result']), 2, data['result'])
 
-        e1, e2 = data['result']['1'], data['result']['2']
+        e1, e2 = data['result'][0], data['result'][1]
 
         entries = data['har']['log']['entries']
         self.assertEqual(len(entries), 2, entries)
@@ -442,6 +444,7 @@ class OnResponseTest(BaseLuaRenderTest):
 
     def test_async_wait(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
             local value = 0
             splash:on_response(function(response)
@@ -452,11 +455,11 @@ class OnResponseTest(BaseLuaRenderTest):
             local v1 = value
             splash:wait(0.3)
             local v2 = value
-            return {v1, v2}
+            return treat.as_array({v1, v2})
         end
         """, {'url': self.mockurl("show-image")})
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {'1': 0, '2': 2})
+        self.assertEqual(resp.json(), [0, 2])
 
     def test_call_later_from_on_response(self):
         resp = self.request_lua("""

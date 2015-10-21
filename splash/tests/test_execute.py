@@ -2234,6 +2234,7 @@ class HarTest(BaseLuaRenderTest):
 
     def test_har_reset(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
             splash:go(splash.args.url)
             splash:go(splash.args.url)
@@ -2242,13 +2243,11 @@ class HarTest(BaseLuaRenderTest):
             local har2 = splash:har()
             splash:go(splash.args.url)
             local har3 = splash:har()
-            return {har1, har2, har3}
+            return treat.as_array({har1, har2, har3})
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
-        har1 = resp.json()["1"]
-        har2 = resp.json()["2"]
-        har3 = resp.json()["3"]
+        har1, har2, har3 = resp.json()
 
         self.assertEqual(len(har1['log']['entries']), 2)
         self.assertEqual(har2['log']['entries'], [])
@@ -2256,6 +2255,7 @@ class HarTest(BaseLuaRenderTest):
 
     def test_har_reset_argument(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
             splash:go(splash.args.url)
             local har1 = splash:har()
@@ -2264,14 +2264,11 @@ class HarTest(BaseLuaRenderTest):
             local har3 = splash:har()
             splash:go(splash.args.url)
             local har4 = splash:har()
-            return {har1, har2, har3, har4}
+            return treat.as_array({har1, har2, har3, har4})
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
-        har1 = resp.json()["1"]
-        har2 = resp.json()["2"]
-        har3 = resp.json()["3"]
-        har4 = resp.json()["4"]
+        har1, har2, har3, har4 = resp.json()
 
         self.assertEqual(len(har1['log']['entries']), 1)
         self.assertEqual(len(har2['log']['entries']), 2)
@@ -2280,18 +2277,19 @@ class HarTest(BaseLuaRenderTest):
 
     def test_har_reset_inprogress(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
             splash:go(splash.args.url)
             splash:wait(0.5)
             local har1 = splash:har{reset=true}
             splash:wait(2.5)
             local har2 = splash:har()
-            return {har1, har2}
+            return treat.as_array({har1, har2})
         end
         """, {'url': self.mockurl("show-image?n=2.0&js=0.1")})
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        har1, har2 = data["1"]["log"], data["2"]["log"]
+        har1, har2 = data[0]["log"], data[1]["log"]
 
         self.assertEqual(len(har1['entries']), 2)
         self.assertEqual(har1['entries'][0]['_splash_processing_state'],
@@ -2784,19 +2782,20 @@ end
 
     def test_render_all_restores_viewport_size(self):
         script = """
+        treat = require("treat")
         function main(splash)
-        assert(splash:go(splash.args.url))
-        assert(splash:wait(0.1))
-        local before = {splash:get_viewport_size()}
-        png = splash:png{render_all=true}
-        local after = {splash:get_viewport_size()}
-        return {before=before, after=after, png=png}
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            local before = treat.as_array({splash:get_viewport_size()})
+            png = splash:png{render_all=true}
+            local after = treat.as_array({splash:get_viewport_size()})
+            return {before=before, after=after, png=png}
         end
         """
         out = self.return_json_from_lua(script, url=self.mockurl('tall'))
         w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
-        self.assertEqual(out['before'], {'1': w, '2': h})
-        self.assertEqual(out['after'], {'1': w, '2': h})
+        self.assertEqual(out['before'], [w, h])
+        self.assertEqual(out['after'], [w, h])
         # 2000px is hardcoded in that html
         img = Image.open(StringIO(standard_b64decode(out['png'])))
         self.assertEqual(img.size, (w, 2000))
@@ -2804,6 +2803,7 @@ end
     def test_set_viewport_size_changes_contents_size_immediately(self):
         # GH167
         script = """
+treat = require("treat")
 function main(splash)
 splash:set_viewport_size(1024, 768)
 assert(splash:set_content([[
@@ -2812,16 +2812,16 @@ assert(splash:set_content([[
 </html>
 ]]))
 result = {}
-result.before = {splash:set_viewport_full()}
+result.before = treat.as_array({splash:set_viewport_full()})
 splash:set_viewport_size(640, 480)
-result.after = {splash:set_viewport_full()}
+result.after = treat.as_array({splash:set_viewport_full()})
 return result
 end
         """
         out = self.return_json_from_lua(script)
         self.assertEqual(out,
-                         {'before': {'1': 1024, '2': 768},
-                          'after': {'1': 800, '2': 480}})
+                         {'before': [1024, 768],
+                          'after': [800, 480]})
 
     @pytest.mark.xfail
     def test_viewport_full_raises_error_if_fails_in_script(self):
