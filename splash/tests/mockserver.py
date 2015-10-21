@@ -399,10 +399,10 @@ class PostResource(Resource):
     def render_POST(self, request):
         code = request.args.get('code', [200])[0]
         request.setResponseCode(int(code))
-        request.setHeader("Content-Type", "text/plain; charset=utf-8")
+        request.setHeader(b"Content-Type", b"text/plain; charset=utf-8")
         headers = request.getAllHeaders()
-        payload = request.content.getvalue() if request.content is not None else ''
-        return """
+        payload = request.content.getvalue() if request.content is not None else b''
+        return ("""
 <html>
 <body>
 <p id="p1">From POST</p>
@@ -414,7 +414,7 @@ class PostResource(Resource):
 </p>
 </body>
 </html>
-""" % (headers, payload)
+""" % (headers, repr(payload))).encode('utf-8')
 
 
 class GetResource(Resource):

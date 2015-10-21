@@ -686,6 +686,9 @@ class Splash(BaseExposedObject):
         :param body: string with body to be sent in request
         :return: AysncBrowserCommand http_post
         """
+        if isinstance(body, BinaryCapsule):
+            body = body.data
+
         if body and not isinstance(body, basestring):
             raise ScriptError({"argument": "body",
                                "message": "body argument for splash:http_post() must be string"})

@@ -2572,6 +2572,26 @@ class HttpPostTest(BaseLuaRenderTest):
         self.assertEqual(data['ok'], True)
         self.assertEqual(data['headers']['Content-Type'], 'text/plain; charset=utf-8')
 
+    def test_binary_post_body(self):
+        postbody = u'привет'.encode('cp1251')
+        resp = self.request_lua("""
+            base64 = require("base64")
+            treat = require("treat")
+            function main(splash)
+                local body = base64.decode(splash.args.postbody)
+                local resp = splash:http_post{
+                    url=splash.args.url,
+                    body=treat.as_binary(body)
+                }
+                return resp.body
+            end
+            """, {
+                "url": self.mockurl("postrequest"),
+                "postbody": base64.b64encode(postbody)
+            })
+        self.assertStatusCode(resp, 200)
+        self.assertIn(repr(postbody), resp.text)
+
 
 class NavigationLockingTest(BaseLuaRenderTest):
     def test_lock_navigation(self):
