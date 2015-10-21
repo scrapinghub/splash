@@ -58,6 +58,23 @@ class JsonTest(BaseLuaRenderTest):
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                message='No JSON object could be decoded')
 
+    def test_json_encode_binary(self):
+        resp = self.request_lua("""
+        json = require('json')
+        treat = require('treat')
+        function main(splash)
+            return treat.as_array({
+                json.encode('hello'),
+                json.encode(treat.as_binary('hello'))
+            })
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [
+            '"hello"',
+            '"%s"' % base64.b64encode(b"hello").decode('ascii')
+        ])
+
 
 class Base64Test(BaseLuaRenderTest):
     def test_b64_encode(self):
