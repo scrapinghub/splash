@@ -221,8 +221,84 @@ class TreatAsBinaryTest(BaseLuaRenderTest):
         self.assertEqual(resp.content, b"hello")
         self.assertEqual(resp.headers['content-type'], "text/x-mytext")
 
+    def test_main_result_utf8(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            return treat.as_binary("привет")
+        end
+        """.encode('utf8'))
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.content, u"привет".encode('utf8'))
+        self.assertEqual(resp.headers['content-type'], "application/octet-stream")
+
+    def test_main_result_non_utf8(self):
+        hello = u'привет'.encode('cp1251')
+        hello64 = base64.b64encode(hello).decode('ascii')
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        base64 = require('base64')
+        function main(splash)
+            local hello = base64.decode(splash.args.hello64)
+            return treat.as_binary(hello, "text/x-mytext")
+        end
+        """, {'hello64': hello64})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.content, u"привет".encode('cp1251'))
+        self.assertEqual(resp.headers['content-type'], "text/x-mytext")
+
+    def test_as_binary_as_binary(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            local img = splash:png()
+            return treat.as_binary(img)
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.content[:4], b'\x89PNG')
+        self.assertEqual(resp.headers['content-type'], "image/png")
+
+    def test_as_binary_change_content_type(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            local img = splash:png()
+            return treat.as_binary(img, "image/x-png")
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.content[:4], b'\x89PNG')
+        self.assertEqual(resp.headers['content-type'], "image/x-png")
+
+    def test_return_json(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            return {res=treat.as_binary("hello", "text/x-mytext")}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'res': base64.b64encode("hello").decode('ascii')
+        })
+        self.assertEqual(resp.headers['content-type'], "application/json")
+
+    def test_content_type_priority(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            local res = treat.as_binary("hello", "text/x-mytext")
+            splash:set_result_content_type("text/plain")
+            return res
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.content, b'hello')
+        self.assertEqual(resp.headers['content-type'], "text/x-mytext")
+
     def test_as_binary_error(self):
-        for arg in ["3", "splash", "function() end"]:
+        for arg in ["3", "splash", "function() end", "{foo={bar=54}}"]:
             resp = self.request_lua("""
             treat = require('treat')
             function main(splash)

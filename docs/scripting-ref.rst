@@ -1081,7 +1081,6 @@ If the result of ``splash:png()`` is returned directly as a result of
 
      -- A simplistic implementation of render.png endpoint
      function main(splash)
-         splash:set_result_content_type("image/png")
          assert(splash:go(splash.args.url))
          return splash:png{
             width=splash.args.width,
@@ -1165,7 +1164,6 @@ If the result of ``splash:jpeg()`` is returned directly as a result of
 
      -- A simplistic implementation of render.jpeg endpoint
      function main(splash)
-         splash:set_result_content_type("image/jpeg")
          assert(splash:go(splash.args.url))
          return splash:jpeg{
             width=splash.args.width,

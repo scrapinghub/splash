@@ -1252,7 +1252,7 @@ class Extras(BaseExposedObject):
         wrapper = self.lua.eval("require('extras')")
         self._wrapped = wrapper._create(self)
 
-    @command()
+    @command(decode_arguments=False)
     def base64_encode(self, data):
         if isinstance(data, BinaryCapsule):
             return data.as_b64()
@@ -1273,10 +1273,20 @@ class Extras(BaseExposedObject):
     def json_decode(self, s):
         return json.loads(s)
 
-    @command()
+    @command(decode_arguments=False)
     def treat_as_binary(self, s, content_type=None):
+        s = self.lua.lua2python(s, max_depth=1, encoding=None)
+        content_type = self.lua.lua2python(content_type, max_depth=1,
+                                           encoding=None)
+
+        if isinstance(s, BinaryCapsule):
+            if content_type is not None:
+                return BinaryCapsule(s.data, content_type)
+            else:
+                return s
+
         if content_type is None:
-            content_type = 'application/octet-stream'
+            content_type = b'application/octet-stream'
         return BinaryCapsule(s, content_type)
 
     @command()

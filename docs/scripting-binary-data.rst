@@ -25,7 +25,7 @@ Binary Objects
 --------------
 
 To pass non-UTF8 data to Splash (returning it as a result of ``main`` or
-passing as arguments to ``splash`` methods) a script must mark it as
+passing as arguments to ``splash`` methods) a script may mark it as
 a binary object using :ref:`treat-as-binary` function.
 
 Some of the Splash functions already return binary objects: :ref:`splash-png`,
@@ -49,9 +49,8 @@ result will have content-type ``image/png``.
 
 When returned directly, a binary object data is used as-is for the
 response body, and Content-Type HTTP header is set to the content-type
-of a binary object (unless overridden by :ref:`splash-set-result-content-type`).
-So in the previous example the result will be a PNG image with
-a proper Content-Type header.
+of a binary object. So in the previous example the result will be a PNG image
+with a proper Content-Type header.
 
 To construct your own binary objects use :ref:`treat-as-binary` function.
 For example, let's return a 1x1px black GIF image as a response:
@@ -65,6 +64,20 @@ For example, let's return a 1x1px black GIF image as a response:
         local gif_b64 = "AQABAIAAAAAAAAAAACH5BAAAAAAALAAAAAABAAEAAAICTAEAOw=="
         local gif_bytes = base64.decode(gif_b64)
         return treat.as_binary(gif_bytes, "image/gif")
+    end
+
+When ``main`` result is returned, binary object content-type takes a priority
+over a value set by :ref:`splash-set-result-content-type`. To override
+content-type of a binary object create another binary object with a required
+content-type:
+
+.. code-block:: lua
+
+    lcoal treat = require("treat")
+    function main(splash)
+        -- ...
+        local img = splash:png()
+        return treat.as_binary(img, "image/x-png") -- default was "image/png"
     end
 
 When a binary object is serialized to JSON it is auto-encoded to base64
