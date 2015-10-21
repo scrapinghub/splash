@@ -219,16 +219,18 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         resp = self.request_lua("""
         function main(splash)
             local header_value = nil
+            local header_value2 = nil
             splash:on_response_headers(function(response)
                 header_value = response.headers['Content-Type']
+                header_value2 = response.headers['content-type']
             end)
             res = splash:http_get(splash.args.url)
-            return header_value
+            return {v1=header_value, v2=header_value2}
         end
         """, {'url': self.mockurl("jsrender")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "text/html")
+        self.assertEqual(resp.json(), {"v1": "text/html", "v2": "text/html"})
 
     def test_abort_on_response_headers(self):
         resp = self.request_lua("""
