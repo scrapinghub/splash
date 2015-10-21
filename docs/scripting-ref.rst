@@ -898,6 +898,8 @@ Example:
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
 
+See also: :ref:`splash-http-post`, :ref:`splash-response`.
+
 
 .. _splash-http-post:
 
@@ -934,12 +936,19 @@ Example of JSON POST request:
 
 .. code-block:: lua
 
-    local reply = splash:http_post{url="http://example.com/post", body='{"alfa": "beta"}',
-                                   headers={["content-type"]="application/json"}}
+    json = require("json")
+
+    local reply = splash:http_post{
+        url="http://example.com/post",
+        body=json.encode({alpha="beta"}),
+        headers={["content-type"]="application/json"}
+    }
 
 
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
+
+See also: :ref:`splash-http-get`, :ref:`lib-json`, :ref:`splash-response`.
 
 
 .. _splash-set-content:
@@ -1105,7 +1114,8 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
-See also: :ref:`splash-jpeg`, :ref:`binary-objects`.
+See also: :ref:`splash-jpeg`, :ref:`binary-objects`,
+:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
 
 
 .. _splash-jpeg:
@@ -1185,7 +1195,9 @@ on a client:
          return {jpeg=splash:jpeg()}
      end
 
-See also: :ref:`splash-png`, :ref:`binary-objects`.
+See also: :ref:`splash-png`, :ref:`binary-objects`,
+:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
+
 Note that ``splash:jpeg()`` is often 1.5..2x faster than ``splash:png()``.
 
 .. _splash-har:
@@ -1235,7 +1247,7 @@ all existing logs and start recording from scratch:
          return {har1=har1, har2=har2}
      end
 
-See also: :ref:`splash-har-reset`.
+See also: :ref:`splash-har-reset`, :ref:`splash-on-response`.
 
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 
@@ -1254,6 +1266,8 @@ splash:har_reset
 Drops all internally stored HAR_ records. It is similar to
 ``splash:har{reset=true}``, but doesn't return anything.
 
+See also: :ref:`splash-har`.
+
 .. _splash-history:
 
 splash:history
@@ -1268,7 +1282,7 @@ splash:history
 
 ``splash:history`` doesn't return information about related resources
 like images, scripts, stylesheets or AJAX requests. If you need this
-information use :ref:`splash-har`.
+information use :ref:`splash-har` or :ref:`splash-on-response`.
 
 Let's get a JSON array with HTTP headers of the response we're displaying:
 
@@ -1283,6 +1297,8 @@ Let's get a JSON array with HTTP headers of the response we're displaying:
             headers = last_entry.response.headers
          }
      end
+
+See also: :ref:`splash-har`, :ref:`splash-on-response`.
 
 .. _HAR entries: http://www.softwareishard.com/blog/har-12-spec/#entries
 
@@ -1505,7 +1521,7 @@ option.
 In case of unhandled Lua errors HTTP status code is set to 400 regardless
 of the value set with :ref:`splash-set-result-status-code`.
 
-See also: :ref:`splash-set-result-status-code`,
+See also: :ref:`splash-set-result-content-type`,
 :ref:`splash-set-result-header`.
 
 
@@ -1551,8 +1567,12 @@ Example:
          ]]
      end
 
-See also: :ref:`splash-set-result-header` which allows to set any custom
-response header, not only Content-Type.
+See also:
+
+* :ref:`splash-set-result-header` which allows to set any custom
+  response header, not only Content-Type.
+* :ref:`binary-objects` which have their own method for setting result
+  Content-Type.
 
 
 .. _splash-set-result-header:
