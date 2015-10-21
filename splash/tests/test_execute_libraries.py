@@ -352,3 +352,30 @@ class TreatAsBinaryTest(BaseLuaRenderTest):
             """ % arg)
             self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                    "argument must be a string")
+
+
+class TreatAsStringTest(BaseLuaRenderTest):
+    def test_as_string(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            local res = treat.as_binary("hello", "text/x-mytext")
+            local text, ct = treat.as_string(res)
+            return {text=text, ct=ct}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"text": "hello", "ct": "text/x-mytext"})
+
+    def test_as_string_bytes(self):
+        resp = self.request_lua(u"""
+        treat = require('treat')
+        function main(splash)
+            local img = splash:png()
+            local text, ct = treat.as_string(img)
+            return {first=text:byte(1), ct=ct}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        # 0x89 is a first byte in PNG images
+        self.assertEqual(resp.json(), {"first": 0x89, "ct": "image/png"})
