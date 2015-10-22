@@ -84,7 +84,7 @@ to convert it to a Lua string first.
 response.request
 ----------------
 
-TODO
+A corresponding :ref:`splash-request`.
 
 This field is read-only.
 

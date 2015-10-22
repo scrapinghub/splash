@@ -1820,66 +1820,48 @@ Register a function to be called before each HTTP request.
 
 **Async:** no.
 
-:ref:`splash-on-request` callback receives a single ``request`` argument.
-``request`` contains the following fields:
+:ref:`splash-on-request` callback receives a single ``request`` argument
+(a :ref:`splash-request`).
 
-* ``url`` - requested URL;
-* ``method`` - HTTP method name in upper case, e.g. "GET";
-* ``info`` - a table with request data in `HAR request`_ format
-  (`url` and `method` values are duplicated here).
-
-.. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
-.. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
-.. _HAR queryString: http://www.softwareishard.com/blog/har-12-spec/#queryString
-
-These fields are for information only; changing them doesn't change
-the request to be sent. To change or drop the request before sending use
-one of the ``request`` methods:
-
-* ``request:abort()`` - drop the request;
-* ``request:set_url(url)`` - change request URL to a specified value;
-* ``request:set_proxy{host, port, username=nil, password=nil, type='HTTP'}`` -
-  set a proxy server to use for this request. Allowed proxy types are
-  'HTTP' and 'SOCKS5'. Omit ``username`` and ``password`` arguments if a proxy
-  doesn't need auth. When ``type`` is set to 'HTTP' HTTPS proxying should
-  also work; it is implemented using CONNECT command.
-* ``request:set_header(name, value)`` - set an HTTP header for this request.
-  See also: :ref:`splash-set-custom-headers`.
-* ``request:set_timeout(timeout)`` - set a timeout for this request,
-  in seconds. If response is not fully received after the timeout,
-  request is aborted. See also: :ref:`splash-resource-timeout`.
+To get information about a request use request
+:ref:`attributes <splash-request-attributes>`;
+to change or drop the request before sending use request
+:ref:`methods <splash-request-methods>`;
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.
 
-Example 1 - log all URLs requested:
+Example 1 - log all URLs requested using :ref:`splash-request-url` attribute:
 
 .. code-block:: lua
 
+    treat = require("treat")
     function main(splash)
         local urls = {}
         splash:on_request(function(request)
-            urls[#urls+1] = request.url
+            table.insert(urls, request.url)
         end)
         assert(splash:go(splash.args.url))
-        return urls
+        return treat.as_array(urls)
     end
 
-Example 2 - to log full request data use ``request.info`` attribute;
-don't store ``request`` objects directly:
+Example 2 - to log full request information use :ref:`splash-request-info`
+attribute; don't store ``request`` objects directly:
 
 .. code-block:: lua
 
+    treat = require("treat")
     function main(splash)
-        local entries = {}
+        local entries = treat.as_array({})
         splash:on_request(function(request)
-            entries[#entries+1] = request.info
+            table.insert(entries, request.info)
         end)
         assert(splash:go(splash.args.url))
         return entries
     end
 
-Example 3 - drop all requests to resources containing ".css" in their URLs:
+Example 3 - drop all requests to resources containing ".css" in their URLs
+(see :ref:`splash-request-abort`):
 
 .. code-block:: lua
 
@@ -1889,7 +1871,8 @@ Example 3 - drop all requests to resources containing ".css" in their URLs:
         end
     end)
 
-Example 4 - replace a resource:
+Example 4 - replace a resource
+(see :ref:`splash-request-set-url`):
 
 .. code-block:: lua
 
@@ -1900,7 +1883,7 @@ Example 4 - replace a resource:
     end)
 
 Example 5 - set a custom proxy server, with credentials passed in an HTTP
-request to Splash:
+request to Splash (see :ref:`splash-request-set-proxy`):
 
 .. code-block:: lua
 
@@ -1914,7 +1897,8 @@ request to Splash:
     end)
 
 Example 6 - discard requests which take longer than 5 seconds to complete,
-but allow up to 15 seconds for the first request:
+but allow up to 15 seconds for the first request
+(see :ref:`splash-request-set-timeout`):
 
 .. code-block:: lua
 
@@ -1932,7 +1916,7 @@ but allow up to 15 seconds for the first request:
     :ref:`splash-on-request` doesn't support named arguments.
 
 See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
-:ref:`splash-on-request-reset`.
+:ref:`splash-on-request-reset`, :ref:`lib-treat`, :ref:`splash-request`.
 
 .. _splash-on-response-headers:
 
@@ -1999,7 +1983,8 @@ Example 2 - abort reading body of all responses with content type ``text/css``
         return splash:png()
     end
 
-Example 3 - extract all cookies set by website without reading response body
+Example 3 - extract all cookies set by website without downloading
+response bodies
 
 .. code-block:: lua
 
