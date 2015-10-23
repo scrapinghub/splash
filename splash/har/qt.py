@@ -9,16 +9,11 @@ import base64
 from PyQt4.QtCore import Qt, QVariant
 from PyQt4.QtNetwork import QNetworkRequest
 
-from splash.qtutils import REQUEST_ERRORS_SHORT, OPERATION_NAMES
-
-
-def _header_pairs(request_or_reply):
-    if hasattr(request_or_reply, 'rawHeaderPairs'):
-        return request_or_reply.rawHeaderPairs()
-    return [
-        (name, request_or_reply.rawHeader(name))
-        for name in request_or_reply.rawHeaderList()
-    ]
+from splash.qtutils import (
+    REQUEST_ERRORS_SHORT,
+    OPERATION_NAMES,
+    qt_header_items
+)
 
 
 def headers2har(request_or_reply):
@@ -28,7 +23,7 @@ def headers2har(request_or_reply):
             "name": bytes(name).decode('latin1'),
             "value": bytes(value).decode('latin1'),
         }
-        for name, value in _header_pairs(request_or_reply)
+        for name, value in qt_header_items(request_or_reply)
     ]
 
 
@@ -36,7 +31,7 @@ def headers_size(request_or_reply):
     """ Return the total size of request or reply headers. """
     # XXX: this is not 100% correct, but should be a good approximation.
     size = 0
-    for name, value in _header_pairs(request_or_reply):
+    for name, value in qt_header_items(request_or_reply):
         size += name.size() + 2 + value.size() + 2  # 2==len(": ")==len("\n\r")
     return size
 

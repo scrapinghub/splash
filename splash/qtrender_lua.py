@@ -36,8 +36,8 @@ from splash.qtutils import (
     drop_request,
     set_request_url,
     create_proxy,
-    get_versions
-)
+    get_versions,
+    get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
 from splash.exceptions import ScriptError
 
@@ -404,19 +404,17 @@ class BaseExposedObject(object):
         self.commands = None
         self.exceptions = None
 
-    @classmethod
     @contextlib.contextmanager
-    def wraps(cls, lua, exceptions, *args, **kwargs):
+    def allowed(self):
         """
-        Context manager which returns a wrapped object
-        suitable for using in Lua code.
+        Context manager which makes it possible to use a wrapped object
+        in Lua code and cleans it in the end.
         """
-        obj = cls(lua, exceptions, *args, **kwargs)
         try:
-            with lua.object_allowed(obj, obj.attr_whitelist):
-                yield obj
+            with self.lua.object_allowed(self, self.attr_whitelist):
+                yield self
         finally:
-            obj.clear()
+            self.clear()
 
 
 class Splash(BaseExposedObject):
@@ -657,7 +655,8 @@ class Splash(BaseExposedObject):
             })
 
         def callback(reply):
-            resp = _ExposedResponse(self.lua, self.exceptions, reply,
+            req = _ExposedRequest.from_reply(self.lua, self.exceptions, reply)
+            resp = _ExposedResponse(self.lua, self.exceptions, reply, req,
                                     read_body=True)
             resp_wrapped = self.response_wrapper._create(resp)
             cmd.return_result(resp_wrapped)
@@ -913,7 +912,8 @@ class Splash(BaseExposedObject):
         """
         def _callback(request, operation, outgoing_data):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            with _ExposedRequest.wraps(self.lua, exceptions, request, operation, outgoing_data) as req:
+            req = _ExposedBoundRequest(self.lua, exceptions, request, operation, outgoing_data)
+            with req.allowed():
                 callback(req)
 
         self.tab.register_callback("on_request", _callback)
@@ -923,7 +923,9 @@ class Splash(BaseExposedObject):
     def private_on_response_headers(self, callback):
         def _callback(reply):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            with _ExposedBoundResponse.wraps(self.lua, exceptions, reply) as resp:
+            req = _ExposedRequest.from_reply(self.lua, exceptions, reply)
+            resp = _ExposedBoundResponse(self.lua, exceptions, reply, req)
+            with resp.allowed(), req.allowed():
                 callback(resp)
 
         self.tab.register_callback("on_response_headers", _callback)
@@ -933,7 +935,8 @@ class Splash(BaseExposedObject):
     def private_on_response(self, callback):
         def _callback(reply, har_entry):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            resp = _ExposedResponse(self.lua, exceptions, reply, har_entry,
+            req = _ExposedRequest.from_har(self.lua, exceptions, har_entry['request'])
+            resp = _ExposedResponse(self.lua, exceptions, reply, req, har_entry,
                                     read_body=False)
             run_coro = self.get_coroutine_run_func(
                 "splash:on_response", callback, [resp]
@@ -1094,18 +1097,50 @@ requires_response = requires_attr(
 
 
 class _ExposedRequest(BaseExposedObject):
-    """ QNetworkRequest wrapper for Lua """
-    _attribute_whitelist = ['info']
+    """ Read-only QNetworkRequest wrapper for Lua """
+    _attribute_whitelist = ['url', 'method', 'headers', 'info']
 
-    def __init__(self, lua, exceptions, request, operation, outgoing_data):
+    def __init__(self, lua, exceptions, url, method, headers, info):
         super(_ExposedRequest, self).__init__(lua, exceptions)
-        self.request = request
-        self.info = self.lua.python2lua(
-            request2har(request, operation, outgoing_data)
+        self.url = url
+        self.method = method
+        # TODO: make info and headers attributes lazy
+        self.headers = self.lua.python2lua(headers, encoding='latin1')
+        self.info = self.lua.python2lua(info)
+
+    @classmethod
+    def from_reply(cls, lua, exceptions, reply):
+        har_request = request2har(reply.request(), reply.operation())
+        return cls.from_har(lua, exceptions, har_request)
+
+    @classmethod
+    def from_har(cls, lua, exceptions, har_request):
+        headers = {h['name']: h['value'] for h in har_request['headers']}
+        return cls(lua, exceptions,
+            url=har_request['url'],
+            method=har_request['method'],
+            headers=headers,
+            info=har_request,
         )
 
+
+class _ExposedBoundRequest(BaseExposedObject):
+    """ QNetworkRequest wrapper for Lua """
+    _attribute_whitelist = ['url', 'method', 'headers', 'info']
+
+    def __init__(self, lua, exceptions, request, operation, outgoing_data):
+        super(_ExposedBoundRequest, self).__init__(lua, exceptions)
+        self.request = request
+
+        har_request = request2har(request, operation, outgoing_data)
+        self.url = self.lua.python2lua(har_request['url'])
+        self.method = self.lua.python2lua(har_request['method'])
+        # TODO: make info and headers attributes lazy
+        self.info = self.lua.python2lua(har_request)
+        self.headers = self.lua.python2lua(get_headers_dict(request))
+
     def clear(self):
-        super(_ExposedRequest, self).clear()
+        super(_ExposedBoundRequest, self).clear()
         self.request = None
 
     def _on_request_required(self, meth, attr_name):
@@ -1158,11 +1193,10 @@ class _ExposedResponse(BaseExposedObject):
     """
     _attribute_whitelist = ["headers", "request"]
 
-    def __init__(self, lua, exceptions, reply, har_entry=None, read_body=False):
+    def __init__(self, lua, exceptions, reply, exposed_request,
+                 har_entry=None, read_body=False):
         super(_ExposedResponse, self).__init__(lua, exceptions)
-
-        _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
-        self.headers = self.lua.python2lua(_headers)
+        self.headers = self.lua.python2lua(get_headers_dict(reply))
 
         if har_entry is None:
             if read_body:
@@ -1171,12 +1205,11 @@ class _ExposedResponse(BaseExposedObject):
                 resp_info = reply2har(reply)
         else:
             resp_info = har_entry['response']
+
+        self.request = exposed_request
         self._info = resp_info
         self._info_lua = None
         self._body_binary = None
-        self.request = self.lua.python2lua(
-            request2har(reply.request(), reply.operation())
-        )
 
     @lua_property("body")
     @command()
@@ -1228,9 +1261,10 @@ class _ExposedBoundResponse(_ExposedResponse):
     a way to manipulate the response (currently it is possible to
     abort downloading).
     """
-    def __init__(self, lua, exceptions, reply, har_entry=None):
+    def __init__(self, lua, exceptions, reply, exposed_request,
+                 har_entry=None):
         super(_ExposedBoundResponse, self).__init__(
-            lua, exceptions, reply, har_entry
+            lua, exceptions, reply, exposed_request, har_entry
         )
         self.response = reply
 

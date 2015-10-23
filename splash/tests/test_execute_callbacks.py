@@ -400,11 +400,15 @@ class OnResponseTest(BaseLuaRenderTest):
             local result = treat.as_array({})
             splash:on_response(function(response)
                 local resp_info = {
-                    ctype = response.headers['Content-Type'],
+                    ctype = response.headers['content-type'], -- case insensitive
                     url = response.url,
                     info = response.info,
                     status = response.status,
-                    request = response.request,
+                    headers = response.headers,
+                    request = response.request.info,
+                    request_headers = response.request.headers,
+                    request_url = response.request.url,
+                    request_method = response.request.method,
                 }
                 result[#result+1] = resp_info
             end)
@@ -431,17 +435,25 @@ class OnResponseTest(BaseLuaRenderTest):
         self.assertEqual(e1['ctype'], 'text/html')
         self.assertEqual(e2['ctype'], 'image/gif')
 
+        # header lookups are case-insensitive, but original case is preserved
+        self.assertEqual(e1['headers']['Content-Type'], 'text/html')
+
         self.assertEqual(e1['status'], 200)
         self.assertEqual(e2['status'], 200)
 
         self.assertEqual(e1['url'], url)
 
         self.assertEqual(e1['request']['url'], url)
-        self.assertEqual(
-            e1['request']['headers'],
-            {el['name']: el['value'] for el in h1['request']['headers']}
-        )
+        self.assertEqual(e1['request_url'], url)
+
+        self.assertEqual(e1['request']['headers'], h1['request']['headers'])
+        self.assertEqual(e1['request_headers'], {
+            el['name']: el['value'] for el in h1['request']['headers']
+        })
+
+        self.assertEqual(e1['request_method'], 'GET')
         self.assertEqual(e1['request']['method'], 'GET')
+
         self.assertEqual(e1['request']['cookies'], h1['request']['cookies'])
 
     def test_async_wait(self):
