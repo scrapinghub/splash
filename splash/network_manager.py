@@ -263,7 +263,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         har = self._get_har()
         if har is not None:
-            har.store_reply_headers_received(self._get_request_id(), reply)
+            har.store_reply_headers_received(self._get_request_id(request), reply)
 
         self.log("Headers received for {url}", reply, min_level=3)
 

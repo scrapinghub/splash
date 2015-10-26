@@ -294,8 +294,12 @@ def qt_header_items(request_or_reply):
     Return a list of (name, value) tuples with QNetworkRequest or
     QNetworkReply headers.
     """
+    # rawHeaderPairs is O(N), but it is only available for QNetworkReply
     if hasattr(request_or_reply, 'rawHeaderPairs'):
         return request_or_reply.rawHeaderPairs()
+
+    # rawHeaderList+rawHeader is O(N^2), but available both for
+    # QNetworkReply and QNetworkRequest
     return [
         (name, request_or_reply.rawHeader(name))
         for name in request_or_reply.rawHeaderList()

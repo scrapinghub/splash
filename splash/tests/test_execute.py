@@ -2458,25 +2458,6 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertIn(u'проверка', resp.content.decode('cp1251'))
         self.assertEqual(resp.headers['Content-Type'], "text/html; charset=windows-1251")
 
-    def test_response_attributes_redirected(self):
-        resp = self.request_lua("""
-        function main(splash)
-            local resp = splash:http_get{splash.args.url}
-            return {
-                url=resp.url,
-                status=resp.status,
-                headers=resp.headers,
-                ok=resp.ok,
-            }
-        end
-        """, {"url": self.mockurl("http-redirect?code=302")})
-        self.assertStatusCode(resp, 200)
-        data = resp.json()
-        self.assertEqual(data['url'], self.mockurl("getrequest?http_code=302"))
-        self.assertEqual(data['status'], 200)
-        self.assertEqual(data['ok'], True)
-        self.assertEqual(data['headers']['Content-Type'], 'text/html')
-
     def test_response_attributes_readonly(self):
         for attr in ["url", "status", "ok"]:
             resp = self.request_lua("""
@@ -2489,24 +2470,80 @@ class HttpGetTest(BaseLuaRenderTest):
             self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                    message="read-only")
 
-    def test_response_attributes_redirect(self):
+    def test_response_attributes_redirected(self):
+        request_url = self.mockurl("http-redirect?code=302")
+        response_url = self.mockurl("getrequest?http_code=302")
         resp = self.request_lua("""
         function main(splash)
-            local resp = splash:http_get{splash.args.url, follow_redirects=false}
+            local headers={["X-My-HeaDer"]="123"}
+            local resp = splash:http_get{
+                url=splash.args.url,
+                follow_redirects=true,
+                headers=headers
+            }
             return {
                 url=resp.url,
                 status=resp.status,
                 headers=resp.headers,
                 ok=resp.ok,
+                request={
+                    info=resp.request.info,
+                    method=resp.request.method,
+                    url=resp.request.url,
+                    headers=resp.request.headers,
+                },
             }
         end
-        """, {"url": self.mockurl("http-redirect?code=302")})
+        """, {"url": request_url})
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertEqual(data['url'], self.mockurl("http-redirect?code=302"))
+        self.assertEqual(data['url'], response_url)
+        self.assertEqual(data['status'], 200)
+        self.assertEqual(data['ok'], True)
+        self.assertEqual(data['headers']['Content-Type'], 'text/html')
+
+        req = data['request']
+        self.assertEqual(req['method'], 'GET')
+        self.assertEqual(req['headers'], {'X-My-HeaDer': '123'})
+        self.assertEqual(req['info']['httpVersion'], 'HTTP/1.1')  # har record
+        # self.assertEqual(req['url'], response_url)  # XXX: is it correct?
+
+    def test_response_attributes_redirect(self):
+        request_url = self.mockurl("http-redirect?code=302")
+        resp = self.request_lua("""
+        function main(splash)
+            local headers={["X-My-HeaDer"]="123"}
+            local resp = splash:http_get{
+                url=splash.args.url,
+                follow_redirects=false,
+                headers=headers
+            }
+            return {
+                url=resp.url,
+                status=resp.status,
+                headers=resp.headers,
+                ok=resp.ok,
+                request={
+                    info=resp.request.info,
+                    method=resp.request.method,
+                    url=resp.request.url,
+                    headers=resp.request.headers,
+                },
+            }
+        end
+        """, {"url": request_url})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data['url'], request_url)
         self.assertEqual(data['status'], 302)
         self.assertEqual(data['ok'], True)
         self.assertEqual(data['headers']['Location'], "/getrequest?http_code=302")
+
+        req = data['request']
+        self.assertEqual(req['method'], 'GET')
+        self.assertEqual(req['headers'], {'X-My-HeaDer': '123'})
+        self.assertEqual(req['info']['httpVersion'], 'HTTP/1.1')  # har record
+        self.assertEqual(req['url'], request_url)
 
 
 class HttpPostTest(BaseLuaRenderTest):
