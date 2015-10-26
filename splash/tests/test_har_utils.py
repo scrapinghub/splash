@@ -44,3 +44,9 @@ def get_har_response(text, encoding):
 def test_get_body_bytes(text, encoding, result):
     har_response = get_har_response(text, encoding)
     assert get_response_body_bytes(har_response) == result
+
+
+def test_body_bytes_bad_encoding():
+    har_response = get_har_response("hello", "i-am-unknown")
+    with pytest.raises(ValueError):
+        get_response_body_bytes(har_response)
