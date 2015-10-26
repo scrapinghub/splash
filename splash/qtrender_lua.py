@@ -23,7 +23,7 @@ from splash.lua_runner import (
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed, parse_error_message
 from splash.har.qt import reply2har, request2har
-from splash.har.utils import get_body_bytes
+from splash.har.utils import get_response_body_bytes
 from splash.render_options import RenderOptions
 from splash.utils import (
     truncated,
@@ -1215,7 +1215,7 @@ class _ExposedResponse(BaseExposedObject):
     @command()
     def get_body(self):
         if self._body_binary is None:
-            body = get_body_bytes(self._info)
+            body = get_response_body_bytes(self._info)
             content_type = self._info['content']['mimeType']
             self._body_binary = BinaryCapsule(body, content_type)
         return self._body_binary

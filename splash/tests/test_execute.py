@@ -16,7 +16,7 @@ lupa = pytest.importorskip("lupa")
 
 from splash import __version__ as splash_version
 from splash.har_builder import HarBuilder
-from splash.har.utils import get_body_bytes
+from splash.har.utils import get_response_body_bytes
 
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
@@ -2412,7 +2412,7 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["status"], 200)
-        self.assertIn(b"Header Value", get_body_bytes(data))
+        self.assertIn(b"Header Value", get_response_body_bytes(data))
 
     def test_redirects_follow(self):
         resp = self.request_lua("""
@@ -2423,8 +2423,8 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["status"], 200)
-        self.assertNotIn(b"redirect to", get_body_bytes(data))
-        self.assertIn(b"GET request", get_body_bytes(data))
+        self.assertNotIn(b"redirect to", get_response_body_bytes(data))
+        self.assertIn(b"GET request", get_response_body_bytes(data))
 
     def test_redirects_nofollow(self):
         resp = self.request_lua("""
@@ -2437,7 +2437,7 @@ class HttpGetTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertEqual(data["status"], 302)
         self.assertEqual(data["redirectURL"], "/getrequest?http_code=302")
-        self.assertIn("302 redirect to", get_body_bytes(data))
+        self.assertIn("302 redirect to", get_response_body_bytes(data))
 
     def test_noargs(self):
         resp = self.request_lua("""
@@ -2557,7 +2557,7 @@ class HttpPostTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         info = resp.json()
         self.assertTrue(info["ok"])
-        self.assertIn(b"foo=one&bar=two", get_body_bytes(info))
+        self.assertIn(b"foo=one&bar=two", get_response_body_bytes(info))
 
     def test_post_body_not_string(self):
         resp = self.request_lua("""
@@ -2598,7 +2598,7 @@ class HttpPostTest(BaseLuaRenderTest):
             """ % post_body, {"url": self.mockurl("http-redirect")})
         self.assertStatusCode(resp, 200)
         info = resp.json()
-        self.assertIn(b"GET request", get_body_bytes(info))
+        self.assertIn(b"GET request", get_response_body_bytes(info))
         self.assertIn(post_body, info["url"])
         self.assertEqual(info["status"], 200)
 

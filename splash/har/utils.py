@@ -31,7 +31,7 @@ def entries2pages(entries):
     return pages
 
 
-def get_body_bytes(har_response):
+def get_response_body_bytes(har_response):
     """ Return binary response data """
     content = har_response['content']
     body = content.get('text', None)
