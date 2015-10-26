@@ -2545,6 +2545,24 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertEqual(req['info']['httpVersion'], 'HTTP/1.1')  # har record
         self.assertEqual(req['url'], request_url)
 
+    def test_access_attributes_twice(self):
+        url = self.mockurl("jsrender")
+        resp = self.request_lua("""
+        function main(splash)
+            local resp = splash:http_get{splash.args.url}
+            return {
+                info1=resp.info,
+                info2=resp.info,
+                body1=resp.body,
+                body2=resp.body,
+            }
+        end
+        """, {"url": url})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertEqual(data['info1'], data['info2'])
+        self.assertEqual(data['body1'], data['body2'])
+
 
 class HttpPostTest(BaseLuaRenderTest):
     def test_post(self):
