@@ -21,7 +21,7 @@ def class_ts(request, test_servers):
 @pytest.fixture()
 def lua(request):
     import lupa
-    lua = lupa.LuaRuntime()
+    lua = lupa.LuaRuntime(encoding=None)
     request.cls.lua = lua
     return lua
 
@@ -29,7 +29,11 @@ def lua(request):
 @pytest.fixture()
 def configured_lua():
     from splash.lua_runtime import SplashLuaRuntime
-    return SplashLuaRuntime(False, "", ())
+    return SplashLuaRuntime(
+        sandboxed=False,
+        lua_package_path="",
+        lua_sandbox_allowed_modules=()
+    )
 
 
 @pytest.fixture()

@@ -15,9 +15,10 @@ from .test_execute import BaseLuaRenderTest
 class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_request_log(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
-            local urls = {}
-            local requests = {}
+            local urls = treat.as_array({})
+            local requests = treat.as_array({})
             splash:on_request(function(request)
                 requests[#requests+1] = request.info
                 urls[#urls+1] = request.url
@@ -30,11 +31,11 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         requests, urls = resp.json()
 
         # FIXME: it should return lists, and indices should be integer
-        self.assertIn("show-image", urls['1'])
-        self.assertIn("slow.gif", urls['2'])
+        self.assertIn("show-image", urls[0])
+        self.assertIn("slow.gif", urls[1])
 
-        self.assertEqual(requests['1']['method'], 'GET')
-        self.assertEqual(requests['1']['url'], urls['1'])
+        self.assertEqual(requests[0]['method'], 'GET')
+        self.assertEqual(requests[0]['url'], urls[0])
 
     def test_abort_request(self):
         resp = self.request_lua("""
@@ -212,22 +213,48 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'ok')
 
+    def test_request_attrs(self):
+        url = self.mockurl('jsrender')
+        resp = self.request_lua("""
+        function main(splash)
+            local res = {}
+            splash:on_request(function(request)
+                res = {
+                    info = request.info,
+                    headers = request.headers,
+                    url = request.url,
+                    method = request.method,
+                }
+            end)
+            splash:go(splash.args.url)
+            return res
+        end
+        """, {'url': url})
+        self.assertStatusCode(resp, 200)
+        req = resp.json()
+        self.assertEqual(req['url'], url)
+        self.assertEqual(req['info']['url'], url)
+        self.assertEqual(req['method'], 'GET')
+        self.assertIn('Accept', req['headers'])
+
 
 class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_get_header(self):
         resp = self.request_lua("""
         function main(splash)
             local header_value = nil
+            local header_value2 = nil
             splash:on_response_headers(function(response)
                 header_value = response.headers['Content-Type']
+                header_value2 = response.headers['content-type']
             end)
             res = splash:http_get(splash.args.url)
-            return header_value
+            return {v1=header_value, v2=header_value2}
         end
         """, {'url': self.mockurl("jsrender")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "text/html")
+        self.assertEqual(resp.json(), {"v1": "text/html", "v2": "text/html"})
 
     def test_abort_on_response_headers(self):
         resp = self.request_lua("""
@@ -238,7 +265,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
                 end
             end)
             res = splash:http_get(splash.args.url)
-            return res
+            return res.info
         end
         """, {'url': self.mockurl("jsrender")})
         self.assertStatusCode(resp, 200)
@@ -302,7 +329,31 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             self.assertIn(k, result)
             self.assertEqual(result[k], headers[k])
 
-    def test_other_response_attr(self):
+    def test_request(self):
+        mocked_url = self.mockurl("set-header?" + urlencode({"Foo": "bar"}))
+        resp = self.request_lua("""
+        function main(splash)
+            local res = {}
+            splash:on_response_headers(function(response)
+                res = {
+                    info = response.request.info,
+                    headers = response.request.headers,
+                    url = response.request.url,
+                    method = response.request.method,
+                }
+            end)
+            splash:go(splash.args.url)
+            splash:http_get{splash.args.url, headers={fOo="Bar"}}
+            return res
+        end""", {"url": mocked_url})
+        self.assertStatusCode(resp, 200)
+        req = resp.json()
+        self.assertEqual(req['url'], mocked_url)
+        self.assertEqual(req['method'], 'GET')
+        self.assertEqual(req['headers'], {'fOo': 'Bar'})
+        self.assertEqual(req['info']['url'], mocked_url)
+
+    def test_other_response_attrs(self):
         headers = {
             "Foo": "bar",
         }
@@ -316,15 +367,15 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
         resp = self.request_lua("""
         function main(splash)
-            local all_attrs = {}
-            local attr_names = {"url", "status", "info", "ok", "request"}
+            local res = {}
+            local attr_names = {"url", "status", "info", "ok"}
             splash:on_response_headers(function(response)
                 for key, value in pairs(attr_names) do
-                    all_attrs[value] = response[value]
+                    res[value] = response[value]
                 end
             end)
             splash:http_get(splash.args.url)
-            return all_attrs
+            return res
         end""", {"url": mocked_url})
         self.assertStatusCode(resp, 200)
         result = resp.json()
@@ -392,15 +443,23 @@ class OnResponseTest(BaseLuaRenderTest):
     def test_on_response(self):
         url = self.mockurl("show-image")
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
-            local result = {}
+            local result = treat.as_array({})
             splash:on_response(function(response)
                 local resp_info = {
-                    ctype = response.headers['Content-Type'],
+                    ctype = response.headers['content-type'], -- case insensitive
                     url = response.url,
                     info = response.info,
                     status = response.status,
-                    request = response.request,
+                    headers = response.headers,
+
+                    request = {
+                        info=response.request.info,
+                        headers = response.request.headers,
+                        url = response.request.url,
+                        method = response.request.method,
+                    }
                 }
                 result[#result+1] = resp_info
             end)
@@ -415,7 +474,7 @@ class OnResponseTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertEqual(len(data['result']), 2, data['result'])
 
-        e1, e2 = data['result']['1'], data['result']['2']
+        e1, e2 = data['result'][0], data['result'][1]
 
         entries = data['har']['log']['entries']
         self.assertEqual(len(entries), 2, entries)
@@ -427,21 +486,34 @@ class OnResponseTest(BaseLuaRenderTest):
         self.assertEqual(e1['ctype'], 'text/html')
         self.assertEqual(e2['ctype'], 'image/gif')
 
+        # header lookups are case-insensitive, but original case is preserved
+        self.assertEqual(e1['headers']['Content-Type'], 'text/html')
+
         self.assertEqual(e1['status'], 200)
         self.assertEqual(e2['status'], 200)
 
         self.assertEqual(e1['url'], url)
 
+        self.assertEqual(e1['request']['info']['url'], url)
         self.assertEqual(e1['request']['url'], url)
-        self.assertEqual(
-            e1['request']['headers'],
-            {el['name']: el['value'] for el in h1['request']['headers']}
-        )
+
+        self.assertEqual(e1['request']['info']['headers'], h1['request']['headers'])
+        self.assertEqual(e1['request']['headers'], {
+            el['name']: el['value'] for el in h1['request']['headers']
+        })
+
+        for entry in [e1, e2]:
+            self.assertIn('Accept', entry['request']['headers'])
+            self.assertIn('User-Agent', entry['request']['headers'])
+
         self.assertEqual(e1['request']['method'], 'GET')
-        self.assertEqual(e1['request']['cookies'], h1['request']['cookies'])
+        self.assertEqual(e1['request']['info']['method'], 'GET')
+
+        self.assertEqual(e1['request']['info']['cookies'], h1['request']['cookies'])
 
     def test_async_wait(self):
         resp = self.request_lua("""
+        treat = require("treat")
         function main(splash)
             local value = 0
             splash:on_response(function(response)
@@ -452,11 +524,11 @@ class OnResponseTest(BaseLuaRenderTest):
             local v1 = value
             splash:wait(0.3)
             local v2 = value
-            return {v1, v2}
+            return treat.as_array({v1, v2})
         end
         """, {'url': self.mockurl("show-image")})
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {'1': 0, '2': 2})
+        self.assertEqual(resp.json(), [0, 2])
 
     def test_call_later_from_on_response(self):
         resp = self.request_lua("""

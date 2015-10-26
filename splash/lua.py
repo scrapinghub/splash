@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 import os
 import re
 import functools
@@ -45,7 +45,7 @@ def get_shared_runtime():
     """ Return a shared LuaRuntime instance, creating it if necessary. """
     global _lua
     if _lua is None:
-        _lua = lupa.LuaRuntime()
+        _lua = lupa.LuaRuntime(encoding=None)
     return _lua
 
 
@@ -59,6 +59,7 @@ def get_new_runtime(**kwargs):
     """ Return a pre-configured LuaRuntime. """
     kwargs.setdefault('register_eval', False)
     kwargs.setdefault('unpack_returned_tuples', True)
+    kwargs.setdefault('encoding', None)
     lua = lupa.LuaRuntime(**kwargs)
     lua.execute("assert(os.setlocale('C'))")
     return lua
@@ -128,8 +129,17 @@ def _check_main(main):
         })
 
 
-def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=10):
-    """ Recursively convert Lua data to Python objects """
+def lua2python(lua, obj, encoding='utf-8', strict=True, max_depth=100, sparse_limit=10):
+    """
+    Recursively convert Lua ``obj`` to Python objects.
+
+    When ``encoding`` is None, binary data is not decoded to unicode;
+    otherwise it is decoded using this encoding.
+
+    When ``strict`` is True, lua2python raises an exception for Lua objects
+    which can't be converted to Python. When ``strict`` is False these objects
+    are returned as lupa wrappers.
+    """
 
     def l2p(obj, depth):
         if depth <= 0:
@@ -151,7 +161,7 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
             return {l2p(el, depth-1) for el in obj}
 
         if lupa.lua_type(obj) == 'table':
-            if _is_table_a_list(lua, obj):
+            if _table_is_array(lua, obj):
                 res = []
                 prev_key = 0
                 for key, value in obj.items():
@@ -178,26 +188,29 @@ def lua2python(lua, obj, binary=True, strict=True, max_depth=100, sparse_limit=1
                 "Lua %s objects are not allowed." % lupa.lua_type(obj)
             )
 
-        if binary and isinstance(obj, unicode):
-            obj = obj.encode('utf8')
+        if encoding is not None and isinstance(obj, bytes):
+            obj = obj.decode(encoding)
 
         return obj
 
     return l2p(obj, depth=max_depth)
 
 
-def _mark_table_as_list(lua, tbl):
-    mt = lua.table(__metatable="list")
+def _mark_table_as_array(lua, tbl):
+    # XXX: the same function is available in Lua as treat.as_array.
+    # XXX: if we want to add to a metatable instead of replacing it,
+    # we must make sure metatable is not shared with other tables.
+    mt = lua.table(__metatable="array")
     lua.eval("setmetatable")(tbl, mt)
     return tbl
 
 
-def _is_table_a_list(lua, tbl):
+def _table_is_array(lua, tbl):
     mt = lua.eval("getmetatable")(tbl)
-    return mt == "list"
+    return mt == "array"
 
 
-def python2lua(lua, obj, max_depth=100):
+def python2lua(lua, obj, max_depth=100, encoding='utf8'):
     """
     Recursively convert Python object to a Lua data structure.
     Parts that can't be converted to Lua types are passed as-is.
@@ -217,11 +230,9 @@ def python2lua(lua, obj, max_depth=100):
 
     if isinstance(obj, list):
         tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
-        return _mark_table_as_list(lua, tbl)
+        return _mark_table_as_array(lua, tbl)
 
     if isinstance(obj, unicode):
-        # lupa encodes/decodes strings automatically,
-        # but this doesn't apply to nested table keys.
         return obj.encode('utf8')
 
     if isinstance(obj, datetime.datetime):

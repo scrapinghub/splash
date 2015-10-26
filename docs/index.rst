@@ -28,6 +28,10 @@ Documentation
    api
    scripting-tutorial
    scripting-ref
+   scripting-response-object
+   scripting-request-object
+   scripting-binary-data
+   scripting-libs
    kernel
    faq
    development

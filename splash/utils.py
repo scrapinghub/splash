@@ -28,6 +28,10 @@ class BinaryCapsule(object):
     def as_b64(self):
         return base64.b64encode(self.data)
 
+    # def __repr__(self):
+    #     data_repr = truncated(repr(self.data), max_length=40)
+    #     return "BinaryCapsule(%s, %r)" % (data_repr, self.content_type)
+
 
 class SplashJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -54,7 +58,8 @@ def get_alive():
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
         'SplashCookieJar', 'OneShotCallbackProxy',
-        '_ExposedRequest', '_ExposedResponse', '_ExposedBoundResponse',
+        '_ExposedRequest', '_ExposedBoundRequest',
+        '_ExposedResponse', '_ExposedBoundResponse',
         '_ExposedTimer',
         'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
         'ProfilesSplashProxyFactory',

@@ -23,14 +23,21 @@ from splash.lua_runner import (
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import get_main, get_main_sandboxed, parse_error_message
 from splash.har.qt import reply2har, request2har
+from splash.har.utils import get_response_body_bytes
 from splash.render_options import RenderOptions
-from splash.utils import truncated, BinaryCapsule, requires_attr
+from splash.utils import (
+    truncated,
+    BinaryCapsule,
+    requires_attr,
+    SplashJSONEncoder
+)
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
     set_request_url,
     create_proxy,
-    get_versions)
+    get_versions,
+    get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
 from splash.exceptions import ScriptError
 
@@ -64,20 +71,27 @@ class StoredExceptions(object):
 
 
 def command(async=False, can_raise_async=False, table_argument=False,
-            sets_callback=False):
+            sets_callback=False, decode_arguments=True):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
         table_argument = True
 
     def decorator(meth):
-        meth = detailed_exceptions()(meth)
+        # input arguments processing:
+        # args | unpack_table | use_storage | decode
+        if decode_arguments:
+            meth = decodes_lua_arguments('utf8')(meth)
+
+        if sets_callback:
+            meth = first_argument_from_storage(meth)
 
         if not table_argument:
             meth = lupa.unpacks_lua_table_method(meth)
 
-        if sets_callback:
-            meth = first_argument_from_storage(meth)
+        # result processing:
+        # result | enrich_exception | ex2retval | store_pyex | to_lua
+        meth = detailed_exceptions()(meth)
 
         meth = exceptions_as_return_values(
             can_raise(
@@ -114,7 +128,6 @@ def emits_lua_objects(meth):
     This decorator makes method convert results to
     native Lua formats when possible
     """
-
     @functools.wraps(meth)
     def wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
@@ -125,6 +138,33 @@ def emits_lua_objects(meth):
             return py2lua(res)
 
     return wrapper
+
+
+def decodes_lua_arguments(encoding, strict=True):
+    """
+    This decorator converts function arguments from Lua to Python.
+    """
+    l2p_kw = {'encoding': encoding, 'strict': strict}
+    def decorator(meth):
+        @functools.wraps(meth)
+        def wrapper(self, *args, **kwargs):
+            try:
+                args = [
+                    self.lua.lua2python(a, **l2p_kw)
+                    for a in args
+                ]
+                kwargs = {
+                    self.lua.lua2python(k): self.lua.lua2python(v, **l2p_kw)
+                    for (k, v) in kwargs.items()
+                }
+            except ValueError as e:
+                raise ScriptError({
+                    'type': ScriptError.SPLASH_LUA_ERROR,
+                    'message': e.args[0],
+                })
+            return meth(self, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def first_argument_from_storage(meth):
@@ -203,7 +243,6 @@ def detailed_exceptions(method_name=None):
     """
     Add method name and a default error type to the error info.
     """
-
     def decorator(meth):
         _name = meth.__name__ if method_name is None else method_name
 
@@ -249,13 +288,13 @@ def get_lua_properties(obj):
     @lua_property and @<getter_method_name>.lua_setter decorators.
     """
     lua_properties = {}
-    for name in dir(obj):
-        value = getattr(obj, name)
+    for attr_name in dir(obj):
+        value = getattr(obj, attr_name)
         if is_lua_property(value):
-            setter_method = getattr(value, '_setter_method')
-            lua_properties[setter_method] = {
-                'name': getattr(value, '_name'),
-                'getter_method': name,
+            property_name = getattr(value, '_name')
+            lua_properties[property_name] = {
+                'getter': attr_name,
+                'setter': getattr(value, '_setter_method', None),
             }
     return lua_properties
 
@@ -279,8 +318,8 @@ class _WrappedJavascriptFunction(object):
     @exceptions_as_return_values
     @can_raise
     @emits_lua_objects
+    @decodes_lua_arguments('utf8')
     def __call__(self, *args):
-        args = self.lua.lua2python(args)
         args_text = json.dumps(args, ensure_ascii=False, encoding="utf8")[1:-1]
         func_text = json.dumps([self.source], ensure_ascii=False, encoding='utf8')[1:-1]
         wrapper_script = """
@@ -347,8 +386,8 @@ class BaseExposedObject(object):
 
         self.attr_whitelist = (
             list(commands.keys()) +
-            list(lua_properties.keys()) +
-            [lua_properties[attr]['getter_method'] for attr in lua_properties] +
+            [lua_properties[attr]['getter'] for attr in lua_properties] +
+            [lua_properties[attr]['setter'] for attr in lua_properties] +
             self._base_attribute_whitelist +
             self._attribute_whitelist
         )
@@ -365,19 +404,17 @@ class BaseExposedObject(object):
         self.commands = None
         self.exceptions = None
 
-    @classmethod
     @contextlib.contextmanager
-    def wraps(cls, lua, exceptions, *args, **kwargs):
+    def allowed(self):
         """
-        Context manager which returns a wrapped object
-        suitable for using in Lua code.
+        Context manager which makes it possible to use a wrapped object
+        in Lua code and cleans it in the end.
         """
-        obj = cls(lua, exceptions, *args, **kwargs)
         try:
-            with lua.object_allowed(obj, obj.attr_whitelist):
-                yield obj
+            with self.lua.object_allowed(self, self.attr_whitelist):
+                yield self
         finally:
-            obj.clear()
+            self.clear()
 
 
 class Splash(BaseExposedObject):
@@ -412,6 +449,8 @@ class Splash(BaseExposedObject):
 
         wrapper = self.lua.eval("require('splash')")
         self._wrapped = wrapper._create(self)
+        self.request_wrapper = self.lua.eval("require('request')")
+        self.response_wrapper = self.lua.eval("require('response')")
 
     @lua_property('js_enabled')
     @command()
@@ -449,8 +488,13 @@ class Splash(BaseExposedObject):
         ))
         return cmd
 
-    @command(async=True)
+    @command(async=True, decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
+        url = self.lua.lua2python(url, max_depth=1)
+        baseurl = self.lua.lua2python(baseurl, max_depth=1)
+        headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
+        http_method = self.lua.lua2python(http_method, max_depth=1)
+        formdata = self.lua.lua2python(formdata, max_depth=3)
 
         if url is None:
             raise ScriptError({
@@ -472,17 +516,19 @@ class Splash(BaseExposedObject):
             })
 
         elif formdata:
-            body = self.lua.lua2python(formdata, max_depth=3)
+            # XXX: should it be binary or unicode?
+            body = self.lua.lua2python(formdata, max_depth=3, encoding=None)
             if isinstance(body, dict):
                 body = urlencode(body)
             else:
                 raise ScriptError({"argument": "formdata",
-                                   "message": "formdata argument for go() must be Lua table"})
+                                   "message": "formdata argument for go() must be a Lua table"})
 
         elif body:
-            if not isinstance(body, basestring):
+            body = self.lua.lua2python(body, encoding=None, max_depth=2)
+            if not isinstance(body, bytes):
                 raise ScriptError({"argument": "body",
-                                   "message": "request body must be string"})
+                                   "message": "request body must be a string"})
 
         if self.tab.web_page.navigation_locked:
             return ImmediateResult((None, "navigation_locked"))
@@ -512,7 +558,7 @@ class Splash(BaseExposedObject):
             errback=error,
             http_method=http_method,
             body=body,
-            headers=self.lua.lua2python(headers, max_depth=3)
+            headers=headers,
         ))
         return cmd
 
@@ -586,7 +632,8 @@ class Splash(BaseExposedObject):
             cmd.return_result(self.lua.python2lua(result))
 
         def errback(msg, raise_):
-            cmd.return_result(None, "JavaScript error: %s" % msg, raise_)
+            args = [None, "JavaScript error: %s" % msg, raise_]
+            cmd.return_result(*[self.lua.python2lua(a) for a in args])
 
         cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
@@ -608,8 +655,11 @@ class Splash(BaseExposedObject):
             })
 
         def callback(reply):
-            reply_har = reply2har(reply, include_content=True, binary_content=True)
-            cmd.return_result(self.lua.python2lua(reply_har))
+            req = _ExposedRequest.from_reply(self.lua, self.exceptions, reply)
+            resp = _ExposedResponse(self.lua, self.exceptions, reply, req,
+                                    read_body=True)
+            resp_wrapped = self.response_wrapper._create(resp)
+            cmd.return_result(resp_wrapped)
 
         command_args = dict(
             url=url,
@@ -635,6 +685,9 @@ class Splash(BaseExposedObject):
         :param body: string with body to be sent in request
         :return: AysncBrowserCommand http_post
         """
+        if isinstance(body, BinaryCapsule):
+            body = body.data
+
         if body and not isinstance(body, basestring):
             raise ScriptError({"argument": "body",
                                "message": "body argument for splash:http_post() must be string"})
@@ -852,35 +905,39 @@ class Splash(BaseExposedObject):
                 'cputime': rusage.ru_utime + rusage.ru_stime,
                 'walltime': time.time()}
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_on_request(self, callback):
         """
         Register a Lua callback to be called when a resource is requested.
         """
-
         def _callback(request, operation, outgoing_data):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            with _ExposedRequest.wraps(self.lua, exceptions, request, operation, outgoing_data) as req:
+            req = _ExposedBoundRequest(self.lua, exceptions, request, operation, outgoing_data)
+            with req.allowed():
                 callback(req)
 
         self.tab.register_callback("on_request", _callback)
         return True
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_on_response_headers(self, callback):
         def _callback(reply):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            with _ExposedBoundResponse.wraps(self.lua, exceptions, reply) as resp:
+            req = _ExposedRequest.from_reply(self.lua, exceptions, reply)
+            resp = _ExposedBoundResponse(self.lua, exceptions, reply, req)
+            with resp.allowed(), req.allowed():
                 callback(resp)
 
         self.tab.register_callback("on_response_headers", _callback)
         return True
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_on_response(self, callback):
         def _callback(reply, har_entry):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            resp = _ExposedResponse(self.lua, exceptions, reply, har_entry)
+            req = _ExposedRequest.from_har(self.lua, exceptions, har_entry['request'])
+            resp = _ExposedResponse(self.lua, exceptions, reply, req, har_entry,
+                                    read_body=False)
             run_coro = self.get_coroutine_run_func(
                 "splash:on_response", callback, [resp]
             )
@@ -889,7 +946,7 @@ class Splash(BaseExposedObject):
         self.tab.register_callback("on_response", _callback)
         return True
 
-    @command(sets_callback=True)
+    @command(sets_callback=True, decode_arguments=False)
     def private_call_later(self, callback, delay=None):
         if delay is None:
             delay = 0
@@ -957,7 +1014,7 @@ class Splash(BaseExposedObject):
         res = "%s%s" % (error_info.type.lower(), error_info.code)
         if res == "http200":
             return "render_error"
-        return res
+        return self.lua.python2lua(res)
 
     def result_content_type(self):
         if self._result_content_type is None:
@@ -1040,18 +1097,50 @@ requires_response = requires_attr(
 
 
 class _ExposedRequest(BaseExposedObject):
-    """ QNetworkRequest wrapper for Lua """
-    _attribute_whitelist = ['info']
+    """ Read-only QNetworkRequest wrapper for Lua """
+    _attribute_whitelist = ['url', 'method', 'headers', 'info']
 
-    def __init__(self, lua, exceptions, request, operation, outgoing_data):
+    def __init__(self, lua, exceptions, url, method, headers, info):
         super(_ExposedRequest, self).__init__(lua, exceptions)
-        self.request = request
-        self.info = self.lua.python2lua(
-            request2har(request, operation, outgoing_data)
+        self.url = url
+        self.method = method
+        # TODO: make info and headers attributes lazy
+        self.headers = self.lua.python2lua(headers, encoding='latin1')
+        self.info = self.lua.python2lua(info)
+
+    @classmethod
+    def from_reply(cls, lua, exceptions, reply):
+        har_request = request2har(reply.request(), reply.operation())
+        return cls.from_har(lua, exceptions, har_request)
+
+    @classmethod
+    def from_har(cls, lua, exceptions, har_request):
+        headers = {h['name']: h['value'] for h in har_request['headers']}
+        return cls(lua, exceptions,
+            url=har_request['url'],
+            method=har_request['method'],
+            headers=headers,
+            info=har_request,
         )
 
+
+class _ExposedBoundRequest(BaseExposedObject):
+    """ QNetworkRequest wrapper for Lua """
+    _attribute_whitelist = ['url', 'method', 'headers', 'info']
+
+    def __init__(self, lua, exceptions, request, operation, outgoing_data):
+        super(_ExposedBoundRequest, self).__init__(lua, exceptions)
+        self.request = request
+
+        har_request = request2har(request, operation, outgoing_data)
+        self.url = self.lua.python2lua(har_request['url'])
+        self.method = self.lua.python2lua(har_request['method'])
+        # TODO: make info and headers attributes lazy
+        self.info = self.lua.python2lua(har_request)
+        self.headers = self.lua.python2lua(get_headers_dict(request))
+
     def clear(self):
-        super(_ExposedRequest, self).clear()
+        super(_ExposedBoundRequest, self).clear()
         self.request = None
 
     def _on_request_required(self, meth, attr_name):
@@ -1098,23 +1187,60 @@ class _ExposedRequest(BaseExposedObject):
 
 
 class _ExposedResponse(BaseExposedObject):
-    """ Response object exposed to Lua in on_response callback """
-    _attribute_whitelist = ["headers", "info", "request"]
+    """
+    Response object exposed to Lua. This Response type doesn't provide methods
+    to manupulate a response.
+    """
+    _attribute_whitelist = ["headers", "request"]
 
-    def __init__(self, lua, exceptions, reply, har_entry=None):
+    def __init__(self, lua, exceptions, reply, exposed_request,
+                 har_entry=None, read_body=False):
         super(_ExposedResponse, self).__init__(lua, exceptions)
-        # according to specs HTTP response headers should not contain unicode
-        # https://github.com/kennethreitz/requests/issues/1926#issuecomment-35524028
-        _headers = {str(k): str(v) for k, v in reply.rawHeaderPairs()}
-        self.headers = self.lua.python2lua(_headers)
+        self.headers = self.lua.python2lua(get_headers_dict(reply))
+
         if har_entry is None:
-            resp_info = reply2har(reply)
+            if read_body:
+                resp_info = reply2har(reply, include_content=True, binary_content=False)
+            else:
+                resp_info = reply2har(reply)
         else:
             resp_info = har_entry['response']
-        self.info = self.lua.python2lua(resp_info)
-        self.request = self.lua.python2lua(
-            request2har(reply.request(), reply.operation())
-        )
+
+        self.request = exposed_request
+        self._info = resp_info
+        self._info_lua = None
+        self._body_binary = None
+
+    @lua_property("body")
+    @command()
+    def get_body(self):
+        if self._body_binary is None:
+            body = get_response_body_bytes(self._info)
+            content_type = self._info['content']['mimeType']
+            self._body_binary = BinaryCapsule(body, content_type)
+        return self._body_binary
+
+    @lua_property("info")
+    @command()
+    def get_info(self):
+        if self._info_lua is None:
+            self._info_lua = self.lua.python2lua(self._info)
+        return self._info_lua
+
+    @lua_property("status")
+    @command()
+    def get_status(self):
+        return self._info['status']
+
+    @lua_property("url")
+    @command()
+    def get_url(self):
+        return self._info['url']
+
+    @lua_property("ok")
+    @command()
+    def is_ok(self):
+        return self._info['ok']
 
     def clear(self):
         super(_ExposedResponse, self).clear()
@@ -1130,11 +1256,15 @@ class _ExposedResponse(BaseExposedObject):
 
 
 class _ExposedBoundResponse(_ExposedResponse):
-    """ Response object exposed to Lua in on_response_headers callback. """
-
-    def __init__(self, lua, exceptions, reply, har_entry=None):
+    """
+    Response object exposed to Lua. This Response type provides
+    a way to manipulate the response (currently it is possible to
+    abort downloading).
+    """
+    def __init__(self, lua, exceptions, reply, exposed_request,
+                 har_entry=None):
         super(_ExposedBoundResponse, self).__init__(
-            lua, exceptions, reply, har_entry
+            lua, exceptions, reply, exposed_request, har_entry
         )
         self.response = reply
 
@@ -1159,8 +1289,10 @@ class Extras(BaseExposedObject):
         wrapper = self.lua.eval("require('extras')")
         self._wrapped = wrapper._create(self)
 
-    @command()
+    @command(decode_arguments=False)
     def base64_encode(self, data):
+        if isinstance(data, BinaryCapsule):
+            return data.as_b64()
         if not isinstance(data, bytes):
             data = data.encode('utf8')
         return base64.b64encode(data)
@@ -1171,16 +1303,39 @@ class Extras(BaseExposedObject):
 
     @command(table_argument=True)
     def json_encode(self, obj):
-        return json.dumps(self.lua.lua2python(obj))
+        pyobj = self.lua.lua2python(obj)
+        return json.dumps(pyobj, cls=SplashJSONEncoder)
 
     @command()
     def json_decode(self, s):
         return json.loads(s)
 
+    @command(decode_arguments=False)
+    def treat_as_binary(self, s, content_type=None):
+        s = self.lua.lua2python(s, max_depth=1, encoding=None)
+        content_type = self.lua.lua2python(content_type, max_depth=1,
+                                           encoding=None)
+
+        if isinstance(s, BinaryCapsule):
+            if content_type is not None:
+                return BinaryCapsule(s.data, content_type)
+            else:
+                return s
+
+        if content_type is None:
+            content_type = b'application/octet-stream'
+        return BinaryCapsule(s, content_type)
+
+    @command()
+    def treat_as_string(self, s):
+        assert isinstance(s, BinaryCapsule)
+        return s.data, s.content_type
+
     def inject_to_globals(self):
         self.lua.add_to_globals("__extras", self._wrapped)
         self.lua.add_allowed_module("base64")
         self.lua.add_allowed_module("json")
+        self.lua.add_allowed_module("treat")
 
 
 class SplashCoroutineRunner(BaseScriptRunner):

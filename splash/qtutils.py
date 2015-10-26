@@ -282,3 +282,25 @@ def get_versions():
         'webkit': qWebKitVersion(),
         'sip': SIP_VERSION_STR
     }
+
+
+def get_headers_dict(request_or_reply):
+    """ Return a dict with headers, without any Qt data types """
+    return {bytes(k): bytes(v) for k, v in qt_header_items(request_or_reply)}
+
+
+def qt_header_items(request_or_reply):
+    """
+    Return a list of (name, value) tuples with QNetworkRequest or
+    QNetworkReply headers.
+    """
+    # rawHeaderPairs is O(N), but it is only available for QNetworkReply
+    if hasattr(request_or_reply, 'rawHeaderPairs'):
+        return request_or_reply.rawHeaderPairs()
+
+    # rawHeaderList+rawHeader is O(N^2), but available both for
+    # QNetworkReply and QNetworkRequest
+    return [
+        (name, request_or_reply.rawHeader(name))
+        for name in request_or_reply.rawHeaderList()
+    ]
