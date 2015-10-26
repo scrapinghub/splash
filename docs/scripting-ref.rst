@@ -162,7 +162,8 @@ Error handling example:
 Errors (ok==nil) are only reported when "main" webpage request failed.
 If a request to a related resource failed then no error is reported by
 ``splash:go``. To detect and handle such errors (e.g. broken image/js/css
-links, ajax requests failed to load) use :ref:`splash-har`.
+links, ajax requests failed to load) use :ref:`splash-har`
+or :ref:`splash-on-response`.
 
 ``splash:go`` follows all HTTP redirects before returning the result,
 but it doesn't follow HTML ``<meta http-equiv="refresh" ...>`` redirects or
@@ -883,7 +884,7 @@ the result to the browser window.
 * headers - a Lua table with HTTP headers to add/replace in the initial request;
 * follow_redirects - whether to follow HTTP redirects.
 
-**Returns:** a Lua table with the response in `HAR response`_ format.
+**Returns:** a :ref:`splash-response`.
 
 **Async:** yes.
 
@@ -892,22 +893,12 @@ Example:
 .. code-block:: lua
 
     local reply = splash:http_get("http://example.com")
-    -- reply.content.text contains raw HTML data
-    -- reply.status contains HTTP status code, as a number
-    -- see HAR docs for more info
-
-In addition to all HAR fields the response contains "ok" flag which is true
-for successful responses and false when error happened:
-
-.. code-block:: lua
-
-    local reply = splash:http_get("some-bad-url")
-    -- reply.ok == false
 
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
 
-.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
+See also: :ref:`splash-http-post`, :ref:`splash-response`.
+
 
 .. _splash-http-post:
 
@@ -927,7 +918,7 @@ the result to the browser window.
 * body - string with body of request, if you intend to send form submission,
   body should be urlencoded.
 
-**Returns:** a Lua table with the response in `HAR response`_ format.
+**Returns:** a :ref:`splash-response`.
 
 **Async:** yes.
 
@@ -936,25 +927,27 @@ Example of form submission:
 .. code-block:: lua
 
     local reply = splash:http_post{url="http://example.com", body="user=Frank&password=hunter2"}
-    -- reply.content.text contains raw HTML data
+    -- reply.body contains raw HTML data (as a binary object)
     -- reply.status contains HTTP status code, as a number
-    -- see HAR docs for more info
+    -- see Response docs for more info
 
 Example of JSON POST request:
 
 .. code-block:: lua
 
-    local reply = splash:http_post{url="http://example.com/post", body='{"alfa": "beta"}',
-                                   headers={["content-type"]="application/json"}}
+    json = require("json")
 
+    local reply = splash:http_post{
+        url="http://example.com/post",
+        body=json.encode({alpha="beta"}),
+        headers={["content-type"]="application/json"}
+    }
 
-In addition to all HAR fields the response contains "ok" flag which is true
-for successful responses and false when error happened.
 
 This method doesn't change the current page contents and URL.
 To load a webpage to the browser use :ref:`splash-go`.
 
-.. _HAR response: http://www.softwareishard.com/blog/har-12-spec/#response
+See also: :ref:`splash-http-get`, :ref:`lib-json`, :ref:`splash-response`.
 
 
 .. _splash-set-content:
@@ -1062,7 +1055,7 @@ Return a `width x height` screenshot of a current page in PNG format.
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``
 
-**Returns:** PNG screenshot data.
+**Returns:** PNG screenshot data, as a :ref:`binary object <binary-objects>`.
 
 **Async:** no.
 
@@ -1090,14 +1083,14 @@ rendering and restoring the viewport size afterwards.
 Vector scaling is more performant and produces sharper images, however it may
 cause rendering artifacts, so use it with caution.
 
-If the result of ``splash:png()`` is returned directly as a result of
-"main" function, the screenshot is returned as binary data:
+The result of ``splash:png`` is a :ref:`binary object <binary-objects>`,
+so you can return it directly from "main" function and it will be sent as
+a binary image data with a proper Content-Type header:
 
 .. code-block:: lua
 
      -- A simplistic implementation of render.png endpoint
      function main(splash)
-         splash:set_result_content_type("image/png")
          assert(splash:go(splash.args.url))
          return splash:png{
             width=splash.args.width,
@@ -1120,7 +1113,8 @@ If your script returns the result of ``splash:png()`` in a top-level
 ``"png"`` key (as we've done in a previous example) then Splash UI
 will display it as an image.
 
-See also: :ref:`splash-jpeg`.
+See also: :ref:`splash-jpeg`, :ref:`binary-objects`,
+:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
 
 
 .. _splash-jpeg:
@@ -1141,7 +1135,7 @@ Return a `width x height` screenshot of a current page in JPEG format.
   or ``'vector'``
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``
 
-**Returns:** JPEG screenshot data.
+**Returns:** JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
 
 **Async:** no.
 
@@ -1174,14 +1168,14 @@ Values above ``95`` should be avoided; ``quality=100`` disables portions of
 the JPEG compression algorithm, and results in large files with hardly any
 gain in image quality.
 
-If the result of ``splash:jpeg()`` is returned directly as a result of
-"main" function, the screenshot is returned as binary data:
+The result of ``splash:jpeg`` is a :ref:`binary object <binary-objects>`,
+so you can return it directly from "main" function and it will be sent as
+a binary image data with a proper Content-Type header:
 
 .. code-block:: lua
 
      -- A simplistic implementation of render.jpeg endpoint
      function main(splash)
-         splash:set_result_content_type("image/jpeg")
          assert(splash:go(splash.args.url))
          return splash:jpeg{
             width=splash.args.width,
@@ -1191,7 +1185,7 @@ If the result of ``splash:jpeg()`` is returned directly as a result of
 
 If the result of ``splash:jpeg()`` is returned as a table value, it is encoded
 to base64 to make it possible to embed in JSON and build a data:uri
-on a client (magic!):
+on a client:
 
 .. code-block:: lua
 
@@ -1200,8 +1194,10 @@ on a client (magic!):
          return {jpeg=splash:jpeg()}
      end
 
-See also: :ref:`splash-png`. Note that `splash:jpeg()` is often
-1.5..2x faster than ``splash:png()``.
+See also: :ref:`splash-png`, :ref:`binary-objects`,
+:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
+
+Note that ``splash:jpeg()`` is often 1.5..2x faster than ``splash:png()``.
 
 .. _splash-har:
 
@@ -1250,7 +1246,7 @@ all existing logs and start recording from scratch:
          return {har1=har1, har2=har2}
      end
 
-See also: :ref:`splash-har-reset`.
+See also: :ref:`splash-har-reset`, :ref:`splash-on-response`.
 
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 
@@ -1269,6 +1265,8 @@ splash:har_reset
 Drops all internally stored HAR_ records. It is similar to
 ``splash:har{reset=true}``, but doesn't return anything.
 
+See also: :ref:`splash-har`.
+
 .. _splash-history:
 
 splash:history
@@ -1283,7 +1281,7 @@ splash:history
 
 ``splash:history`` doesn't return information about related resources
 like images, scripts, stylesheets or AJAX requests. If you need this
-information use :ref:`splash-har`.
+information use :ref:`splash-har` or :ref:`splash-on-response`.
 
 Let's get a JSON array with HTTP headers of the response we're displaying:
 
@@ -1298,6 +1296,8 @@ Let's get a JSON array with HTTP headers of the response we're displaying:
             headers = last_entry.response.headers
          }
      end
+
+See also: :ref:`splash-har`, :ref:`splash-on-response`.
 
 .. _HAR entries: http://www.softwareishard.com/blog/har-12-spec/#entries
 
@@ -1520,7 +1520,7 @@ option.
 In case of unhandled Lua errors HTTP status code is set to 400 regardless
 of the value set with :ref:`splash-set-result-status-code`.
 
-See also: :ref:`splash-set-result-status-code`,
+See also: :ref:`splash-set-result-content-type`,
 :ref:`splash-set-result-header`.
 
 
@@ -1566,8 +1566,12 @@ Example:
          ]]
      end
 
-See also: :ref:`splash-set-result-header` which allows to set any custom
-response header, not only Content-Type.
+See also:
+
+* :ref:`splash-set-result-header` which allows to set any custom
+  response header, not only Content-Type.
+* :ref:`binary-objects` which have their own method for setting result
+  Content-Type.
 
 
 .. _splash-set-result-header:
@@ -1807,70 +1811,56 @@ Register a function to be called before each HTTP request.
 
 **Signature:** ``splash:on_request(callback)``
 
+**Parameters:**
+
+* callback - Lua function to call before each HTTP request.
+
 **Returns:** nil.
 
 **Async:** no.
 
-:ref:`splash-on-request` callback receives a single ``request`` argument.
-``request`` contains the following fields:
+:ref:`splash-on-request` callback receives a single ``request`` argument
+(a :ref:`splash-request`).
 
-* ``url`` - requested URL;
-* ``method`` - HTTP method name in upper case, e.g. "GET";
-* ``info`` - a table with request data in `HAR request`_ format
-  (`url` and `method` values are duplicated here).
-
-.. _HAR headers: http://www.softwareishard.com/blog/har-12-spec/#headers
-.. _HAR request: http://www.softwareishard.com/blog/har-12-spec/#request
-.. _HAR queryString: http://www.softwareishard.com/blog/har-12-spec/#queryString
-
-These fields are for information only; changing them doesn't change
-the request to be sent. To change or drop the request before sending use
-one of the ``request`` methods:
-
-* ``request:abort()`` - drop the request;
-* ``request:set_url(url)`` - change request URL to a specified value;
-* ``request:set_proxy{host, port, username=nil, password=nil, type='HTTP'}`` -
-  set a proxy server to use for this request. Allowed proxy types are
-  'HTTP' and 'SOCKS5'. Omit ``username`` and ``password`` arguments if a proxy
-  doesn't need auth. When ``type`` is set to 'HTTP' HTTPS proxying should
-  also work; it is implemented using CONNECT command.
-* ``request:set_header(name, value)`` - set an HTTP header for this request.
-  See also: :ref:`splash-set-custom-headers`.
-* ``request:set_timeout(timeout)`` - set a timeout for this request,
-  in seconds. If response is not fully received after the timeout,
-  request is aborted. See also: :ref:`splash-resource-timeout`.
+To get information about a request use request
+:ref:`attributes <splash-request-attributes>`;
+to change or drop the request before sending use request
+:ref:`methods <splash-request-methods>`;
 
 A callback passed to :ref:`splash-on-request` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`.
 
-Example 1 - log all URLs requested:
+Example 1 - log all URLs requested using :ref:`splash-request-url` attribute:
 
 .. code-block:: lua
 
+    treat = require("treat")
     function main(splash)
         local urls = {}
         splash:on_request(function(request)
-            urls[#urls+1] = request.url
+            table.insert(urls, request.url)
         end)
         assert(splash:go(splash.args.url))
-        return urls
+        return treat.as_array(urls)
     end
 
-Example 2 - to log full request data use ``request.info`` attribute;
-don't store ``request`` objects directly:
+Example 2 - to log full request information use :ref:`splash-request-info`
+attribute; don't store ``request`` objects directly:
 
 .. code-block:: lua
 
+    treat = require("treat")
     function main(splash)
-        local entries = {}
+        local entries = treat.as_array({})
         splash:on_request(function(request)
-            entries[#entries+1] = request.info
+            table.insert(entries, request.info)
         end)
         assert(splash:go(splash.args.url))
         return entries
     end
 
-Example 3 - drop all requests to resources containing ".css" in their URLs:
+Example 3 - drop all requests to resources containing ".css" in their URLs
+(see :ref:`splash-request-abort`):
 
 .. code-block:: lua
 
@@ -1880,7 +1870,8 @@ Example 3 - drop all requests to resources containing ".css" in their URLs:
         end
     end)
 
-Example 4 - replace a resource:
+Example 4 - replace a resource
+(see :ref:`splash-request-set-url`):
 
 .. code-block:: lua
 
@@ -1891,7 +1882,7 @@ Example 4 - replace a resource:
     end)
 
 Example 5 - set a custom proxy server, with credentials passed in an HTTP
-request to Splash:
+request to Splash (see :ref:`splash-request-set-proxy`):
 
 .. code-block:: lua
 
@@ -1905,7 +1896,8 @@ request to Splash:
     end)
 
 Example 6 - discard requests which take longer than 5 seconds to complete,
-but allow up to 15 seconds for the first request:
+but allow up to 15 seconds for the first request
+(see :ref:`splash-request-set-timeout`):
 
 .. code-block:: lua
 
@@ -1918,12 +1910,12 @@ but allow up to 15 seconds for the first request:
         end
     end)
 
-See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
-:ref:`splash-on-request-reset`.
-
 .. note::
 
     :ref:`splash-on-request` doesn't support named arguments.
+
+See also: :ref:`splash-on-response`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-request-reset`, :ref:`lib-treat`, :ref:`splash-request`.
 
 .. _splash-on-response-headers:
 
@@ -1935,36 +1927,31 @@ response body is read.
 
 **Signature:** ``splash:on_response_headers(callback)``
 
+**Parameters:**
+
+* callback - Lua function to call for each response after
+  response headers are received.
+
 **Returns:** nil.
 
 **Async:** no.
 
-:ref:`splash-on-response-headers` callback receives a single ``response`` argument.
-``response`` contains following fields:
+:ref:`splash-on-response-headers` callback receives a single ``response``
+argument (a :ref:`splash-response`).
 
-* ``url`` - requested URL;
-* ``status`` - HTTP status code
-* ``headers`` - HTTP headers of response
-* ``info`` - a table with response data in `HAR response`_ format
-* ``request`` - a table with request information
+:ref:`splash-response-body` is not available in
+a :ref:`splash-on-response-headers` callback because response body is not
+read yet. Thats the point of :ref:`splash-on-response-headers` method: you can
+abort reading of the response body using :ref:`splash-response-abort` method.
 
 
-These fields are for information only; changing them doesn't change
-response received by splash. ``response`` has following methods:
-
-* ``response:abort()`` - aborts reading of response body
+.. XXX: should we allow to access response attributes (not methods)
+   outside a callback?
 
 A callback passed to :ref:`splash-on-response-headers` can't call Splash
 async methods like :ref:`splash-wait` or :ref:`splash-go`. ``response`` object
-is deleted after exiting from callback, so you cannot use it outside callback.
-
-``response.request`` available in callback contains following attributes:
-
-* ``url`` - requested URL - can be different from response URL in case there is
-  redirect
-* ``headers`` - HTTP headers of request
-* ``method`` HTTP method of request
-* ``cookies`` - cookies in .har format
+is deleted after exiting from a callback, so you cannot use
+it outside a callback.
 
 Example 1 - log content-type headers of all responses received while rendering
 
@@ -1995,7 +1982,8 @@ Example 2 - abort reading body of all responses with content type ``text/css``
         return splash:png()
     end
 
-Example 3 - extract all cookies set by website without reading response body
+Example 3 - extract all cookies set by website without downloading
+response bodies
 
 .. code-block:: lua
 
@@ -2010,12 +1998,12 @@ Example 3 - extract all cookies set by website without reading response body
         return cookies
     end
 
-See also: :ref:`splash-on-request`, :ref:`splash-on-response`,
-:ref:`splash-on-response-headers-reset`.
-
 .. note::
 
     :ref:`splash-on-response-headers` doesn't support named arguments.
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response`,
+:ref:`splash-on-response-headers-reset`, :ref:`splash-response`.
 
 .. _splash-on-response:
 
@@ -2026,42 +2014,28 @@ Register a function to be called after response is downloaded.
 
 **Signature:** ``splash:on_response(callback)``
 
+**Parameters:**
+
+* callback - Lua function to call for each response after it is downloaded.
+
 **Returns:** nil.
 
 **Async:** no.
 
-:ref:`splash-on-response` callback receives a single ``response`` argument.
-``response`` contains following fields:
-
-* ``url`` - requested URL;
-* ``status`` - HTTP status code
-* ``headers`` - HTTP headers of response
-* ``info`` - a table with response data in `HAR response`_ format
-* ``request`` - a table with request information
+:ref:`splash-on-response` callback receives a single ``response`` argument
+(a :ref:`splash-response`).
 
 .. note::
 
-    Currently you can't read response body in a :ref:`splash-on-response`
-    callback.
-
-These fields are for information only; changing them doesn't change
-response received by splash.
-
-``response.request`` available in a callback contains the following attributes:
-
-* ``url`` - requested URL - can be different from response URL in case there is
-  redirect
-* ``headers`` - HTTP headers of request
-* ``method`` HTTP method of request
-* ``cookies`` - cookies in .har format
-
-
-See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
-:ref:`splash-on-response-reset`.
+    Currently you can't access :ref:`splash-response-body`
+    in a :ref:`splash-on-response` callback.
 
 .. note::
 
     :ref:`splash-on-response` doesn't support named arguments.
+
+See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
+:ref:`splash-on-response-reset`, :ref:`splash-response`.
 
 
 .. _splash-on-request-reset:
@@ -2141,71 +2115,3 @@ Example:
              error("Splash 1.8 or newer required")
          end
      end
-
-
-Lua Standard Library
-~~~~~~~~~~~~~~~~~~~~
-
-When :ref:`Sandbox <lua-sandbox>` is disabled all standard Lua modules
-are available. The following standard Lua 5.2 libraries are available
-to Splash scripts when Sandbox is enabled (default):
-
-* `string <http://www.lua.org/manual/5.2/manual.html#6.4>`_
-* `table <http://www.lua.org/manual/5.2/manual.html#6.5>`_
-* `math <http://www.lua.org/manual/5.2/manual.html#6.6>`_
-* `os <http://www.lua.org/manual/5.2/manual.html#6.9>`_
-
-Aforementioned libraries are pre-imported; there is no need to ``require`` them.
-
-.. note::
-
-    Not all functions from these libraries are currently exposed
-    when :ref:`Sandbox <lua-sandbox>` is enabled.
-
-
-Additional Lua Libraries
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-It is possible to add more Lua libraries to Splash using
-:ref:`custom-lua-modules` feature. Here are some extra modules
-Splash ships by default.
-
-.. _lib-json:
-
-json
-----
-
-A library to encode data to JSON and decode it from JSON to Lua data
-structure. It provides 2 functions:
-
-* ``json.encode(data)`` - encode ``data``; return a string with
-  its JSON representation.
-
-* ``json.decode(s)`` - decode string ``s`` from JSON; return a decoded
-  object.
-
-Example:
-
-.. code-block:: lua
-
-    json = require("json")
-
-    function main(splash)
-        local resp = splash:http_get("http:/myapi.example.com/resource.json")
-        local decoded = json.decode(resp.content.text)
-        return {myfield=decoded.myfield}
-    end
-
-.. _lib-base64:
-
-base64
-------
-
-A library to encode/decode strings to/from Base64. It provides 2 functions:
-
-* ``base64.encode(s)`` - encode string ``s`` to base64.
-* ``base64.decode(s)`` - decode string ``s`` from base64.
-
-These functions are handy if you need to pass some binary data
-in a JSON request or response.
-

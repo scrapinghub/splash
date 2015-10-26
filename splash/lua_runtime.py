@@ -73,7 +73,7 @@ class SplashLuaRuntime(object):
             self.remove_allowed_object(obj)
 
     def lua2python(self, *args, **kwargs):
-        kwargs.setdefault("binary", False)
+        kwargs.setdefault("encoding", 'utf8')
         kwargs.setdefault("strict", True)
         return lua2python(self._lua, *args, **kwargs)
 

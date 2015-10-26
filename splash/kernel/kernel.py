@@ -170,7 +170,8 @@ class SplashKernel(Kernel):
                     'text/plain': result if isinstance(result, six.text_type) else str(result),
                 }
                 if isinstance(result, BinaryCapsule):
-                    data[result.content_type] = result.as_b64()
+                    if result.content_type in {'image/png', 'image/jpeg'}:
+                        data[result.content_type] = result.as_b64()
                 self._publish_execute_result(parent, data, {}, self.execution_count)
 
             super(SplashKernel, self).send_execute_reply(stream, ident, parent, md, reply)

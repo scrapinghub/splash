@@ -111,12 +111,12 @@ class BaseRenderResource(_ValidatingResource):
             # TODO: pass http method to RenderScript explicitly.
             return self.render_GET(request)
 
-        content_type = request.getHeader(b'content-type').decode('latin1')
+        request_content_type = request.getHeader(b'content-type').decode('latin1')
         supported_types = ['application/javascript', 'application/json']
-        if not any(ct in content_type for ct in supported_types):
+        if not any(ct in request_content_type for ct in supported_types):
             ex = UnsupportedContentType({
                 'supported': supported_types,
-                'received': content_type,
+                'received': request_content_type,
             })
             return self._write_error(request, 415, ex)
 
@@ -129,13 +129,14 @@ class BaseRenderResource(_ValidatingResource):
 
     def _write_output(self, data, request, content_type=None, options=None):
         # log.msg("_writeOutput: %s" % id(request))
+        # log.msg("%r %r" % (data, content_type))
 
         if content_type is None:
             content_type = self.content_type
 
         if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
-            return self._write_output(data, request, "application/json", options)
+            return self._write_output(data, request, b"application/json", options)
 
         if isinstance(data, tuple) and len(data) == 4:
             data, content_type, headers, status_code = data
@@ -149,7 +150,13 @@ class BaseRenderResource(_ValidatingResource):
             return self._write_output(str(data), request, content_type, options)
 
         if isinstance(data, BinaryCapsule):
-            return self._write_output(data.data, request, content_type, options)
+            return self._write_output(data.data, request, data.content_type, options)
+
+        if not isinstance(data, bytes):
+            data = data.encode('utf8')
+
+        if not isinstance(content_type, bytes):
+            content_type = content_type.encode('latin1')
 
         request.setHeader(b"content-type", content_type)
 

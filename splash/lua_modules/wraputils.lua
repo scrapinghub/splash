@@ -124,7 +124,7 @@ end
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
-local function wrap_exposed_object(py_object, self, private_self, async)
+local function setup_commands(py_object, self, private_self, async)
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -171,11 +171,15 @@ end
 local function setup_property_access(py_object, self, cls)
   local setters = {}
   local getters = {}
-  for key, opts in pairs(py_object.lua_properties) do
-    local setter = unwraps_errors(drops_self_argument(py_object[key]))
-    local getter = unwraps_errors(drops_self_argument(py_object[opts.getter_method]))
-    getters[opts.name] = getter
-    setters[opts.name] = setter
+  for name, opts in pairs(py_object.lua_properties) do
+    getters[name] = unwraps_errors(drops_self_argument(py_object[opts.getter]))
+    if opts.setter ~= nil then
+      setters[name] = unwraps_errors(drops_self_argument(py_object[opts.setter]))
+    else
+      setters[name] = function()
+        error("Attribute " .. name .. " is read-only.", 2)
+      end
+    end
   end
 
   function cls:__newindex(index, value)
@@ -196,6 +200,36 @@ local function setup_property_access(py_object, self, cls)
 end
 
 
+--
+-- Create a Lua wrapper for a Python object.
+--
+local function wrap_exposed_object(py_object, self, cls, private_self, async)
+  setup_commands(py_object, self, private_self, async)
+  setup_property_access(py_object, self, cls)
+end
+
+
+--
+-- Return a metatable for a wrapped Python object
+--
+local function create_metatable()
+  return {
+    __wrapped=true
+  }
+end
+
+--
+-- Return true if an object is a wrapped Python object
+--
+local function is_wrapped(obj)
+  local mt = getmetatable(obj)
+  if type(mt) ~= 'table' then
+    return false
+  end
+  return mt.__wrapped == true
+end
+
+
 -- Exposed API
 return {
   assertx = assertx,
@@ -205,6 +239,9 @@ return {
   yields_result = yields_result,
   sets_callback = sets_callback,
   is_private_name = is_private_name,
-  wrap_exposed_object = wrap_exposed_object,
+  setup_commands = setup_commands,
   setup_property_access = setup_property_access,
+  wrap_exposed_object = wrap_exposed_object,
+  create_metatable = create_metatable,
+  is_wrapped = is_wrapped,
 }

@@ -1,6 +1,39 @@
 Changes
 =======
 
+2.0 (TBA)
+---------
+
+Splash 2.0 release introduces new features:
+
+* better support for :ref:`binary data <binary-data>`;
+* built-in :ref:`lib-json` and :ref:`lib-base64` libraries;
+* more :ref:`control <lib-treat>` for result serialization
+  (support for JSON arrays and raw bytes);
+* a few other improvements: it is now possible to turn Private mode
+  OFF at startup, and a couple small bugs was fixed.
+
+There are **backwards-incompatible** changes
+to :ref:`Splash Scripting <scripting-tutorial>`: previously, different
+Splash methods were returning/receiving inconsistent
+response and request objects. For example, :ref:`splash-http-get` response was
+not in the same format as ``response`` received by :ref:`splash-on-response`
+callbacks. Splash 2.0 uses :ref:`Request <splash-request>` and
+:ref:`Response <splash-response>` objects consistently.
+Unfortunately this requires changes to existing user scripts:
+
+* replace ``resp = splash:http_get(...)`` and ``resp = splash:http_post(...)``
+  with ``resp = splash:http_get(...).info`` and
+  ``resp = splash:http_post(...).info``. Client code also may need to be
+  changed: the default encoding of ``info['content']['text']`` is now base64.
+  If you used ``resp.content.text`` consider switching to
+  :ref:`splash-response-body`.
+
+* ``response`` object received by :ref:`splash-on-response-headers` and
+  :ref:`splash-on-response` callbacks is changed: instead of
+  ``response.request`` write ``response.request.info``.
+
+
 1.8 (2015-09-29)
 ----------------
 

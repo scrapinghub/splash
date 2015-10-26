@@ -424,7 +424,7 @@ class PostResource(Resource):
 </p>
 </body>
 </html>
-""" % (headers, payload)).encode('utf-8')
+""" % (headers, repr(payload))).encode('utf-8')
 
 
 class GetResource(Resource):
