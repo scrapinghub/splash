@@ -13,7 +13,7 @@ from PyQt4.QtWebKit import QWebPage, QWebSettings
 from twisted.internet import defer
 from twisted.python import log
 
-from splash import defaults
+from splash.config import settings
 from splash.har.qt import cookies2har
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import OPERATION_QT_CONSTANTS, WrappedSignal, qt2py, qurl2ascii, to_qurl
@@ -84,10 +84,10 @@ class BrowserTab(QObject):
             self.web_view.move(0, 0)
             self.web_view.show()
 
-        self.set_viewport(defaults.VIEWPORT_SIZE)
+        self.set_viewport(settings.VIEWPORT_SIZE)
         # XXX: hack to ensure that default window size is not 640x480.
         self.web_view.resize(
-            QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
+            QSize(*map(int, settings.VIEWPORT_SIZE.split('x'))))
 
     def set_js_enabled(self, val):
         settings = self.web_page.settings()
@@ -184,7 +184,7 @@ class BrowserTab(QObject):
                 if raise_if_empty:
                     raise RuntimeError("Cannot detect viewport size")
                 else:
-                    size = defaults.VIEWPORT_SIZE
+                    size = settings.VIEWPORT_SIZE
                     self.logger.log("Viewport is empty, falling back to: %s" %
                                     size)
 

@@ -3,7 +3,7 @@ import abc
 import json
 import functools
 import pprint
-from splash import defaults
+from splash.config import settings
 from splash.browser_tab import BrowserTab
 from splash.exceptions import RenderError
 
@@ -80,11 +80,11 @@ class DefaultRenderScript(RenderScript):
               render_all=False, resource_timeout=None):
 
         self.url = url
-        self.wait_time = defaults.WAIT_TIME if wait is None else wait
+        self.wait_time = settings.WAIT_TIME if wait is None else wait
         self.js_source = js_source
         self.js_profile = js_profile
         self.console = console
-        self.viewport = defaults.VIEWPORT_SIZE if viewport is None else viewport
+        self.viewport = settings.VIEWPORT_SIZE if viewport is None else viewport
         self.render_all = render_all or viewport == 'full'
 
         if resource_timeout:

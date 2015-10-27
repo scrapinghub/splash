@@ -7,9 +7,13 @@ import traceback
 import signal
 import functools
 
-from splash import defaults, __version__
-from splash import xvfb
+from splash import config
+from splash import xvfb, __version__
 from splash.qtutils import init_qt_app
+
+
+settings = config.Settings()
+
 
 def install_qtreactor(verbose):
     init_qt_app(verbose)
@@ -21,14 +25,16 @@ def parse_opts():
     _bool_default = {True:' (default)', False: ''}
 
     op = optparse.OptionParser()
+    op.add_option("--config-path",
+                  help="path to a folder with a config file named splash.cfg")
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
         help="exit if max RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
-    op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
+    op.add_option("-p", "--port", type="int", default=settings.SPLASH_PORT,
         help="port to listen to (default: %default)")
-    op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
+    op.add_option("-s", "--slots", type="int", default=settings.SLOTS,
         help="number of render slots (default: %default)")
-    op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
+    op.add_option("--max-timeout", type="float", default=settings.MAX_TIMEOUT,
         help="maximum allowed value for timeout (default: %default)")
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
@@ -37,20 +43,20 @@ def parse_opts():
     op.add_option("--no-js-cross-domain-access",
         action="store_false",
         dest="js_cross_domain_enabled",
-        default=not defaults.JS_CROSS_DOMAIN_ENABLED,
-        help="disable support for cross domain access when executing custom javascript" + _bool_default[not defaults.JS_CROSS_DOMAIN_ENABLED])
+        default=not settings.JS_CROSS_DOMAIN_ENABLED,
+        help="disable support for cross domain access when executing custom javascript" + _bool_default[not settings.JS_CROSS_DOMAIN_ENABLED])
     op.add_option("--js-cross-domain-access",
         action="store_true",
         dest="js_cross_domain_enabled",
-        default=defaults.JS_CROSS_DOMAIN_ENABLED,
+        default=settings.JS_CROSS_DOMAIN_ENABLED,
         help="enable support for cross domain access when executing custom javascript "
-             "(WARNING: it could break rendering for some of the websites)" + _bool_default[defaults.JS_CROSS_DOMAIN_ENABLED])
+             "(WARNING: it could break rendering for some of the websites)" + _bool_default[settings.JS_CROSS_DOMAIN_ENABLED])
     op.add_option("--no-cache", action="store_false", dest="cache_enabled",
-        help="disable local cache" + _bool_default[not defaults.CACHE_ENABLED])
+        help="disable local cache" + _bool_default[not settings.CACHE_ENABLED])
     op.add_option("--cache", action="store_true", dest="cache_enabled",
-        help="enable local cache (WARNING: don't enable it unless you know what are you doing)" + _bool_default[defaults.CACHE_ENABLED])
+        help="enable local cache (WARNING: don't enable it unless you know what are you doing)" + _bool_default[settings.CACHE_ENABLED])
     op.add_option("-c", "--cache-path", help="local cache folder")
-    op.add_option("--cache-size", type=int, default=defaults.CACHE_SIZE,
+    op.add_option("--cache-size", type=int, default=settings.CACHE_SIZE,
         help="maximum cache size in MB (default: %default)")
     op.add_option("--manhole", action="store_true",
         help="enable manhole server")
@@ -58,14 +64,14 @@ def parse_opts():
         help="disable proxy server")
     op.add_option("--disable-ui", action="store_true", default=False,
         help="disable web UI")
-    op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
+    op.add_option("--proxy-portnum", type="int", default=settings.PROXY_PORT,
         help="proxy port to listen to (default: %default)")
-    op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
+    op.add_option('--allowed-schemes', default=",".join(settings.ALLOWED_SCHEMES),
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
-    op.add_option("--disable-private-mode", action="store_true", default=not defaults.PRIVATE_MODE,
-        help="disable private mode (WARNING: data may leak between requests)" + _bool_default[not defaults.PRIVATE_MODE])
+    op.add_option("--disable-private-mode", action="store_true", default=not settings.PRIVATE_MODE,
+        help="disable private mode (WARNING: data may leak between requests)" + _bool_default[not settings.PRIVATE_MODE])
     op.add_option("--disable-xvfb", action="store_true", default=False,
         help="disable Xvfb auto start")
     op.add_option("--disable-lua", action="store_true", default=False,
@@ -77,7 +83,7 @@ def parse_opts():
              "Each place can have a ? in it that's replaced with the module name.")
     op.add_option("--lua-sandbox-allowed-modules", default="",
         help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
-    op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
+    op.add_option("-v", "--verbosity", type=int, default=settings.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5 (default: %default)")
     op.add_option("--version", action="store_true",
         help="print Splash version number and exit")
@@ -150,9 +156,9 @@ def manhole_server(portnum=None, username=None, password=None):
     from twisted.manhole import telnet
 
     f = telnet.ShellFactory()
-    f.username = defaults.MANHOLE_USERNAME if username is None else username
-    f.password = defaults.MANHOLE_PASSWORD if password is None else password
-    portnum = defaults.MANHOLE_PORT if portnum is None else portnum
+    f.username = settings.MANHOLE_USERNAME if username is None else username
+    f.password = settings.MANHOLE_PASSWORD if password is None else password
+    portnum = settings.MANHOLE_PORT if portnum is None else portnum
     reactor.listenTCP(portnum, f)
 
 
@@ -172,10 +178,10 @@ def splash_server(portnum, slots, network_manager, max_timeout,
     from twisted.python import log
     from splash import lua
 
-    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+    verbosity = settings.VERBOSITY if verbosity is None else verbosity
     log.msg("verbosity=%d" % verbosity)
 
-    slots = defaults.SLOTS if slots is None else slots
+    slots = settings.SLOTS if slots is None else slots
     log.msg("slots=%s" % slots)
 
     pool = RenderPool(
@@ -217,7 +223,7 @@ def splash_server(portnum, slots, network_manager, max_timeout,
     if not disable_proxy:
         from splash.proxy_server import SplashProxyServerFactory
         proxy_server_factory = SplashProxyServerFactory(pool, max_timeout=max_timeout)
-        proxy_portnum = defaults.PROXY_PORT if proxy_portnum is None else proxy_portnum
+        proxy_portnum = settings.PROXY_PORT if proxy_portnum is None else proxy_portnum
         reactor.listenTCP(proxy_portnum, proxy_server_factory)
 
 
@@ -286,9 +292,9 @@ def _default_cache(cache_enabled, cache_path, cache_size):
     from twisted.python import log
     from splash import cache
 
-    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
-    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
-    cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
+    cache_enabled = settings.CACHE_ENABLED if cache_enabled is None else cache_enabled
+    cache_path = settings.CACHE_PATH if cache_path is None else cache_path
+    cache_size = settings.CACHE_SIZE if cache_size is None else cache_size
 
     if cache_enabled:
         log.msg("cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (cache_enabled, cache_path, cache_size))
@@ -343,6 +349,10 @@ def main():
     if opts.version:
         print(__version__)
         sys.exit(0)
+
+    if opts.config_path:
+        config.CONFIG_PATH = opts.config_path
+        reload(config)
 
     start_logging(opts)
     log_splash_version()
