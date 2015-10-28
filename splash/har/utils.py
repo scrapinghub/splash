@@ -35,8 +35,8 @@ def get_response_body_bytes(har_response):
     """ Return binary response data """
     content = har_response['content']
     body = content.get('text', None)
-    if not body:
-        return body  # empty or None
+    if body is None:
+        return None
     encoding = content.get('encoding', None)
     if encoding == 'base64':
         return base64.b64decode(body)
