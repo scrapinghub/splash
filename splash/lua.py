@@ -5,6 +5,7 @@ import re
 import functools
 import datetime
 
+from splash.utils import to_bytes, to_unicode
 from twisted.python import log
 try:
     import lupa
@@ -81,7 +82,7 @@ def get_main_sandboxed(lua, script):
     from a ``script``.
     """
     env = run_in_sandbox(lua, script)
-    main = env["main"]
+    main = env[b"main"]
     _check_main(main)
     return main, env
 
@@ -97,7 +98,7 @@ def run_in_sandbox(lua, script):
     See ``splash/lua_modules/sandbox.lua``.
     """
     sandbox = lua.eval("require('sandbox')")
-    result = sandbox.run(script)
+    result = sandbox.run(to_bytes(script))
     if result is not True:
         ok, res = result
         raise lupa.LuaError(res)
@@ -113,8 +114,8 @@ def _get_entrypoint(lua, script):
     >>> main()
     55
     """
-    lua.execute(script)
-    return lua.globals()["main"]
+    lua.execute(to_bytes(script))
+    return lua.eval("main")
 
 
 def _check_main(main):
@@ -201,14 +202,14 @@ def _mark_table_as_array(lua, tbl):
     # XXX: the same function is available in Lua as treat.as_array.
     # XXX: if we want to add to a metatable instead of replacing it,
     # we must make sure metatable is not shared with other tables.
-    mt = lua.table(__metatable="array")
+    mt = lua.table_from({b'__metatable': b'array'})
     lua.eval("setmetatable")(tbl, mt)
     return tbl
 
 
 def _table_is_array(lua, tbl):
     mt = lua.eval("getmetatable")(tbl)
-    return mt == "array"
+    return mt == b"array"
 
 
 def python2lua(lua, obj, max_depth=100, encoding='utf8'):
@@ -237,7 +238,7 @@ def python2lua(lua, obj, max_depth=100, encoding='utf8'):
         return obj.encode(encoding)
 
     if isinstance(obj, datetime.datetime):
-        return obj.isoformat() + 'Z'
+        return to_bytes(obj.isoformat() + 'Z', encoding)
         # XXX: maybe return datetime encoded to Lua standard? E.g.:
 
         # tm = obj.timetuple()
@@ -289,6 +290,7 @@ def parse_error_message(error_text):
         syntax error near 'ction'
 
     """
+    error_text = to_unicode(error_text)
     m = _LUA_ERROR_RE.match(error_text)
     if not m:
         m = _SYNTAX_ERROR_RE.match(error_text)

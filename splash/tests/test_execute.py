@@ -1635,7 +1635,7 @@ class GoTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
-        self.assertIn("formdata argument for go() must be Lua table", resp.text)
+        self.assertIn("formdata argument for go() must be a Lua table", resp.text)
 
     def test_POST_body_not_string(self):
         resp = self.request_lua("""
@@ -1646,7 +1646,7 @@ class GoTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl('postrequest')})
         self.assertStatusCode(resp, 400)
-        self.assertIn("request body must be string", resp.text)
+        self.assertIn("request body must be a string", resp.text)
 
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
@@ -2444,7 +2444,7 @@ class HttpGetTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertEqual(data["status"], 302)
         self.assertEqual(data["redirectURL"], "/getrequest?http_code=302")
-        self.assertIn("302 redirect to", get_response_body_bytes(data))
+        self.assertIn(b"302 redirect to", get_response_body_bytes(data))
 
     def test_noargs(self):
         resp = self.request_lua("""

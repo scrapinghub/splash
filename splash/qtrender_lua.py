@@ -30,8 +30,8 @@ from splash.utils import (
     BinaryCapsule,
     to_bytes,
     requires_attr,
-    SplashJSONEncoder
-)
+    SplashJSONEncoder,
+    to_unicode)
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -774,7 +774,7 @@ class Splash(BaseExposedObject):
 
     @command(table_argument=True)
     def init_cookies(self, cookies):
-        cookies = self.lua.lua2python(cookies, binary=False, max_depth=3)
+        cookies = self.lua.lua2python(cookies, max_depth=3)
         if isinstance(cookies, dict):
             keys = sorted(cookies.keys())
             cookies = [cookies[k] for k in keys]
@@ -825,7 +825,7 @@ class Splash(BaseExposedObject):
         if not all([isinstance(h, six.string_types) for h in [name, value]]):
             raise ScriptError({
                 "message": "splash:set_result_header() arguments "
-                           "must be strings"
+                           "must be strings",
             })
 
         try:
@@ -1016,10 +1016,11 @@ class Splash(BaseExposedObject):
 
     def _error_info_to_lua(self, error_info):
         if error_info is None:
-            return "error"
-        res = "%s%s" % (error_info.type.lower(), error_info.code)
-        if res == "http200":
-            return "render_error"
+            res = "error"
+        else:
+            res = "%s%s" % (error_info.type.lower(), error_info.code)
+            if res == "http200":
+                res = "render_error"
         return self.lua.python2lua(res)
 
     def result_content_type(self):
@@ -1468,14 +1469,14 @@ class LuaRender(RenderScript):
             # because of sandbox and coroutine handling code.
             raise ScriptError({
                 'type': ScriptError.SYNTAX_ERROR,
-                'message': e.args[0],
+                'message': to_unicode(e.args[0]),
             })
         except lupa.LuaError as e:
             # Error happened before starting coroutine
             info = parse_error_message(e.args[0])
             info.update({
                 "type": ScriptError.LUA_INIT_ERROR,
-                "message": e.args[0],
+                "message": to_unicode(e.args[0]),
             })
             raise ScriptError(info)
         # except ValueError as e:

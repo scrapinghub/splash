@@ -326,7 +326,7 @@ class TreatAsBinaryTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
-            'res': base64.b64encode("hello").decode('ascii')
+            'res': base64.b64encode(b"hello").decode('ascii')
         })
         self.assertEqual(resp.headers['content-type'], "application/json")
 

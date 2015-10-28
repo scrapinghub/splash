@@ -117,7 +117,7 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
                 # previous result is a final result returned from "main"
                 self.log("[lua_runner] returning result")
                 try:
-                    res = self.lua.lua2python(self.result, binary=False)
+                    res = self.lua.lua2python(self.result)
                 except ValueError as e:
                     # can't convert result to a Python object
                     raise ScriptError({

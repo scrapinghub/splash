@@ -7,6 +7,7 @@ import contextlib
 import six
 
 from splash.lua import lua2python, python2lua, get_new_runtime
+from splash.utils import to_bytes, to_unicode
 
 
 class SplashLuaRuntime(object):
@@ -52,7 +53,7 @@ class SplashLuaRuntime(object):
 
     def add_allowed_module(self, name):
         """ Allow to require specified module from Lua """
-        self._sandbox["allowed_require_names"][name] = True
+        self._sandbox[b"allowed_require_names"][name.encode('utf8')] = True
 
     # def remove_allowed_module(self, name):
     #     """
@@ -133,11 +134,12 @@ class SplashLuaRuntime(object):
             self.add_allowed_module(name)
 
     def _attr_getter(self, obj, attr_name):
-
-        if not isinstance(attr_name, six.string_types):
+        try:
+            attr_name = to_unicode(attr_name)
+        except TypeError:
             raise AttributeError("Non-string lookups are not allowed (requested: %r)" % attr_name)
 
-        if isinstance(attr_name, six.string_types) and attr_name.startswith("_"):
+        if attr_name.startswith("_"):
             raise AttributeError("Access to private attribute %r is not allowed" % attr_name)
 
         if obj not in self._allowed_object_attrs:

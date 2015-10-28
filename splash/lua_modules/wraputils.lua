@@ -15,7 +15,8 @@
 --
 local function assertx(nlevels, ok, ...)
   if not ok then
-    error(select(1, ...), 1 + nlevels)
+    local msg = tostring(select(1, ...))
+    error(msg, 1 + nlevels)
   else
     return ...
   end
