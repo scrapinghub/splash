@@ -131,6 +131,9 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
                 self.on_result(res)
                 return
             except lupa.LuaError as lua_ex:
+                # import traceback
+                # print(traceback.format_exc())
+
                 # Lua script raised an error
                 self._print_instructions_used()
                 self.log("[lua_runner] caught LuaError %r" % lua_ex)

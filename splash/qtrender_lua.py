@@ -129,7 +129,7 @@ def emits_lua_objects(meth):
     native Lua formats when possible
     """
     @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
+    def emits_lua_objects_wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
         py2lua = self.lua.python2lua
         if isinstance(res, tuple):
@@ -137,7 +137,7 @@ def emits_lua_objects(meth):
         else:
             return py2lua(res)
 
-    return wrapper
+    return emits_lua_objects_wrapper
 
 
 def decodes_lua_arguments(encoding, strict=True):
@@ -145,9 +145,10 @@ def decodes_lua_arguments(encoding, strict=True):
     This decorator converts function arguments from Lua to Python.
     """
     l2p_kw = {'encoding': encoding, 'strict': strict}
+
     def decorator(meth):
         @functools.wraps(meth)
-        def wrapper(self, *args, **kwargs):
+        def decodes_lua_arguments_wrapper(self, *args, **kwargs):
             try:
                 args = [
                     self.lua.lua2python(a, **l2p_kw)
@@ -163,7 +164,7 @@ def decodes_lua_arguments(encoding, strict=True):
                     'message': e.args[0],
                 })
             return meth(self, *args, **kwargs)
-        return wrapper
+        return decodes_lua_arguments_wrapper
     return decorator
 
 
@@ -175,12 +176,12 @@ def first_argument_from_storage(meth):
     (see https://github.com/scoder/lupa/pull/49).
     """
     @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
+    def first_argument_from_storage_wrapper(self, *args, **kwargs):
         arg = self.tmp_storage[1]
         del self.tmp_storage[1]
         return meth(self, arg, *args, **kwargs)
 
-    return wrapper
+    return first_argument_from_storage_wrapper
 
 
 def is_command(meth):
@@ -199,7 +200,7 @@ def can_raise(meth):
     methods called from Lua.
     """
     @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
+    def can_raise_wrapper(self, *args, **kwargs):
         try:
             return meth(self, *args, **kwargs)
         except BaseException as e:
@@ -209,7 +210,7 @@ def can_raise(meth):
                 self.exceptions.append(e)
             raise
 
-    return wrapper
+    return can_raise_wrapper
 
 
 def exceptions_as_return_values(meth):
@@ -222,7 +223,7 @@ def exceptions_as_return_values(meth):
     splash/lua_modules/splash.lua unwraps_errors decorator.
     """
     @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
+    def exceptions_as_return_values_wrapper(self, *args, **kwargs):
         try:
             result = meth(self, *args, **kwargs)
             if isinstance(result, tuple):
@@ -232,8 +233,8 @@ def exceptions_as_return_values(meth):
         except Exception as e:
             return False, repr(e)
 
-    wrapper._returns_error_flag = True
-    return wrapper
+    exceptions_as_return_values_wrapper._returns_error_flag = True
+    return exceptions_as_return_values_wrapper
 
 
 def detailed_exceptions(method_name=None):
@@ -244,7 +245,7 @@ def detailed_exceptions(method_name=None):
         _name = meth.__name__ if method_name is None else method_name
 
         @functools.wraps(meth)
-        def wrapper(self, *args, **kwargs):
+        def detailed_exceptions_wrapper(self, *args, **kwargs):
             try:
                 return meth(self, *args, **kwargs)
             except ScriptError as e:
@@ -255,7 +256,7 @@ def detailed_exceptions(method_name=None):
                 info.setdefault('splash_method', _name)
                 raise e
 
-        return wrapper
+        return detailed_exceptions_wrapper
 
     return decorator
 

@@ -12,12 +12,12 @@ from splash.exceptions import RenderError
 
 def stop_on_error(meth):
     @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
+    def stop_on_error_wrapper(self, *args, **kwargs):
         try:
             return meth(self, *args, **kwargs)
         except Exception as e:
             self.return_error(e)
-    return wrapper
+    return stop_on_error_wrapper
 
 
 class RenderScript(six.with_metaclass(abc.ABCMeta, object)):
