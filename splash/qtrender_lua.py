@@ -131,11 +131,7 @@ def emits_lua_objects(meth):
     @functools.wraps(meth)
     def emits_lua_objects_wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
-        py2lua = self.lua.python2lua
-        if isinstance(res, tuple):
-            return tuple(py2lua(r) for r in res)
-        else:
-            return py2lua(res)
+        return self.lua.python2lua(res)
 
     return emits_lua_objects_wrapper
 
@@ -629,11 +625,11 @@ class Splash(BaseExposedObject):
     @command(async=True, can_raise_async=True)
     def wait_for_resume(self, snippet, timeout=0):
         def callback(result):
-            cmd.return_result(self.lua.python2lua(result))
+            cmd.return_result(result)
 
         def errback(msg, raise_):
             args = [None, "JavaScript error: %s" % msg, raise_]
-            cmd.return_result(*[self.lua.python2lua(a) for a in args])
+            cmd.return_result(*args)
 
         cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
@@ -1016,12 +1012,11 @@ class Splash(BaseExposedObject):
 
     def _error_info_to_lua(self, error_info):
         if error_info is None:
-            res = "error"
-        else:
-            res = "%s%s" % (error_info.type.lower(), error_info.code)
-            if res == "http200":
-                res = "render_error"
-        return self.lua.python2lua(res)
+            return "error"
+        res = "%s%s" % (error_info.type.lower(), error_info.code)
+        if res == "http200":
+            return "render_error"
+        return res
 
     def result_content_type(self):
         if self._result_content_type is None:

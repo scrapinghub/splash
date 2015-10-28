@@ -43,6 +43,12 @@ def completer(configured_lua):
 
 
 @pytest.fixture()
+def lua_lexer(configured_lua):
+    from splash.kernel.lua_parser import LuaLexer
+    return LuaLexer(configured_lua)
+
+
+@pytest.fixture()
 def inspector(configured_lua):
     from splash.kernel.inspections import Inspector
     return Inspector(configured_lua)

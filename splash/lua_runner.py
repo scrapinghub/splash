@@ -105,7 +105,7 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
                 # Got arguments from an async command; send them to coroutine
                 # and wait for the next async command.
                 self.log("[lua_runner] send %s" % args_repr)
-                cmd = self.coro.send(args)  # cmd is a next async command
+                cmd = self.coro.send(self.lua.python2lua(args))  # cmd is a next async command
 
                 args = None  # don't re-send the same value
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')

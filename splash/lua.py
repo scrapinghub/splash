@@ -212,7 +212,7 @@ def _table_is_array(lua, tbl):
     return mt == b"array"
 
 
-def python2lua(lua, obj, max_depth=100, encoding='utf8'):
+def python2lua(lua, obj, max_depth=100, encoding='utf8', keep_tuples=True):
     """
     Recursively convert Python object to a Lua data structure.
     Parts that can't be converted to Lua types are passed as-is.
@@ -221,41 +221,49 @@ def python2lua(lua, obj, max_depth=100, encoding='utf8'):
     are passed as "capsules" which Lua code can send back to Python as-is, but
     can't access otherwise.
     """
-    if max_depth <= 0:
-        raise ValueError("Can't convert Python object to Lua: depth limit is reached")
 
-    if isinstance(obj, dict):
-        return lua.table_from({
-            python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
-            for key, value in six.iteritems(obj)
-        })
+    def p2l(obj, depth):
+        if depth <= 0:
+            raise ValueError("Can't convert Python object to Lua: depth limit is reached")
 
-    if isinstance(obj, list):
-        tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
-        return _mark_table_as_array(lua, tbl)
+        if isinstance(obj, dict):
+            return lua.table_from({
+                p2l(key, depth-1): p2l(value, depth-1)
+                for key, value in six.iteritems(obj)
+            })
 
-    if isinstance(obj, six.text_type):
-        return obj.encode(encoding)
+        if isinstance(obj, tuple) and keep_tuples:
+            return tuple(p2l(el, depth-1) for el in obj)
 
-    if isinstance(obj, datetime.datetime):
-        return to_bytes(obj.isoformat() + 'Z', encoding)
-        # XXX: maybe return datetime encoded to Lua standard? E.g.:
+        if isinstance(obj, (list, tuple)):
+            tbl = lua.table_from([p2l(el, depth-1) for el in obj])
+            return _mark_table_as_array(lua, tbl)
 
-        # tm = obj.timetuple()
-        # return python2lua(lua, {
-        #     '_jstype': 'Date',
-        #     'year': tm.tm_year,
-        #     'month': tm.tm_mon,
-        #     'day': tm.tm_mday,
-        #     'yday': tm.tm_yday,
-        #     'wday': tm.tm_wday,  # fixme: in Lua Sunday is 1, in Python Monday is 0
-        #     'hour': tm.tm_hour,
-        #     'min': tm.tm_min,
-        #     'sec': tm.tm_sec,
-        #     'isdst': tm.tm_isdst,  # fixme: isdst can be -1 in Python
-        # }, max_depth)
+        if isinstance(obj, six.text_type):
+            return obj.encode(encoding)
 
-    return obj
+        if isinstance(obj, datetime.datetime):
+            return to_bytes(obj.isoformat() + 'Z', encoding)
+            # XXX: maybe return datetime encoded to Lua standard? E.g.:
+
+            # tm = obj.timetuple()
+            # return python2lua(lua, {
+            #     '_jstype': 'Date',
+            #     'year': tm.tm_year,
+            #     'month': tm.tm_mon,
+            #     'day': tm.tm_mday,
+            #     'yday': tm.tm_yday,
+            #     'wday': tm.tm_wday,  # fixme: in Lua Sunday is 1, in Python Monday is 0
+            #     'hour': tm.tm_hour,
+            #     'min': tm.tm_min,
+            #     'sec': tm.tm_sec,
+            #     'isdst': tm.tm_isdst,  # fixme: isdst can be -1 in Python
+            # }, max_depth)
+
+        return obj
+
+    return p2l(obj, depth=max_depth)
+
 
 
 _SYNTAX_ERROR_RE = re.compile(r'^error loading code: (\[string ".*?"\]):(\d+):\s+(.+)$')
