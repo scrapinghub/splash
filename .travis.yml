@@ -107,11 +107,13 @@ before_install:
                 pyOpenSSL \
                 service_identity \
                 idna \
-                lupa \
+                cython \
                 Pillow \
                 jupyter_kernel_test \
                 ipython[notebook] \
                 nose; \
+            pip install -UI --install-option="--with-cython" \
+                https://github.com/kmike/lupa/archive/devel.zip#egg=lupa; \
         else \
             sudo apt-get install -y python-twisted python-imaging; \
         fi

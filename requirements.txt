@@ -9,5 +9,6 @@ xvfbwrapper
 Pillow
 
 # for scripting support
-lupa >= 1.2
+cython
+https://github.com/kmike/lupa/archive/devel.zip#egg=lupa --install-option="--with-cython"
 funcparserlib >= 0.3.6
