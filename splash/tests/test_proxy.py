@@ -3,11 +3,14 @@ from __future__ import absolute_import
 import os
 import shutil
 import unittest
+
 import requests
+
 from splash.proxy import (
-        _BlackWhiteSplashProxyFactory,
-        ProfilesSplashProxyFactory,
-        DirectSplashProxyFactory)
+    _BlackWhiteSplashProxyFactory,
+    ProfilesSplashProxyFactory,
+    DirectSplashProxyFactory
+)
 from splash.qtutils import PROXY_TYPES
 from splash.render_options import BadOption
 from splash.tests.test_render import BaseRenderTest

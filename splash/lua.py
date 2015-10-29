@@ -5,11 +5,13 @@ import re
 import functools
 import datetime
 
+from splash.utils import to_bytes, to_unicode
 from twisted.python import log
 try:
     import lupa
 except ImportError:
     lupa = None
+import six
 
 from splash.exceptions import ScriptError
 
@@ -52,7 +54,7 @@ def get_shared_runtime():
 def get_version():
     """ Return Lua version """
     lua = get_shared_runtime()
-    return lua.globals()["_VERSION"]
+    return lua.eval("_VERSION").decode('latin1')
 
 
 def get_new_runtime(**kwargs):
@@ -80,7 +82,7 @@ def get_main_sandboxed(lua, script):
     from a ``script``.
     """
     env = run_in_sandbox(lua, script)
-    main = env["main"]
+    main = env[b"main"]
     _check_main(main)
     return main, env
 
@@ -96,7 +98,7 @@ def run_in_sandbox(lua, script):
     See ``splash/lua_modules/sandbox.lua``.
     """
     sandbox = lua.eval("require('sandbox')")
-    result = sandbox.run(script)
+    result = sandbox.run(to_bytes(script))
     if result is not True:
         ok, res = result
         raise lupa.LuaError(res)
@@ -112,8 +114,8 @@ def _get_entrypoint(lua, script):
     >>> main()
     55
     """
-    lua.execute(script)
-    return lua.globals()["main"]
+    lua.execute(to_bytes(script))
+    return lua.eval("main")
 
 
 def _check_main(main):
@@ -148,7 +150,7 @@ def lua2python(lua, obj, encoding='utf-8', strict=True, max_depth=100, sparse_li
         if isinstance(obj, dict):
             return {
                 l2p(key, depth-1): l2p(value, depth-1)
-                for key, value in obj.iteritems()
+                for key, value in six.iteritems(obj)
             }
 
         if isinstance(obj, list):
@@ -200,17 +202,17 @@ def _mark_table_as_array(lua, tbl):
     # XXX: the same function is available in Lua as treat.as_array.
     # XXX: if we want to add to a metatable instead of replacing it,
     # we must make sure metatable is not shared with other tables.
-    mt = lua.table(__metatable="array")
+    mt = lua.table_from({b'__metatable': b'array'})
     lua.eval("setmetatable")(tbl, mt)
     return tbl
 
 
 def _table_is_array(lua, tbl):
     mt = lua.eval("getmetatable")(tbl)
-    return mt == "array"
+    return mt == b"array"
 
 
-def python2lua(lua, obj, max_depth=100, encoding='utf8'):
+def python2lua(lua, obj, max_depth=100, encoding='utf8', keep_tuples=True):
     """
     Recursively convert Python object to a Lua data structure.
     Parts that can't be converted to Lua types are passed as-is.
@@ -219,41 +221,49 @@ def python2lua(lua, obj, max_depth=100, encoding='utf8'):
     are passed as "capsules" which Lua code can send back to Python as-is, but
     can't access otherwise.
     """
-    if max_depth <= 0:
-        raise ValueError("Can't convert Python object to Lua: depth limit is reached")
 
-    if isinstance(obj, dict):
-        return lua.table_from({
-            python2lua(lua, key, max_depth-1): python2lua(lua, value, max_depth-1)
-            for key, value in obj.iteritems()
-        })
+    def p2l(obj, depth):
+        if depth <= 0:
+            raise ValueError("Can't convert Python object to Lua: depth limit is reached")
 
-    if isinstance(obj, list):
-        tbl = lua.table_from([python2lua(lua, el, max_depth-1) for el in obj])
-        return _mark_table_as_array(lua, tbl)
+        if isinstance(obj, dict):
+            return lua.table_from({
+                p2l(key, depth-1): p2l(value, depth-1)
+                for key, value in six.iteritems(obj)
+            })
 
-    if isinstance(obj, unicode):
-        return obj.encode('utf8')
+        if isinstance(obj, tuple) and keep_tuples:
+            return tuple(p2l(el, depth-1) for el in obj)
 
-    if isinstance(obj, datetime.datetime):
-        return obj.isoformat() + 'Z'
-        # XXX: maybe return datetime encoded to Lua standard? E.g.:
+        if isinstance(obj, (list, tuple)):
+            tbl = lua.table_from([p2l(el, depth-1) for el in obj])
+            return _mark_table_as_array(lua, tbl)
 
-        # tm = obj.timetuple()
-        # return python2lua(lua, {
-        #     '_jstype': 'Date',
-        #     'year': tm.tm_year,
-        #     'month': tm.tm_mon,
-        #     'day': tm.tm_mday,
-        #     'yday': tm.tm_yday,
-        #     'wday': tm.tm_wday,  # fixme: in Lua Sunday is 1, in Python Monday is 0
-        #     'hour': tm.tm_hour,
-        #     'min': tm.tm_min,
-        #     'sec': tm.tm_sec,
-        #     'isdst': tm.tm_isdst,  # fixme: isdst can be -1 in Python
-        # }, max_depth)
+        if isinstance(obj, six.text_type):
+            return obj.encode(encoding)
 
-    return obj
+        if isinstance(obj, datetime.datetime):
+            return to_bytes(obj.isoformat() + 'Z', encoding)
+            # XXX: maybe return datetime encoded to Lua standard? E.g.:
+
+            # tm = obj.timetuple()
+            # return python2lua(lua, {
+            #     '_jstype': 'Date',
+            #     'year': tm.tm_year,
+            #     'month': tm.tm_mon,
+            #     'day': tm.tm_mday,
+            #     'yday': tm.tm_yday,
+            #     'wday': tm.tm_wday,  # fixme: in Lua Sunday is 1, in Python Monday is 0
+            #     'hour': tm.tm_hour,
+            #     'min': tm.tm_min,
+            #     'sec': tm.tm_sec,
+            #     'isdst': tm.tm_isdst,  # fixme: isdst can be -1 in Python
+            # }, max_depth)
+
+        return obj
+
+    return p2l(obj, depth=max_depth)
+
 
 
 _SYNTAX_ERROR_RE = re.compile(r'^error loading code: (\[string ".*?"\]):(\d+):\s+(.+)$')
@@ -288,6 +298,7 @@ def parse_error_message(error_text):
         syntax error near 'ction'
 
     """
+    error_text = to_unicode(error_text)
     m = _LUA_ERROR_RE.match(error_text)
     if not m:
         m = _SYNTAX_ERROR_RE.match(error_text)

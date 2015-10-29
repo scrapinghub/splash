@@ -2,14 +2,16 @@
 from array import array
 import unittest
 import base64
-import urllib
 from functools import wraps
-from cStringIO import StringIO
+from io import BytesIO
 
 import pytest
 import requests
 from PIL import Image, ImageChops
+from six.moves.urllib import parse as urlparse
+
 from splash import defaults
+from splash.qtutils import qt_551_plus
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 
@@ -95,7 +97,7 @@ class BaseRenderTest(unittest.TestCase):
         return self._get_handler().post(query, endpoint, payload, headers, **kwargs)
 
     def assertStatusCode(self, response, code):
-        msg = (response.status_code, truncated(response.content, 1000))
+        msg = (response.status_code, truncated(response.text, 1000))
         self.assertEqual(response.status_code, code, msg)
 
     def assertJsonError(self, response, code, error_type=None):
@@ -109,7 +111,7 @@ class BaseRenderTest(unittest.TestCase):
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         self.assertEqual(img.format, "PNG")
         if width is not None:
             self.assertEqual(img.size[0], width)
@@ -120,7 +122,7 @@ class BaseRenderTest(unittest.TestCase):
     def assertJpeg(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/jpeg")
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         self.assertEqual(img.format, "JPEG")
         if width is not None:
             self.assertEqual(img.size[0], width)
@@ -129,13 +131,13 @@ class BaseRenderTest(unittest.TestCase):
         return img
 
     def assertPixelColor(self, response, x, y, color):
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         self.assertEqual(color, img.getpixel((x, y)))
 
     COLOR_NAMES = ('red', 'green', 'blue', 'alpha')
 
     def assertBoxColor(self, response, box, etalon):
-        img = Image.open(StringIO(response.content))
+        img = Image.open(BytesIO(response.content))
         if img.format == 'PNG':
             assert len(etalon) == 4  # RGBA components
         elif img.format == 'JPEG':
@@ -206,6 +208,10 @@ class Base(object):
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
 
+        @pytest.mark.skipif(
+            not qt_551_plus(),
+            reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
+        )
         def test_resource_timeout(self):
             resp = self.request({
                 'url': self.mockurl("show-image?n=10"),
@@ -214,6 +220,10 @@ class Base(object):
             })
             self.assertStatusCode(resp, 200)
 
+        @pytest.mark.skipif(
+            not qt_551_plus(),
+            reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
+        )
         def test_resource_timeout_abort_first(self):
             resp = self.request({
                 'url': self.mockurl("slow.gif?n=3"),
@@ -272,13 +282,13 @@ class RenderHtmlTest(Base.RenderTest):
         self.assertIn('300x400', r.text)
 
     def test_nonascii_url(self):
-        nonascii_value =  u'тест'.encode('utf8')
+        nonascii_value =  u'тест'
         url = self.mockurl('getrequest') + '?param=' + nonascii_value
         r = self.request({'url': url})
         self.assertStatusCode(r, 200)
         self.assertTrue(
-            repr(nonascii_value) in r.text or  # direct request
-            urllib.quote(nonascii_value) in r.text,  # request in proxy mode
+            repr(nonascii_value.encode('utf-8')) in r.text or  # direct request
+            urlparse.quote(nonascii_value.encode('utf-8')) in r.text,  # request in proxy mode
             r.text
         )
 
@@ -332,14 +342,14 @@ class RenderHtmlTest(Base.RenderTest):
     def assertCookiesPreserved(self, use_js):
         use_js = "true" if use_js else ""
         get_cookie_url = self.mockurl("get-cookie?key=foo")
-        q = urllib.urlencode({
+        q = urlparse.urlencode({
             "key": "foo",
             "value": "bar",
             "next": get_cookie_url,
             "use_js": use_js,
         })
         url = self.mockurl("set-cookie?%s" % q)
-        resp = self.request({"url": url, "wait": 0.2})
+        resp = self.request({"url": url, "wait": "0.2"})
         self.assertStatusCode(resp, 200)
         self.assertIn("bar", resp.text)
 
@@ -398,9 +408,9 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1})
         self.assertStatusCode(r, 400)
 
-        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': '0.1'})
         self.assertStatusCode(r, 200)
-        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': '0.1'})
         self.assertStatusCode(r, 200)
 
     def test_viewport_invalid(self):
@@ -413,17 +423,20 @@ class RenderPngTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full(self):
-        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all(self):
-        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
-                          'render_all': 1, 'wait': 0.1})
+                          'render_all': 1, 'wait': '0.1'})
         self.assertPng(r, width=2000, height=2000)
 
     def test_images_enabled(self):
@@ -434,9 +447,10 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255, 255, 255, 255))
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
-                          'render_all': 1, 'wait': '0.01'})
+                          'render_all': 1, 'wait': '0.01', 'viewport': '50x1024'})
         self.assertPng(r, height=60000)  # hardcoded in the html
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFF, 0x77, 0xFF))
 
@@ -614,9 +628,10 @@ class RenderJsonTest(Base.RenderTest):
         self.assertSamePng(self.mockurl("jsrender"),
                            {'vwidth': 100})
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_png_size_viewport(self):
-        self.assertSamePng(self.mockurl("jsrender"), {'wait': 0.1, 'viewport': 'full'})
-        self.assertSamePng(self.mockurl("tall"), {'wait': 0.1, 'viewport': 'full'})
+        self.assertSamePng(self.mockurl("jsrender"), {'wait': '0.1', 'viewport': 'full'})
+        self.assertSamePng(self.mockurl("tall"), {'wait': '0.1', 'viewport': 'full'})
 
     def test_png_images(self):
         self.assertSamePng(self.mockurl("show-image"), {"viewport": "100x100"})
@@ -696,7 +711,7 @@ class RenderJsonTest(Base.RenderTest):
         # override parent's test to make it aware of render.json endpoint
         r1 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
         r2 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
-        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': 0.2, 'html': 1})
+        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': '0.2', 'html': 1})
         self.assertStatusCode(r1, 200)
         self.assertStatusCode(r2, 200)
         self.assertStatusCode(r3, 200)
@@ -735,7 +750,7 @@ class RenderJsonTest(Base.RenderTest):
         defaults.update(params or {})
         r1, r2 = self._do_same_requests(url, defaults, 'png')
         png_json = r1.json()['png']
-        assert b'\n' not in png_json
+        assert '\n' not in png_json
         png1 = base64.b64decode(png_json)
         png2 = r2.content
         self.assertEqual(png1, png2)
@@ -772,13 +787,13 @@ class RenderJsonHistoryTest(BaseRenderTest):
         )
 
         self.assertHistoryUrls(
-            {'url': self.mockurl('jsredirect'), 'wait': 0.2},
+            {'url': self.mockurl('jsredirect'), 'wait': '0.2'},
             [('jsredirect', 200), ('jsredirect-target', 200)]
         )
 
     def test_history_metaredirect(self):
         self.assertHistoryUrls(
-            {'url': self.mockurl('meta-redirect0'), 'wait': 0.2},
+            {'url': self.mockurl('meta-redirect0'), 'wait': '0.2'},
             [('meta-redirect0', 200), ('meta-redirect-target/', 200)]
         )
 
@@ -795,7 +810,6 @@ class RenderJsonHistoryTest(BaseRenderTest):
         for code in [404, 403, 400, 500, 503]:
             url = self.mockurl('getrequest') + '?code=%d' % code
             self.assertHistoryUrls({'url': url}, [(url, code)], full_urls=True)
-
 
     def assertHistoryUrls(self, query, urls_and_codes, full_urls=False):
         query['history'] = 1
@@ -826,8 +840,8 @@ class IframesRenderTest(BaseRenderTest):
         self.assertIframesText('IFRAME_2_OK')
 
     def test_delayed_js_iframes(self):
-        self.assertNoIframesText('IFRAME_3_OK', {'wait': 0.0})
-        self.assertIframesText('IFRAME_3_OK', {'wait': 0.5})
+        self.assertNoIframesText('IFRAME_3_OK', {'wait': '0.0'})
+        self.assertIframesText('IFRAME_3_OK', {'wait': '0.5'})
 
     def test_onload_iframes(self):
         self.assertIframesText('IFRAME_4_OK')
@@ -996,16 +1010,17 @@ class RenderJpegTest(Base.RenderTest):
                 r = self.request({"url": url, arg: val})
                 self.assertStatusCode(r, 400)
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full_wait(self):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
         self.assertStatusCode(r, 400)
         r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1})
         self.assertStatusCode(r, 400)
 
-        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full', 'wait': '0.1'})
         self.assertStatusCode(r, 200)
         self.assertJpeg(r)
-        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': 0.1})
+        r = self.request({'url': self.mockurl("jsrender"), 'render_all': 1, 'wait': '0.1'})
         self.assertStatusCode(r, 200)
         self.assertJpeg(r)
 
@@ -1019,17 +1034,20 @@ class RenderJpegTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full(self):
-        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all(self):
-        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': 0.1})
+        r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
-                          'render_all': 1, 'wait': 0.1})
+                          'render_all': 1, 'wait': '0.1'})
         self.assertJpeg(r, width=2000, height=2000)
 
     def test_images_enabled(self):
@@ -1040,9 +1058,10 @@ class RenderJpegTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255, 255, 255))
 
+    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
-                          'render_all': 1, 'wait': '0.01', 'quality': '100'})
+                          'render_all': 1, 'wait': '0.01', 'viewport': '50x1024', 'quality': '100'})
         self.assertJpeg(r, height=60000)  # hardcoded in the html
         # XXX: JPEG some quality? why 0xFE and not 0xFF?
         self.assertPixelColor(r, 0, 59999, (0x00, 0xFE, 0x77))

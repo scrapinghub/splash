@@ -1,30 +1,51 @@
 language: python
-
-python:
-    - 2.7
+sudo: required
+dist: trusty
 
 branches:
     only:
         - master
+        - /^\d\.\d+$/
 
-env:
-    matrix:
-        - SYSTEM_PACKAGES=false
-        - SYSTEM_PACKAGES=true
+matrix:
+    include:
+        - python: "2.7"
+          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
+        - python: "3.4"
+          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
 
-virtualenv:
-    system_site_packages: true
 
 before_install:
-    - sudo apt-get install python-twisted python-qt4 lua5.2-dev zlib1g-dev python-imaging
-    - pip install -U qt4reactor psutil requests jsonschema strict-rfc3339 xvfbwrapper pytest funcparserlib pytest-cov codecov
-    - "if [[ $SYSTEM_PACKAGES == 'false' ]]; then pip install -UI Pillow twisted service_identity lupa jupyter_kernel_test nose ipython[notebook]; fi"
+    # install common packages
+    - sudo bash -x dockerfiles/splash/provision.sh prepare_install
+    - sudo apt-get install -y liblua5.2-dev zlib1g-dev libssl-dev python-openssl
+
+    # install QT5
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_builddeps
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_deps
+
+    # instal PyQT5
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_pyqt5
+
+    # install Python packages
+    - sudo chmod -R 777 $VIRTUAL_ENV
+    - bash -x dockerfiles/splash/provision.sh install_python_deps
+
+    # install Python packages required for tests
+    - pip install -r requirements-dev.txt
+    - pip install -U pytest-cov coverage codecov pytest-xdist
 
 install:
-    - python setup.py install
+    # install Splash
+    - pip install .
 
 script:
-    - py.test --cov=splash --doctest-modules splash
+    - py.test --version
+    - py.test --cov=splash --doctest-modules -n $SPLASH_BUILD_PARALLEL_JOBS --duration=50 splash
 
 after_success:
     - codecov
+
+cache:
+    directories:
+        - $HOME/.cache/pip

@@ -10,6 +10,7 @@ from collections import namedtuple
 from funcparserlib import parser as p
 
 # ===================== Helper data structures ==============================
+from splash.utils import to_bytes
 
 Token = namedtuple("Token", "type value")
 
@@ -288,6 +289,7 @@ lua_parser = (
 
 class LuaLexer(object):
     def __init__(self, lua):
+        self.lua = lua
         self._completer = lua.eval("require('completer')")
 
     def tokenize(self, lua_source, pad=1):
@@ -296,9 +298,17 @@ class LuaLexer(object):
         # This is not optimal, but Lua doesn't allow unicode identifiers,
         # so non-ascii text usually is not interesting for the completion
         # engine.
-        lua_source = lua_source.encode('ascii', 'replace')
+        lua_source = to_bytes(lua_source, 'ascii', 'replace')
         res = self._completer.tokenize(lua_source)
-        return [Token("NA", "")]*pad + [Token(t["tp"], t["value"]) for t in res.values()]
+        padding = [Token("NA", "")] * pad
+        tokens = [
+            Token(
+                self.lua.lua2python(t[b"tp"], encoding='utf8'),
+                self.lua.lua2python(t[b"value"], encoding='utf8'),
+            )
+            for t in res.values()
+        ]
+        return padding + tokens
 
 
 class LuaParser(object):

@@ -5,7 +5,7 @@ Autocompleter for Lua code.
 from __future__ import absolute_import
 import string
 
-from splash.utils import dedupe
+from splash.utils import dedupe, to_unicode
 from splash.kernel.lua_parser import (
     LuaParser,
     Standalone,
@@ -68,7 +68,7 @@ class Completer(object):
             return NO_SUGGESTIONS
 
         elif hasattr(m, 'names_chain'):
-            names_chain = self.lua.table_from(m.names_chain)
+            names_chain = self.lua.python2lua(m.names_chain, encoding='utf8')
 
             if isinstance(m, ObjectAttribute):
                 matches += self.complete_any_attribute(names_chain, m.prefix)
@@ -104,26 +104,27 @@ class Completer(object):
 
     def complete_any_attribute(self, names_chain, prefix=""):
         attrs = self.completer.attrs(names_chain, False, False)
-        return sorted_with_prefix(prefix, attrs.values())
+        return sorted_with_prefix(prefix, to_unicode_all(attrs.values()))
 
     def complete_non_method(self, names_chain, prefix=""):
         attrs = self.completer.attrs(names_chain, True, False)
-        return sorted_with_prefix(prefix, attrs.values())
+        return sorted_with_prefix(prefix, to_unicode_all(attrs.values()))
 
     def complete_method(self, names_chain, prefix=""):
         methods = self.completer.attrs(names_chain, False, True)
-        return sorted_with_prefix(prefix, methods.values())
+        return sorted_with_prefix(prefix, to_unicode_all(methods.values()))
 
     def complete_obj_method(self, value, prefix=""):
+        value = self.lua.python2lua(value, encoding='utf8')
         methods = self.completer.obj_attrs(value, False, True)
-        return sorted_with_prefix(prefix, methods.values())
+        return sorted_with_prefix(prefix, to_unicode_all(methods.values()))
 
     def complete_keyword(self, prefix):
         return sorted_with_prefix(prefix, LUA_KEYWORDS)
 
     def complete_global_variable(self, prefix):
         g = self.lua.globals()
-        return sorted_with_prefix(prefix, g.keys())
+        return sorted_with_prefix(prefix, to_unicode_all(g.keys()))
 
     def complete_local_identifier(self, code, prefix):
         return sorted_with_prefix(prefix, self._local_identifiers(code))
@@ -152,6 +153,10 @@ def sorted_with_prefix(prefix, it, drop_exact=True, drop_special=True):
         if el.startswith(prefix) and (not drop_exact or el != prefix)
            and (not drop_special or not el.startswith("__"))
     ], key=key)
+
+
+def to_unicode_all(it):
+    return [to_unicode(el) for el in it]
 
 
 # XXX: how to print debug messages in IPython kernels???
