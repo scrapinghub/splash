@@ -1,5 +1,5 @@
 # the following libraries are only required by tests
-pytest
+pytest >= 2.8.2
 pyOpenSSL
 cryptography
 requests >= 1.0
