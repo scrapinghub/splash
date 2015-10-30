@@ -142,7 +142,7 @@ install_python_deps () {
         funcparserlib==0.3.6 \
         Pillow==2.9.0 \
         cython==0.23.4 && \
-    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/kmike/lupa/archive/devel.zip#egg=lupa && \
+    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/kmike/lupa/archive/c8903c49e8b4b1ebb0e0f6637cc1ed375f742008.zip#egg=lupa && \
     ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
 }
 
