@@ -59,8 +59,8 @@ def cookies2har(cookies):
 def cookie2har(cookie):
     """ Convert QNetworkCookie to a Python dict (in HAR format) """
     cookie = {
-        "name": bytes(cookie.name()),
-        "value": bytes(cookie.value()),
+        "name": bytes(cookie.name()).decode('utf8', 'replace'),
+        "value": bytes(cookie.value()).decode('utf8', 'replace'),
         "path": six.text_type(cookie.path()),
         "domain": six.text_type(cookie.domain()),
         "expires": six.text_type(cookie.expirationDate().toString(Qt.ISODate)),

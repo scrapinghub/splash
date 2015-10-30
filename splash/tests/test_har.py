@@ -224,6 +224,20 @@ class HarRenderTest(BaseHarRenderTest):
         self.assertEqual(len(pages[0]), 2)
         self.assertEqual(pages[0][1]["response"]["statusText"], "invalid_hostname")
 
+    def test_cookies(self):
+        data = self.assertValidHar(self.mockurl("set-cookie?key=foo&value=bar"))
+        entry = data['log']['entries'][0]
+        self.assertEqual(entry['response']['cookies'], [
+            {
+                'path': '',
+                'name': 'foo',
+                'httpOnly': False,
+                'domain': '',
+                'value': 'bar',
+                'secure': False
+             }
+        ])
+
 
 class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):
 
