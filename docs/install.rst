@@ -48,27 +48,8 @@ OS X + Docker
 Ubuntu 14.04 (manual way)
 -------------------------
 
-1. Install system dependencies::
-
-       $ sudo add-apt-repository -y ppa:pi-rho/security
-       $ sudo apt-add-repository -y ppa:beineri/opt-qt541-trusty
-       $ sudo apt-get update
-       $ sudo apt-get install libre2-dev
-       $ sudo apt-get install netbase ca-certificates liblua5.2-dev \
-                              python3 python3-dev build-essential libicu52 \
-                              xvfb qt54base qt54declarative qt54webkit \
-                              python3-pyqt5 python3-pyqt5.qtwebkit python3-pip \
-                              zlib1g-dev
-       # Install more recent version of sip.
-       $ curl -L -o sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-4.16.7/sip-4.16.7.tar.gz && \
-       $ echo '32abc003980599d33ffd789734de4c36  sip.tar.gz' | md5sum -c - \
-       $ tar xzf sip.tar.gz && \
-       $ pushd sip-4.16.7 && \
-       $ python3 configure.py && \
-       $ make && \
-       $ make install && \
-       $ popd && \
-       $ rm -rf sip-4.16.7 sip.tar.gz
+1. Install system dependencies (check
+`provision.sh <https://github.com/scrapinghub/splash/blob/master/dockerfiles/splash/provision.sh>`)
 
 2. Clone the repo from Github::
 
@@ -91,8 +72,8 @@ IPv4 addresses. To change the port use ``--port`` option::
 
     python -m splash.server --port=5000
 
-Requirements
-~~~~~~~~~~~~
+Required Python packages
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. literalinclude:: ../requirements.txt
 
@@ -104,7 +85,7 @@ Splash Versions
 ``docker pull scrapinghub/splash`` will give you the latest stable Splash
 release. To obtain the latest development version use
 ``docker pull scrapinghub/splash:master``. Specific Splash versions
-are also available, e.g. ``docker pull scrapinghub/splash:1.5``.
+are also available, e.g. ``docker pull scrapinghub/splash:1.8``.
 
 Customizing Dockerized Splash
 -----------------------------

@@ -157,12 +157,12 @@ there is Splash ``--maxrss`` option for that. You can also add Docker
 
 In production it is a good idea to pin Splash version - instead of
 ``scrapinghub/splash`` it is usually better to use something like
-``scrapinghub/splash:1.7``.
+``scrapinghub/splash:2.0``.
 
 A command for starting a long-running Splash server which uses
 up to 4GB RAM and daemonizes & restarts itself could look like this::
 
-    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:1.6 --maxrss 4000
+    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:2.0 --maxrss 4000
 
 You also need a load balancer; for example configs check Aquarium_ or
 an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.
