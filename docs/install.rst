@@ -45,20 +45,20 @@ OS X + Docker
 
 .. _manual-install-ubuntu:
 
-Ubuntu 12.04 (manual way)
+Ubuntu 14.04 (manual way)
 -------------------------
 
-1. Install system dependencies::
+1. Install system dependencies (check
+`provision.sh <https://github.com/scrapinghub/splash/blob/master/dockerfiles/splash/provision.sh>`)
 
-       $ sudo add-apt-repository -y ppa:pi-rho/security
-       $ sudo apt-get update
-       $ sudo apt-get install libre2-dev
-       $ sudo apt-get install netbase ca-certificates liblua5.2-dev \
-                              python python-dev build-essential libicu48 \
-                              xvfb libqt4-webkit python-twisted python-qt4
+2. Clone the repo from Github::
 
-2. TODO: install Python dependencies using pip, clone repo, chdir to it,
-   start splash.
+        $ git clone https://github.com/scrapinghub/splash/
+
+3. Install dependencies with pip::
+
+        $ cd splash
+        $ pip3 install -r requirements.txt
 
 
 To run the server execute the following command::
@@ -72,8 +72,8 @@ IPv4 addresses. To change the port use ``--port`` option::
 
     python -m splash.server --port=5000
 
-Requirements
-~~~~~~~~~~~~
+Required Python packages
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. literalinclude:: ../requirements.txt
 
@@ -85,7 +85,7 @@ Splash Versions
 ``docker pull scrapinghub/splash`` will give you the latest stable Splash
 release. To obtain the latest development version use
 ``docker pull scrapinghub/splash:master``. Specific Splash versions
-are also available, e.g. ``docker pull scrapinghub/splash:1.5``.
+are also available, e.g. ``docker pull scrapinghub/splash:1.8``.
 
 Customizing Dockerized Splash
 -----------------------------

@@ -5,7 +5,7 @@ various conditions. They should be used with
 :class:`splash.network_manager.SplashQNetworkAccessManager`.
 """
 from __future__ import absolute_import
-from PyQt4.QtNetwork import QNetworkRequest
+from PyQt5.QtNetwork import QNetworkRequest
 from splash.qtutils import request_repr
 from twisted.python import log
 import fnmatch
@@ -52,10 +52,10 @@ class ContentTypeMiddleware(object):
 
     def process(self, reply, render_options):
         content_type = reply.header(QNetworkRequest.ContentTypeHeader)
-        if not content_type.isValid():
+        if content_type is None:
             return
 
-        mimetype = self.clean_mime(str(content_type.toString()))
+        mimetype = self.clean_mime(content_type)
         allowed = render_options.get_allowed_content_types()
         forbidden = render_options.get_forbidden_content_types()
         whitelist = set(map(ContentTypeMiddleware.clean_mime, allowed))

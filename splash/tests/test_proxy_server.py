@@ -1,8 +1,11 @@
-import urlparse
+import unittest
 import json
 
 import requests
 import pytest
+
+from six.moves.urllib import parse as urlparse
+import six
 
 from splash.tests import test_render, test_redirects, test_request_filters
 
@@ -164,6 +167,14 @@ class ProxyPostTest(test_render.BaseRenderTest):
     request_handler = ProxyRequestHandler
     use_gzip = False
 
+    def assertEitherIn(self, member1, member2, container, msg=None):
+        """Test if any of member1 or member2 are present in container."""
+        if (member1 not in container) and (member2 not in container):
+            std_msg = 'Neither %s nor %s found in %s' % (repr(member1),
+                                                         repr(member2),
+                                                         repr(container))
+            self.fail(self._formatMessage(msg, std_msg))
+
     def test_post_request(self):
         r = self.post({"url": self.mockurl("postrequest")})
         self.assertStatusCode(r, 200)
@@ -178,8 +189,13 @@ class ProxyPostTest(test_render.BaseRenderTest):
         }
         r = self.post({"url": self.mockurl("postrequest")}, headers=headers)
         self.assertStatusCode(r, 200)
-        self.assertIn("'x-custom-header1': 'some-val1'", r.text)
-        self.assertIn("'custom-header2': 'some-val2'", r.text)
+
+        if six.PY3:
+            self.assertIn("b'x-custom-header1': b'some-val1'", r.text)
+            self.assertIn("b'custom-header2': b'some-val2'", r.text)
+        else:
+            self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+            self.assertIn("'custom-header2': 'some-val2'", r.text)
 
         # X-Splash headers should be removed
         self.assertNotIn("x-splash", r.text.lower())
@@ -211,8 +227,8 @@ class ProxyPostTest(test_render.BaseRenderTest):
             headers=headers
         )
         self.assertStatusCode(r, 200)
-        self.assertIn("'x-custom-header1': 'some-val1'", r.text)
-        self.assertIn("'custom-header2': 'some-val2'", r.text)
+        self.assertIn("u'x-custom-header1': u'some-val1'", r.text)
+        self.assertIn("u'custom-header2': u'some-val2'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
 
     def test_post_user_agent(self):
@@ -221,7 +237,10 @@ class ProxyPostTest(test_render.BaseRenderTest):
         })
         self.assertStatusCode(r, 200)
         self.assertNotIn("x-splash", r.text.lower())
-        self.assertIn("'user-agent': 'Mozilla'", r.text)
+        if six.PY3:
+            self.assertIn("b'user-agent': b'Mozilla'", r.text)
+        else:
+            self.assertIn("'user-agent': 'Mozilla'", r.text)
 
     def test_post_payload(self):
         # simply post body
@@ -236,7 +255,9 @@ class ProxyPostTest(test_render.BaseRenderTest):
                    'form_field2': 'value2', }
         r = self.post({"url": self.mockurl("postrequest")}, payload=payload)
         self.assertStatusCode(r, 200)
-        self.assertIn('form_field2=value2&amp;form_field1=value1', r.text)
+        self.assertEitherIn('form_field2=value2&amp;form_field1=value1',
+                            'form_field1=value1&amp;form_field2=value2',
+                            r.text)
 
 
 class GzipProxyPostTest(ProxyPostTest):
@@ -257,9 +278,14 @@ class ProxyGetTest(test_render.BaseRenderTest):
         }
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertStatusCode(r, 200)
-        self.assertIn("'x-custom-header1': 'some-val1'", r.text)
-        self.assertIn("'custom-header2': 'some-val2'", r.text)
-        self.assertIn("'user-agent': 'Mozilla'", r.text)
+        if six.PY3:
+            self.assertIn("b'x-custom-header1': b'some-val1'", r.text)
+            self.assertIn("b'custom-header2': b'some-val2'", r.text)
+            self.assertIn("b'user-agent': b'Mozilla'", r.text)
+        else:
+            self.assertIn("'x-custom-header1': 'some-val1'", r.text)
+            self.assertIn("'custom-header2': 'some-val2'", r.text)
+            self.assertIn("'user-agent': 'Mozilla'", r.text)
 
         # X-Splash headers should be removed
         self.assertNotIn("x-splash", r.text.lower())
@@ -273,7 +299,10 @@ class ProxyGetTest(test_render.BaseRenderTest):
         headers = {'User-Agent': 'Mozilla123'}
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertStatusCode(r, 200)
-        self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        if six.PY3:
+            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
+        else:
+            self.assertIn("'user-agent': 'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
         headers = {
@@ -282,7 +311,10 @@ class ProxyGetTest(test_render.BaseRenderTest):
         }
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertStatusCode(r, 200)
-        self.assertNotIn("'user-agent': 'Mozilla123'", r.text)
+        if six.PY3:
+            self.assertNotIn("'user-agent': 'Mozilla123'", r.text)
+        else:
+            self.assertNotIn("u'user-agent': u'Mozilla123'", r.text)
         self.assertNotIn("mozilla123", r.text.lower())
 
 
@@ -300,9 +332,14 @@ class NoProxyGetTest(test_render.BaseRenderTest):
         }
         r = self.request({"url": self.mockurl("getrequest")}, headers=headers)
         self.assertStatusCode(r, 200)
-        self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
-        self.assertNotIn("'custom-header2': 'some-val2'", r.text)
-        self.assertNotIn("'user-agent': 'Mozilla'", r.text)
+        if six.PY3:
+            self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
+            self.assertNotIn("'custom-header2': 'some-val2'", r.text)
+            self.assertNotIn("'user-agent': 'Mozilla'", r.text)
+        else:
+            self.assertNotIn("u'x-custom-header1': u'some-val1'", r.text)
+            self.assertNotIn("u'custom-header2': u'some-val2'", r.text)
+            self.assertNotIn("u'user-agent': u'Mozilla'", r.text)
         self.assertNotIn("x-splash", r.text)
 
 
@@ -316,10 +353,15 @@ class NoProxyPostTest(test_render.BaseRenderTest):
         }
         r = self.post({"url": self.mockurl("postrequest")}, headers=headers)
         self.assertStatusCode(r, 200)
-        self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
-        self.assertNotIn("'custom-header2': 'some-val2'", r.text)
+        if six.PY3:
+            self.assertNotIn("'x-custom-header1': 'some-val1'", r.text)
+            self.assertNotIn("'custom-header2': 'some-val2'", r.text)
+            self.assertNotIn("'content-type': 'application/javascript'", r.text)
+        else:
+            self.assertNotIn("u'x-custom-header1': u'some-val1'", r.text)
+            self.assertNotIn("u'custom-header2': u'some-val2'", r.text)
+            self.assertNotIn("u'content-type': u'application/javascript'", r.text)
         self.assertNotIn("x-splash", r.text.lower())
-        self.assertNotIn("'content-type': 'application/javascript'", r.text)
 
     def test_post_user_agent(self):
         r = self.post({"url": self.mockurl("postrequest")}, headers={
@@ -328,8 +370,12 @@ class NoProxyPostTest(test_render.BaseRenderTest):
         })
         self.assertStatusCode(r, 200)
         self.assertNotIn("x-splash", r.text.lower())
-        self.assertNotIn("'user-agent': 'Mozilla'", r.text)
-        self.assertNotIn("'content-type': 'application/javascript'", r.text)
+        if six.PY3:
+            self.assertNotIn("'user-agent': 'Mozilla'", r.text)
+            self.assertNotIn("'content-type': 'application/javascript'", r.text)
+        else:
+            self.assertNotIn("u'user-agent': u'Mozilla'", r.text)
+            self.assertNotIn("u'content-type': u'application/javascript'", r.text)
 
 
 class FiltersHTMLProxyTest(test_request_filters.FiltersTestHTML):

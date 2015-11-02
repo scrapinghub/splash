@@ -31,7 +31,7 @@ class ContentTypeTest(BaseRenderTest):
         req_headers = {'content-type': 'application/json'}
         response = self.post(query,
             endpoint=self.endpoint,
-            payload=json.dumps(query, encoding='utf8'),
+            payload=json.dumps(query),
             headers=req_headers
         ).json()['script']
         return json.loads(response)

@@ -3,14 +3,16 @@ from __future__ import absolute_import
 import re
 import base64
 import unittest
-from cStringIO import StringIO
+from io import BytesIO
 import numbers
 import time
 
 from PIL import Image
 import requests
+import six
 import pytest
 from splash.exceptions import ScriptError
+from splash.qtutils import qt_551_plus
 
 lupa = pytest.importorskip("lupa")
 
@@ -74,7 +76,7 @@ class MainFunctionTest(BaseLuaRenderTest):
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
-        """.encode('utf8'))
+        """)
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
@@ -85,7 +87,7 @@ class MainFunctionTest(BaseLuaRenderTest):
         function main(splash)
           return 'привет'
         end
-        """.encode('utf8'))
+        """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, u"привет")
         self.assertEqual(resp.headers['content-type'], 'text/plain; charset=utf-8')
@@ -143,125 +145,6 @@ class MainFunctionTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.BAD_MAIN_ERROR,
                                message="is not a function")
-
-
-class SplashGoTest(BaseLuaRenderTest):
-    def test_splash_go_POST(self):
-        resp = self.request_lua("""
-        function main(splash)
-          formdata = {param1="foo", param2="bar"}
-          ok, reason = assert(splash:go{splash.args.url, http_method="POST", formdata=formdata})
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 200)
-        self.assertIn("param2=bar&amp;param1=foo", resp.text)
-        self.assertIn("application/x-www-form-urlencoded", resp.text)
-
-    def test_splash_go_body_and_invalid_method(self):
-        resp = self.request_lua("""
-        function main(splash)
-          ok, reason = splash:go{splash.args.url, http_method="GET", body="something",
-                                 baseurl="foo"}
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 400)
-        self.assertIn('GET request cannot have body', resp.text)
-
-    def test_splash_POST_json(self):
-        json_payload = '{"name": "Frank", "address": "Elmwood Avenue 112"}'
-        resp = self.request_lua("""
-            function main(splash)
-              headers = {}
-              headers["content-type"] =  "application/json"
-              ok, reason = assert(splash:go{splash.args.url, http_method="POST",
-                                     body='%s',
-                                     headers=headers})
-              return splash:html()
-            end
-        """ % json_payload, {"url": self.mockurl('postrequest')})
-
-        self.assertStatusCode(resp, 200)
-        self.assertIn("application/json", resp.text)
-        self.assertIn(json_payload, resp.text)
-
-    def test_go_POST_without_body(self):
-        resp = self.request_lua("""
-            function main(splash)
-              ok, reason = assert(splash:go{splash.args.url, http_method="POST",
-                                     headers=headers,
-                                     body=""})
-              return splash:html()
-            end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 200)
-
-    def test_splash_go_POST_baseurl(self):
-        # if baseurl is passed request is processed differently
-        # so this test can fail even if above test goes fine
-        resp = self.request_lua("""
-        function main(splash)
-          formdata = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="post",
-                                 body=form_body, baseurl="http://loc",
-                                 formdata=formdata}
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 200)
-        self.assertIn("param2=bar&amp;param1=foo", resp.text)
-        self.assertIn("application/x-www-form-urlencoded", resp.text)
-
-    def test_splash_bad_http_method(self):
-        # someone passes "BAD" as HTTP method
-        resp = self.request_lua("""
-        function main(splash)
-          form_body = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="BAD",
-                                 body=form_body, baseurl="http://loc"}
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 400)
-        self.assertIn('Unsupported HTTP method: BAD', resp.text)
-
-    def test_formdata_and_body_error(self):
-        resp = self.request_lua("""
-        function main(splash)
-          formdata = {param1="foo", param2="bar"}
-          ok, reason = splash:go{splash.args.url, http_method="POST",
-                                 body="some string", baseurl="http://loc",
-                                 formdata=formdata}
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 400)
-        self.assertIn("formdata and body cannot be passed", resp.text)
-
-    def test_formdata_in_bad_format(self):
-        resp = self.request_lua("""
-        function main(splash)
-          formdata = "alfaomega"
-          ok, reason = splash:go{splash.args.url, http_method="POST",
-                                 baseurl="http://loc",
-                                 formdata=formdata}
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 400)
-        self.assertIn("formdata argument for go() must be a Lua table", resp.text)
-
-    def test_POST_body_not_string(self):
-        resp = self.request_lua("""
-        function main(splash)
-          ok, reason = splash:go{splash.args.url, http_method="POST",
-                                 baseurl="http://loc", body={a=1}}
-          return splash:html()
-        end
-        """, {"url": self.mockurl('postrequest')})
-        self.assertStatusCode(resp, 400)
-        self.assertIn("request body must be a string", resp.text)
 
 
 class ResultContentTypeTest(BaseLuaRenderTest):
@@ -342,7 +225,7 @@ class ResultHeaderTest(BaseLuaRenderTest):
         self.assertErrorLineNumber(resp, 3)
 
     def test_unicode_headers_raise_bad_request(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             splash:set_result_header("paweł", "kiść")
             return "hi!"
@@ -368,7 +251,7 @@ class ErrorsTest(BaseLuaRenderTest):
         # versions have problems with error messages.
 
     def test_unicode_error(self):
-        resp = self.request_lua(u"function main(splash) 'привет' end".encode('utf8'))
+        resp = self.request_lua(u"function main(splash) 'привет' end")
         self.assertScriptError(resp, ScriptError.LUA_INIT_ERROR,
                                message="unexpected symbol")
 
@@ -743,27 +626,6 @@ class EvaljsTest(BaseLuaRenderTest):
             "string"
         )
 
-    def test_regexp(self):
-        self.assertEvaljsResult(
-            '/my-regexp/i',
-            {
-                u'_jstype': u'RegExp',
-                'caseSensitive': False,
-                'pattern': u'my-regexp'
-            },
-            'table'
-        )
-
-        self.assertEvaljsResult(
-            '/my-regexp/',
-            {
-                u'_jstype': u'RegExp',
-                'caseSensitive': True,
-                'pattern': u'my-regexp'
-            },
-            'table'
-        )
-
     def test_syntax_error(self):
         err = self.assertEvaljsError("x--4")
         self.assertEqual(err['info']['js_error_type'], 'SyntaxError')
@@ -875,8 +737,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
             "value": [1, 2, 'red', 'blue'],
-            "value_type": "table"}
-                         )
+            "value_type": "table",
+        })
 
     def test_return_dict(self):
         resp = self._wait_for_resume_request("""
@@ -887,8 +749,8 @@ class WaitForResumeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
             "value": {'stomach': 'empty', 'brain': 'crazy'},
-            "value_type": "table"}
-                         )
+            "value_type": "table",
+        })
 
     def test_return_additional_keys(self):
         resp = self.request_lua("""
@@ -1140,7 +1002,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        self.assertIn("error during JS function call: u'ABC'", data["res"])
+        if six.PY3:
+            self.assertIn("error during JS function call: 'ABC'", data[u"res"])
+        else:
+            self.assertIn("error during JS function call: u'ABC'", data[u"res"])
 
     def test_throw_error(self):
         resp = self.request_lua("""
@@ -1175,7 +1040,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        self.assertIn("error during JS function call: u'Error: ABC'", data["res"])
+        if six.PY3:
+            self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
+        else:
+            self.assertIn("error during JS function call: u'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
         resp = self.request_lua("""
@@ -1252,7 +1120,7 @@ class JsfuncTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json()['ok'], True)
+        self.assertEqual(resp.json()[u'ok'], True)
 
     def test_private_jsfunc_attributes(self):
         resp = self.request_lua("""                                      -- 1
@@ -1421,7 +1289,7 @@ class JsonPostUnicodeTest(BaseLuaRenderTest):
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
-        """.encode('utf8'))
+        """)
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.headers['content-type'], 'application/json')
@@ -1545,8 +1413,12 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        self.assertIn("{'foo': ['1']}", data['html_1'])
-        self.assertIn("{'bar': ['2']}", data['html_2'])
+        if six.PY3:
+            self.assertIn("{b'foo': [b'1']}", data['html_1'])
+            self.assertIn("{b'bar': [b'2']}", data['html_2'])
+        else:
+            self.assertIn("{'foo': ['1']}", data['html_1'])
+            self.assertIn("{'bar': ['2']}", data['html_2'])
 
     def test_go_404_then_good(self):
         resp = self.request_lua("""
@@ -1653,8 +1525,138 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Value 2'", data["res3"])
         self.assertNotIn("'Value 3'", data["res3"])
 
+    def test_splash_go_POST(self):
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = {param1="foo", param2="bar"}
+          ok, reason = assert(splash:go{splash.args.url, http_method="POST", formdata=formdata})
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 200)
+        self.assertTrue(
+            "param2=bar&amp;param1=foo" in resp.text or
+            "param1=foo&amp;param2=bar" in resp.text
+        , resp.text)
+        self.assertIn("application/x-www-form-urlencoded", resp.text)
+
+    def test_splash_go_body_and_invalid_method(self):
+        resp = self.request_lua("""
+        function main(splash)
+          ok, reason = splash:go{splash.args.url, http_method="GET", body="something",
+                                 baseurl="foo"}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('GET request cannot have body', resp.text)
+
+    def test_splash_POST_json(self):
+        json_payload = '{"name": "Frank", "address": "Elmwood Avenue 112"}'
+        resp = self.request_lua("""
+            function main(splash)
+              headers = {}
+              headers["content-type"] =  "application/json"
+              ok, reason = assert(splash:go{splash.args.url, http_method="POST",
+                                     body='%s',
+                                     headers=headers})
+              return splash:html()
+            end
+        """ % json_payload, {"url": self.mockurl('postrequest')})
+
+        self.assertStatusCode(resp, 200)
+        self.assertIn("application/json", resp.text)
+        self.assertIn(json_payload, resp.text)
+
+    def test_go_POST_without_body(self):
+        resp = self.request_lua("""
+            function main(splash)
+              ok, reason = assert(splash:go{splash.args.url, http_method="POST",
+                                     headers=headers,
+                                     body=""})
+              return splash:html()
+            end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 200)
+
+    def test_splash_go_POST_baseurl(self):
+        # if baseurl is passed request is processed differently
+        # so this test can fail even if above test goes fine
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="post",
+                                 body=form_body, baseurl="http://loc",
+                                 formdata=formdata}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 200)
+        self.assertTrue(
+            "param2=bar&amp;param1=foo" in resp.text or
+            "param1=foo&amp;param2=bar" in resp.text
+        , resp.text)
+        self.assertIn("application/x-www-form-urlencoded", resp.text)
+
+    def test_splash_bad_http_method(self):
+        # someone passes "BAD" as HTTP method
+        resp = self.request_lua("""
+        function main(splash)
+          form_body = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="BAD",
+                                 body=form_body, baseurl="http://loc"}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn('Unsupported HTTP method: BAD', resp.text)
+
+    def test_formdata_and_body_error(self):
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = {param1="foo", param2="bar"}
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 body="some string", baseurl="http://loc",
+                                 formdata=formdata}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("formdata and body cannot be passed", resp.text)
+
+    def test_formdata_in_bad_format(self):
+        resp = self.request_lua("""
+        function main(splash)
+          formdata = "alfaomega"
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 baseurl="http://loc",
+                                 formdata=formdata}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("formdata argument for go() must be a Lua table", resp.text)
+
+    def test_POST_body_not_string(self):
+        resp = self.request_lua("""
+        function main(splash)
+          ok, reason = splash:go{splash.args.url, http_method="POST",
+                                 baseurl="http://loc", body={a=1}}
+          return splash:html()
+        end
+        """, {"url": self.mockurl('postrequest')})
+        self.assertStatusCode(resp, 400)
+        self.assertIn("request body must be a string", resp.text)
+
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
+    if not qt_551_plus():
+        pytestmark = pytest.mark.xfail(
+            run=False,
+            reason="resource_timeout doesn't work in Qt5 < 5.5.1. "
+                   "See issue #269 for details."
+        )
+
     def test_resource_timeout_aborts_first(self):
         resp = self.request_lua("""
         function main(splash)
@@ -1778,9 +1780,14 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn("Mozilla", data["res2"])
         self.assertNotIn("Mozilla", data["res3"])
 
-        self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-        self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-        self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+        if six.PY3:
+            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
+            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
+            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
+        else:
+            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
+            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
+            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
 
     def test_error(self):
         resp = self.request_lua("""
@@ -1815,7 +1822,7 @@ class CookiesTest(BaseLuaRenderTest):
             splash:delete_cookies{url="http://example.com"}
             local c7 = splash:get_cookies()
 
-            splash:delete_cookies{url="http://localhost"}
+            splash:delete_cookies{url="http://localhost/"}
             local c8 = splash:get_cookies()
 
             splash:init_cookies(c2)
@@ -1847,7 +1854,6 @@ class CookiesTest(BaseLuaRenderTest):
             'httpOnly': False,
             'secure': False
         }
-
         self.assertEqual(data["c0"], [])
         self.assertEqual(data["c1"], [cookie1])
         self.assertEqual(data["c2"], [cookie1, cookie2])
@@ -2438,7 +2444,7 @@ class HttpGetTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertEqual(data["status"], 302)
         self.assertEqual(data["redirectURL"], "/getrequest?http_code=302")
-        self.assertIn("302 redirect to", get_response_body_bytes(data))
+        self.assertIn(b"302 redirect to", get_response_body_bytes(data))
 
     def test_noargs(self):
         resp = self.request_lua("""
@@ -2712,11 +2718,13 @@ class SetContentTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertIn("html", resp.json())
-        self.assertEqual(resp.json()["html"], "<html><head></head><body><h1>Hello</h1></body></html>")
+        self.assertEqual(resp.json(), {
+            "html": "<html><head></head><body><h1>Hello</h1></body></html>",
+            "url": "",
+        })
 
     def test_unicode(self):
-        resp = self.request_lua("""
+        resp = self.request_lua(u"""
         function main(splash)
             assert(splash:set_content("проверка"))
             return splash:html()
@@ -2741,13 +2749,13 @@ class SetContentTest(BaseLuaRenderTest):
         """
         resp = self.request_lua(script, {"base": self.mockurl("")})
         self.assertStatusCode(resp, 200)
-        img = Image.open(StringIO(resp.content))
+        img = Image.open(BytesIO(resp.content))
         self.assertEqual((0, 0, 0, 255), img.getpixel((10, 10)))
 
         # the same, but with a bad base URL
         resp = self.request_lua(script, {"base": ""})
         self.assertStatusCode(resp, 200)
-        img = Image.open(StringIO(resp.content))
+        img = Image.open(BytesIO(resp.content))
         self.assertNotEqual((0, 0, 0, 255), img.getpixel((10, 10)))
 
     def test_url(self):
@@ -2769,8 +2777,8 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         end
         """
         out = self.request_lua(func).json()
-        self.assertItemsEqual(out.keys(),
-                              ['walltime', 'cputime', 'maxrss'])
+        self.assertEqual(sorted(list(out.keys())),
+                              sorted(['walltime', 'cputime', 'maxrss']))
         self.assertIsInstance(out['cputime'], numbers.Real)
         self.assertIsInstance(out['walltime'], numbers.Real)
         self.assertIsInstance(out['maxrss'], numbers.Integral)
@@ -2866,41 +2874,57 @@ end
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(1, nil)', 'a number is required'),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('(nil, 1)', 'a number is required'),
-            ('{nil, 1}', 'a number is required'),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments'),
+            ('()', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 2 required positional arguments:*'),
+            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 2 required positional arguments:*'),
+            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('(1, nil)', 'a number is required', None),
+            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('(nil, 1)', 'a number is required', None),
+            ('{nil, 1}', 'a number is required', None),
+            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
+            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+             'set_viewport_size.* missing 1 required positional argument:*'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'a number is required'),
-            ('{100, {}}', 'a number is required'),
+            ('{100, "a"}', 'a number is required', None),
+            ('{100, {}}', 'a number is required', None),
 
-            ('{100, -1}', 'Viewport is out of range'),
-            ('{100, 0}', 'Viewport is out of range'),
-            ('{100, 99999}', 'Viewport is out of range'),
-            ('{1, -100}', 'Viewport is out of range'),
-            ('{0, 100}', 'Viewport is out of range'),
-            ('{99999, 100}', 'Viewport is out of range'),
+            ('{100, -1}', 'Viewport is out of range', None),
+            ('{100, 0}', 'Viewport is out of range', None),
+            ('{100, 99999}', 'Viewport is out of range', None),
+            ('{1, -100}', 'Viewport is out of range', None),
+            ('{0, 100}', 'Viewport is out of range', None),
+            ('{99999, 100}', 'Viewport is out of range', None),
         ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for size_str, errmsg in cases:
-            self.assertRaisesRegexp(RuntimeError, errmsg, run_test, size_str)
+        for size_str, errmsg_py2, errmsg_py3 in cases:
+            if not errmsg_py3:
+                errmsg_py3 = errmsg_py2
+            if six.PY3:
+                self.assertRaisesRegexp(RuntimeError, errmsg_py3, run_test, size_str)
+            else:
+                self.assertRaisesRegexp(RuntimeError, errmsg_py2, run_test, size_str)
 
     def test_viewport_full(self):
         w = int(defaults.VIEWPORT_SIZE.split('x')[0])
@@ -2942,7 +2966,7 @@ end
         self.assertEqual(out['before'], [w, h])
         self.assertEqual(out['after'], [w, h])
         # 2000px is hardcoded in that html
-        img = Image.open(StringIO(base64.b64decode(out['png'])))
+        img = Image.open(BytesIO(base64.b64decode(out['png'])))
         self.assertEqual(img.size, (w, 2000))
 
     def test_set_viewport_size_changes_contents_size_immediately(self):

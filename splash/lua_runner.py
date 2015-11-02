@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import abc
 import itertools
+import six
 
 import lupa
 
@@ -33,11 +34,10 @@ class AsyncCommand(object):
         self.dispatcher.dispatch(self.id, *args)
 
 
-class BaseScriptRunner(object):
+class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
     """
     An utility class for running Lua coroutines.
     """
-    __metaclass__ = abc.ABCMeta
     _START_CMD = '__START__'
 
     def __init__(self, lua, log, sandboxed):
@@ -105,7 +105,7 @@ class BaseScriptRunner(object):
                 # Got arguments from an async command; send them to coroutine
                 # and wait for the next async command.
                 self.log("[lua_runner] send %s" % args_repr)
-                cmd = self.coro.send(args)  # cmd is a next async command
+                cmd = self.coro.send(self.lua.python2lua(args))  # cmd is a next async command
 
                 args = None  # don't re-send the same value
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
@@ -131,6 +131,9 @@ class BaseScriptRunner(object):
                 self.on_result(res)
                 return
             except lupa.LuaError as lua_ex:
+                # import traceback
+                # print(traceback.format_exc())
+
                 # Lua script raised an error
                 self._print_instructions_used()
                 self.log("[lua_runner] caught LuaError %r" % lua_ex)
