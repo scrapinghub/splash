@@ -8,3 +8,6 @@ strict-rfc3339
 jupyter_kernel_test
 nose
 ipython[notebook]
+
+# for Python 2 tests:
+subprocess32

@@ -1,5 +1,10 @@
 import sys, os, time, tempfile, shutil, socket, fcntl, signal
-from subprocess import Popen, PIPE
+import warnings
+
+if sys.version_info[0] == 2:
+    from subprocess32 import Popen, TimeoutExpired
+else:
+    from subprocess import Popen, TimeoutExpired
 
 
 try:
@@ -85,10 +90,18 @@ class SplashServer(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.proc is not None:
-            self.proc.send_signal(signal.SIGINT)
-            self.proc.wait()
+        if self.proc is None:
+            return
+        try:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=30)
+            except TimeoutExpired:
+                warnings.warn("Killing Splash with kill -9")
+                self.proc.kill()
+                self.proc.wait(timeout=10)
             self.proc = None
+        finally:
             shutil.rmtree(self.tempdir)
 
     def url(self, path):
@@ -121,7 +134,7 @@ class MockServer(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
-        self.proc.wait()
+        self.proc.wait(timeout=20)
 
     def url(self, path, gzip=True, host='localhost'):
         gzip_path = '' if not gzip else '/gzip'
