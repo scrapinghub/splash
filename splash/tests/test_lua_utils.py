@@ -33,21 +33,25 @@ class LuaPythonConversionTest(unittest.TestCase):
         self.assertSurvivesConversion(u"привет")
 
     def test_dict(self):
+        self.assertSurvivesConversion({b'x': 2, b'y': 3}, encoding=None)
         self.assertSurvivesConversion({'x': 2, 'y': 3})
 
     def test_dict_empty(self):
         self.assertSurvivesConversion({})
 
     def test_dict_int_keys(self):
+        self.assertSurvivesConversion({1: b'foo', 2: b'bar'}, encoding=None)
         self.assertSurvivesConversion({1: 'foo', 2: 'bar'})
 
     def test_dict_pyobject_key(self):
         key = object()
-        self.assertSurvivesConversion({key: 'foo', 2: 'bar'})
+        self.assertSurvivesConversion({key: b'foo', 2: b'bar'}, encoding=None)
+        self.assertSurvivesConversion({key: 'foo', 2: 'bar'}, encoding='utf8')
 
     def test_dict_pyobject_value(self):
         value = object()
-        self.assertSurvivesConversion({'foo': value, 'bar': 'bar'})
+        self.assertSurvivesConversion({b'foo': value, b'bar': b'bar'}, encoding=None)
+        self.assertSurvivesConversion({'foo': value, 'bar': 'bar'}, encoding='utf8')
 
     def test_dict_recursive(self):
         dct = {}
@@ -79,7 +83,8 @@ class LuaPythonConversionTest(unittest.TestCase):
         self.assertSurvivesConversion({"foo": None})
 
     def test_list(self):
-        self.assertSurvivesConversion(["foo", "bar"])
+        self.assertSurvivesConversion([b"foo", b"bar"], encoding=None)
+        self.assertSurvivesConversion(["foo", "bar"], encoding='utf8')
 
     def test_list_empty(self):
         self.assertSurvivesConversion([])
@@ -91,7 +96,14 @@ class LuaPythonConversionTest(unittest.TestCase):
             python2lua(self.lua, lst)
 
     def test_list_nested(self):
-        self.assertSurvivesConversion(["foo", "bar", [1, 2, "3", 10], [], [{}]])
+        self.assertSurvivesConversion(
+            [b"foo", b"bar", [1, 2, b"3", 10], [], [{}]],
+            encoding=None
+        )
+        self.assertSurvivesConversion(
+            ["foo", "bar", [1, 2, "3", 10], [], [{}]],
+            encoding='utf8'
+        )
 
     @pytest.mark.xfail
     def test_list_endswith_none(self):
@@ -100,10 +112,15 @@ class LuaPythonConversionTest(unittest.TestCase):
         self.assertSurvivesConversion([None])
 
     def test_list_with_none(self):
-        self.assertSurvivesConversion(["foo", None, 2])
-        self.assertSurvivesConversion(["foo", None, None, 2])
-        self.assertSurvivesConversion([None, "foo", None, 2])
-        self.assertSurvivesConversion([None, None, None, 2])
+        self.assertSurvivesConversion([b"foo", None, 2], encoding=None)
+        self.assertSurvivesConversion([b"foo", None, None, 2], encoding=None)
+        self.assertSurvivesConversion([None, b"foo", None, 2], encoding=None)
+        self.assertSurvivesConversion([None, None, None, 2], encoding=None)
+
+        self.assertSurvivesConversion(["foo", None, 2], encoding='utf8')
+        self.assertSurvivesConversion(["foo", None, None, 2], encoding='utf8')
+        self.assertSurvivesConversion([None, "foo", None, 2], encoding='utf8')
+        self.assertSurvivesConversion([None, None, None, 2], encoding='utf8')
 
     def test_sparse_list(self):
         func1 = self.lua.eval("""
@@ -141,7 +158,7 @@ class LuaPythonConversionTest(unittest.TestCase):
            return arr
         end
         """)
-        arr = python2lua(self.lua, [3, 4])
+        arr = python2lua(self.lua, [3, 4],)
         arr2 = func(arr)
         with pytest.raises(ValueError):
             lua2python(self.lua, arr2)
@@ -156,4 +173,3 @@ class LuaPythonConversionTest(unittest.TestCase):
         arr = python2lua(self.lua, [3, 4])
         arr2 = func(arr)
         self.assertEqual(lua2python(self.lua, arr2), [3, 4, "bar"])
-

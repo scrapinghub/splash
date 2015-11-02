@@ -3,6 +3,8 @@ import abc
 import json
 import functools
 import pprint
+import six
+
 from splash import defaults
 from splash.browser_tab import BrowserTab
 from splash.exceptions import RenderError
@@ -10,20 +12,18 @@ from splash.exceptions import RenderError
 
 def stop_on_error(meth):
     @functools.wraps(meth)
-    def wrapper(self, *args, **kwargs):
+    def stop_on_error_wrapper(self, *args, **kwargs):
         try:
             return meth(self, *args, **kwargs)
         except Exception as e:
             self.return_error(e)
-    return wrapper
+    return stop_on_error_wrapper
 
 
-class RenderScript(object):
+class RenderScript(six.with_metaclass(abc.ABCMeta, object)):
     """
     Interface that all render scripts must implement.
     """
-    __metaclass__ = abc.ABCMeta
-
     default_min_log_level = 2
 
     def __init__(self, network_manager, splash_proxy_factory, render_options, verbosity):

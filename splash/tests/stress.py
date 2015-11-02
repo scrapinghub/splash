@@ -1,9 +1,13 @@
+from __future__ import print_function
+
 import sys, requests, random, optparse, time, json
 from itertools import islice
-from Queue import Queue
 from threading import Thread
 from collections import Counter
 import requests
+
+import six
+from six.moves.queue import Queue
 
 from .utils import SplashServer, MockServer
 
@@ -21,12 +25,12 @@ class StressTest():
         args = list(islice(self.reqs, self.requests))
         if self.shuffle:
             random.shuffle(args)
-        print "Total requests: %d" % len(args)
-        print "Concurrency   : %d" % self.concurrency
+        print("Total requests: %d" % len(args))
+        print("Concurrency   : %d" % self.concurrency)
 
         starttime = time.time()
         q, p = Queue(), Queue()
-        for _ in xrange(self.concurrency):
+        for _ in six.moves.range(self.concurrency):
             t = Thread(target=worker, args=(self.host, q, p, self.verbose))
             t.daemon = True
             t.start()
@@ -35,18 +39,18 @@ class StressTest():
         q.join()
 
         outputs = []
-        for _ in xrange(self.requests):
+        for _ in six.moves.range(self.requests):
             outputs.append(p.get())
 
         elapsed = time.time() - starttime
-        print
-        print "Total requests: %d" % len(args)
-        print "Concurrency   : %d" % self.concurrency
-        print "Elapsed time  : %.3fs" % elapsed
-        print "Avg time p/req: %.3fs" % (elapsed/len(args))
-        print "Received (per status code or error):"
+        print()
+        print("Total requests: %d" % len(args))
+        print("Concurrency   : %d" % self.concurrency)
+        print("Elapsed time  : %.3fs" % elapsed)
+        print("Avg time p/req: %.3fs" % (elapsed/len(args)))
+        print("Received (per status code or error):")
         for c, n in Counter(outputs).items():
-            print "  %s: %d" % (c, n)
+            print("  %s: %d" % (c, n))
 
 
 def worker(host, q, p, verbose=False):
@@ -66,7 +70,7 @@ def worker(host, q, p, verbose=False):
         except Exception as e:
             p.put(type(e))
             if verbose:
-                print "E %.3fs %s" % (t, args)
+                print("E %.3fs %s" % (t, args))
             else:
                 sys.stdout.write("E")
                 sys.stdout.flush()

@@ -15,13 +15,15 @@ from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
+import six
 
 import splash
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, JpegRender
 )
 from splash.lua import is_supported as lua_is_supported
-from splash.utils import get_num_fds, get_leaks, BinaryCapsule, SplashJSONEncoder
+from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
+    SplashJSONEncoder, to_bytes, to_unicode
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
@@ -43,11 +45,11 @@ class _ValidatingResource(Resource):
         except BadOption as e:
             return self._write_error(request, 400, e)
 
-    def _write_error_content(self, request, code, content, content_type='text/plain'):
-        request.setHeader("content-type", content_type)
+    def _write_error_content(self, request, code, content, content_type=b'text/plain'):
+        request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
         request.write(content)
-        return "\n"
+        return b"\n"
 
     def _write_error(self, request, code, exc):
         """Can be overridden by subclasses format errors differently"""
@@ -62,8 +64,9 @@ class _ValidatingResource(Resource):
         elif len(exc.args) > 1:
             err['info'] = exc.args
 
-        return self._write_error_content(request, code, json.dumps(err),
-                                         content_type="application/json")
+        return self._write_error_content(request, code,
+                                         json.dumps(err).encode('utf8'),
+                                         content_type=b"application/json")
 
 
 class BaseRenderResource(_ValidatingResource):
@@ -108,7 +111,7 @@ class BaseRenderResource(_ValidatingResource):
             # TODO: pass http method to RenderScript explicitly.
             return self.render_GET(request)
 
-        request_content_type = request.getHeader('content-type')
+        request_content_type = request.getHeader(b'content-type').decode('latin1')
         supported_types = ['application/javascript', 'application/json']
         if not any(ct in request_content_type for ct in supported_types):
             ex = UnsupportedContentType({
@@ -143,7 +146,7 @@ class BaseRenderResource(_ValidatingResource):
                 request.setHeader(name, value)
             return self._write_output(data, request, content_type, options)
 
-        if isinstance(data, (bool, int, long, float, types.NoneType)):
+        if data is None or isinstance(data, (bool, six.integer_types, float)):
             return self._write_output(str(data), request, content_type, options)
 
         if isinstance(data, BinaryCapsule):
@@ -155,16 +158,32 @@ class BaseRenderResource(_ValidatingResource):
         if not isinstance(content_type, bytes):
             content_type = content_type.encode('latin1')
 
-        request.setHeader("content-type", content_type)
+        request.setHeader(b"content-type", content_type)
 
         self._log_stats(request, options)
+        if not isinstance(data, bytes):
+            # Twisted expects bytes as response
+            data = data.encode('utf-8')
 
         request.write(data)
 
     def _log_stats(self, request, options):
 
+        # def args_to_unicode(args):
+        #     unicode_args = {}
+        #     for key, val in args.items():
+        #         key = to_unicode(key)
+        #         if isinstance(val, list):
+        #             val = [args_to_unicode(item)item.decode('utf-8') for item in val]
+        #         else:
+        #             val = val.decode('utf-8')
+        #         unicode_args[key] = val
+        #         return unicode_args
+
         msg = {
-            "path": request.path,
+            # Anything we retrieve from Twisted request object contains bytes.
+            # We have to convert it to unicode first for json.dump to succeed.
+            "path": request.path.decode('utf-8'),
             "rendertime": time.time() - request.starttime,
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "load": os.getloadavg(),
@@ -172,10 +191,11 @@ class BaseRenderResource(_ValidatingResource):
             "active": len(self.pool.active),
             "qsize": len(self.pool.queue.pending),
             "_id": id(request),
-            "method": request.method,
+            "method": request.method.decode('ascii'),
             "timestamp": int(time.time()),
-            "user-agent": request.getHeader("user-agent"),
-            "args": options
+            "user-agent": (request.getHeader(b"user-agent").decode('utf-8')
+                           if request.getHeader(b"user-agent") else None),
+            "args": repr(options)
         }
         log.msg(json.dumps(msg), system="events")
 
@@ -232,17 +252,16 @@ class ExecuteLuaScriptResource(BaseRenderResource):
 
     def _get_render(self, request, options):
         params = dict(
-            proxy = options.get_proxy(),
-            lua_source = options.get_lua_source(),
-            sandboxed = self.sandboxed,
-            lua_package_path = self.lua_package_path,
-            lua_sandbox_allowed_modules = self.lua_sandbox_allowed_modules,
+            proxy=options.get_proxy(),
+            lua_source=options.get_lua_source(),
+            sandboxed=self.sandboxed,
+            lua_package_path=self.lua_package_path,
+            lua_sandbox_allowed_modules=self.lua_sandbox_allowed_modules,
         )
         return self.pool.render(LuaRender, options, **params)
 
 
 class RenderPngResource(BaseRenderResource):
-
     content_type = "image/png"
 
     def _get_render(self, request, options):
@@ -262,7 +281,6 @@ class RenderJpegResource(BaseRenderResource):
 
 
 class RenderJsonResource(BaseRenderResource):
-
     content_type = "application/json"
 
     def _get_render(self, request, options):
@@ -273,7 +291,6 @@ class RenderJsonResource(BaseRenderResource):
 
 
 class RenderHarResource(BaseRenderResource):
-
     content_type = "application/json"
 
     def _get_render(self, request, options):
@@ -282,7 +299,6 @@ class RenderHarResource(BaseRenderResource):
 
 
 class DebugResource(Resource):
-
     isLeaf = True
 
     def __init__(self, pool, warn=False):
@@ -291,7 +307,7 @@ class DebugResource(Resource):
         self.warn = warn
 
     def render_GET(self, request):
-        request.setHeader("content-type", "application/json")
+        request.setHeader(b"content-type", b"application/json")
         info = {
             "leaks": get_leaks(),
             "active": [self.get_repr(r) for r in self.pool.active],
@@ -304,7 +320,7 @@ class DebugResource(Resource):
                               "Please use /_debug instead."
             # info['leaks'] = get_leaks()
 
-        return json.dumps(info)
+        return (json.dumps(info)).encode('utf-8')
 
     def get_repr(self, render):
         if hasattr(render, 'url'):
@@ -322,7 +338,7 @@ class ClearCachesResource(Resource):
         return json.dumps({
             "status": "ok",
             "pyobjects_collected": unreachable
-        })
+        }).encode('utf-8')
 
 
 BOOTSTRAP_THEME = 'simplex'
@@ -358,11 +374,12 @@ CODEMIRROR_RESOURCES = """
 
 """
 
+
 class DemoUI(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    PATH = 'info'
+    PATH = b'info'
 
     def __init__(self, pool, lua_enabled, max_timeout):
         Resource.__init__(self)
@@ -391,7 +408,6 @@ class DemoUI(_ValidatingResource):
         url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
-        url = url.encode('utf8')
         params = {k: v for k, v in params.items() if v is not None}
 
         # disable "phases" HAR Viewer feature
@@ -406,7 +422,7 @@ class DemoUI(_ValidatingResource):
           </div>
         """
 
-        return """<html>
+        return ("""<html>
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
@@ -645,7 +661,7 @@ class DemoUI(_ValidatingResource):
             cm_resources=CODEMIRROR_RESOURCES if self.lua_enabled else "",
             endpoint="execute" if self.lua_enabled else "render.json",
             lua_editor=LUA_EDITOR if self.lua_enabled else "",
-        )
+        )).encode('utf-8')
 
 
 class Root(Resource):
@@ -663,20 +679,20 @@ class Root(Resource):
         Resource.__init__(self)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
-        self.putChild("render.html", RenderHtmlResource(pool, max_timeout))
-        self.putChild("render.png", RenderPngResource(pool, max_timeout))
-        self.putChild("render.jpeg", RenderJpegResource(pool, max_timeout))
-        self.putChild("render.json", RenderJsonResource(pool, max_timeout))
-        self.putChild("render.har", RenderHarResource(pool, max_timeout))
+        self.putChild(b"render.html", RenderHtmlResource(pool, max_timeout))
+        self.putChild(b"render.png", RenderPngResource(pool, max_timeout))
+        self.putChild(b"render.jpeg", RenderJpegResource(pool, max_timeout))
+        self.putChild(b"render.json", RenderJsonResource(pool, max_timeout))
+        self.putChild(b"render.har", RenderHarResource(pool, max_timeout))
 
-        self.putChild("_debug", DebugResource(pool))
-        self.putChild("_gc", ClearCachesResource())
+        self.putChild(b"_debug", DebugResource(pool))
+        self.putChild(b"_gc", ClearCachesResource())
 
         # backwards compatibility
-        self.putChild("debug", DebugResource(pool, warn=True))
+        self.putChild(b"debug", DebugResource(pool, warn=True))
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
-            self.putChild("execute", ExecuteLuaScriptResource(
+            self.putChild(b"execute", ExecuteLuaScriptResource(
                 pool=pool,
                 is_proxy_request=False,
                 sandboxed=lua_sandbox_enabled,
@@ -686,7 +702,7 @@ class Root(Resource):
             ))
 
         if self.ui_enabled:
-            self.putChild("_harviewer", File(self.HARVIEWER_PATH))
+            self.putChild(b"_harviewer", File(self.HARVIEWER_PATH))
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
                 lua_enabled=self.lua_enabled,
@@ -694,7 +710,7 @@ class Root(Resource):
             ))
 
     def getChild(self, name, request):
-        if name == "" and self.ui_enabled:
+        if name == b"" and self.ui_enabled:
             return self
         return Resource.getChild(self, name, request)
 
@@ -719,7 +735,7 @@ end
           <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
         </div>
         """ % dict(
-            lua_script = self.get_example_script(),
+            lua_script=self.get_example_script(),
         )
 
         result = """<html>

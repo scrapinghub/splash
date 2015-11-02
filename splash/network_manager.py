@@ -5,8 +5,8 @@ import functools
 from datetime import datetime
 import traceback
 
-from PyQt4.QtCore import QTimer
-from PyQt4.QtNetwork import (
+from PyQt5.QtCore import QTimer
+from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
@@ -25,6 +25,7 @@ from splash.request_middleware import (
     ResourceTimeoutMiddleware)
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
+from splash.utils import to_bytes
 
 
 def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
@@ -192,7 +193,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             headers = headers.items()
 
         for name, value in headers or []:
-            request.setRawHeader(name, value)
+            request.setRawHeader(to_bytes(name), to_bytes(value))
 
     def _handle_request_cookies(self, request):
         jar = QNetworkCookieJar()
@@ -209,7 +210,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _get_request_id(self, request=None):
         if request is None:
             request = self.sender().request()
-        return request.attribute(self._REQUEST_ID).toPyObject()
+        return request.attribute(self._REQUEST_ID)
 
     def _get_har(self, request=None):
         """

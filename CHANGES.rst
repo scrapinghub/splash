@@ -4,7 +4,13 @@ Changes
 2.0 (TBA)
 ---------
 
-Splash 2.0 release introduces new features:
+Splash 2.0 uses Qt 5.5.1 instead of Qt 4; it means the rendering
+engine now supports more HTML5 features and is more modern overall.
+Also, the official Docker image now uses Python 3 instead of Python 2.
+This work is largely done by Tarashish Mishra as a Google Summer of Code 2015
+project.
+
+Splash 2.0 release introduces other cool new features:
 
 * better support for :ref:`binary data <binary-data>`;
 * built-in :ref:`lib-json` and :ref:`lib-base64` libraries;

@@ -7,6 +7,17 @@ Contributing
 Splash is free & open source.
 Development happens at github: https://github.com/scrapinghub/splash
 
+Development Setup
+-----------------
+
+Consult with :ref:`install-docs` to get Splash up and running.
+
+Install development specific dependencies with::
+
+    $ sudo apt-get install libffi-dev libssl-dev
+
+    pip install -r requirements-dev.txt
+
 Functional Tests
 ----------------
 

@@ -11,10 +11,11 @@ from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
 
+
 def install_qtreactor(verbose):
     init_qt_app(verbose)
-    import qt4reactor
-    qt4reactor.install()
+    import qt5reactor
+    qt5reactor.install()
 
 
 def parse_opts():
@@ -88,8 +89,8 @@ def parse_opts():
 def start_logging(opts):
     import twisted
     from twisted.python import log
-    from twisted.python.logfile import DailyLogFile
     if opts.logfile:
+        from twisted.python.logfile import DailyLogFile
         logfile = DailyLogFile.fromFullPath(opts.logfile)
     else:
         logfile = sys.stderr
@@ -233,6 +234,14 @@ def monitor_maxrss(maxrss):
     def check_maxrss():
         if get_ru_maxrss() > maxrss * (1024 ** 2):
             log.msg("maxrss exceeded %d MB, shutting down..." % maxrss)
+
+            # XXX: for some reason twisted qt5 reactor can stop without
+            # finishing the Python process. This is a hack to exit anyways.
+            def force_shutdown():
+                log.msg("Reactor didn't stop cleanly, doing unclean shutdown.")
+                os._exit(0)
+            reactor.callLater(2.0, force_shutdown)
+
             reactor.stop()
 
     if maxrss:
@@ -325,7 +334,8 @@ def _check_js_profiles_path(js_profiles_path):
 
 
 def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
-    from PyQt4.QtWebKit import QWebSecurityOrigin, QWebSettings
+    from PyQt5.QtWebKit import QWebSecurityOrigin, QWebSettings
+
     if js_disable_cross_domain_access is False:
         # In order to enable cross domain requests it is necessary to add
         # the http and https to the local scheme, this way all the urls are

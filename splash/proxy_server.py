@@ -5,7 +5,7 @@ the Splash Proxy an user gets a rendered DOM snapshot instead of a raw HTML.
 Not to be confused with Splash support for proxying outgoing requests
 (see :mod:`splash.proxy`).
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 from twisted.web import http
 from twisted.web.error import UnsupportedMethod
 from twisted.python import failure
@@ -13,31 +13,31 @@ from splash.resources import (RenderHtmlResource, RenderPngResource,
                               RenderJpegResource, RenderJsonResource)
 
 NOT_DONE_YET = 1
-SPLASH_HEADER_PREFIX = 'x-splash-'
+SPLASH_HEADER_PREFIX = b'x-splash-'
 SPLASH_RESOURCES = {
-    'html': RenderHtmlResource,
-    'png': RenderPngResource,
-    'jpeg': RenderJpegResource,
-    'json': RenderJsonResource,
+    b'html': RenderHtmlResource,
+    b'png': RenderPngResource,
+    b'jpeg': RenderJpegResource,
+    b'json': RenderJsonResource,
 }
 
 # Note the http header use '-' instead of '_' for the parameter names
-HTML_PARAMS = ['baseurl', 'timeout', 'wait', 'proxy', 'allowed-domains',
-               'viewport', 'js', 'js-source', 'images', 'filters',
-               'render-all', 'scale-method', 'resource-timeout']
-PNG_PARAMS = ['width', 'height']
-JPEG_PARAMS = ['width', 'height', 'quality']
-JSON_PARAMS = ['html', 'png', 'jpeg', 'iframes', 'script', 'console', 'history', 'har']
+HTML_PARAMS = [b'baseurl', b'timeout', b'wait', b'proxy', b'allowed-domains',
+               b'viewport', b'js', b'js-source', b'images', b'filters',
+               b'render-all', b'scale-method', b'resource-timeout']
+PNG_PARAMS = [b'width', b'height']
+JPEG_PARAMS = [b'width', b'height', b'quality']
+JSON_PARAMS = [b'html', b'png', b'iframes', b'script', b'console', b'history', b'har']
 
 HOP_BY_HOP_HEADERS = [
-    'Connection',
-    'Keep-Alive',
-    'Proxy-Authenticate',
-    'Proxy-Authorization',
-    'TE',
-    'Trailer',
-    'Transfer-Encoding',
-    'Upgrade',
+    b'Connection',
+    b'Keep-Alive',
+    b'Proxy-Authenticate',
+    b'Proxy-Authorization',
+    b'TE',
+    b'Trailer',
+    b'Transfer-Encoding',
+    b'Upgrade',
 ]
 
 
@@ -57,8 +57,8 @@ class SplashProxyRequest(http.Request):
             value = self._get_header(parameter)
             if value is not None:
                 # normal splash parameter use underscore instead of dash
-                parameter = parameter.replace('-', '_')
-                self.args[parameter] = [value]
+                parameter = parameter.decode('utf-8').replace('-', '_')
+                self.args[parameter.encode('utf-8')] = [value]
 
     def _remove_splash_headers(self):
         headers = self.getAllHeaders()
@@ -75,13 +75,13 @@ class SplashProxyRequest(http.Request):
         # any Host header field value in the request MUST be
         # ignored if an absolute URI is used - that's what we're
         # doing here.
-        self.requestHeaders.removeHeader('Host')
+        self.requestHeaders.removeHeader(b'Host')
 
     def _remove_hop_by_hop_headers(self):
         # See http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-7.1.3.1
-        connection = self.requestHeaders.getRawHeaders('Connection', [])
+        connection = self.requestHeaders.getRawHeaders(b'Connection', [])
         for value in connection:
-            for name in value.split(','):
+            for name in value.split(b','):
                 self.requestHeaders.removeHeader(name.strip())
 
         for name in HOP_BY_HOP_HEADERS:
@@ -102,26 +102,26 @@ class SplashProxyRequest(http.Request):
         # XXX: Should we respect Accept-Encoding by returning
         # *rendered* data properly compressed? Or maybe users should put
         # another proxy (e.g. nginx) in front of Splash to handle this?
-        self.requestHeaders.removeHeader('Accept-Encoding')
+        self.requestHeaders.removeHeader(b'Accept-Encoding')
 
     def process(self):
         try:
             # load resource class
-            resource_name = self._get_header('render')
+            resource_name = self._get_header(b'render')
             resource_cls = SPLASH_RESOURCES.get(resource_name)
             if resource_cls is None:
-                self.invalidParameter('render')
+                self.invalidParameter(b'render')
                 return
 
             # setup request parameters
-            self.args['url'] = [self.uri]
+            self.args[b'url'] = [self.uri]
             self._fill_args_from_headers(HTML_PARAMS)
 
-            if resource_name == 'png':
+            if resource_name == b'png':
                 self._fill_args_from_headers(PNG_PARAMS)
-            elif resource_name == 'jpeg':
+            elif resource_name == b'jpeg':
                 self._fill_args_from_headers(JPEG_PARAMS)
-            elif resource_name == 'json':
+            elif resource_name == b'json':
                 self._fill_args_from_headers(JPEG_PARAMS)
                 self._fill_args_from_headers(JSON_PARAMS)
 
@@ -137,7 +137,7 @@ class SplashProxyRequest(http.Request):
             self.render(resource)
 
         except Exception as e:
-            print e
+            print(e)
             self.processingFailed(failure.Failure())
 
     def render(self, resource):
@@ -152,18 +152,18 @@ class SplashProxyRequest(http.Request):
         # errors handled by resources don't return a body, they write
         # to the request directly.
         if body:
-            self.setHeader('content-length', str(len(body)))
+            self.setHeader(b'content-length', str(len(body)))
             self.write(body)
         self.finish()
 
     def processingFailed(self, reason):
         self.setResponseCode(500)
-        self.write('Error handling request')
+        self.write(b'Error handling request')
         self.finish()
 
     def methodNotAllowed(self):
         self.setResponseCode(405)
-        self.write('Method Not Allowed')
+        self.write(b'Method Not Allowed')
         self.finish()
 
     def invalidParameter(self, name):

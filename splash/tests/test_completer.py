@@ -294,3 +294,14 @@ def test_complete_metamethods_index_as_function(complete, configured_lua):
     assert ["jump"] == complete("animal.j|")
     assert ["jump", "name", "_create"] == complete("animal.|")
     assert ["jump", "_create"] == complete("animal:|")
+
+
+def test_lexer(lua_lexer):
+    tokens = lua_lexer.tokenize("x=1", pad=2)
+    assert tokens == [
+        ('NA', ''),
+        ('NA', ''),
+        ('iden', 'x'),
+        ('=', '='),
+        ('number', 1)
+    ]

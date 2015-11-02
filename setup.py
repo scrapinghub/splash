@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import re
+from setuptools import setup
 
 
 def _path(*args):
@@ -9,7 +10,7 @@ def _path(*args):
 
 def get_version():
     filename = _path('splash', '__init__.py')
-    with open(filename, 'r') as fp:
+    with open(filename, 'rb') as fp:
         contents = fp.read().decode('utf8')
         return re.search(r"__version__ = ['\"](.+)['\"]", contents).group(1)
 
@@ -26,6 +27,7 @@ setup_args = {
     'maintainer_email': 'info@scrapinghub.com',
     'license': 'BSD',
     'scripts': ['bin/splash'],
+    'zip_safe': False,
     'packages': ['splash', 'splash.har', 'splash.kernel'],
     'package_data': {'splash': [
         'vendor/harviewer/webapp/css/*.css',
@@ -51,10 +53,26 @@ setup_args = {
         'kernel/inspections/*.json',
         'kernel/kernels/splash/*.json',
     ]},
+    'install_requires': [
+        'Twisted',
+        'qt5reactor-fork',
+        'psutil',
+        'adblockparser',
+        'xvfbwrapper',
+        'funcparserlib',
+        'Pillow',
+    ],
+    'extras_require': {
+        ':python_version<"3.0"': [
+            "subprocess32>=3.2.6",
+        ],
+    },
     'classifiers': [
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Development Status :: 5 - Production/Stable',
@@ -63,22 +81,5 @@ setup_args = {
         'Topic :: Internet :: WWW/HTTP',
     ],
 }
-
-
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
-else:
-    setup_args['zip_safe'] = False
-    setup_args['install_requires'] = [
-        'Twisted',
-        'qt4reactor',
-        'psutil',
-        'adblockparser',
-        'xvfbwrapper',
-        'funcparserlib',
-        'Pillow',
-    ]
 
 setup(**setup_args)
