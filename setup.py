@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import re
+from setuptools import setup
 
 
 def _path(*args):
@@ -51,10 +52,22 @@ setup_args = {
         'kernel/inspections/*.json',
         'kernel/kernels/splash/*.json',
     ]},
+    'zip_safe': False,
+    'install_requires': [
+        'Twisted',
+        'qt5reactor-fork',
+        'psutil',
+        'adblockparser',
+        'xvfbwrapper',
+        'funcparserlib',
+        'Pillow',
+    ],
     'classifiers': [
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Development Status :: 5 - Production/Stable',
@@ -64,21 +77,5 @@ setup_args = {
     ],
 }
 
-
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
-else:
-    setup_args['zip_safe'] = False
-    setup_args['install_requires'] = [
-        'Twisted',
-        'qt5reactor-fork',
-        'psutil',
-        'adblockparser',
-        'xvfbwrapper',
-        'funcparserlib',
-        'Pillow',
-    ]
 
 setup(**setup_args)
