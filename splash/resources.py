@@ -514,7 +514,10 @@ class DemoUI(_ValidatingResource):
                 <div class="pagePreview" style="display:none">
                     <img class='center-block'>
                     <br>
-                    <h3>Network Activity</h3>
+                    <h3>
+                        Network Activity
+                        <a href="" style="display:none" id="har-download"><small>(download as .har)</small></a>
+                    </h3>
                 </div>
 
                 <div id="content" version="Splash %(version)s"></div>
@@ -623,6 +626,11 @@ class DemoUI(_ValidatingResource):
 
                     if (har){
                         viewer.appendPreview(har);
+                        var downloadLink = $('#har-download');
+                        var data = "application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(har));
+                        downloadLink.attr("href", "data:" + data);
+                        downloadLink.attr("download", "activity.har");
+                        downloadLink.show();
                     }
                     $("#status").text("Building UI..");
                     if (png) {
