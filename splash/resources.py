@@ -408,6 +408,7 @@ class DemoUI(_ValidatingResource):
         url = params['url']
         if not url.lower().startswith('http'):
             url = 'http://' + url
+        timeout = params['timeout']
         params = {k: v for k, v in params.items() if v is not None}
 
         # disable "phases" HAR Viewer feature
@@ -494,6 +495,7 @@ class DemoUI(_ValidatingResource):
                       <input type="hidden" name="wait" value="0.5">
                       <input type="hidden" name="images" value="1">
                       <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
+                      <input type="hidden" name="timeout" value="%(timeout)s">
 
                       <div class="btn-group" id="render-form">
                           <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
@@ -655,6 +657,7 @@ class DemoUI(_ValidatingResource):
         """ % dict(
             version=splash.__version__,
             params=json.dumps(params),
+            timeout=timeout,
             url=url,
             theme=BOOTSTRAP_THEME,
             cm_options=CODEMIRROR_OPTIONS,
@@ -708,6 +711,7 @@ class Root(Resource):
                 lua_enabled=self.lua_enabled,
                 max_timeout=max_timeout
             ))
+        self.max_timeout = max_timeout
 
     def getChild(self, name, request):
         if name == b"" and self.ui_enabled:
@@ -798,6 +802,7 @@ end
                           <input type="hidden" name="wait" value="0.5">
                           <input type="hidden" name="images" value="1">
                           <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
+                          <input type="hidden" name="timeout" value="%(timeout)s">
 
                           <fieldset>
                             <div class="">
@@ -821,5 +826,6 @@ end
             cm_options=CODEMIRROR_OPTIONS,
             cm_resources=CODEMIRROR_RESOURCES,
             lua_editor=LUA_EDITOR if self.lua_enabled else "",
+            timeout=self.max_timeout,
         )
         return result.encode('utf8')
