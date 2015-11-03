@@ -420,7 +420,7 @@ class Splash(BaseExposedObject):
     _result_status_code = 200
     _attribute_whitelist = ['args']
 
-    def __init__(self, lua, exceptions, tab, render_options=None, sandboxed=False):
+    def __init__(self, lua, exceptions, tab, render_options=None, log=None):
         """
         :param SplashLuaRuntime lua: Lua wrapper
         :param splash.browser_tab.BrowserTab tab: BrowserTab object
@@ -435,8 +435,8 @@ class Splash(BaseExposedObject):
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        self.sandboxed = sandboxed
         self.tab = tab
+        self.log = log or tab.logger.log
         self._result_headers = []
 
         super(Splash, self).__init__(lua, exceptions)
@@ -1046,7 +1046,7 @@ class Splash(BaseExposedObject):
         """
         def func(*coro_args):
             def log(message, min_level=None):
-                self.tab.logger.log("[%s] %s" % (name, message), min_level)
+                self.log("[%s] %s" % (name, message), min_level)
 
             runner = SplashCoroutineRunner(self.lua, self, log, False)
             coro = self.lua.create_coroutine(callback)
@@ -1445,7 +1445,8 @@ class LuaRender(RenderScript):
             lua_package_path=lua_package_path,
             lua_sandbox_allowed_modules=lua_sandbox_allowed_modules
         )
-        self.splash = Splash(self.lua, self.exceptions, self.tab, self.render_options)
+        self.splash = Splash(self.lua, self.exceptions, self.tab,
+                             self.render_options, log=self.log)
         self.extras = Extras(self.lua, self.exceptions)
         self.extras.inject_to_globals()
 
