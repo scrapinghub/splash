@@ -254,6 +254,21 @@ class TreatAsArrayTest(BaseLuaRenderTest):
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                "argument must be a table")
 
+    def test_as_array_jsfunc(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            local tbl = {1,2,3}
+            local is_array = splash:jsfunc("function(o) {return o.constructor == Array}")
+            local r1 = is_array(tbl)
+            treat.as_array(tbl)
+            local r2 = is_array(tbl)
+            return r1, r2
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [False, True])
+
 
 class TreatAsBinaryTest(BaseLuaRenderTest):
     def test_main_result(self):

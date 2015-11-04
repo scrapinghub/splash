@@ -312,19 +312,22 @@ as an argument to another wrapped JavaScript function.
 
 Lua → JavaScript conversion rules:
 
-==============  =================
+==============  ==========================
 Lua             JavaScript
-==============  =================
+==============  ==========================
 string          string
 number          number
 boolean         boolean
-table           Object
+table           Object or Array, see below
 nil             undefined
-==============  =================
+==============  ==========================
 
 Function result is converted from JavaScript to Lua data type. Only simple
 JS objects are supported. For example, returning a function or a
 JQuery selector from a wrapped function won't work.
+
+By default Lua tables are converted to JavaScript Objects. To convert
+a table to an Array use :ref:`treat-as-array`.
 
 .. _js-lua-conversion-rules:
 
@@ -337,7 +340,7 @@ string          string
 number          number
 boolean         boolean
 Object          table
-Array           table
+Array           table, marked as array (see :ref:`treat-as-array`)
 ``undefined``   ``nil``
 ``null``        ``""`` (an empty string)
 Date            string: date's ISO8601 representation, e.g. ``1958-05-21T10:12:00Z``
@@ -359,7 +362,7 @@ To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
 See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-wait-for-resume`,
-:ref:`splash-autoload`.
+:ref:`splash-autoload`, :ref:`treat-as-array`.
 
 .. _splash-evaljs:
 

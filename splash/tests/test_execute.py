@@ -1093,14 +1093,17 @@ class JsfuncTest(BaseLuaRenderTest):
             "5",
         )
 
-    # this doesn't work because table is passed as an object
-    @pytest.mark.xfail
     def test_array_length(self):
-        self.assertJsfuncResult(
-            "function(arr){return arr.length}",
-            "{5, 6, 'foo'}",
-            "3",
-        )
+        resp = self.request_lua("""
+        treat = require("treat")
+        function main(splash)
+            local len = splash:jsfunc("function(arr){return arr.length}")
+            local tbl = {5, 6, 'foo'}
+            return len(treat.as_array(tbl))
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), 3)
 
     def test_jsfunc_attributes(self):
         resp = self.request_lua("""                                 -- 1

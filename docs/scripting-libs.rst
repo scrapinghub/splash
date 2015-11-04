@@ -225,7 +225,7 @@ processed string to a binary object if you need to pass it back to Splash.
 treat.as_array
 --------------
 
-Mark a Lua table as an array (for JSON encoding).
+Mark a Lua table as an array (for JSON encoding and Lua -> JS conversions).
 
 **Signature:** ``tbl = treat.as_array(tbl)``
 
@@ -239,7 +239,8 @@ JSON can represent arrays and objects, but in Lua there is no distinction
 between them; both key-value mappings and arrays are stored in Lua tables.
 
 By default, Lua tables are converted to JSON objects when returning a result
-from Splash ``main`` function or when using :ref:`json-encode`:
+from Splash ``main`` function and when using :ref:`json-encode`
+or ref:`splash-jsfunc`:
 
 .. code-block:: lua
 
