@@ -134,7 +134,7 @@ install_python_deps () {
     _activate_venv && \
     ${_PYTHON} -m pip install -U pip && \
     ${_PYTHON} -m pip install \
-        qt5reactor-fork==0.2 \
+        qt5reactor==0.3 \
         psutil==3.2.2 \
         Twisted==15.4.0 \
         adblockparser==0.4 \

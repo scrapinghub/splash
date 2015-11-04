@@ -1,14 +1,14 @@
 # install PyQt4 (Splash is tested on PyQT 4.9.x and PyQT 4.11.x)
 # and the following packages:
 twisted >= 15.4.0
-qt5reactor-fork
+qt5reactor
 psutil
 adblockparser >= 0.4
-https://github.com/sunu/pyre2/archive/master.zip#egg=pyre2
+https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
 xvfbwrapper
 Pillow
 
 # for scripting support
 cython
-https://github.com/kmike/lupa/archive/devel.zip#egg=lupa --install-option="--with-cython"
+https://github.com/kmike/lupa/archive/c8903c49e8b4b1ebb0e0f6637cc1ed375f742008.zip#egg=lupa --install-option="--with-cython"
 funcparserlib >= 0.3.6
