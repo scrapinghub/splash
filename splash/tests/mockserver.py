@@ -817,6 +817,8 @@ class Root(Resource):
         self.putChild(b"subresources", Subresources())
         self.putChild(b"set-header", SetHeadersResource())
         self.putChild(b"echourl", EchoUrl())
+        self.putChild(b"bad-content-type", InvalidContentTypeResource())
+        self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())
