@@ -126,6 +126,17 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
                             e.args[0]
                         )
                     })
+                except lupa.LuaError as lua_ex:
+                    # Error converting result to Python
+                    # This may happen e.g. if conversion hit sandbox limits
+                    self.log("[lua_runner] caught LuaError %r" % lua_ex)
+                    info = parse_error_message(lua_ex.args[0])
+                    error = info.get('error', '?')
+                    raise ScriptError({
+                        "type": ScriptError.LUA_CONVERT_ERROR,
+                        "error": error,
+                        "message": "Lua error: {!s}".format(error)
+                    })
 
                 self._print_instructions_used()
                 self.on_result(res)
