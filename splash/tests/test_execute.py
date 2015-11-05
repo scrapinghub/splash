@@ -2072,6 +2072,21 @@ class SandboxTest(BaseLuaRenderTest):
         """)
         self.assertTooMuchMemory(resp)
 
+    def test_memory_attack_in_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local s = "aaaaaaaaaaaaaaaaaaaa"
+            splash:call_later(function()
+                while true do
+                    s = s..s
+                end
+            end)
+            splash:wait(0.5)
+            return s
+        end
+        """)
+        self.assertTooMuchMemory(resp)
+
     def test_memory_attack_toplevel(self):
         resp = self.request_lua("""
         s = "aaaaaaaaaaaaaaaaaaaa"
