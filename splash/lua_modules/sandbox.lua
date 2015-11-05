@@ -20,7 +20,7 @@ local _string = {
 --  rep = string.rep,           -- can eat memory
   reverse = string.reverse,
   sub = string.sub,
-  upper = string.upper,  
+  upper = string.upper,
 }
 
 
@@ -150,7 +150,7 @@ sandbox.env = {
 -- via metatables of primitive types; disable them all.
 --
 sandbox.fix_metatables = function()
-  -- Fix string metatable: provide common functions 
+  -- Fix string metatable: provide common functions
   -- from string module.
   local mt = {__index={}}
   for k, v in pairs(_string) do
@@ -173,19 +173,26 @@ end
 --
 
 -- maximum memory (in KB) that can be used by Lua script
-sandbox.mem_limit = 10000
+sandbox.mem_limit = 50000
+sandbox.mem_limit_reached = false
 
 function sandbox.enable_memory_limit()
   if sandbox._memory_tracking_enabled then
     return
   end
   local mt = {__gc = function (u)
+    if sandbox.mem_limit_reached then
+      error("script uses too much memory")
+    end
     if collectgarbage("count") > sandbox.mem_limit then
+      sandbox.mem_limit_reached = true
       error("script uses too much memory")
     else
+      -- create a new object for the next GC cycle
       setmetatable({}, getmetatable(u))
     end
-  end}
+  end }
+  -- create an empty object which will be collected at next GC cycle
   setmetatable({}, mt)
   sandbox._memory_tracking_enabled = true
 end
@@ -196,11 +203,14 @@ end
 sandbox.instruction_limit = 1e6
 sandbox.instruction_count = 0
 
-function sandbox.enable_instruction_limit()
+function sandbox.enable_per_instruction_limits()
   local function _debug_step(event, line)
     sandbox.instruction_count = sandbox.instruction_count + 1
     if sandbox.instruction_count > sandbox.instruction_limit then
       error("script uses too much CPU", 2)
+    end
+    if sandbox.mem_limit_reached then
+      error("script uses too much memory")
     end
   end
   debug.sethook(_debug_step, '', 1)
@@ -212,7 +222,7 @@ end
 -- instruction limit is enforced in coroutines.
 function sandbox.create_coroutine(f, ...)
   return coroutine.create(function(...)
-    sandbox.enable_instruction_limit()
+    sandbox.enable_per_instruction_limits()
     return f(...)
   end, ...)
 end
@@ -228,8 +238,8 @@ end
 --
 function sandbox.run(untrusted_code)
   sandbox.fix_metatables()
-  sandbox.enable_instruction_limit()
   sandbox.enable_memory_limit()
+  sandbox.enable_per_instruction_limits()
   local untrusted_function, message = load(untrusted_code, nil, 't', sandbox.env)
   if not untrusted_function then return nil, message end
   return pcall(untrusted_function)

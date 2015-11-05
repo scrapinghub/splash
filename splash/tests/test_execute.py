@@ -1995,7 +1995,7 @@ class SandboxTest(BaseLuaRenderTest):
 
     def test_sandbox_string_function(self):
         resp = self.request_lua("""
-        function main(self)
+        function main(splash)
             return string.rep("x", 10000)
         end
         """)
@@ -2005,7 +2005,7 @@ class SandboxTest(BaseLuaRenderTest):
 
     def test_sandbox_string_method(self):
         resp = self.request_lua("""
-        function main(self)
+        function main(splash)
             return ("x"):rep(10000)
         end
         """)
@@ -2015,7 +2015,7 @@ class SandboxTest(BaseLuaRenderTest):
 
     def test_non_sandboxed_string_method(self):
         resp = self.request_lua("""
-        function main(self)
+        function main(splash)
             return ("X"):lower()
         end
         """)
@@ -2024,7 +2024,7 @@ class SandboxTest(BaseLuaRenderTest):
 
     def test_infinite_loop(self):
         resp = self.request_lua("""
-        function main(self)
+        function main(splash)
             local x = 0
             while true do
                 x = x + 1
@@ -2040,7 +2040,7 @@ class SandboxTest(BaseLuaRenderTest):
         while true do
             x = x + 1
         end
-        function main(self)
+        function main(splash)
             return 5
         end
         """)
@@ -2048,7 +2048,7 @@ class SandboxTest(BaseLuaRenderTest):
 
     def test_infinite_loop_memory(self):
         resp = self.request_lua("""
-        function main(self)
+        function main(splash)
             t = {}
             while true do
                 t = { t }
@@ -2062,11 +2062,26 @@ class SandboxTest(BaseLuaRenderTest):
 
     def test_memory_attack(self):
         resp = self.request_lua("""
-        function main(self)
+        function main(splash)
             local s = "aaaaaaaaaaaaaaaaaaaa"
             while true do
                 s = s..s
             end
+            return s
+        end
+        """)
+        self.assertTooMuchMemory(resp)
+
+    def test_memory_attack_in_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local s = "aaaaaaaaaaaaaaaaaaaa"
+            splash:call_later(function()
+                while true do
+                    s = s..s
+                end
+            end)
+            splash:wait(0.5)
             return s
         end
         """)
@@ -2078,7 +2093,7 @@ class SandboxTest(BaseLuaRenderTest):
         while true do
             s = s..s
         end
-        function main(self)
+        function main(splash)
             return s
         end
         """)

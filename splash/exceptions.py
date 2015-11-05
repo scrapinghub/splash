@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import  
+from __future__ import absolute_import
 
 
 class BadOption(Exception):
@@ -31,6 +31,7 @@ class ScriptError(BadOption):
     """ Error happened while executing Lua script """
     LUA_INIT_ERROR = 'LUA_INIT_ERROR'  # error happened before coroutine starts
     LUA_ERROR = 'LUA_ERROR'  # lua error() is called from the coroutine
+    LUA_CONVERT_ERROR = 'LUA_CONVERT_ERROR'  # result can't be converted to Python
     SPLASH_LUA_ERROR = 'SPLASH_LUA_ERROR'  # custom error raised by Splash
     BAD_MAIN_ERROR = 'BAD_MAIN_ERROR'  # main() definition is incorrect
     MAIN_NOT_FOUND_ERROR = 'MAIN_NOT_FOUND_ERROR'  # main() is not found
