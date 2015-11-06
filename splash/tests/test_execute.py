@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import re
+
+import os
 import base64
+import random
 import unittest
 from io import BytesIO
 import numbers
@@ -10,12 +12,12 @@ import time
 from PIL import Image
 import requests
 import six
+from six.moves.http_client import HTTPConnection
 import pytest
-from splash.exceptions import ScriptError
-from splash.qtutils import qt_551_plus
-
 lupa = pytest.importorskip("lupa")
 
+from splash.exceptions import ScriptError
+from splash.qtutils import qt_551_plus
 from splash import __version__ as splash_version
 from splash.har_builder import HarBuilder
 from splash.har.utils import get_response_body_bytes
@@ -1247,6 +1249,43 @@ class WaitTest(BaseLuaRenderTest):
     def test_wait_negative(self):
         resp = self.wait('(-0.2)')
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+
+    def test_wait_timer_stopped_after_request_finished(self):
+        #
+        # This test checks that script is stopped after connection
+        # is closed.
+        #
+        # We can't use splash:http_get or XmlHTTPRequest because
+        # they don't work when page is stopped, and there is no other
+        # way to communicate with outside world in sandboxed Splash,
+        # so a non-sandboxed version is started.
+        #
+        with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
+            filename = os.path.join(splash.tempdir, str(random.random()))
+            script = """
+            function main(splash)
+                splash:wait(1.0)
+                fp = io.open(splash.args.filename, "w")
+                fp:write("not empty")
+                fp:close()
+                print("file is created")
+                return "ok"
+            end
+            """
+            query = {'lua_source': script, 'filename': filename}
+            path = "/execute?" + six.moves.urllib.parse.urlencode(query)
+            conn = HTTPConnection("localhost", splash.portnum)
+            conn.request("GET", path)
+
+            time.sleep(0.1)
+            assert not os.path.exists(filename)  # not yet created
+
+            # XXX: why can't we use requests or urllib, why
+            # don't they close a connection after a timeout error?
+            conn.close()
+
+            time.sleep(2)
+            assert not os.path.exists(filename)  # script is aborted
 
 
 class ArgsTest(BaseLuaRenderTest):

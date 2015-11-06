@@ -337,6 +337,7 @@ class BrowserTab(QObject):
     #     """ Unregister a callback for an event """
     #     self.web_page.callbacks[event].remove(callback)
 
+    @skip_if_closing
     def close(self):
         """ Destroy this tab """
         self.logger.log("close is requested by a script", min_level=2)
@@ -347,6 +348,7 @@ class BrowserTab(QObject):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+        self._cancel_all_timers()
 
     def _on_before_close(self):
         # self._closing = True
@@ -469,8 +471,8 @@ class BrowserTab(QObject):
         self.logger.log("cancelling timer %s" % id(timer), min_level=2)
         if timer in self._active_timers:
             self._active_timers.remove(timer)
-        timer.stop()
         try:
+            timer.stop()
             if callable(errback):
                 self.logger.log("calling timer errback", min_level=2)
                 errback(self.web_page.error_info)
