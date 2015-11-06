@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 import pytest
-from .utils import TestServers
+from .utils import TestServers, SplashServer
 
 
 @pytest.yield_fixture(scope="session")
@@ -16,6 +16,19 @@ def class_ts(request, test_servers):
     """ Splash server and mockserver """
     request.cls.ts = test_servers
     yield test_servers
+
+
+@pytest.yield_fixture(scope="session")
+def splash_unrestricted():
+    with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
+        yield splash
+
+
+@pytest.yield_fixture(scope="class")
+def class_splash_unrestricted(request, splash_unrestricted):
+    """ Non-sandboxed Splash server """
+    request.cls.splash_unrestricted = splash_unrestricted
+    yield splash_unrestricted
 
 
 @pytest.fixture()

@@ -32,10 +32,10 @@ from .. import defaults
 class BaseLuaRenderTest(test_render.BaseRenderTest):
     endpoint = 'execute'
 
-    def request_lua(self, code, query=None):
+    def request_lua(self, code, query=None, **kwargs):
         q = {"lua_source": code}
         q.update(query or {})
-        return self.request(q)
+        return self.request(q, **kwargs)
 
     def assertScriptError(self, resp, subtype, message=None):
         err = self.assertJsonError(resp, 400, 'ScriptError')
@@ -1249,43 +1249,6 @@ class WaitTest(BaseLuaRenderTest):
     def test_wait_negative(self):
         resp = self.wait('(-0.2)')
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
-
-    def test_wait_timer_stopped_after_request_finished(self):
-        #
-        # This test checks that script is stopped after connection
-        # is closed.
-        #
-        # We can't use splash:http_get or XmlHTTPRequest because
-        # they don't work when page is stopped, and there is no other
-        # way to communicate with outside world in sandboxed Splash,
-        # so a non-sandboxed version is started.
-        #
-        with SplashServer(extra_args=['--disable-lua-sandbox']) as splash:
-            filename = os.path.join(splash.tempdir, str(random.random()))
-            script = """
-            function main(splash)
-                splash:wait(1.0)
-                fp = io.open(splash.args.filename, "w")
-                fp:write("not empty")
-                fp:close()
-                print("file is created")
-                return "ok"
-            end
-            """
-            query = {'lua_source': script, 'filename': filename}
-            path = "/execute?" + six.moves.urllib.parse.urlencode(query)
-            conn = HTTPConnection("localhost", splash.portnum)
-            conn.request("GET", path)
-
-            time.sleep(0.1)
-            assert not os.path.exists(filename)  # not yet created
-
-            # XXX: why can't we use requests or urllib, why
-            # don't they close a connection after a timeout error?
-            conn.close()
-
-            time.sleep(2)
-            assert not os.path.exists(filename)  # script is aborted
 
 
 class ArgsTest(BaseLuaRenderTest):
