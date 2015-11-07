@@ -86,3 +86,30 @@ class StopProcessingTest(unittest.TestCase):
         end
         """)
 
+    def test_js_timer(self):
+        self.assertScriptStopped("""
+        function main(splash)
+            splash:wait_for_resume([[
+                function main(splash){
+                    setTimeout(function () {
+                        splash.resume();
+                    }, 700);
+                }
+            ]])
+            create_file(splash.args.filename, "not empty")
+            return "ok"
+        end""")
+
+    def test_js_timer_aborted(self):
+        self.assertScriptStopped("""
+        function main(splash)
+            splash:wait_for_resume([[
+                function main(splash){
+                    setTimeout(function () {
+                        splash.resume();
+                    }, 10000);
+                }
+            ]], 0.7)
+            create_file(splash.args.filename, "not empty")
+            return "ok"
+        end""")
