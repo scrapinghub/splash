@@ -28,6 +28,7 @@ class StopProcessingTest(unittest.TestCase):
         fp = io.open(filename, "w")
         fp:write(contents)
         fp:close()
+        print("file created")
     end
     """
 
@@ -39,6 +40,9 @@ class StopProcessingTest(unittest.TestCase):
         """
         Send a request to non-sandboxed Splash, return an HTTPConnection.
         create_file Lua function is pre-loaded.
+
+        XXX: why can't we use requests or urllib, why
+        don't they close a connection after a timeout error?
         """
         q = {"lua_source": self.CREATE_FILE + "\n" + code}
         q.update(query or {})
@@ -46,21 +50,39 @@ class StopProcessingTest(unittest.TestCase):
         conn.request(method, "/execute/?" + six.moves.urllib.parse.urlencode(q))
         return conn
 
-    def test_wait_timer_stopped_after_request_finished(self):
+    def assertScriptStopped(self, script, min_time=0.1, max_time=1.5):
+        """
+        Check that script is stopped after a timeout.
+        A script must accept 'filename' argument and create a new file
+        with this name between min_time and max_time.
+        """
         filename = self.get_random_filename()
-        conn = self.open_http_connection("""
+        conn = self.open_http_connection(script, {'filename': filename})
+        time.sleep(min_time)
+        assert not os.path.exists(filename)  # not yet created
+
+        conn.close()
+
+        time.sleep(max_time + min_time)
+        assert not os.path.exists(filename)  # script is aborted
+
+    def test_wait_timer_stopped_after_request_finished(self):
+        self.assertScriptStopped("""
         function main(splash)
-            splash:wait(1.0)
+            splash:wait(0.7)
             create_file(splash.args.filename, "not empty")
             return "ok"
         end
-        """, {'filename': filename})
-        time.sleep(0.1)
-        assert not os.path.exists(filename)  # not yet created
+        """)
 
-        # XXX: why can't we use requests or urllib, why
-        # don't they close a connection after a timeout error?
-        conn.close()
+    def test_call_later_stopped(self):
+        self.assertScriptStopped("""
+        function main(splash)
+            splash:call_later(function()
+                create_file(splash.args.filename, "not empty")
+            end, 0.7)
+            splash:wait(1.0)
+            return "ok"
+        end
+        """)
 
-        time.sleep(2)
-        assert not os.path.exists(filename)  # script is aborted
