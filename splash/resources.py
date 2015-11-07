@@ -83,7 +83,6 @@ class BaseRenderResource(_ValidatingResource):
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
-
         request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
 
@@ -95,6 +94,8 @@ class BaseRenderResource(_ValidatingResource):
 
         pool_d = self._get_render(request, render_options)
         timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
+        request.notifyFinish().addErrback(self._request_failed, pool_d, timer)
+
         pool_d.addCallback(self._cancel_timer, timer)
         pool_d.addCallback(self._write_output, request, options=render_options.data)
         pool_d.addErrback(self._on_timeout_error, request, timeout=timeout)
@@ -126,6 +127,11 @@ class BaseRenderResource(_ValidatingResource):
         #log.msg("_cancelTimer")
         timer.cancel()
         return _
+
+    def _request_failed(self, _, pool_d, timer):
+        log.msg("Client disconnected: %s" % _.value)
+        timer.cancel()
+        pool_d.cancel()
 
     def _write_output(self, data, request, content_type=None, options=None):
         # log.msg("_writeOutput: %s" % id(request))

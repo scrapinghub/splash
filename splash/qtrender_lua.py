@@ -7,6 +7,8 @@ import resource
 import contextlib
 import time
 import sys
+import weakref
+
 import six
 
 import twisted
@@ -438,6 +440,7 @@ class Splash(BaseExposedObject):
         self.tab = tab
         self.log = log or tab.logger.log
         self._result_headers = []
+        self._objects_to_clear = weakref.WeakSet()
 
         super(Splash, self).__init__(lua, exceptions)
 
@@ -445,6 +448,15 @@ class Splash(BaseExposedObject):
         self._wrapped = wrapper._create(self)
         self.request_wrapper = self.lua.eval("require('request')")
         self.response_wrapper = self.lua.eval("require('response')")
+
+    def clear(self):
+        self.log("[splash] clearing %d objects" % len(self._objects_to_clear), min_level=2)
+        for obj in self._objects_to_clear:
+            try:
+                obj.clear()
+            except Exception as e:
+                print(e)
+        super(Splash, self).clear()
 
     @lua_property('js_enabled')
     @command()
@@ -654,6 +666,8 @@ class Splash(BaseExposedObject):
             req = _ExposedRequest.from_reply(self.lua, self.exceptions, reply)
             resp = _ExposedResponse(self.lua, self.exceptions, reply, req,
                                     read_body=True)
+            self._objects_to_clear.add(req)
+            self._objects_to_clear.add(resp)
             resp_wrapped = self.response_wrapper._create(resp)
             cmd.return_result(resp_wrapped)
 
@@ -940,6 +954,8 @@ class Splash(BaseExposedObject):
             req = _ExposedRequest.from_har(self.lua, exceptions, har_entry['request'])
             resp = _ExposedResponse(self.lua, exceptions, reply, req, har_entry,
                                     read_body=False)
+            self._objects_to_clear.add(req)
+            self._objects_to_clear.add(resp)
             run_coro = self.get_coroutine_run_func(
                 "splash:on_response", callback, [resp]
             )
@@ -978,6 +994,7 @@ class Splash(BaseExposedObject):
         # timer is used outside call_later callbacks, so errors
         # are reported as main Splash errors.
         timer = _ExposedTimer(self.lua, self.exceptions, qtimer)
+        self._objects_to_clear.add(timer)
 
         run_coro = self.get_coroutine_run_func(
             "splash:call_later", callback, return_error=timer.store_error
@@ -1067,7 +1084,12 @@ class _ExposedTimer(BaseExposedObject):
 
     @command()
     def cancel(self):
-        self.timer.stop()
+        self._stop_timer()
+
+    def _stop_timer(self):
+        print("_stop_timer", self.timer.isActive())
+        if self.timer is not None and self.timer.isActive():
+            self.timer.stop()
 
     @command()
     def is_pending(self):
@@ -1085,6 +1107,12 @@ class _ExposedTimer(BaseExposedObject):
 
     def store_error(self, error):
         self.callback_exceptions.append(error)
+
+    def clear(self):
+        self._stop_timer()
+        self.timer.deleteLater()
+        self.timer = None
+        super(_ExposedTimer, self).clear()
 
 
 requires_request = requires_attr(
@@ -1246,6 +1274,8 @@ class _ExposedResponse(BaseExposedObject):
     def clear(self):
         super(_ExposedResponse, self).clear()
         self.request = None
+        self._info = None
+        self._info_lua = None
 
     def _on_response_required(self, meth, attr_name):
         raise ScriptError({
@@ -1494,3 +1524,7 @@ class LuaRender(RenderScript):
         else:
             main, env = get_main(self.lua, lua_source)
         return self.lua.create_coroutine(main)
+
+    def close(self):
+        self.splash.clear()
+        super(LuaRender, self).close()

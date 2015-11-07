@@ -62,6 +62,7 @@ class BrowserTab(QObject):
         self._active_timers = set()
         self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
         self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
+        self._callback_proxies_to_cancel = weakref.WeakSet()
         self._js_console = None
         self._autoload_scripts = []
 
@@ -337,6 +338,7 @@ class BrowserTab(QObject):
     #     """ Unregister a callback for an event """
     #     self.web_page.callbacks[event].remove(callback)
 
+    @skip_if_closing
     def close(self):
         """ Destroy this tab """
         self.logger.log("close is requested by a script", min_level=2)
@@ -347,6 +349,7 @@ class BrowserTab(QObject):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+        self._cancel_all_timers()
 
     def _on_before_close(self):
         # self._closing = True
@@ -469,8 +472,8 @@ class BrowserTab(QObject):
         self.logger.log("cancelling timer %s" % id(timer), min_level=2)
         if timer in self._active_timers:
             self._active_timers.remove(timer)
-        timer.stop()
         try:
+            timer.stop()
             if callable(errback):
                 self.logger.log("calling timer errback", min_level=2)
                 errback(self.web_page.error_info)
@@ -483,9 +486,12 @@ class BrowserTab(QObject):
             timers.pop(timer, None)
 
     def _cancel_all_timers(self):
-        self.logger.log("cancelling %d remaining timers" % len(self._active_timers), min_level=2)
+        total_len = len(self._active_timers) + len(self._callback_proxies_to_cancel)
+        self.logger.log("cancelling %d remaining timers" % total_len, min_level=2)
         for timer in list(self._active_timers):
             self._cancel_timer(timer)
+        for callback_proxy in self._callback_proxies_to_cancel:
+            callback_proxy.use_up()
 
     def _on_url_changed(self, url):
         self.web_page.har.store_redirect(six.text_type(url.toString()))
@@ -626,6 +632,7 @@ class BrowserTab(QObject):
         frame = self.web_page.mainFrame()
         script_text = json.dumps(js_source)[1:-1]
         callback_proxy = OneShotCallbackProxy(self, callback, errback, timeout)
+        self._callback_proxies_to_cancel.add(callback_proxy)
         frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
 
         wrapped = """
@@ -1049,7 +1056,7 @@ class OneShotCallbackProxy(QObject):
             raise OneShotCallbackError("resume() called on a one shot"
                                        " callback that was already used up.")
 
-        self._use_up()
+        self.use_up()
         self._callback(qt2py(value))
 
     @pyqtSlot(str, bool)
@@ -1058,20 +1065,20 @@ class OneShotCallbackProxy(QObject):
             raise OneShotCallbackError("error() called on a one shot"
                                        " callback that was already used up.")
 
-        self._use_up()
+        self.use_up()
         self._errback(message, raise_)
 
     def cancel(self, reason):
-        self._use_up()
+        self.use_up()
         self._errback("One shot callback canceled due to: %s." % reason,
                       raise_=False)
 
     def _timed_out(self):
-        self._use_up()
+        self.use_up()
         self._errback("One shot callback timed out while waiting for"
                       " resume() or error().", raise_=False)
 
-    def _use_up(self):
+    def use_up(self):
         self._used_up = True
 
         if self._timer is not None and self._timer.isActive():

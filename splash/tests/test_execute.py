@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import re
+
+import os
 import base64
+import random
 import unittest
 from io import BytesIO
 import numbers
@@ -10,12 +12,12 @@ import time
 from PIL import Image
 import requests
 import six
+from six.moves.http_client import HTTPConnection
 import pytest
-from splash.exceptions import ScriptError
-from splash.qtutils import qt_551_plus
-
 lupa = pytest.importorskip("lupa")
 
+from splash.exceptions import ScriptError
+from splash.qtutils import qt_551_plus
 from splash import __version__ as splash_version
 from splash.har_builder import HarBuilder
 from splash.har.utils import get_response_body_bytes
@@ -30,10 +32,10 @@ from .. import defaults
 class BaseLuaRenderTest(test_render.BaseRenderTest):
     endpoint = 'execute'
 
-    def request_lua(self, code, query=None):
+    def request_lua(self, code, query=None, **kwargs):
         q = {"lua_source": code}
         q.update(query or {})
-        return self.request(q)
+        return self.request(q, **kwargs)
 
     def assertScriptError(self, resp, subtype, message=None):
         err = self.assertJsonError(resp, 400, 'ScriptError')
