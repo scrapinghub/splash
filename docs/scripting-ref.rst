@@ -835,7 +835,7 @@ Arrange for the callback to be called after the given delay seconds.
 * delay - delay, in seconds;
 
 **Returns:** a handle which allows to cancel pending timer or reraise
-  exceptions happened in a callback.
+exceptions happened in a callback.
 
 **Async:** no.
 
