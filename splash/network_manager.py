@@ -10,8 +10,7 @@ from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
-    QNetworkReply,
-    QNetworkCookieJar
+    QNetworkReply
 )
 from twisted.python import log
 
@@ -26,21 +25,32 @@ from splash.request_middleware import (
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 from splash.utils import to_bytes
+from splash.cookies import SplashCookieJar
 
 
-def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
-    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
-    if allowed_schemes is None:
-        allowed_schemes = defaults.ALLOWED_SCHEMES
-    else:
-        allowed_schemes = allowed_schemes.split(',')
-    manager = SplashQNetworkAccessManager(
-        filters_path=filters_path,
-        allowed_schemes=allowed_schemes,
-        verbosity=verbosity
-    )
-    manager.setCache(None)
-    return manager
+class NetworkManagerFactory(object):
+    def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None, cache=None):
+        self.cache = cache
+        self.verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+
+        if filters_path is not None:
+            self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
+        else:
+            self.adblock_rules = None
+
+        if allowed_schemes is None:
+            self.allowed_schemes = defaults.ALLOWED_SCHEMES
+        else:
+            self.allowed_schemes = allowed_schemes.split(',')
+
+    def __call__(self):
+        manager = SplashQNetworkAccessManager(
+            adblock_rules=self.adblock_rules,
+            allowed_schemes=self.allowed_schemes,
+            verbosity=self.verbosity,
+        )
+        manager.setCache(self.cache)
+        return manager
 
 
 class ProxiedQNetworkAccessManager(QNetworkAccessManager):
@@ -67,6 +77,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.verbosity = verbosity
         self._reply_timeout_timers = {}  # requestId => timer
         self._default_proxy = self.proxy()
+        self.cookiejar = SplashCookieJar(self)
+        self.setCookieJar(self.cookiejar)
 
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
@@ -196,16 +208,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             request.setRawHeader(to_bytes(name), to_bytes(value))
 
     def _handle_request_cookies(self, request):
-        jar = QNetworkCookieJar()
-        self.setCookieJar(jar)
-        cookiejar = self._get_webpage_attribute(request, "cookiejar")
-        if cookiejar is not None:
-            cookiejar.update_cookie_header(request)
+        self.cookiejar.update_cookie_header(request)
 
     def _handle_reply_cookies(self, reply):
-        cookiejar = self._get_webpage_attribute(reply.request(), "cookiejar")
-        if cookiejar is not None:
-            cookiejar.fill_from_reply(reply)
+        self.cookiejar.fill_from_reply(reply)
 
     def _get_request_id(self, request=None):
         if request is None:
@@ -336,7 +342,7 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     """
     adblock_rules = None
 
-    def __init__(self, filters_path, allowed_schemes, verbosity):
+    def __init__(self, adblock_rules, allowed_schemes, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
 
         self.request_middlewares = []
@@ -353,8 +359,8 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
         self.request_middlewares.append(ResourceTimeoutMiddleware())
 
-        if filters_path is not None:
-            self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
+        if adblock_rules:
+            self.adblock_rules = adblock_rules
             self.request_middlewares.append(
                 AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
             )

@@ -7,8 +7,8 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, network_manager, splash_proxy_factory_cls, js_profiles_path, verbosity=1):
-        self.network_manager = network_manager
+    def __init__(self, slots, network_manager_factory, splash_proxy_factory_cls, js_profiles_path, verbosity=1):
+        self.network_manager_factory = network_manager_factory
         self.splash_proxy_factory_cls = splash_proxy_factory_cls or (lambda profile_name: None)
         self.js_profiles_path = js_profiles_path
         self.active = set()
@@ -37,7 +37,7 @@ class RenderPool(object):
         (rendercls, render_options, splash_proxy_factory, kwargs,
          pool_d) = slot_args
         render = rendercls(
-            network_manager=self.network_manager,
+            network_manager=self.network_manager_factory(),
             splash_proxy_factory=splash_proxy_factory,
             render_options=render_options,
             verbosity=self.verbosity,

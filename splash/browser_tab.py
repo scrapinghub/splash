@@ -244,15 +244,15 @@ class BrowserTab(QObject):
 
     def get_cookies(self):
         """ Return a list of all cookies in the current cookiejar """
-        return cookies2har(self.web_page.cookiejar.allCookies())
+        return cookies2har(self.network_manager.cookiejar.allCookies())
 
     def init_cookies(self, cookies):
         """ Replace all current cookies with ``cookies`` """
-        self.web_page.cookiejar.init(cookies)
+        self.network_manager.cookiejar.init(cookies)
 
     def clear_cookies(self):
         """ Remove all cookies. Return a number of cookies deleted. """
-        return self.web_page.cookiejar.clear()
+        return self.network_manager.cookiejar.clear()
 
     def delete_cookies(self, name=None, url=None):
         """
@@ -263,10 +263,10 @@ class BrowserTab(QObject):
 
         Return a number of cookies deleted.
         """
-        return self.web_page.cookiejar.delete(name, url)
+        return self.network_manager.cookiejar.delete(name, url)
 
     def add_cookie(self, cookie):
-        return self.web_page.cookiejar.add(cookie)
+        return self.network_manager.cookiejar.add(cookie)
 
     @property
     def url(self):

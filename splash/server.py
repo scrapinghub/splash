@@ -157,7 +157,7 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, network_manager, max_timeout,
+def splash_server(portnum, slots, network_manager_factory, max_timeout,
                   splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
                   ui_enabled=True,
@@ -181,7 +181,7 @@ def splash_server(portnum, slots, network_manager, max_timeout,
 
     pool = RenderPool(
         slots=slots,
-        network_manager=network_manager,
+        network_manager_factory=network_manager_factory,
         splash_proxy_factory_cls=splash_proxy_factory_cls,
         js_profiles_path=js_profiles_path,
         verbosity=verbosity,
@@ -264,19 +264,19 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           lua_sandbox_allowed_modules=(),
                           verbosity=None):
     from splash import network_manager
-    manager = network_manager.create_default(
+    network_manager_factory = network_manager.NetworkManagerFactory(
         filters_path=filters_path,
         verbosity=verbosity,
         allowed_schemes=allowed_schemes,
+        cache=_default_cache(cache_enabled, cache_path, cache_size),
     )
-    manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access, private_mode)
     return splash_server(
         portnum=portnum,
         slots=slots,
-        network_manager=manager,
+        network_manager_factory=network_manager_factory,
         splash_proxy_factory_cls=splash_proxy_factory_cls,
         js_profiles_path=js_profiles_path,
         disable_proxy=disable_proxy,
