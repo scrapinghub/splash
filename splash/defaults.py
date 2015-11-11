@@ -72,11 +72,6 @@ MANHOLE_PASSWORD = 'admin'
 # pool options
 SLOTS = 50
 
-# disk cache options - don't enable it unless you know what you're doing
-CACHE_ENABLED = False
-CACHE_SIZE = 50  # MB
-CACHE_PATH = '.splash-cache'
-
 # security options
 ALLOWED_SCHEMES = ['http', 'https', 'data', 'ftp', 'sftp', 'ws', 'wss']
 JS_CROSS_DOMAIN_ENABLED = False

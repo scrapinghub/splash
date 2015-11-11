@@ -29,8 +29,7 @@ from splash.cookies import SplashCookieJar
 
 
 class NetworkManagerFactory(object):
-    def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None, cache=None):
-        self.cache = cache
+    def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None):
         self.verbosity = defaults.VERBOSITY if verbosity is None else verbosity
 
         if filters_path is not None:
@@ -49,7 +48,7 @@ class NetworkManagerFactory(object):
             allowed_schemes=self.allowed_schemes,
             verbosity=self.verbosity,
         )
-        manager.setCache(self.cache)
+        manager.setCache(None)
         return manager
 
 
