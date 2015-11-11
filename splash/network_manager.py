@@ -30,22 +30,38 @@ from splash.cookies import SplashCookieJar
 
 class NetworkManagerFactory(object):
     def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None):
-        self.verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+        verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+        self.verbosity = verbosity
+        self.request_middlewares = []
+        self.response_middlewares = []
+        self.adblock_rules = None
+
+        # Initialize request and response middlewares
+        allowed_schemes = (defaults.ALLOWED_SCHEMES if allowed_schemes is None
+                           else allowed_schemes.split(','))
+        if allowed_schemes:
+            self.request_middlewares.append(
+                AllowedSchemesMiddleware(allowed_schemes, verbosity=verbosity)
+            )
+
+        if self.verbosity >= 2:
+            self.request_middlewares.append(RequestLoggingMiddleware())
+
+        self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
+        self.request_middlewares.append(ResourceTimeoutMiddleware())
 
         if filters_path is not None:
             self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
-        else:
-            self.adblock_rules = None
+            self.request_middlewares.append(
+                AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
+            )
 
-        if allowed_schemes is None:
-            self.allowed_schemes = defaults.ALLOWED_SCHEMES
-        else:
-            self.allowed_schemes = allowed_schemes.split(',')
+        self.response_middlewares.append(ContentTypeMiddleware(self.verbosity))
 
     def __call__(self):
         manager = SplashQNetworkAccessManager(
-            adblock_rules=self.adblock_rules,
-            allowed_schemes=self.allowed_schemes,
+            request_middlewares=self.request_middlewares,
+            response_middlewares=self.response_middlewares,
             verbosity=self.verbosity,
         )
         manager.setCache(None)
@@ -339,32 +355,11 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     * additional logging.
 
     """
-    adblock_rules = None
-
-    def __init__(self, adblock_rules, allowed_schemes, verbosity):
+    def __init__(self, request_middlewares, response_middlewares, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
+        self.request_middlewares = request_middlewares
+        self.response_middlewares = response_middlewares
 
-        self.request_middlewares = []
-        self.response_middlewares = []
-
-        if self.verbosity >= 2:
-            self.request_middlewares.append(RequestLoggingMiddleware())
-
-        if allowed_schemes:
-            self.request_middlewares.append(
-                AllowedSchemesMiddleware(allowed_schemes, verbosity=verbosity)
-            )
-
-        self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
-        self.request_middlewares.append(ResourceTimeoutMiddleware())
-
-        if adblock_rules:
-            self.adblock_rules = adblock_rules
-            self.request_middlewares.append(
-                AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
-            )
-
-        self.response_middlewares.append(ContentTypeMiddleware(self.verbosity))
 
     def run_response_middlewares(self):
         reply = self.sender()
