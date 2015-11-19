@@ -5,6 +5,7 @@ exposed to the user).
 from __future__ import absolute_import
 import os
 import gc
+import re
 import time
 import json
 import types
@@ -16,6 +17,7 @@ from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
 import six
+from PyQt5.QtWebKit import QWebSettings
 
 import splash
 from splash.qtrender import (
@@ -344,6 +346,36 @@ class ClearCachesResource(Resource):
         return json.dumps({
             "status": "ok",
             "pyobjects_collected": unreachable
+        }).encode('utf-8')
+
+
+class CacheControlResource(Resource):
+    isLeaf = True
+    content_type = "application/json"
+
+    def render_POST(self, request):
+        for key, pattern in (
+                ('max_pages', r'^\d+$'),
+                ('object_capacities', r'^\d+,\d+,\d+$'),
+            ):
+            if request.args.get(key):
+                data = ''.join(request.args[key])
+                if not re.match(pattern, data):
+                    request.setResponseCode(400)
+                    return json.dumps({
+                        'status': 'error',
+                        'key': key,
+                        'supported_format': pattern,
+                        'received': data,
+                    })
+        if request.args.get('max_pages'):
+            data = ''.join(request.args['max_pages'])
+            QWebSettings.setMaximumPagesInCache(int(data))
+        if request.args.get('object_capacities'):
+            data = ''.join(request.args['object_capacities']).split(',')
+            QWebSettings.setObjectCacheCapacities(*[int(x) for x in data])
+        return json.dumps({
+            "status": "ok",
         }).encode('utf-8')
 
 
@@ -704,6 +736,7 @@ class Root(Resource):
 
         self.putChild(b"_debug", DebugResource(pool))
         self.putChild(b"_gc", ClearCachesResource())
+        self.putChild(b"_cache_control", CacheControlResource())
 
         # backwards compatibility
         self.putChild(b"debug", DebugResource(pool, warn=True))
