@@ -235,7 +235,7 @@ time after each page load in case of redirects:
 
     function wait_restarting_on_redirects(splash, time, max_redirects)
         local redirects_remaining = max_redirects
-        while redirects_remaining do
+        while redirects_remaining > 0 do
             local ok, reason = self:wait{time=time, cancel_on_redirect=true}
             if reason ~= 'redirect' then
                 return ok, reason
