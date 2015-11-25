@@ -64,10 +64,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         super(ProxiedQNetworkAccessManager, self).__init__()
         self.sslErrors.connect(self._on_ssl_errors)
         self.finished.connect(self._on_finished)
+        self.proxyAuthenticationRequired.connect(self._on_proxy_auth)
         self.verbosity = verbosity
         self._reply_timeout_timers = {}  # requestId => timer
         self._default_proxy = self.proxy()
-
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -146,6 +146,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.log("timed out, aborting: {url}", reply, min_level=1)
         # FIXME: set proper error code
         reply.abort()
+
+    def _on_proxy_auth(self, proxy, authenticator):
+        user, password = proxy.user(), proxy.password()
+        authenticator.setUser(user)
+        authenticator.setPassword(password)
 
     def _cancel_reply_timer(self, reply):
         request_id = self._get_request_id(reply.request())
