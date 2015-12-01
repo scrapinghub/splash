@@ -3034,3 +3034,78 @@ class VersionTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, splash_version)
+
+
+class EnableDisablePrivateModeTest(BaseLuaRenderTest):
+    def test_disable_private_mode(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash.private_mode_enabled == true)
+                splash.private_mode_enabled = false
+                assert(splash.private_mode_enabled == false)
+                assert(splash:go(splash.args.url))
+                assert(splash:runjs(splash.args.js))
+                return splash:html()
+            end
+            """, {
+            'url': self.mockurl('jsrender'),
+            "js": """
+            (function () {
+                localStorage.setItem("hello", "world of splash");
+                p = document.createElement('p');
+                p.textContent = localStorage.getItem("hello");
+                document.body.appendChild(p);
+            })();
+            """
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertIn(u'world of splash', resp.text)
+
+    def test_private_mode_enabled(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash.private_mode_enabled == true)
+                assert(splash:go(splash.args.url))
+                return splash:evaljs(splash.args.js)
+            end
+            """, {
+            'url': self.mockurl('jsrender'),
+            "js": """
+                (function () {
+                    return localStorage
+                })();
+                """
+        })
+        self.assertStatusCode(resp, 200)
+        # if private_mode disabled local storage is undefined, response.body is empty
+        self.assertFalse(resp.text)
+
+    def test_enable_and_disable_private_mode(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash.private_mode_enabled == true)
+                splash.private_mode_enabled = false
+                assert(splash.private_mode_enabled == false)
+                assert(splash:go(splash.args.url))
+                assert(splash:runjs(splash.args.js))
+                html1 = splash:html()
+                splash.private_mode_enabled = true
+                assert(splash:go(splash.args.url))
+                html2 = splash:html()
+                return {html1=html1, html2=html2}
+            end
+            """, {
+            'url': self.mockurl('jsrender'),
+            "js": """
+            (function () {
+                localStorage.setItem("hello", "world of splash");
+                p = document.createElement('p');
+                p.textContent = localStorage.getItem("hello");
+                document.body.appendChild(p);
+            })();
+            """
+        })
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        self.assertIn(u'world of splash', data["html1"])
+        self.assertNotIn(u"world of splash", data["html2"])

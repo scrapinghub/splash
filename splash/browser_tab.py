@@ -103,6 +103,15 @@ class BrowserTab(QObject):
         settings = self.web_page.settings()
         return settings.testAttribute(QWebSettings.JavascriptEnabled)
 
+    def set_private_mode_enabled(self, val):
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, bool(val))
+        settings.setAttribute(QWebSettings.LocalStorageEnabled, not bool(val))
+
+    def get_private_mode_enabled(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(QWebSettings.PrivateBrowsingEnabled)
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.
