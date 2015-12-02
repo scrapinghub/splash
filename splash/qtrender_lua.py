@@ -468,6 +468,16 @@ class Splash(BaseExposedObject):
     def set_js_enabled(self, value):
         self.tab.set_js_enabled(value)
 
+    @lua_property("private_mode_enabled")
+    @command()
+    def get_private_mode_enabled(self):
+        return self.tab.get_private_mode_enabled()
+
+    @get_private_mode_enabled.lua_setter
+    @command()
+    def set_private_mode_enabled(self, value):
+        self.tab.set_private_mode_enabled(bool(value))
+
     @command(async=True)
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
         time = float(time)
