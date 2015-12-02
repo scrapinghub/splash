@@ -938,6 +938,27 @@ To reclaim some RAM send a POST request to the ``/_gc`` endpoint::
 
 It runs the Python garbage collector and clears internal WebKit caches.
 
+.. _http-cache-control:
+
+_cache_control
+~~~~~~~~~~~~~~
+
+To control the internal memory cache used in WebKit, send a POST to the
+``/_cache_control`` endpoint.
+
+Supported arguments:
+
+* ``max_pages`` : Optional. Non-negative integer. Would be passed to `QWebSettings::setMaximumPagesInCache`_
+
+* ``object_capacities``: Optional. Three non-negative integers separated by commas. Would be passed to `QWebSettings::setObjectCacheCapacities`_
+
+.. _`QWebSettings::setMaximumPagesInCache`: http://doc.qt.io/qt-5/qwebsettings.html#setMaximumPagesInCache
+.. _`QWebSettings::setObjectCacheCapacities`: http://doc.qt.io/qt-5/qwebsettings.html#setObjectCacheCapacities
+
+A sample to disable the internal WebKit memory cache::
+
+    curl -X POST http://localhost:8050/_cache_control --data max_pages=0 --data object_capacities=0,0,0
+
 .. _http-debug:
 
 _debug
