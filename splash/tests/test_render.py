@@ -928,6 +928,10 @@ class TestTestSetup(unittest.TestCase):
         r = requests.get('http://localhost:%s/_debug' % self.ts.splashserver.portnum)
         self.assertEqual(r.status_code, 200)
 
+    def test_splashserver_pings(self):
+        r = requests.get('http://localhost:%s/_ping' % self.ts.splashserver.portnum)
+        self.assertEqual(r.status_code, 200)
+
 
 class RenderJpegTest(Base.RenderTest):
 
