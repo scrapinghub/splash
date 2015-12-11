@@ -347,6 +347,18 @@ class ClearCachesResource(Resource):
         }).encode('utf-8')
 
 
+class PingResource(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        request.setHeader(b"content-type", b"application/json")
+        return json.dumps({
+            "status": "ok",
+            "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        })
+
+
+
 BOOTSTRAP_THEME = 'simplex'
 CODEMIRROR_OPTIONS = """{
     mode: 'lua',
@@ -704,6 +716,7 @@ class Root(Resource):
 
         self.putChild(b"_debug", DebugResource(pool))
         self.putChild(b"_gc", ClearCachesResource())
+        self.putChild(b"_ping", PingResource())
 
         # backwards compatibility
         self.putChild(b"debug", DebugResource(pool, warn=True))
