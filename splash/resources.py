@@ -23,7 +23,7 @@ from splash.qtrender import (
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
-    SplashJSONEncoder, to_bytes, to_unicode
+    SplashJSONEncoder, to_bytes, to_unicode, get_ru_maxrss
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
@@ -354,7 +354,7 @@ class PingResource(Resource):
         request.setHeader(b"content-type", b"application/json")
         return json.dumps({
             "status": "ok",
-            "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+            "maxrss": get_ru_maxrss(),
         })
 
 
