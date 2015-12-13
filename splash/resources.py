@@ -352,10 +352,10 @@ class PingResource(Resource):
 
     def render_GET(self, request):
         request.setHeader(b"content-type", b"application/json")
-        return json.dumps({
+        return (json.dumps({
             "status": "ok",
             "maxrss": get_ru_maxrss(),
-        })
+        })).encode('utf-8')
 
 
 
