@@ -948,3 +948,14 @@ file descriptors, active requests, request queue length, counts of alive
 objects) send a GET request to the ``/_debug`` endpoint::
 
     curl http://localhost:8050/_debug
+
+.. _http-ping:
+
+_ping
+~~~~~~
+
+To ping Splash instance send a GET request to the ``/_ping`` endpoint::
+
+    curl http://localhost:8050/_ping
+
+It returns "ok" status and max RSS used, if instance is alive.

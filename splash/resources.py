@@ -23,7 +23,7 @@ from splash.qtrender import (
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
-    SplashJSONEncoder, to_bytes, to_unicode
+    SplashJSONEncoder, to_bytes, to_unicode, get_ru_maxrss
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
@@ -345,6 +345,18 @@ class ClearCachesResource(Resource):
             "status": "ok",
             "pyobjects_collected": unreachable
         }).encode('utf-8')
+
+
+class PingResource(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        request.setHeader(b"content-type", b"application/json")
+        return (json.dumps({
+            "status": "ok",
+            "maxrss": get_ru_maxrss(),
+        })).encode('utf-8')
+
 
 
 BOOTSTRAP_THEME = 'simplex'
@@ -704,6 +716,7 @@ class Root(Resource):
 
         self.putChild(b"_debug", DebugResource(pool))
         self.putChild(b"_gc", ClearCachesResource())
+        self.putChild(b"_ping", PingResource())
 
         # backwards compatibility
         self.putChild(b"debug", DebugResource(pool, warn=True))
