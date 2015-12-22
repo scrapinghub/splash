@@ -8,7 +8,6 @@ from PyQt5.QtCore import QByteArray
 from twisted.python import log
 import six
 
-from splash.cookies import SplashCookieJar
 from splash.har_builder import HarBuilder
 
 RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
@@ -52,7 +51,6 @@ class SplashQWebPage(QWebPage):
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
         self.verbosity = verbosity
-        self.cookiejar = SplashCookieJar(self)
         self.callbacks = {
             "on_request": [],
             "on_response_headers": [],

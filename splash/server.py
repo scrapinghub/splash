@@ -46,13 +46,6 @@ def parse_opts():
         default=defaults.JS_CROSS_DOMAIN_ENABLED,
         help="enable support for cross domain access when executing custom javascript "
              "(WARNING: it could break rendering for some of the websites)" + _bool_default[defaults.JS_CROSS_DOMAIN_ENABLED])
-    op.add_option("--no-cache", action="store_false", dest="cache_enabled",
-        help="disable local cache" + _bool_default[not defaults.CACHE_ENABLED])
-    op.add_option("--cache", action="store_true", dest="cache_enabled",
-        help="enable local cache (WARNING: don't enable it unless you know what are you doing)" + _bool_default[defaults.CACHE_ENABLED])
-    op.add_option("-c", "--cache-path", help="local cache folder")
-    op.add_option("--cache-size", type=int, default=defaults.CACHE_SIZE,
-        help="maximum cache size in MB (default: %default)")
     op.add_option("--manhole", action="store_true",
         help="enable manhole server")
     op.add_option("--disable-proxy", action="store_true", default=False,
@@ -157,7 +150,7 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, network_manager, max_timeout,
+def splash_server(portnum, slots, network_manager_factory, max_timeout,
                   splash_proxy_factory_cls=None,
                   js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
                   ui_enabled=True,
@@ -181,7 +174,7 @@ def splash_server(portnum, slots, network_manager, max_timeout,
 
     pool = RenderPool(
         slots=slots,
-        network_manager=network_manager,
+        network_manager_factory=network_manager_factory,
         splash_proxy_factory_cls=splash_proxy_factory_cls,
         js_profiles_path=js_profiles_path,
         verbosity=verbosity,
@@ -251,7 +244,6 @@ def monitor_maxrss(maxrss):
 
 
 def default_splash_server(portnum, max_timeout, slots=None,
-                          cache_enabled=None, cache_path=None, cache_size=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
                           disable_proxy=False, proxy_portnum=None,
@@ -264,19 +256,18 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           lua_sandbox_allowed_modules=(),
                           verbosity=None):
     from splash import network_manager
-    manager = network_manager.create_default(
+    network_manager_factory = network_manager.NetworkManagerFactory(
         filters_path=filters_path,
         verbosity=verbosity,
         allowed_schemes=allowed_schemes,
     )
-    manager.setCache(_default_cache(cache_enabled, cache_path, cache_size))
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access, private_mode)
     return splash_server(
         portnum=portnum,
         slots=slots,
-        network_manager=manager,
+        network_manager_factory=network_manager_factory,
         splash_proxy_factory_cls=splash_proxy_factory_cls,
         js_profiles_path=js_profiles_path,
         disable_proxy=disable_proxy,
@@ -289,23 +280,6 @@ def default_splash_server(portnum, max_timeout, slots=None,
         verbosity=verbosity,
         max_timeout=max_timeout
     )
-
-
-def _default_cache(cache_enabled, cache_path, cache_size):
-    from twisted.python import log
-    from splash import cache
-
-    cache_enabled = defaults.CACHE_ENABLED if cache_enabled is None else cache_enabled
-    cache_path = defaults.CACHE_PATH if cache_path is None else cache_path
-    cache_size = defaults.CACHE_SIZE if cache_size is None else cache_size
-
-    if cache_enabled:
-        log.msg("cache_enabled=%s, cache_path=%r, cache_size=%sMB" % (cache_enabled, cache_path, cache_size))
-        log.msg("[WARNING] You have enabled cache support. QT cache is known "
-                "to cause segfaults and other issues for splash; "
-                "enable it on your own risk. We recommend using a separate "
-                "caching forward proxy like squid.")
-        return cache.construct(cache_path, cache_size)
 
 
 def _default_proxy_factory(proxy_profiles_path):
@@ -370,9 +344,6 @@ def main():
         default_splash_server(
             portnum=opts.port,
             slots=opts.slots,
-            cache_enabled=opts.cache_enabled,
-            cache_path=opts.cache_path,
-            cache_size=opts.cache_size,
             proxy_profiles_path=opts.proxy_profiles_path,
             js_profiles_path=opts.js_profiles_path,
             js_disable_cross_domain_access=not opts.js_cross_domain_enabled,

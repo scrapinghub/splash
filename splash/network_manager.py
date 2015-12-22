@@ -10,8 +10,7 @@ from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
     QNetworkRequest,
-    QNetworkReply,
-    QNetworkCookieJar
+    QNetworkReply
 )
 from twisted.python import log
 
@@ -26,21 +25,47 @@ from splash.request_middleware import (
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 from splash.utils import to_bytes
+from splash.cookies import SplashCookieJar
 
 
-def create_default(filters_path=None, verbosity=None, allowed_schemes=None):
-    verbosity = defaults.VERBOSITY if verbosity is None else verbosity
-    if allowed_schemes is None:
-        allowed_schemes = defaults.ALLOWED_SCHEMES
-    else:
-        allowed_schemes = allowed_schemes.split(',')
-    manager = SplashQNetworkAccessManager(
-        filters_path=filters_path,
-        allowed_schemes=allowed_schemes,
-        verbosity=verbosity
-    )
-    manager.setCache(None)
-    return manager
+class NetworkManagerFactory(object):
+    def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None):
+        verbosity = defaults.VERBOSITY if verbosity is None else verbosity
+        self.verbosity = verbosity
+        self.request_middlewares = []
+        self.response_middlewares = []
+        self.adblock_rules = None
+
+        # Initialize request and response middlewares
+        allowed_schemes = (defaults.ALLOWED_SCHEMES if allowed_schemes is None
+                           else allowed_schemes.split(','))
+        if allowed_schemes:
+            self.request_middlewares.append(
+                AllowedSchemesMiddleware(allowed_schemes, verbosity=verbosity)
+            )
+
+        if self.verbosity >= 2:
+            self.request_middlewares.append(RequestLoggingMiddleware())
+
+        self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
+        self.request_middlewares.append(ResourceTimeoutMiddleware())
+
+        if filters_path is not None:
+            self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
+            self.request_middlewares.append(
+                AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
+            )
+
+        self.response_middlewares.append(ContentTypeMiddleware(self.verbosity))
+
+    def __call__(self):
+        manager = SplashQNetworkAccessManager(
+            request_middlewares=self.request_middlewares,
+            response_middlewares=self.response_middlewares,
+            verbosity=self.verbosity,
+        )
+        manager.setCache(None)
+        return manager
 
 
 class ProxiedQNetworkAccessManager(QNetworkAccessManager):
@@ -67,6 +92,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.verbosity = verbosity
         self._reply_timeout_timers = {}  # requestId => timer
         self._default_proxy = self.proxy()
+        self.cookiejar = SplashCookieJar(self)
+        self.setCookieJar(self.cookiejar)
 
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
@@ -196,16 +223,10 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             request.setRawHeader(to_bytes(name), to_bytes(value))
 
     def _handle_request_cookies(self, request):
-        jar = QNetworkCookieJar()
-        self.setCookieJar(jar)
-        cookiejar = self._get_webpage_attribute(request, "cookiejar")
-        if cookiejar is not None:
-            cookiejar.update_cookie_header(request)
+        self.cookiejar.update_cookie_header(request)
 
     def _handle_reply_cookies(self, reply):
-        cookiejar = self._get_webpage_attribute(reply.request(), "cookiejar")
-        if cookiejar is not None:
-            cookiejar.fill_from_reply(reply)
+        self.cookiejar.fill_from_reply(reply)
 
     def _get_request_id(self, request=None):
         if request is None:
@@ -334,32 +355,11 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     * additional logging.
 
     """
-    adblock_rules = None
-
-    def __init__(self, filters_path, allowed_schemes, verbosity):
+    def __init__(self, request_middlewares, response_middlewares, verbosity):
         super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
+        self.request_middlewares = request_middlewares
+        self.response_middlewares = response_middlewares
 
-        self.request_middlewares = []
-        self.response_middlewares = []
-
-        if self.verbosity >= 2:
-            self.request_middlewares.append(RequestLoggingMiddleware())
-
-        if allowed_schemes:
-            self.request_middlewares.append(
-                AllowedSchemesMiddleware(allowed_schemes, verbosity=verbosity)
-            )
-
-        self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
-        self.request_middlewares.append(ResourceTimeoutMiddleware())
-
-        if filters_path is not None:
-            self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
-            self.request_middlewares.append(
-                AdblockMiddleware(self.adblock_rules, verbosity=verbosity)
-            )
-
-        self.response_middlewares.append(ContentTypeMiddleware(self.verbosity))
 
     def run_response_middlewares(self):
         reply = self.sender()

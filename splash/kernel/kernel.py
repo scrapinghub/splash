@@ -42,7 +42,7 @@ def init_browser():
     #    logfile = "./kernel.log"
     # start_logging(opts)
 
-    manager = network_manager.create_default()
+    manager = network_manager.NetworkManagerFactory()()
     proxy_factory = None  # TODO
 
     data = {}

@@ -59,7 +59,6 @@ class SplashServer(object):
 
     def __enter__(self):
         args = [sys.executable, '-u', '-m', 'splash.server']
-        args += ['--cache-path', self.tempdir]
         args += ['--port', str(self.portnum)]
         args += ['--verbosity', str(self.verbosity)]
         if self.logfile:

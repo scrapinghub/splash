@@ -255,15 +255,12 @@ class RenderOptions(object):
             return filter_names
 
         if pool is not None:
-            network_manager = pool.network_manager
-            # allow custom non-filtering network access managers
-            if hasattr(network_manager, 'adblock_rules'):
-                adblock_rules = network_manager.adblock_rules
-                if adblock_rules is None:
-                    self.raise_error(
-                        "filters",
-                        "Invalid filter names: %s" % (filter_names,)
-                    )
+            adblock_rules = pool.network_manager_factory.adblock_rules
+            if adblock_rules is None:
+                self.raise_error(
+                    "filters",
+                    "Invalid filter names: %s" % (filter_names,)
+                )
 
         if adblock_rules is not None:
             unknown_filters = adblock_rules.get_unknown_filters(filter_names)
