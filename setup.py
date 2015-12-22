@@ -55,7 +55,7 @@ setup_args = {
     'zip_safe': False,
     'install_requires': [
         'Twisted',
-        'qt5reactor-fork',
+        'qt5reactor',
         'psutil',
         'adblockparser',
         'xvfbwrapper',
