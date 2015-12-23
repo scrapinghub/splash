@@ -33,7 +33,7 @@ from splash.utils import (
     to_bytes,
     requires_attr,
     SplashJSONEncoder,
-    to_unicode)
+    to_unicode, escape_js)
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -316,8 +316,6 @@ class _WrappedJavascriptFunction(object):
     @emits_lua_objects
     @decodes_lua_arguments('utf8')
     def __call__(self, *args):
-        args_text = json.dumps(args, ensure_ascii=False)[1:-1]
-        func_text = json.dumps([self.source], ensure_ascii=False)[1:-1]
         wrapper_script = """
         (function(func_text){
             try{
@@ -336,7 +334,7 @@ class _WrappedJavascriptFunction(object):
                 }
             }
         })(%(func_text)s)
-        """ % {"func_text": func_text, "args": args_text}
+        """ % {"func_text": escape_js(self.source), "args": escape_js(*args)}
 
         # print(wrapper_script)
         res = self.tab.evaljs(wrapper_script)

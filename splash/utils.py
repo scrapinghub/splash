@@ -41,6 +41,10 @@ class SplashJSONEncoder(json.JSONEncoder):
         return super(SplashJSONEncoder, self).default(o)
 
 
+def escape_js(*args):
+    return json.dumps(args, ensure_ascii=False)[1:-1]
+
+
 def to_unicode(text, encoding=None, errors='strict'):
     """Return the unicode representation of a bytes object `text`. If `text`
     is already an unicode object, return it as-is."""

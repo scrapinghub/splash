@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 import base64
 import functools
-import json
 import os
 import weakref
 import uuid
@@ -23,7 +22,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError
-from splash.utils import to_bytes
+from splash.utils import to_bytes, escape_js
 
 
 def skip_if_closing(meth):
@@ -570,7 +569,6 @@ class BrowserTab(QObject):
         if not handle_errors:
             return qt2py(frame.evaluateJavaScript(js_source))
 
-        escaped = json.dumps([js_source], ensure_ascii=False)[1:-1]
         wrapped = """
         (function(script_text){
             try{
@@ -585,7 +583,7 @@ class BrowserTab(QObject):
                 }
             }
         })(%(script_text)s)
-        """ % dict(script_text=escaped)
+        """ % dict(script_text=escape_js(js_source))
         res = qt2py(frame.evaluateJavaScript(wrapped))
 
         if not isinstance(res, dict):
@@ -639,7 +637,6 @@ class BrowserTab(QObject):
         """
 
         frame = self.web_page.mainFrame()
-        script_text = json.dumps(js_source)[1:-1]
         callback_proxy = OneShotCallbackProxy(self, callback, errback, timeout)
         self._callback_proxies_to_cancel.add(callback_proxy)
         frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
@@ -647,7 +644,7 @@ class BrowserTab(QObject):
         wrapped = """
         (function () {
             try {
-                eval("%(script_text)s");
+                eval(%(script_text)s);
             } catch (err) {
                 var main = function (splash) {
                     throw err;
@@ -689,7 +686,10 @@ class BrowserTab(QObject):
                 }
             })();
         })();undefined
-        """ % dict(script_text=script_text, callback_name=callback_proxy.name)
+        """ % dict(
+            script_text=escape_js(js_source),
+            callback_name=callback_proxy.name
+        )
 
         def cancel_callback():
             callback_proxy.cancel(reason='javascript window object cleared')
