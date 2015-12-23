@@ -16,8 +16,18 @@ Splash 2.0 release introduces other cool new features:
 * built-in :ref:`lib-json` and :ref:`lib-base64` libraries;
 * more :ref:`control <lib-treat>` for result serialization
   (support for JSON arrays and raw bytes);
-* a few other improvements: it is now possible to turn Private mode
-  OFF at startup, and a couple small bugs was fixed.
+* it is now possible to turn Private mode OFF at startup using command-line
+  option or at runtime using :ref:`splash-private-mode-enabled` attribute;
+* :ref:`http-ping` endpoint is added;
+* cookie handling is fixed;
+* downloader efficiency is improved;
+* request processing is stopped when client disconnects;
+* small improvements to Splash UI: it uses max timeout by default; it is
+  possible to download network activity as a HAR file;
+* logging inside callbacks now uses proper verbosity;
+* sandbox memory limit for user objects is increased to 50MB;
+* some sandboxing issues are fixed;
+
 
 There are **backwards-incompatible** changes
 to :ref:`Splash Scripting <scripting-tutorial>`: previously, different
@@ -38,6 +48,11 @@ Unfortunately this requires changes to existing user scripts:
 * ``response`` object received by :ref:`splash-on-response-headers` and
   :ref:`splash-on-response` callbacks is changed: instead of
   ``response.request`` write ``response.request.info``.
+
+Splash no longer supports QT-based disk cache; it was disable by default
+and it usage was discouraged since Splash 1.0, in Splash 2.0 ``--cache``
+command-line option is removed. For HTTP cache there are better options like
+`Squid <http://www.squid-cache.org/>`_.
 
 
 1.8 (2015-09-29)
