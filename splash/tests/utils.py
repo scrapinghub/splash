@@ -1,3 +1,5 @@
+import random
+import string
 import sys, os, time, tempfile, shutil, socket, fcntl, signal
 from subprocess import Popen, PIPE
 
@@ -99,10 +101,12 @@ class SplashServer(object):
 
 class MockServer(object):
 
-    def __init__(self, http_port=None, https_port=None, proxy_port=None):
+    def __init__(self, http_port=None, https_port=None, proxy_port=None, auth_proxy_port=None, auth_proxy_user=None):
         self.http_port = http_port if http_port is not None else get_ephemeral_port()
         self.https_port = https_port if https_port is not None else get_ephemeral_port()
         self.proxy_port = proxy_port if proxy_port is not None else get_ephemeral_port()
+        self.auth_proxy_port = auth_proxy_port if auth_proxy_port is not None else get_ephemeral_port()
+        self.auth_proxy_user = auth_proxy_user
 
     def __enter__(self):
         self.proc = Popen([
@@ -111,10 +115,12 @@ class MockServer(object):
                 '--http-port', str(self.http_port),
                 '--https-port', str(self.https_port),
                 '--proxy-port', str(self.proxy_port),
+                "--auth-proxy-port", str(self.auth_proxy_port),
+                "--auth-proxy-user", str(self.auth_proxy_user)
             ],
             env=get_testenv()
         )
-        for port in (self.http_port, self.https_port, self.proxy_port):
+        for port in (self.http_port, self.https_port, self.proxy_port, self.auth_proxy_port):
             _wait_for_port(port)
         return self
 
@@ -147,9 +153,13 @@ class TestServers(object):
         self.mock_http_port = get_ephemeral_port()
         self.mock_https_port = get_ephemeral_port()
         self.mock_proxy_port = get_ephemeral_port()
+        self.mock_auth_proxy_port = get_ephemeral_port()
+        # this is needed because QT caches valid proxy credentials, so if test goes well once it will
+        # always go good no matter what you do in NAT
+        self.mock_auth_proxy_user = "".join(random.choice(string.ascii_letters) for _ in range(20))
 
-        print("TestServers mock ports: %s http, %s https, %s proxy" % (
-            self.mock_http_port, self.mock_https_port, self.mock_proxy_port))
+        print("TestServers mock ports: %s http, %s https, %s proxy %s proxy with auth" % (
+            self.mock_http_port, self.mock_https_port, self.mock_proxy_port, self.mock_auth_proxy_port))
 
         self._fix_testproxy_port()
 
@@ -172,6 +182,8 @@ class TestServers(object):
             self.mock_http_port,
             self.mock_https_port,
             self.mock_proxy_port,
+            self.mock_auth_proxy_port,
+            self.mock_auth_proxy_user
         )
         self.mockserver.__enter__()
 

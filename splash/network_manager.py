@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import base64
 import itertools
 import functools
 from datetime import datetime
@@ -203,6 +204,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         # proxies set in on_request
         if hasattr(request, 'custom_proxy'):
             self.setProxy(request.custom_proxy)
+            user, password = request.custom_proxy.user(), request.custom_proxy.password()
+            if not user and not password:
+                return
+            auth = b"Basic " + base64.b64encode("{}:{}".format(user, password).encode("utf-8"))
+            request.setRawHeader(b"Proxy-Authorization", auth)
 
     def _handle_custom_headers(self, request):
         if self._get_webpage_attribute(request, "skip_custom_headers"):

@@ -856,32 +856,78 @@ class ProxyClient(proxy.ProxyClient):
         buffer = buffer.replace(b'</body>', b' PROXY_USED</body>')
         proxy.ProxyClient.handleResponsePart(self, buffer)
 
+
 class ProxyClientFactory(proxy.ProxyClientFactory):
     protocol = ProxyClient
+
 
 class ProxyRequest(proxy.ProxyRequest):
     protocols = {b'http': ProxyClientFactory}
 
+
 class Proxy(proxy.Proxy):
     requestFactory = ProxyRequest
+
 
 class ProxyFactory(http.HTTPFactory):
     protocol = Proxy
 
 
-def run(port_num, sslport_num, proxyport_num, verbose=True):
+class AuthProxyRequest(proxy.ProxyRequest):
+    protocols = {b'http': ProxyClientFactory}
+    valid_password = b"splash"
+
+    def process(self):
+        headers = self.getAllHeaders().copy()
+        auth = headers.get(b'proxy-authorization')
+        valid_user = self.transport.protocol.factory.valid_user.encode("utf-8")
+
+        if not auth:
+            self.reject_request()
+            return
+        _, auth_string = auth.split()
+        user, password = base64.b64decode(auth_string).split(b":", 1)
+
+        if user != valid_user or password != self.valid_password:
+            self.reject_request()
+            return
+
+        # can't use super() because old style classes
+        proxy.ProxyRequest.process(self)
+
+    def reject_request(self):
+        self.setResponseCode(407)
+        self.setHeader(b"Proxy-Authenticate", b"Basic realm: 'mockserver'")
+        self.finish()
+
+
+class AuthProxy(proxy.Proxy):
+    requestFactory = AuthProxyRequest
+
+
+class AuthProxyFactory(http.HTTPFactory):
+    protocol = AuthProxy
+
+    def __init__(self, user):
+        http.HTTPFactory.__init__(self)
+        self.valid_user = user
+
+
+def run(port_num, sslport_num, proxyport_num, authproxyport_num, authproxy_user, verbose=True):
     root = Root(port_num, sslport_num, proxyport_num)
     factory = Site(root)
     port = reactor.listenTCP(port_num, factory)
     sslport = reactor.listenSSL(sslport_num, factory, ssl_factory())
     proxyport = reactor.listenTCP(proxyport_num, ProxyFactory())
+    authproxyport = reactor.listenTCP(authproxyport_num, AuthProxyFactory(authproxy_user))
 
     def print_listening():
         h = port.getHost()
         s = sslport.getHost()
         p = proxyport.getHost()
-        print("Mock server running at http://%s:%d (http), https://%s:%d (https) and http://%s:%d (proxy)" %
-              (h.host, h.port, s.host, s.port, p.host, p.port))
+        ap = authproxyport.getHost()
+        print("Mock server running at http://%s:%d (http), https://%s:%d (https) and http://%s:%d (proxy) and http://%s:%d (proxy with auth, user: %s)" %
+              (h.host, h.port, s.host, s.port, p.host, p.port, ap.host, ap.port, authproxy_user))
 
     if verbose:
         import sys
@@ -897,7 +943,9 @@ if __name__ == "__main__":
     op.add_option("--http-port", type=int, default=8998)
     op.add_option("--https-port", type=int, default=8999)
     op.add_option("--proxy-port", type=int, default=8990)
+    op.add_option("--auth-proxy-port", type=int, default=8995)
+    op.add_option("--auth-proxy-user", type=str, default="test")
     op.add_option("-q", "--quiet", action="store_true", dest="quiet", default=False)
     opts, _ = op.parse_args()
 
-    run(opts.http_port, opts.https_port, opts.proxy_port, not opts.quiet)
+    run(opts.http_port, opts.https_port, opts.proxy_port, opts.auth_proxy_port, opts.auth_proxy_user, not opts.quiet)

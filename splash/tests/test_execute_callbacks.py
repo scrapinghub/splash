@@ -103,6 +103,45 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertNotProxied(html_1)
         self.assertProxied(html_2)
 
+    def test_set_proxy_with_auth(self):
+        proxy_port = self.ts.mock_auth_proxy_port
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(request)
+                request:set_proxy{
+                    host="0.0.0.0",
+                    port=splash.args.proxy_port,
+                    username='%s',
+                    password='splash'
+                }
+            end)
+            assert(splash:go(splash.args.url))
+            return splash.html()
+        end
+        """ % self.ts.mock_auth_proxy_user, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        self.assertStatusCode(resp, 200)
+        self.assertProxied(resp.text)
+
+    def test_set_proxy_with_bad_auth(self):
+        proxy_port = self.ts.mock_auth_proxy_port
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(request)
+                request:set_proxy{
+                    host="0.0.0.0",
+                    port=splash.args.proxy_port,
+                    username='testar',
+                    password='splash'
+                }
+            end)
+            assert(splash:go(splash.args.url))
+            return splash.html()
+        end
+        """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        self.assertStatusCode(resp, 400)
+        self.assertNotProxied(resp.text)
+        self.assertIn("407", resp.text)
+
     def test_set_proxy_twice(self):
         proxy_port = self.ts.mock_proxy_port
         resp = self.request_lua("""
