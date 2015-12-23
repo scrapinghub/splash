@@ -7,6 +7,7 @@ adblockparser >= 0.4
 https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
 xvfbwrapper
 Pillow
+six
 
 # for scripting support
 cython

@@ -198,9 +198,15 @@ class BaseRenderResource(_ValidatingResource):
             "timestamp": int(time.time()),
             "user-agent": (request.getHeader(b"user-agent").decode('utf-8')
                            if request.getHeader(b"user-agent") else None),
-            "args": repr(options)
+            "args": options
         }
-        log.msg(json.dumps(msg), system="events")
+        try:
+            msg = json.dumps(msg)
+        except TypeError:
+            # splash-as-proxy options contain byte objects which are not
+            # serializable
+            pass
+        log.msg(msg, system="events")
 
     def _on_timeout_error(self, failure, request, timeout=None):
         failure.trap(defer.CancelledError)
