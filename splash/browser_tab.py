@@ -557,22 +557,85 @@ class BrowserTab(QObject):
                               follow_redirects=follow_redirects,
                               body=body)
 
-    def evaljs(self, js_source, handle_errors=True):
+    def evaljs(self, js_source, handle_errors=True, result_protection=True):
         """
         Run JS code in page context and return the result.
 
         If JavaScript exception or an syntax error happens
-        and :param:`handle_errors` is True then Python JsError
+        and `handle_errors` is True then Python JsError
         exception is raised.
+
+        When `result_protection` is True (default) protection against
+        badly written or malicious scripts is activated. Disable it
+        when the script result is known to be good, i.e. it only
+        contains objects/arrays/primitives without circular references.
         """
         frame = self.web_page.mainFrame()
+        script = escape_js(js_source)
+
+        if result_protection:
+            # Only allow objects/arrays/other primitives, not too deep.
+            # Qt can go mad if we try to return something else
+            # (objects with circular references, DOM elements, ...).
+            # A more natural way would be to use JSON.stringify,
+            # but user can override global JSON object to bypass protection.
+            eval_script_result = """
+                (function (obj, max_depth){
+                    function _s(o, d) {
+                        if (d <= 0) {
+                            throw Error("Object is too deep or recursive");
+                        }
+                        if (o === null) {
+                            return "";  // this is the way Qt handles it
+                        }
+                        if (typeof o == 'object') {
+                            if (Array.isArray(o)) {
+                                var res = [];
+                                for (var i = 0; i < o.length; i++) {
+                                    res[i] = _s(o[i], d-1);
+                                }
+                                return res;
+                            }
+                            else if (Object.getPrototypeOf(o) == Object.prototype) {
+                                var res = {};
+                                for (var key in o) {
+                                    if (o.hasOwnProperty(key)) {
+                                        res[key] = _s(o[key], d-1);
+                                    }
+                                }
+                                return res;
+                            }
+                            else if (o instanceof Date) {
+                                return o.toJSON();
+                            }
+                            else {
+                                // likely host object
+                                return undefined;
+                            }
+                        }
+                        else if (typeof o == 'function') {
+                            return undefined;
+                        }
+                        else {
+                            return o;  // native type
+                        }
+                    }
+                    return _s(obj, max_depth);
+                })(eval(%(script)s), 100)
+                """ % dict(script=script)
+        else:
+            eval_script_result = "eval(%(script)s)" % dict(script=script)
+
         if not handle_errors:
-            return qt2py(frame.evaluateJavaScript(js_source))
+            return qt2py(frame.evaluateJavaScript(eval_script_result))
 
         wrapped = """
-        (function(script_text){
+        (function() {
             try{
-                return {error: false, result: eval(script_text)}
+                return {
+                    error: false,
+                    result: %(eval_script_result)s,
+                }
             }
             catch(e){
                 return {
@@ -580,11 +643,11 @@ class BrowserTab(QObject):
                     errorType: e.name,
                     errorMessage: e.message,
                     errorRepr: e.toString(),
-                }
+                };
             }
-        })(%(script_text)s)
-        """ % dict(script_text=escape_js(js_source))
-        res = qt2py(frame.evaluateJavaScript(wrapped))
+        })()
+        """ % dict(eval_script_result=eval_script_result)
+        res = frame.evaluateJavaScript(wrapped)
 
         if not isinstance(res, dict):
             raise JsError({
@@ -616,8 +679,11 @@ class BrowserTab(QObject):
         # the result of frame.evaluateJavaScript, then Qt still needs to build
         # a result - it could be costly. So the original JS code
         # is adjusted to make sure it doesn't return anything.
-        js_source = "%s;undefined" % js_source
-        self.evaljs(js_source, handle_errors=handle_errors)
+        self.evaljs(
+            js_source="%s;undefined" % js_source,
+            handle_errors=handle_errors,
+            result_protection=False
+        )
 
     def wait_for_resume(self, js_source, callback, errback, timeout):
         """

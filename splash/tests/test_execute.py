@@ -552,6 +552,18 @@ class EvaljsTest(BaseLuaRenderTest):
     def test_bool(self):
         self.assertEvaljsResult("true", True, 'boolean')
 
+    def test_array(self):
+        self.assertEvaljsResult("var a = [1, 2, 'x']; a",
+                                [1, 2, 'x'], 'table')
+
+    def test_array_nested(self):
+        self.assertEvaljsResult("var a = [1, 2, 'x', {x: 5, y: [2, [], 1]}]; a",
+                                [1, 2, 'x', {'x': 5, 'y': [2, [], 1]}], 'table')
+
+    def test_object_nested(self):
+        self.assertEvaljsResult("var x = {x: [1, 2, 'x', {y: 5}]}; x",
+                                {'x': [1, 2, 'x', {'y': 5}]}, 'table')
+
     def test_undefined(self):
         self.assertEvaljsResult("undefined", None, 'nil')
 
@@ -585,31 +597,35 @@ class EvaljsTest(BaseLuaRenderTest):
         )
 
     def test_self_referencing(self):
-        self.assertEvaljsResult(
+        self.assertEvaljsError(
             'var o={}; o["x"] = "5"; o["y"] = o; o',
-            {"x": "5"},  # self reference is discarded
-            'table'
+            message="Object is too deep or recursive"
         )
+
+    def test_JSON_overridden(self):
+        self.assertEvaljsResult("window.JSON = {}; 'hello'", 'hello', 'string')
 
     def test_function(self):
         # XXX: functions are not returned by QT
-        self.assertEvaljsResult(
-            "x = function(){return 5}; x",
-            {},
-            "table"
-        )
+        self.assertEvaljsResult("x = function(){return 5}; x", None, "nil")
+
+    def test_host_object_document(self):
+        self.assertEvaljsResult("document", None, "nil")
+
+    def test_host_object_xhr(self):
+        self.assertEvaljsResult("(new XMLHttpRequest())", None, "nil")
 
     def test_function_direct_unwrapped(self):
         # XXX: this is invaild syntax
         self.assertEvaljsError("function(){return 5}", message='SyntaxError')
 
     def test_function_direct(self):
-        # XXX: functions are returned as empty tables by QT
-        self.assertEvaljsResult("(function(){return 5})", {}, "table")
+        self.assertEvaljsResult("(function(){return 5})", None, "nil")
 
     def test_object_with_function(self):
         # XXX: complex objects like function values are unsupported
-        self.assertEvaljsError('{"x":2, "y": function(){}}')
+        self.assertEvaljsResult('var o = {x:2, y: (function(){})}; o',
+                                {"x": 2}, "table")
 
     def test_function_call(self):
         self.assertEvaljsResult(
@@ -624,7 +640,7 @@ class EvaljsTest(BaseLuaRenderTest):
         # E.g. make them available to Lua as tables?
         self.assertEvaljsResult(
             'x = new Date("21 May 1958 10:12 UTC"); x',
-            "1958-05-21T10:12:00Z",
+            "1958-05-21T10:12:00.000Z",
             "string"
         )
 
@@ -3036,6 +3052,14 @@ class VersionTest(BaseLuaRenderTest):
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
+
+    LOCAL_STORAGE_WORKS_JS = """
+    (function () {
+        localStorage.setItem("hello", "world of splash");
+        return localStorage.getItem("hello") == "world of splash";
+    })();
+    """
+
     def test_disable_private_mode(self):
         resp = self.request_lua("""
             function main(splash)
@@ -3068,16 +3092,28 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 return splash:evaljs(splash.args.js)
             end
             """, {
-            'url': self.mockurl('jsrender'),
-            "js": """
-                (function () {
-                    return localStorage
-                })();
-                """
-        })
+                "js": self.LOCAL_STORAGE_WORKS_JS,
+                "url": self.mockurl("jsrender")
+            })
+        err = self.assertJsonError(resp, 400)
+        self.assertEqual(
+            err['info']['js_error'],
+            "TypeError: null is not an object (evaluating \'localStorage.setItem\')"
+        )
+
+    def test_private_mode_disabled(self):
+        resp = self.request_lua("""
+            function main(splash)
+                splash.private_mode_enabled = False
+                assert(splash:go(splash.args.url))
+                return splash:evaljs(splash.args.js)
+            end
+            """, {
+                "js": self.LOCAL_STORAGE_WORKS_JS,
+                "url": self.mockurl("jsrender")
+            })
         self.assertStatusCode(resp, 200)
-        # if private_mode disabled local storage is undefined, response.body is empty
-        self.assertFalse(resp.text)
+        self.assertEqual(resp.text, "True")
 
     def test_enable_and_disable_private_mode(self):
         resp = self.request_lua("""
