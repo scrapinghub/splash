@@ -743,6 +743,28 @@ class InvalidContentTypeResource2(Resource):
         return b"ok"
 
 
+class RawBytes(Resource):
+
+    def render_GET(self, request):
+        body_length = int(request.args.get(b'length', [1024])[0])
+        body = b'\x00' * body_length
+        claim_length = int(request.args.get(b'claim_length', [body_length])[0])
+        content = b'\n'.join([
+            b'HTTP/1.1 200 OK',
+            ('Content-Length: %d' % claim_length).encode('utf8'),
+            b'',
+            body,
+        ])
+        request.channel.transport.write(content)
+        if b'delayed_abort' in request.args:
+            reactor.callLater(1, request.channel.transport.abortConnection)
+        elif b'abort' in request.args:
+            request.channel.transport.abortConnection()
+        else:
+            request.channel.transport.loseConnection()
+        return NOT_DONE_YET
+
+
 class Index(Resource):
     isLeaf = True
 
@@ -819,6 +841,8 @@ class Root(Resource):
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
+
+        self.putChild(b"raw-bytes", RawBytes())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

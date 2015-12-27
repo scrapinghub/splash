@@ -208,6 +208,21 @@ class Base(object):
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
 
+        def test_unsupported_content(self):
+            cases = [
+                # Short body (Can be received together with the headers)
+                ("raw-bytes?length=16", 200),
+                # Short body with error
+                ("raw-bytes?length=16&claim_length=32&abort=1", 502),
+                # Long body (May not be received together with the headers)
+                ("raw-bytes?length=1000000", 200),
+                # Long body with error
+                ("raw-bytes?length=100&claim_length=200&delayed_abort=1", 502),
+            ]
+            for url, http_status in cases:
+                r = self.request({"url": self.mockurl(url)})
+                self.assertStatusCode(r, http_status)
+
         @pytest.mark.skipif(
             not qt_551_plus(),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
