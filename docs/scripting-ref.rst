@@ -426,16 +426,16 @@ without defining a wrapper function. Example:
 
 Don't use :ref:`splash-evaljs` when the result is not needed - it is
 inefficient and could lead to problems; use :ref:`splash-runjs` instead.
-For example, the following innocent-looking code (using jQuery) may fail:
+For example, the following innocent-looking code (using jQuery) will do
+unnecessary work:
 
 .. code-block:: lua
 
     splash:evaljs("$(console.log('foo'));")
 
 A gotcha is that to allow chaining jQuery ``$`` function returns a huge object,
-:ref:`splash-evaljs` tries to serialize it and convert to Lua. It is a waste
-of resources, and it could trigger internal protection measures;
-:ref:`splash-runjs` doesn't have this problem.
+:ref:`splash-evaljs` tries to serialize it and convert to Lua,
+which is a waste of resources. :ref:`splash-runjs` doesn't have this problem.
 
 If the code you're evaluating needs arguments it is better to use
 :ref:`splash-jsfunc` instead of :ref:`splash-evaljs` and string formatting.
