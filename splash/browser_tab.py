@@ -627,13 +627,6 @@ class BrowserTab(QObject):
         one argument. The first argument will be an object with `resume()`
         and `error()` methods. The code _must_ call one of these functions
         before the timeout or else it will be canceled.
-
-        Note: this cleans up the JavaScript global variable that it creates,
-        but QT seems to notice when a JS GV is deleted and it destroys the
-        underlying C++ object. Therefore, we can only delete the JS GV _after_
-        the user's code has called us back. This should change in QT5, since
-        it will then be possible to specify a different object ownership
-        policy when calling addToJavaScriptWindowObject().
         """
 
         frame = self.web_page.mainFrame()
@@ -651,38 +644,28 @@ class BrowserTab(QObject):
                 }
             }
             (function () {
-                var returnObject = {};
-                var deleteCallbackLater = function () {
-                    setTimeout(function () {delete window["%(callback_name)s"]}, 0);
-                }
+                var _result = {};
+                var _splash = window["%(callback_name)s"];
                 var splash = {
                     'error': function (message) {
-                        setTimeout(function () {
-                            window["%(callback_name)s"].error(message, false);
-                            deleteCallbackLater();
-                        }, 0);
+                        _splash.error(message, false);
                     },
                     'resume': function (value) {
-                        returnObject['value'] = value;
-                        setTimeout(function () {
-                            window["%(callback_name)s"].resume(returnObject);
-                            deleteCallbackLater();
-                        }, 0);
+                        _result['value'] = value;
+                        _splash.resume(_result);
                     },
                     'set': function (key, value) {
-                        returnObject[key] = value;
+                        _result[key] = value;
                     }
                 };
+                delete window["%(callback_name)s"];
                 try {
                     if (typeof main === 'undefined') {
                         throw "wait_for_resume(): no main() function defined";
                     }
                     main(splash);
                 } catch (err) {
-                    setTimeout(function () {
-                        window["%(callback_name)s"].error(err, true);
-                        deleteCallbackLater();
-                    }, 0);
+                    _splash.error(err, true);
                 }
             })();
         })();undefined
