@@ -10,6 +10,7 @@ from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
+
 from twisted.internet import defer
 from twisted.python import log
 import six
@@ -22,7 +23,8 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError
-from splash.utils import to_bytes, escape_js
+from splash.utils import to_bytes
+from splash.jsutils import get_sanitized_result_js, escape_js
 
 
 def skip_if_closing(meth):
@@ -573,61 +575,13 @@ class BrowserTab(QObject):
         frame = self.web_page.mainFrame()
         script = escape_js(js_source)
 
+        eval_expr = "eval(%(script)s)" % dict(script=script)
+
         if result_protection:
-            # Only allow objects/arrays/other primitives, not too deep.
-            # Qt can go mad if we try to return something else
-            # (objects with circular references, DOM elements, ...).
-            # A more natural way would be to use JSON.stringify,
-            # but user can override global JSON object to bypass protection.
-            eval_script_result = """
-                (function (obj, max_depth){
-                    function _s(o, d) {
-                        if (d <= 0) {
-                            throw Error("Object is too deep or recursive");
-                        }
-                        if (o === null) {
-                            return "";  // this is the way Qt handles it
-                        }
-                        if (typeof o == 'object') {
-                            if (Array.isArray(o)) {
-                                var res = [];
-                                for (var i = 0; i < o.length; i++) {
-                                    res[i] = _s(o[i], d-1);
-                                }
-                                return res;
-                            }
-                            else if (Object.getPrototypeOf(o) == Object.prototype) {
-                                var res = {};
-                                for (var key in o) {
-                                    if (o.hasOwnProperty(key)) {
-                                        res[key] = _s(o[key], d-1);
-                                    }
-                                }
-                                return res;
-                            }
-                            else if (o instanceof Date) {
-                                return o.toJSON();
-                            }
-                            else {
-                                // likely host object
-                                return undefined;
-                            }
-                        }
-                        else if (typeof o == 'function') {
-                            return undefined;
-                        }
-                        else {
-                            return o;  // native type
-                        }
-                    }
-                    return _s(obj, max_depth);
-                })(eval(%(script)s), 100)
-                """ % dict(script=script)
-        else:
-            eval_script_result = "eval(%(script)s)" % dict(script=script)
+            eval_expr = get_sanitized_result_js(eval_expr)
 
         if not handle_errors:
-            return qt2py(frame.evaluateJavaScript(eval_script_result))
+            return qt2py(frame.evaluateJavaScript(eval_expr))
 
         wrapped = """
         (function() {
@@ -646,7 +600,7 @@ class BrowserTab(QObject):
                 };
             }
         })()
-        """ % dict(eval_script_result=eval_script_result)
+        """ % dict(eval_script_result=eval_expr)
         res = frame.evaluateJavaScript(wrapped)
 
         if not isinstance(res, dict):

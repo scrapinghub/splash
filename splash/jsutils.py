@@ -1,0 +1,66 @@
+# -*- coding: utf-8 -*-
+import json
+
+def escape_js(*args):
+    return json.dumps(args, ensure_ascii=False)[1:-1]
+
+
+def get_sanitized_result_js(expression, max_depth=100):
+    """
+    Return a string with JavaScript code which returns a sanitized result of
+    the ``expression``: only allow objects/arrays/other primitives are allowed,
+    and an exception is raised for objects/arrays which are too deep.
+
+    ``expression`` should be a JS string constant (already in quotes) or
+    any other JS expression.
+
+    Use it to sanitize data which should be returned from
+    QWebFrame.evaluateJavaScript - Qt5 can go mad if we try to return something
+    else (objects with circular references, DOM elements, ...).
+    """
+    # A more natural way would be to use JSON.stringify,
+    # but user can override global JSON object to bypass protection.
+    return """
+        (function (obj, max_depth){
+            function _s(o, d) {
+                if (d <= 0) {
+                    throw Error("Object is too deep or recursive");
+                }
+                if (o === null) {
+                    return "";  // this is the way Qt handles it
+                }
+                if (typeof o == 'object') {
+                    if (Array.isArray(o)) {
+                        var res = [];
+                        for (var i = 0; i < o.length; i++) {
+                            res[i] = _s(o[i], d-1);
+                        }
+                        return res;
+                    }
+                    else if (Object.getPrototypeOf(o) == Object.prototype) {
+                        var res = {};
+                        for (var key in o) {
+                            if (o.hasOwnProperty(key)) {
+                                res[key] = _s(o[key], d-1);
+                            }
+                        }
+                        return res;
+                    }
+                    else if (o instanceof Date) {
+                        return o.toJSON();
+                    }
+                    else {
+                        // likely host object
+                        return undefined;
+                    }
+                }
+                else if (typeof o == 'function') {
+                    return undefined;
+                }
+                else {
+                    return o;  // native type
+                }
+            }
+            return _s(obj, max_depth);
+        })(%(expression)s, %(max_depth)d)
+        """ % dict(expression=expression, max_depth=max_depth)

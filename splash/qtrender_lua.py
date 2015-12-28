@@ -33,7 +33,8 @@ from splash.utils import (
     to_bytes,
     requires_attr,
     SplashJSONEncoder,
-    to_unicode, escape_js)
+    to_unicode)
+from splash.jsutils import escape_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
