@@ -22,12 +22,12 @@ Splash 2.0 release introduces other cool new features:
 * cookie handling is fixed;
 * downloader efficiency is improved;
 * request processing is stopped when client disconnects;
-* small improvements to Splash UI: it uses max timeout by default; it is
+* Splash UI improvements: it uses max timeout by default; it is
   possible to download network activity as a HAR file;
 * logging inside callbacks now uses proper verbosity;
 * sandbox memory limit for user objects is increased to 50MB;
 * some sandboxing issues are fixed;
-
+* :ref:`splash-evaljs` and :ref:`splash-jsfunc` results are sanitized better.
 
 There are **backwards-incompatible** changes
 to :ref:`Splash Scripting <scripting-tutorial>`: previously, different

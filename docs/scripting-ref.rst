@@ -45,7 +45,7 @@ Enable or disable browser's private mode (incognito mode).
 **Signature:** ``splash.private_mode_enabled = true/false``
 
 Private mode is enabled by default unless you pass flag ``--disable-private-mode`` at Splash startup.
-Note that if you disable private mode browsing data such as cookies or items kept in local 
+Note that if you disable private mode browsing data such as cookies or items kept in local
 storage may persist between requests.
 
 .. _splash-resource-timeout:
@@ -346,29 +346,46 @@ a table to an Array use :ref:`treat-as-array`.
 
 JavaScript → Lua conversion rules:
 
-==============  =================
-JavaScript      Lua
-==============  =================
-string          string
-number          number
-boolean         boolean
-Object          table
-Array           table, marked as array (see :ref:`treat-as-array`)
-``undefined``   ``nil``
-``null``        ``""`` (an empty string)
-Date            string: date's ISO8601 representation, e.g. ``1958-05-21T10:12:00Z``
-function        an empty table ``{}`` (don't rely on it)
-==============  =================
-
-Function arguments and return values are passed by value. For example,
-if you modify an argument from inside a JavaScript function then the caller
-Lua code won't see the changes, and if you return a global JS object and modify
-it in Lua then object won't be changed in webpage context.
+================  =================
+JavaScript        Lua
+================  =================
+string            string
+number            number
+boolean           boolean
+Object            table
+Array             table, marked as array (see :ref:`treat-as-array`)
+``undefined``     ``nil``
+``null``          ``""`` (an empty string)
+Date              string: date's ISO8601 representation, e.g.
+                  ``1958-05-21T10:12:00.000Z``
+function          ``nil``
+circular object   ``nil``
+host object       ``nil``
+================  =================
 
 .. note::
 
     The rule of thumb: if an argument or a return value can be serialized
     via JSON, then it is fine.
+
+Note that currently you can't return DOM Elements, JQuery $ results and
+similar structures from JavaScript to Lua; to pass data you have to
+extract their attributes of interest as plain strings/numbers/objects/arrays:
+
+.. code-block:: lua
+
+    -- this function assumes jQuery is loaded in page
+    local get_hrefs = splash:jsfunc([[
+        function(sel){
+            return $(sel).map(function(){return this.href}).get();
+        }
+    ]])
+    local hrefs = get_hrefs("a.story-title")
+
+Function arguments and return values are passed by value. For example,
+if you modify an argument from inside a JavaScript function then the caller
+Lua code won't see the changes, and if you return a global JS object and modify
+it in Lua then object won't be changed in webpage context.
 
 If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
@@ -409,16 +426,16 @@ without defining a wrapper function. Example:
 
 Don't use :ref:`splash-evaljs` when the result is not needed - it is
 inefficient and could lead to problems; use :ref:`splash-runjs` instead.
-For example, the following innocent-looking code (using jQuery) may fail:
+For example, the following innocent-looking code (using jQuery) will do
+unnecessary work:
 
 .. code-block:: lua
 
     splash:evaljs("$(console.log('foo'));")
 
 A gotcha is that to allow chaining jQuery ``$`` function returns a huge object,
-:ref:`splash-evaljs` tries to serialize it and convert to Lua. It is a waste
-of resources, and it could trigger internal protection measures;
-:ref:`splash-runjs` doesn't have this problem.
+:ref:`splash-evaljs` tries to serialize it and convert to Lua,
+which is a waste of resources. :ref:`splash-runjs` doesn't have this problem.
 
 If the code you're evaluating needs arguments it is better to use
 :ref:`splash-jsfunc` instead of :ref:`splash-evaljs` and string formatting.

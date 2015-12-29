@@ -10,6 +10,7 @@ from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
+
 from twisted.internet import defer
 from twisted.python import log
 import six
@@ -21,8 +22,14 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii, to_qurl)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
-from splash.exceptions import JsError, OneShotCallbackError
-from splash.utils import to_bytes, escape_js
+from splash.exceptions import JsError, OneShotCallbackError, ScriptError
+from splash.utils import to_bytes
+from splash.jsutils import (
+    get_sanitized_result_js,
+    SANITIZE_FUNC_JS,
+    get_process_errors_js,
+    escape_js,
+)
 
 
 def skip_if_closing(meth):
@@ -557,38 +564,33 @@ class BrowserTab(QObject):
                               follow_redirects=follow_redirects,
                               body=body)
 
-    def evaljs(self, js_source, handle_errors=True):
+    def evaljs(self, js_source, handle_errors=True, result_protection=True):
         """
         Run JS code in page context and return the result.
 
         If JavaScript exception or an syntax error happens
-        and :param:`handle_errors` is True then Python JsError
+        and `handle_errors` is True then Python JsError
         exception is raised.
+
+        When `result_protection` is True (default) protection against
+        badly written or malicious scripts is activated. Disable it
+        when the script result is known to be good, i.e. it only
+        contains objects/arrays/primitives without circular references.
         """
         frame = self.web_page.mainFrame()
-        if not handle_errors:
-            return qt2py(frame.evaluateJavaScript(js_source))
+        eval_expr = "eval({})".format(escape_js(js_source))
 
-        wrapped = """
-        (function(script_text){
-            try{
-                return {error: false, result: eval(script_text)}
-            }
-            catch(e){
-                return {
-                    error: true,
-                    errorType: e.name,
-                    errorMessage: e.message,
-                    errorRepr: e.toString(),
-                }
-            }
-        })(%(script_text)s)
-        """ % dict(script_text=escape_js(js_source))
-        res = qt2py(frame.evaluateJavaScript(wrapped))
+        if result_protection:
+            eval_expr = get_sanitized_result_js(eval_expr)
+
+        if not handle_errors:
+            return qt2py(frame.evaluateJavaScript(eval_expr))
+
+        res = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
         if not isinstance(res, dict):
             raise JsError({
-                'type': "unknown",
+                'type': ScriptError.UNKNOWN_ERROR,
                 'js_error_message': res,
                 'message': "unknown JS error: {!r}".format(res)
             })
@@ -596,11 +598,11 @@ class BrowserTab(QObject):
         if res.get("error", False):
             err_message = res.get('errorMessage')
             err_type = res.get('errorType', '<custom JS error>')
-            err_repr = res.get('errorRepr', "<unknown JS error>")
+            err_repr = res.get('errorRepr', '<unknown JS error>')
             if err_message is None:
                 err_message = err_repr
             raise JsError({
-                'type': 'js_error',
+                'type': ScriptError.JS_ERROR,
                 'js_error_type': err_type,
                 'js_error_message': err_message,
                 'js_error': err_repr,
@@ -616,8 +618,11 @@ class BrowserTab(QObject):
         # the result of frame.evaluateJavaScript, then Qt still needs to build
         # a result - it could be costly. So the original JS code
         # is adjusted to make sure it doesn't return anything.
-        js_source = "%s;undefined" % js_source
-        self.evaljs(js_source, handle_errors=handle_errors)
+        self.evaljs(
+            js_source="%s;undefined" % js_source,
+            handle_errors=handle_errors,
+            result_protection=False
+        )
 
     def wait_for_resume(self, js_source, callback, errback, timeout):
         """
@@ -644,6 +649,7 @@ class BrowserTab(QObject):
                 }
             }
             (function () {
+                var sanitize = %(sanitize_func)s;
                 var _result = {};
                 var _splash = window["%(callback_name)s"];
                 var splash = {
@@ -652,7 +658,11 @@ class BrowserTab(QObject):
                     },
                     'resume': function (value) {
                         _result['value'] = value;
-                        _splash.resume(_result);
+                        try {
+                            _splash.resume(sanitize(_result));
+                        } catch (err) {
+                            _splash.error(err, true);
+                        }
                     },
                     'set': function (key, value) {
                         _result[key] = value;
@@ -670,6 +680,7 @@ class BrowserTab(QObject):
             })();
         })();undefined
         """ % dict(
+            sanitize_func=SANITIZE_FUNC_JS,
             script_text=escape_js(js_source),
             callback_name=callback_proxy.name
         )
