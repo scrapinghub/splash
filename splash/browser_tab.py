@@ -22,9 +22,14 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii, to_qurl)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
-from splash.exceptions import JsError, OneShotCallbackError
+from splash.exceptions import JsError, OneShotCallbackError, ScriptError
 from splash.utils import to_bytes
-from splash.jsutils import get_sanitized_result_js, escape_js
+from splash.jsutils import (
+    get_sanitized_result_js,
+    SANITIZE_FUNC_JS,
+    get_process_errors_js,
+    escape_js,
+)
 
 
 def skip_if_closing(meth):
@@ -573,9 +578,7 @@ class BrowserTab(QObject):
         contains objects/arrays/primitives without circular references.
         """
         frame = self.web_page.mainFrame()
-        script = escape_js(js_source)
-
-        eval_expr = "eval(%(script)s)" % dict(script=script)
+        eval_expr = "eval({})".format(escape_js(js_source))
 
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
@@ -583,29 +586,11 @@ class BrowserTab(QObject):
         if not handle_errors:
             return qt2py(frame.evaluateJavaScript(eval_expr))
 
-        wrapped = """
-        (function() {
-            try{
-                return {
-                    error: false,
-                    result: %(eval_script_result)s,
-                }
-            }
-            catch(e){
-                return {
-                    error: true,
-                    errorType: e.name,
-                    errorMessage: e.message,
-                    errorRepr: e.toString(),
-                };
-            }
-        })()
-        """ % dict(eval_script_result=eval_expr)
-        res = frame.evaluateJavaScript(wrapped)
+        res = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
         if not isinstance(res, dict):
             raise JsError({
-                'type': "unknown",
+                'type': ScriptError.UNKNOWN_ERROR,
                 'js_error_message': res,
                 'message': "unknown JS error: {!r}".format(res)
             })
@@ -613,11 +598,11 @@ class BrowserTab(QObject):
         if res.get("error", False):
             err_message = res.get('errorMessage')
             err_type = res.get('errorType', '<custom JS error>')
-            err_repr = res.get('errorRepr', "<unknown JS error>")
+            err_repr = res.get('errorRepr', '<unknown JS error>')
             if err_message is None:
                 err_message = err_repr
             raise JsError({
-                'type': 'js_error',
+                'type': ScriptError.JS_ERROR,
                 'js_error_type': err_type,
                 'js_error_message': err_message,
                 'js_error': err_repr,

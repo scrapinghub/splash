@@ -5,7 +5,58 @@ def escape_js(*args):
     return json.dumps(args, ensure_ascii=False)[1:-1]
 
 
-def get_sanitized_result_js(expression, max_depth=100):
+# JS function which only allows plain arrays/objects and other primitives
+# with a restriction on maximum allowed depth.
+# A more natural way would be to use JSON.stringify,
+# but user can override global JSON object to bypass protection.
+SANITIZE_FUNC_JS = """
+function (obj, max_depth){
+    max_depth = max_depth ? max_depth : 100;
+    function _s(o, d) {
+        if (d <= 0) {
+            throw Error("Object is too deep or recursive");
+        }
+        if (o === null) {
+            return "";  // this is the way Qt handles it
+        }
+        if (typeof o == 'object') {
+            if (Array.isArray(o)) {
+                var res = [];
+                for (var i = 0; i < o.length; i++) {
+                    res[i] = _s(o[i], d-1);
+                }
+                return res;
+            }
+            else if (Object.getPrototypeOf(o) == Object.prototype) {
+                var res = {};
+                for (var key in o) {
+                    if (o.hasOwnProperty(key)) {
+                        res[key] = _s(o[key], d-1);
+                    }
+                }
+                return res;
+            }
+            else if (o instanceof Date) {
+                return o.toJSON();
+            }
+            else {
+                // likely host object
+                return undefined;
+            }
+        }
+        else if (typeof o == 'function') {
+            return undefined;
+        }
+        else {
+            return o;  // native type
+        }
+    }
+    return _s(obj, max_depth);
+}
+"""
+
+
+def get_sanitized_result_js(expression, max_depth=0):
     """
     Return a string with JavaScript code which returns a sanitized result of
     the ``expression``: only allow objects/arrays/other primitives are allowed,
@@ -18,49 +69,37 @@ def get_sanitized_result_js(expression, max_depth=100):
     QWebFrame.evaluateJavaScript - Qt5 can go mad if we try to return something
     else (objects with circular references, DOM elements, ...).
     """
-    # A more natural way would be to use JSON.stringify,
-    # but user can override global JSON object to bypass protection.
+    return "({sanitize_func})({expression}, {max_depth})".format(
+        sanitize_func=SANITIZE_FUNC_JS,
+        expression=expression,
+        max_depth=max_depth
+    )
+
+
+def get_process_errors_js(expression):
+    """
+    Return JS code which evaluates an ``expression`` and
+    returns ``{error: false, result: ...}`` if there is no exception
+    or ``{error: true, errorType: ..., errorMessage: ..., errorRepr: ...}``
+    if expression raised an error when evaluating.
+    """
     return """
-        (function (obj, max_depth){
-            function _s(o, d) {
-                if (d <= 0) {
-                    throw Error("Object is too deep or recursive");
-                }
-                if (o === null) {
-                    return "";  // this is the way Qt handles it
-                }
-                if (typeof o == 'object') {
-                    if (Array.isArray(o)) {
-                        var res = [];
-                        for (var i = 0; i < o.length; i++) {
-                            res[i] = _s(o[i], d-1);
-                        }
-                        return res;
-                    }
-                    else if (Object.getPrototypeOf(o) == Object.prototype) {
-                        var res = {};
-                        for (var key in o) {
-                            if (o.hasOwnProperty(key)) {
-                                res[key] = _s(o[key], d-1);
-                            }
-                        }
-                        return res;
-                    }
-                    else if (o instanceof Date) {
-                        return o.toJSON();
-                    }
-                    else {
-                        // likely host object
-                        return undefined;
-                    }
-                }
-                else if (typeof o == 'function') {
-                    return undefined;
-                }
-                else {
-                    return o;  // native type
-                }
+    (function() {
+        try{
+            return {
+                error: false,
+                result: %(expression)s,
             }
-            return _s(obj, max_depth);
-        })(%(expression)s, %(max_depth)d)
-        """ % dict(expression=expression, max_depth=max_depth)
+        }
+        catch(e){
+            return {
+                error: true,
+                errorType: e.name,
+                errorMessage: e.message,
+                errorRepr: e.toString(),
+            };
+        }
+    })()
+    """ % dict(expression=expression)
+
+

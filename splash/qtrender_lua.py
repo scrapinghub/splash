@@ -34,7 +34,7 @@ from splash.utils import (
     requires_attr,
     SplashJSONEncoder,
     to_unicode)
-from splash.jsutils import escape_js
+from splash.jsutils import escape_js, get_process_errors_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -309,7 +309,7 @@ class _WrappedJavascriptFunction(object):
         """
         self.lua = splash.lua
         self.tab = splash.tab
-        self.source = source
+        self.source = escape_js(source)
         self.exceptions = splash.exceptions
 
     @exceptions_as_return_values
@@ -317,27 +317,11 @@ class _WrappedJavascriptFunction(object):
     @emits_lua_objects
     @decodes_lua_arguments('utf8')
     def __call__(self, *args):
-        wrapper_script = """
-        (function(func_text){
-            try{
-                var func = eval("(" + func_text + ")");
-                return {
-                    result: func(%(args)s),
-                    error: false,
-                }
-            }
-            catch(e){
-                return {
-                    error: true,
-                    errorType: e.name,
-                    errorMessage: e.message,
-                    errorRepr: e.toString(),
-                }
-            }
-        })(%(func_text)s)
-        """ % {"func_text": escape_js(self.source), "args": escape_js(*args)}
-
-        # print(wrapper_script)
+        expr = "eval('('+{func_text}+')')({args})".format(
+            func_text=self.source,
+            args=escape_js(*args)
+        )
+        wrapper_script = get_process_errors_js(expr)
         res = self.tab.evaljs(wrapper_script)
 
         if not isinstance(res, dict):
