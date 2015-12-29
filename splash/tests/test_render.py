@@ -329,7 +329,6 @@ class RenderHtmlTest(Base.RenderTest):
     def test_cookies_perserved_after_js_redirect(self):
         self.assertCookiesPreserved(use_js=False)
 
-    @pytest.mark.xfail(reason="See https://github.com/scrapinghub/splash/pull/316")
     def test_js_cookies_perserved_after_js_redirect(self):
         self.assertCookiesPreserved(use_js=True)
 
