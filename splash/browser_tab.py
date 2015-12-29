@@ -649,6 +649,7 @@ class BrowserTab(QObject):
                 }
             }
             (function () {
+                var sanitize = %(sanitize_func)s;
                 var _result = {};
                 var _splash = window["%(callback_name)s"];
                 var splash = {
@@ -657,7 +658,11 @@ class BrowserTab(QObject):
                     },
                     'resume': function (value) {
                         _result['value'] = value;
-                        _splash.resume(_result);
+                        try {
+                            _splash.resume(sanitize(_result));
+                        } catch (err) {
+                            _splash.error(err, true);
+                        }
                     },
                     'set': function (key, value) {
                         _result[key] = value;
@@ -675,6 +680,7 @@ class BrowserTab(QObject):
             })();
         })();undefined
         """ % dict(
+            sanitize_func=SANITIZE_FUNC_JS,
             script_text=escape_js(js_source),
             callback_name=callback_proxy.name
         )

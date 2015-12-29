@@ -664,6 +664,8 @@ class EvaljsTest(BaseLuaRenderTest):
 
 
 class WaitForResumeTest(BaseLuaRenderTest):
+    maxDiff = 2000
+
     def _wait_for_resume_request(self, js, timeout=1.0):
         return self.request_lua("""
         function main(splash)
@@ -770,6 +772,36 @@ class WaitForResumeTest(BaseLuaRenderTest):
             "value_type": "table",
         })
 
+    def test_return_host_object_document(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(document);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'value_type': 'nil'})
+
+    def test_return_host_object_xhr(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                var xhr = new XMLHttpRequest();
+                splash.resume(xhr);
+            }
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'value_type': 'nil'})
+
+    def test_return_dict_circular(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                var dct = {'hello': 'world'};
+                dct['me'] = dct;
+                splash.resume(dct);
+            }
+        """)
+        err = self.assertJsonError(resp, 400, 'ScriptError')
+        self.assertIn('Object is too deep or recursive', err['info']['error'])
+
     def test_return_additional_keys(self):
         resp = self.request_lua("""
         function main(splash)
@@ -841,6 +873,48 @@ class WaitForResumeTest(BaseLuaRenderTest):
         # XXX: why is it LUA_ERROR, not JS_ERROR? Should we change that?
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                message="SyntaxError")
+
+    def test_js_error(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                splash.resume(foo);  // foo is not defined
+            }
+        """)
+        err = self.assertJsonError(resp, 400, 'ScriptError')
+        self.assertIn("ReferenceError: Can't find variable: foo",
+                      err['info']['error'])
+
+    def test_js_error_custom(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                throw Error("oops!")
+            }
+        """)
+        err = self.assertJsonError(resp, 400, 'ScriptError')
+        self.assertIn('Error: oops!', err['info']['error'])
+
+    def test_js_error_circular(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                var err = Error("oops!");
+                err.e = err;
+                throw err
+            }
+        """)
+        err = self.assertJsonError(resp, 400, 'ScriptError')
+        self.assertIn('Error: oops!', err['info']['error'])
+
+    def test_js_error_circular_object(self):
+        resp = self._wait_for_resume_request("""
+            function main(splash) {
+                var err = {'msg': 'oops!'};
+                err['me'] = err;
+                throw err
+            }
+        """)
+        err = self.assertJsonError(resp, 400, 'ScriptError')
+        self.assertEqual(err['info']['error'],
+                         "JavaScript error: [object Object]")
 
     def test_navigation_cancels_resume(self):
         resp = self._wait_for_resume_request("""
