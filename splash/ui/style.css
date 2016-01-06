@@ -1,0 +1,66 @@
+/* fix bootstrap + harviewer compatibility issues */
+.label {
+    color: #000;
+    font-weight: normal;
+    font-size: 100%%;
+}
+
+table {
+    border-collapse: inherit;
+}
+
+#content pre {
+    border: 0;
+    padding: 1px;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    font-size: 13px;
+}
+.netInfoParamName {
+    font-size: 13px;
+}
+#content * {
+    box-sizing: content-box;
+}
+.netInfoHeadersText {
+    font-size: 13px;
+}
+.tab { /* nicer Headers tabs */
+    font-weight: inherit;
+}
+
+.netInfoHeadersGroup,
+.netInfoCookiesGroup {
+    font-weight: normal;
+}
+
+.harBody {
+    margin-bottom: 2em;
+}
+
+.tabBodies { /* fix an issue with extra horizontal scrollbar */
+    overflow: hidden;
+}
+
+.netCol.netOptionsCol { /* remove unsupported buttons */
+    display: none;
+}
+
+body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua support */
+    display: none;
+}
+
+/* styles for custom events */
+.netPageTimingBar {opacity: 0.3; width: 2px; }
+.timeInfoTip { width: 250px !important; }
+.customEventBar { background-color: gray; }
+._onStarted { background-color: marine; }
+._onPrepareStart { background-color: green; }
+._onCustomJsExecuted { background-color: green; }
+._onScreenshotPrepared { background-color: magenta; }
+._onPngRendered { background-color: magenta; }
+._onIframesRendered { background-color: black; }
+
+/* editor styling */
+#lua-code-editor-panel {
+    padding: 0;
+}
