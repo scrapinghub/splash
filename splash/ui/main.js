@@ -29,9 +29,9 @@ if(splash.lua_enabled) {
     var init_editor = function init_editor(){
         if(splash.lua_enabled && !splash.editor) {
             /* Create editor */
-            var textarea = $('#lua-code-editor:visible');
-            if (textarea.length) {
-                textarea.val(params.lua_source || splash.example_script || "");
+            var textarea = $('#lua-code-editor');
+            textarea.val(params.lua_source || splash.example_script || "");
+            if (textarea.is(':visible')) {
                 var editor = splash.editor = CodeMirror.fromTextArea(textarea[0], CODEMIRROR_OPTIONS);
                 editor.setSize(464, 464);
                 editor.on("keyup", function (cm, event) {
@@ -54,58 +54,65 @@ if(splash.lua_enabled) {
     });
 }
 
-var harViewerLoaded = $.Deferred();
-/* Initialize HAR viewer & send AJAX requests */
-$("#content").bind("onViewerPreInit", function(event){
-    // Get application object
-    var viewer = event.target.repObject;
-
-    // Remove unnecessary/unsupported tabs
-    viewer.removeTab("Home");
-    viewer.removeTab("DOM");
-    viewer.removeTab("About");
-    viewer.removeTab("Schema");
-    // Hide the tab bar
-    viewer.showTabBar(false);
-
-    // Remove toolbar buttons
-    var preview = viewer.getTab("Preview");
-    preview.toolbar.removeButton("download");
-    preview.toolbar.removeButton("clear");
-    preview.toolbar.removeButton("showTimeline");
-
-    var events = [
-        {name: "_onStarted", description: "Page processing is started"},
-        {name: "_onPrepareStart", description: "Rendering begins"},
-        {name: "_onFullViewportSet", description: "Viewport is changed to full"},
-        {name: "_onCustomJsExecuted", description: "Custom JavaScript is executed"},
-        {name: "_onScreenshotPrepared", description: "Screenshot is taken"},
-        {name: "_onPngRendered", description: "Screenshot is encoded"},
-        {name: "_onHtmlRendered", description: "HTML is rendered"},
-        {name: "_onIframesRendered", description: "Iframes info is calculated"},
-    ];
-
-    for (var i=0; i<events.length; i++){
-        var obj = events[i];
-        obj.classes = "customEventBar " + obj.name;
-        preview.addPageTiming(obj);
+function loadHarViewer(har) {
+    if(splash.harLoaded) {
+        return $(); // Multiple har files in response, only show UI for the first one
     }
+    splash.harLoaded = true;
+    // Load HARViewer libraries
+    $('<script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>').appendTo(document.body);
 
-    // Make sure stats are visible to the user by default
-    preview.showStats(true);
-});
+    var $container = $('<div/>')
+        .addClass('indent').attr('id', 'content') // Id is hardcoded into harviewer
+        .text('Loading HARViewer...');
 
-$("#content").bind("onViewerHARLoaded", function(event){
-    $('#harviewer_loading').remove();
-});
+    /* Initialize HAR viewer */
+    $container.bind("onViewerPreInit", function(event){
+        // Get application object
+        var viewer = event.target.repObject;
 
-$("#content").bind("onViewerInit", function(event){
-    var viewer = event.target.repObject;
-    harViewerLoaded.resolve(viewer);
-});
+        // Remove unnecessary/unsupported tabs
+        viewer.removeTab("Home");
+        viewer.removeTab("DOM");
+        viewer.removeTab("About");
+        viewer.removeTab("Schema");
+        // Hide the tab bar
+        viewer.showTabBar(false);
 
-function download_link(data, encoding, name){
+        // Remove toolbar buttons
+        var preview = viewer.getTab("Preview");
+        preview.toolbar.removeButton("download");
+        preview.toolbar.removeButton("clear");
+        preview.toolbar.removeButton("showTimeline");
 
+        var events = [
+            {name: "_onStarted", description: "Page processing is started"},
+            {name: "_onPrepareStart", description: "Rendering begins"},
+            {name: "_onFullViewportSet", description: "Viewport is changed to full"},
+            {name: "_onCustomJsExecuted", description: "Custom JavaScript is executed"},
+            {name: "_onScreenshotPrepared", description: "Screenshot is taken"},
+            {name: "_onPngRendered", description: "Screenshot is encoded"},
+            {name: "_onHtmlRendered", description: "HTML is rendered"},
+            {name: "_onIframesRendered", description: "Iframes info is calculated"},
+        ];
+
+        for (var i=0; i<events.length; i++){
+            var obj = events[i];
+            obj.classes = "customEventBar " + obj.name;
+            preview.addPageTiming(obj);
+        }
+
+        // Make sure stats are visible to the user by default
+        preview.showStats(true);
+        console.log('viewerpreinit');
+    });
+
+    $container.bind("onViewerInit", function(event){
+        console.log('viewerinit');
+        var viewer = event.target.repObject;
+        viewer.appendPreview(har);
+    });
+    return $container;
 }
 
 function renderString(s, $cnt) {
@@ -169,14 +176,10 @@ function renderObject(obj, $cnt) {
             .append(
                 $('<a/>').addClass('action')
                 .text('view')
-            )
-            .append(
-                $('<a/>').addClass('action')
-                .text('view')
                 .attr('download', splash.pageName + '.har')
                 .attr('href', "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj)))
                 .text('download')
-            );
+            ).append(loadHarViewer(obj));
         return;
     }
     if($.isArray(obj)) {
@@ -224,54 +227,54 @@ if(splash.params) {
 
     // Send request to splash
     $("#status").text("Rendering, please wait..");
-    $.ajax(splash.lua_enabled ? '/execute' : '/render.json', {
-        "contentType": "application/json",
-        "dataType": "json",
-        "type": "POST",
-        "data": JSON.stringify(params)
-    }).done(function(data){
-        if (!data){
-            $("#status").text("Empty result");
-        }
-        splash.result = data;
+    var xhr = new XMLHttpRequest();
 
-        renderValue(data, $('#result'));
-
-        //if (har){
-        //    harViewerLoaded.then(function(viewer){
-        //        viewer.appendPreview(har);
-        //        var downloadLink = $('#har-download');
-        //        var harData = "application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(har));
-        //        downloadLink.attr("href", "data:" + harData);
-        //        downloadLink.attr("download", "activity.har");
-        //        downloadLink.show();
-        //    });
-        //}
-        //if (png) {
-        //    $(".pagePreview img").attr("src", "data:image/png;base64," + png);
-        //}
-        //if (jpeg) {
-        //    $(".pagePreview img").attr("src", "data:image/jpeg;base64," + jpeg);
-        //}
-        //$("#renderedHTML").val(html);
-        //$(".pagePreview").show();
-        $("#status").text("Success");
-    }).fail(function(xhr, status, err){
-        $("#errorStatus").text(xhr.status + " (" + err + ")");
-        err = xhr.responseJSON;
-        var resp = JSON.stringify(err, null, 4);
-        $("#errorData").text(resp);
+    var onError = function onError(err){
+        $("#errorStatus").text(xhr.status + " (" + xhr.statusText + ")");
+        $("#errorData").text(JSON.stringify(err, null, 4));
         $("#errorMessage").show();
         $("#status").text("Error occured");
         $("#errorMessageText").text(err.info.message);
         $("#errorDescription").text(err.description);
-
         var errType = err.type;
         if (err.info.type){
             errType += ' -> ' + err.info.type;
         }
         $("#errorType").text(errType);
-    });
+    };
+
+    xhr.onreadystatechange = function(){
+        if (this.readyState === 4){
+            var blob = this.response;
+            var reader = new FileReader();
+            var isImage = /^image\//.test(blob.type);
+            reader.addEventListener("loadend", function() {
+                var data = reader.result;
+                if(isImage) {
+                    data = data.replace(/^data:[^;]+;[^,]+,/, '');
+                } else if (/json/.test(blob.type)) {
+                    data = JSON.parse(data);
+                }
+                if(xhr.status === 200) {
+                    $('#result').show();
+                    splash.result = data;
+                    renderValue(data, $('#result').find('.obj-item'));
+                    $("#status").text(data ? "Success" : "Empty result");
+                } else {
+                    onError(data);
+                }
+            });
+            if(isImage) {
+                data = reader.readAsDataURL(blob);
+            } else {
+                data = reader.readAsText(blob);
+            }
+        }
+    };
+    xhr.open('POST', splash.lua_enabled ? '/execute' : '/render.json');
+    xhr.setRequestHeader('content-type', 'application/json');
+    xhr.responseType = 'blob'; // Need blob in case an image is returned directly
+    xhr.send(JSON.stringify(params));
 }
 
 })();

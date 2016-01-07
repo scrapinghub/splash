@@ -429,9 +429,6 @@ class DemoUI(_ValidatingResource):
             <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
             %(cm_resources)s
             <link rel="stylesheet" href="/_ui/style.css">
-
-            <style>
-            </style>
         </head>
         <body class="harBody no-lua" style="color:#000">
             <div class="container"> <!-- style="margin: 0 auto; width: 95%%;"-->
@@ -477,17 +474,10 @@ class DemoUI(_ValidatingResource):
                   </div>
                 </div>
 
-                <div class="pagePreview" style="display:none">
-                    <h3>
-                        Network Activity
-                        <a href="" style="display:none" id="har-download"><small>(download as .har)</small></a>
-                    </h3>
+                <div id="result" style="display: none;">
+                    <span class="key">Splash Response</span><span class="colon">:</span>
+                    <span class="obj-item"></span>
                 </div>
-                <div id="harview" style="display: none;">
-                    <div id="content" version="Splash %(version)s"></div>
-                </div>
-
-                <div id="result"><span class="key">Splash Response</span><span class="colon">: </span></div>
 
                 <div id="errorMessage" style="display:none">
                     <h4>HTTP Error <span id='errorStatus'></span></h4>
@@ -498,7 +488,6 @@ class DemoUI(_ValidatingResource):
                 </div>
             </div>
 
-            <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
             <script> var splash = %(options)s; </script>
             <script src="/_ui/main.js"> </script>
         </body>
