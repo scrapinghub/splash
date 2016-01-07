@@ -27,6 +27,7 @@ from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
+from splash.qtrender_lua import get_commands, Splash
 from splash.exceptions import (
     BadOption, RenderError, InternalError,
     GlobalTimeoutError, UnsupportedContentType,
@@ -362,18 +363,16 @@ class PingResource(Resource):
 BOOTSTRAP_THEME = 'simplex'
 
 CODEMIRROR_RESOURCES = """
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/monokai.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/midnight.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/codemirror.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/theme/mbo.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/show-hint.css" rel="stylesheet">
 
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/anyword-hint.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/matchbrackets.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/closebrackets.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/codemirror.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/mode/lua/lua.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/show-hint.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/anyword-hint.min.js"></scrip>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/matchbrackets.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/closebrackets.min.js"></script>
 
 """
 
@@ -515,6 +514,7 @@ class DemoUI(_ValidatingResource):
                 "params": params,
                 "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
+                "commands": list(get_commands(Splash).keys()),
             }),
             timeout=timeout,
             url=url,
@@ -674,6 +674,7 @@ end
                 "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
                 "example_script": self.get_example_script(),
+                "commands": list(get_commands(Splash).keys()),
             }),
             cm_resources=CODEMIRROR_RESOURCES,
             timeout=self.max_timeout,

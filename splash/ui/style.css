@@ -64,3 +64,8 @@ body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua
 #lua-code-editor-panel {
     padding: 0;
 }
+
+.CodeMirror-hints {
+    z-index: 1001;
+
+}

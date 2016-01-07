@@ -2,7 +2,6 @@
 
 var splash = window.splash || {};
 var params = splash.params || {};
-var editor = null;
 
 if(splash.lua_enabled) {
     $(document.body).removeClass('no-lua').addClass('has-lua');
@@ -16,20 +15,34 @@ if(splash.lua_enabled) {
         autoCloseBrackets: true,
         extraKeys: {
             "Ctrl-Space": "autocomplete",
-            "Esc": "autocomplete",
         },
-        hint: CodeMirror.hint.anyword,
         theme: 'mbo',
     };
 
+    var autocomplete = function autocomplete(cm) {
+        var cur = cm.getCursor(), line = cm.getRange({line: cur.line, ch:0}, cur);
+        if (/splash:[a-z_]*$/.test(line)) {
+            return CodeMirror.hint.fromList(cm, {words: splash.commands});
+        }
+    };
+
     var init_editor = function init_editor(){
-        if(splash.lua_enabled && editor === null) {
+        if(splash.lua_enabled && !splash.editor) {
             /* Create editor */
             var textarea = $('#lua-code-editor:visible');
             if (textarea.length) {
                 textarea.val(params.lua_source || splash.example_script || "");
-                splash.editor = CodeMirror.fromTextArea(textarea[0], CODEMIRROR_OPTIONS);
-                splash.editor.setSize(464, 464);
+                var editor = splash.editor = CodeMirror.fromTextArea(textarea[0], CODEMIRROR_OPTIONS);
+                editor.setSize(464, 464);
+                editor.on("keyup", function (cm, event) {
+                    var kc = event.keyCode;
+                    if (!cm.state.completionActive && ((kc >= 48 && kc <= 90) || kc === 190 || kc === 16)) { // a-z . and :
+                        CodeMirror.commands.autocomplete(cm, null, {
+                            completeSingle: false,
+                            hint: autocomplete,
+                        });
+                    }
+                });
             }
         }
     };
