@@ -83,3 +83,29 @@ body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua
 #result textarea {
     width: 100%;
 }
+
+#result .string {
+    color: #008000;
+    font-style: italic;
+}
+#result .number, #result .boolean {
+    color: red;
+}
+#result .type {
+    color: blue;
+}
+
+#result .key {
+    color: #00008B;
+}
+
+#result .colon, #result .punct {
+    color: #666;
+}
+
+#result .action {
+    color: #337AB7;
+    text-decoration: underline;
+    margin-left: 10px;
+    cursor: pointer;
+}

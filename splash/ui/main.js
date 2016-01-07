@@ -104,6 +104,10 @@ $("#content").bind("onViewerInit", function(event){
     harViewerLoaded.resolve(viewer);
 });
 
+function download_link(data, encoding, name){
+
+}
+
 function renderString(s, $cnt) {
     // An string can be rendered as a simple string, as long string block or
     // as a base64-encoded image
@@ -119,11 +123,16 @@ function renderString(s, $cnt) {
     var rendered = false;
     var pending = 2;
 
-    function try_load(mime) {
+    function try_load(ext) {
         var i = new Image();
         i.onload = function(){
             if(!rendered) {
-                $cnt.append('Image (' + mime + ', ' + i.width + 'x' + i.height + ')').append(
+                $cnt.append('<span class="type">Image</span> (' + ext + ', ' + i.width + 'x' + i.height + ')').append(
+                    $('<a/>').addClass('action').text('download')
+                    .attr('download', splash.pageName + '.' + ext)
+                    .attr('href', "data:image/" + ext + ";base64," + s)
+                    .text('download')
+                ).append(
                     $('<div/>').addClass('indent').append(
                         $(i).addClass('small')
                     )
@@ -134,28 +143,44 @@ function renderString(s, $cnt) {
         i.onerror = function(){
             if(!rendered && --pending === 0) {
                 rendered = true;
-                $cnt.append('String (length ' + s.length + ')')
-                .append(
+                $cnt.append('String (length ' + s.length + ')').append(
+                    $('<a/>').addClass('action').text('download')
+                    .attr('download', splash.pageName + '.txt')
+                    .attr('href', "data:text/plain;base64," + btoa(s))
+                    .text('download')
+                ).append(
                     $('<div/>').addClass('indent').append(
                         $('<textarea rows="15"></textarea>').val(s)
                     )
                 );
             }
         };
-        i.src = "data:" + mime + ";base64," + s;
+        i.src = "data:image/" + ext + ";base64," + s;
     }
 
-    try_load('image/png');
-    try_load('image/jpeg');
+    try_load('png');
+    try_load('jpeg');
 }
 
 function renderObject(obj, $cnt) {
     if(obj.log && obj.log.creator && obj.log.creator.name === 'Splash') { // Test if it's a har object
-        $cnt.addClass('har').append('<span class="type">Har file</span>');
+        $cnt.addClass('har')
+            .append('<span class="type">HAR data</span>')
+            .append(
+                $('<a/>').addClass('action')
+                .text('view')
+            )
+            .append(
+                $('<a/>').addClass('action')
+                .text('view')
+                .attr('download', splash.pageName + '.har')
+                .attr('href', "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj)))
+                .text('download')
+            );
         return;
     }
     if($.isArray(obj)) {
-        $cnt.append('<span class="type">Array </span><span class="arrlen">[' + obj.length + ']</span>');
+        $cnt.append('<span class="type">Array</span><span class="arrlen">[' + obj.length + ']</span>');
     } else {
         $cnt.append('<span class="type">Object</span>');
     }
@@ -191,6 +216,12 @@ function renderValue(obj, $cnt) {
 }
 
 if(splash.params) {
+    var pageName = splash.params.url, match;
+    if((match = pageName.match(/\w+:\/\/([^\/]+)(\/|$)/)) !== null) {
+        pageName = match[1];
+    }
+    splash.pageName = pageName.replace(/[^a-z0-9\.]+/g, '_');
+
     // Send request to splash
     $("#status").text("Rendering, please wait..");
     $.ajax(splash.lua_enabled ? '/execute' : '/render.json', {

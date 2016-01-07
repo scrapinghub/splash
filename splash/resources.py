@@ -487,7 +487,7 @@ class DemoUI(_ValidatingResource):
                     <div id="content" version="Splash %(version)s"></div>
                 </div>
 
-                <div id="result"><span class="type">Splash Response</span><span class="colon">: </span></div>
+                <div id="result"><span class="key">Splash Response</span><span class="colon">: </span></div>
 
                 <div id="errorMessage" style="display:none">
                     <h4>HTTP Error <span id='errorStatus'></span></h4>
