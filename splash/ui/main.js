@@ -141,7 +141,10 @@ function renderString(s, $cnt) {
                     .text('download')
                 ).append(
                     $('<div/>').addClass('indent').append(
-                        $(i).addClass('small')
+                        $('<a/>').attr('href', "data:image/" + ext + ";base64," + s)
+                        .attr('target', '_blank').append(
+                            $(i).attr('title', 'Open in new tab').addClass('small')
+                        )
                     )
                 );
                 rendered = true;
