@@ -55,7 +55,6 @@ if(splash.lua_enabled) {
 }
 
 var harViewerLoaded = $.Deferred();
-
 /* Initialize HAR viewer & send AJAX requests */
 $("#content").bind("onViewerPreInit", function(event){
     // Get application object
@@ -105,6 +104,92 @@ $("#content").bind("onViewerInit", function(event){
     harViewerLoaded.resolve(viewer);
 });
 
+function renderString(s, $cnt) {
+    // An string can be rendered as a simple string, as long string block or
+    // as a base64-encoded image
+
+    if(s.length < 120) { // Standalone simple string
+        var encodedString = JSON.stringify([s]);
+        encodedString = encodedString.substring(1, encodedString.length - 1);
+        $cnt.addClass('string').text(encodedString);
+        return;
+    }
+    // Block of text or image
+    // Test if it can be loaded as a PNG or JPG image
+    var rendered = false;
+    var pending = 2;
+
+    function try_load(mime) {
+        var i = new Image();
+        i.onload = function(){
+            if(!rendered) {
+                $cnt.append('Image (' + mime + ', ' + i.width + 'x' + i.height + ')').append(
+                    $('<div/>').addClass('indent').append(
+                        $(i).addClass('small')
+                    )
+                );
+                rendered = true;
+            }
+        };
+        i.onerror = function(){
+            if(!rendered && --pending === 0) {
+                rendered = true;
+                $cnt.append('String (length ' + s.length + ')')
+                .append(
+                    $('<div/>').addClass('indent').append(
+                        $('<textarea rows="15"></textarea>').val(s)
+                    )
+                );
+            }
+        };
+        i.src = "data:" + mime + ";base64," + s;
+    }
+
+    try_load('image/png');
+    try_load('image/jpeg');
+}
+
+function renderObject(obj, $cnt) {
+    if(obj.log && obj.log.creator && obj.log.creator.name === 'Splash') { // Test if it's a har object
+        $cnt.addClass('har').append('<span class="type">Har file</span>');
+        return;
+    }
+    if($.isArray(obj)) {
+        $cnt.append('<span class="type">Array </span><span class="arrlen">[' + obj.length + ']</span>');
+    } else {
+        $cnt.append('<span class="type">Object</span>');
+    }
+    for (var k in obj) {
+        if(!obj.hasOwnProperty(k)) {
+            continue;
+        }
+        var $subcnt = $('<span/>').addClass('obj-item');
+        $('<div/>').addClass('obj-item indent')
+            .append($('<span/>').addClass('key').text(k))
+            .append($('<span/>').addClass('colon').text(': '))
+            .append($subcnt).appendTo($cnt);
+        renderValue(obj[k], $subcnt);
+    }
+}
+
+function renderValue(obj, $cnt) {
+    $cnt.addClass('value');
+    if(obj === null) {
+        $cnt.addClass('falsy').text('null');
+    } else if (typeof obj === 'undefined') {
+        $cnt.addClass('falsy').text('undefined');
+    } else if (typeof obj === 'number' || typeof obj === 'boolean') {
+        $cnt.addClass(typeof obj).text(obj);
+    } else if (typeof obj === 'string') {
+        renderString(obj, $cnt);
+    } else if ($.isArray(obj) || typeof obj === 'object') {
+        renderObject(obj, $cnt);
+    } else {
+        $cnt.text("Can't render object");
+        console.error('Unknown object', obj);
+    }
+}
+
 if(splash.params) {
     // Send request to splash
     $("#status").text("Rendering, please wait..");
@@ -116,32 +201,29 @@ if(splash.params) {
     }).done(function(data){
         if (!data){
             $("#status").text("Empty result");
-            return;
         }
+        splash.result = data;
 
-        var har  = data.har;
-        var png  = data.png;
-        var jpeg = data.jpeg;
-        var html = data.html;
+        renderValue(data, $('#result'));
 
-        if (har){
-            harViewerLoaded.then(function(viewer){
-                viewer.appendPreview(har);
-                var downloadLink = $('#har-download');
-                var harData = "application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(har));
-                downloadLink.attr("href", "data:" + harData);
-                downloadLink.attr("download", "activity.har");
-                downloadLink.show();
-            });
-        }
-        if (png) {
-            $(".pagePreview img").attr("src", "data:image/png;base64," + png);
-        }
-        if (jpeg) {
-            $(".pagePreview img").attr("src", "data:image/jpeg;base64," + jpeg);
-        }
-        $("#renderedHTML").val(html);
-        $(".pagePreview").show();
+        //if (har){
+        //    harViewerLoaded.then(function(viewer){
+        //        viewer.appendPreview(har);
+        //        var downloadLink = $('#har-download');
+        //        var harData = "application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(har));
+        //        downloadLink.attr("href", "data:" + harData);
+        //        downloadLink.attr("download", "activity.har");
+        //        downloadLink.show();
+        //    });
+        //}
+        //if (png) {
+        //    $(".pagePreview img").attr("src", "data:image/png;base64," + png);
+        //}
+        //if (jpeg) {
+        //    $(".pagePreview img").attr("src", "data:image/jpeg;base64," + jpeg);
+        //}
+        //$("#renderedHTML").val(html);
+        //$(".pagePreview").show();
         $("#status").text("Success");
     }).fail(function(xhr, status, err){
         $("#errorStatus").text(xhr.status + " (" + err + ")");

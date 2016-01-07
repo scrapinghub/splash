@@ -478,21 +478,16 @@ class DemoUI(_ValidatingResource):
                 </div>
 
                 <div class="pagePreview" style="display:none">
-                    <img class='center-block'>
-                    <br>
                     <h3>
                         Network Activity
                         <a href="" style="display:none" id="har-download"><small>(download as .har)</small></a>
                     </h3>
                 </div>
-
-                <div id="content" version="Splash %(version)s"></div>
-
-                <div class="pagePreview" style="display:none">
-                    <h3>HTML</h3>
-                    <textarea style="width: 100%%;" rows=15 id="renderedHTML"></textarea>
-                    <br>
+                <div id="harview" style="display: none;">
+                    <div id="content" version="Splash %(version)s"></div>
                 </div>
+
+                <div id="result"><span class="type">Splash Response</span><span class="colon">: </span></div>
 
                 <div id="errorMessage" style="display:none">
                     <h4>HTTP Error <span id='errorStatus'></span></h4>

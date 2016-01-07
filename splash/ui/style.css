@@ -67,5 +67,19 @@ body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua
 
 .CodeMirror-hints {
     z-index: 1001;
+}
 
+#result {
+    font-family: monospace;
+}
+#result .indent {
+    margin-left: 30px;
+}
+#result img.small {
+    max-width: 400px;
+    max-height: 300px;
+    border: 1px solid black;
+}
+#result textarea {
+    width: 100%;
 }
