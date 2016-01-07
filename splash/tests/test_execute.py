@@ -2063,7 +2063,7 @@ class DisableScriptsTest(BaseLuaRenderTest):
             # Check that Lua is disabled in UI
             resp = requests.get(splash.url("/"))
             self.assertStatusCode(resp, 200)
-            self.assertNotIn("<textarea", resp.text)  # no code editor
+            self.assertIn('"lua_enabled": false', resp.text)
 
             script = "function main(splash) return 'foo' end"
 
