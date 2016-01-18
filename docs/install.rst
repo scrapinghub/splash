@@ -60,17 +60,16 @@ Ubuntu 14.04 (manual way)
         $ cd splash
         $ pip3 install -r requirements.txt
 
-
 To run the server execute the following command::
 
-    python -m splash.server
+    python3 -m splash.server
 
 Run ``python -m splash.server --help`` to see options available.
 
 By default, Splash API endpoints listen to port 8050 on all available
 IPv4 addresses. To change the port use ``--port`` option::
 
-    python -m splash.server --port=5000
+    python3 -m splash.server --port=5000
 
 Required Python packages
 ~~~~~~~~~~~~~~~~~~~~~~~~
