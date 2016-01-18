@@ -152,7 +152,8 @@ class DefaultRenderScript(RenderScript):
 
     def _runjs(self, js_source, js_profile):
         js_output, js_console_output = None, None
-        if js_source:
+
+        if js_source or js_profile:
             if self.console:
                 self.tab._jsconsole_enable()
 
@@ -160,11 +161,13 @@ class DefaultRenderScript(RenderScript):
                 # XXX: shouldn't we keep injecting scripts after redirects?
                 self.tab.run_js_files(js_profile, handle_errors=False)
 
-            js_output = self.tab.evaljs(js_source, handle_errors=False)
+            if js_source:
+                js_output = self.tab.evaljs(js_source, handle_errors=False)
+
             if self.console:
                 js_console_output = self.tab._jsconsole_messages()
 
-        self.tab.store_har_timing('_onCustomJsExecuted')
+            self.tab.store_har_timing('_onCustomJsExecuted')
         return js_output, js_console_output
 
     def _prepare_render(self):
