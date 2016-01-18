@@ -156,7 +156,7 @@ function renderString(s, $cnt) {
                 $cnt.append('String (length ' + s.length + ')').append(
                     $('<a/>').addClass('action').text('download')
                     .attr('download', splash.pageName + '.txt')
-                    .attr('href', "data:text/plain;base64," + btoa(s))
+                    .attr('href', "data:text/plain;charset=utf-8," + encodeURI(s))
                     .text('download')
                 ).append(
                     $('<div/>').addClass('indent').append(
