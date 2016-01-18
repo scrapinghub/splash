@@ -27,7 +27,6 @@ from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
-from splash.qtrender_lua import get_commands, Splash
 from splash.exceptions import (
     BadOption, RenderError, InternalError,
     GlobalTimeoutError, UnsupportedContentType,
@@ -420,7 +419,7 @@ class DemoUI(_ValidatingResource):
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
-            <link rel="stylesheet" href="_harviewer/css/harViewer.css" type="text/css"/>
+            <link rel="stylesheet" href="_ui/harviewer/css/harViewer.css" type="text/css"/>
 
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
             <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
@@ -498,7 +497,6 @@ class DemoUI(_ValidatingResource):
                 "params": params,
                 "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
-                "commands": list(get_commands(Splash).keys()),
             }),
             timeout=timeout,
             url=url,
@@ -517,6 +515,10 @@ class Root(Resource):
     UI_PATH = os.path.join(
         os.path.dirname(__file__),
         'ui',
+    )
+    INSPECTIONS_PATH = os.path.join(
+        os.path.dirname(__file__),
+        'kernel', 'inspections'
     )
 
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
@@ -550,8 +552,10 @@ class Root(Resource):
             ))
 
         if self.ui_enabled:
-            self.putChild(b"_harviewer", File(self.HARVIEWER_PATH))
-            self.putChild(b"_ui", File(self.UI_PATH))
+            ui = File(self.UI_PATH)
+            ui.putChild(b"harviewer", File(self.HARVIEWER_PATH))
+            ui.putChild(b"inspections", File(self.INSPECTIONS_PATH))
+            self.putChild(b"_ui", ui)
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
                 lua_enabled=self.lua_enabled,
@@ -658,7 +662,6 @@ end
                 "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
                 "example_script": self.get_example_script(),
-                "commands": list(get_commands(Splash).keys()),
             }),
             cm_resources=CODEMIRROR_RESOURCES,
             timeout=self.max_timeout,

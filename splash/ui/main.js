@@ -6,6 +6,18 @@ var params = splash.params || {};
 if(splash.lua_enabled) {
     $(document.body).removeClass('no-lua').addClass('has-lua');
 
+    var splash_commands = {};
+    var splash_commands_names = [];
+    var splash_property_names = [];
+    // Load documentation for autocompletion
+    $.getJSON('/_ui/inspections/splash-auto.json', function(data) {
+        splash_commands = data;
+        for(var method in data) {
+            method = method.replace(/^splash/, '');
+            (method[0] == ':' ? splash_commands_names : splash_property_names).push(method.substring(1));
+        }
+    });
+
     var CODEMIRROR_OPTIONS = {
         mode: 'lua',
         lineNumbers: true,
@@ -21,8 +33,11 @@ if(splash.lua_enabled) {
 
     var autocomplete = function autocomplete(cm) {
         var cur = cm.getCursor(), line = cm.getRange({line: cur.line, ch:0}, cur);
-        if (/splash:[a-z_]*$/.test(line)) {
-            return CodeMirror.hint.fromList(cm, {words: splash.commands});
+        var match = line.match(/splash([:\.])[a-z_]*$/);
+        if (match) {
+            return CodeMirror.hint.fromList(cm, {
+                words: match[1] == ':' ? splash_commands_names : splash_property_names
+            });
         }
     };
 
@@ -60,7 +75,7 @@ function loadHarViewer(har) {
     }
     splash.harLoaded = true;
     // Load HARViewer libraries
-    $('<script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>').appendTo(document.body);
+    $('<script data-main="_ui/harviewer/scripts/harViewer" src="_ui/harviewer/scripts/require.js"></script>').appendTo(document.body);
 
     var $container = $('<div/>')
         .addClass('indent').attr('id', 'content') // Id is hardcoded into harviewer
