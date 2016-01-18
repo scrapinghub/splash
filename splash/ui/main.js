@@ -11,10 +11,10 @@ if(splash.lua_enabled) {
     var splash_property_names = [];
     // Load documentation for autocompletion
     $.getJSON('/_ui/inspections/splash-auto.json', function(data) {
-        splash_commands = data;
+        var pos = 'splash:'.length;
         for(var method in data) {
-            method = method.replace(/^splash/, '');
-            (method[0] == ':' ? splash_commands_names : splash_property_names).push(method.substring(1));
+            (method[pos-1] == ':' ? splash_commands_names : splash_property_names).push(method.substring(pos));
+            splash_commands[method.substring(pos)] = data[method];
         }
     });
 
@@ -31,13 +31,31 @@ if(splash.lua_enabled) {
         theme: 'mbo',
     };
 
+    var $tooltip = $('<div class="splash-tooltip"></div>').appendTo(document.body).hide();
     var autocomplete = function autocomplete(cm) {
         var cur = cm.getCursor(), line = cm.getRange({line: cur.line, ch:0}, cur);
         var match = line.match(/splash([:\.])[a-z_]*$/);
         if (match) {
-            return CodeMirror.hint.fromList(cm, {
+            var hints = CodeMirror.hint.fromList(cm, {
                 words: match[1] == ':' ? splash_commands_names : splash_property_names
             });
+            if(!hints) {
+                return;
+            }
+            CodeMirror.on(hints, "close", function() { $tooltip.hide(); });
+            CodeMirror.on(hints, "update", function() { $tooltip.hide(); });
+            CodeMirror.on(hints, "select", function(cur, node) {
+                var rect = node.parentNode.getBoundingClientRect();
+                var left = (rect.right + window.pageXOffset) + 'px';
+                var top = (rect.top + window.pageYOffset) + 'px';
+                var docs = splash_commands[cur] && splash_commands[cur].short;
+                if(docs){
+                    $tooltip.html(docs).css({left: left, top: top}).show();
+                } else {
+                    $tooltip.hide();
+                }
+            });
+            return hints;
         }
     };
 

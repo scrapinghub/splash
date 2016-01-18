@@ -69,6 +69,21 @@ body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua
     z-index: 1001;
 }
 
+.splash-tooltip {
+    max-width: 25em;
+    border: 1px solid #C0C0C0;
+    border-radius: 3px;
+    color: #444;
+    padding: 2px 5px;
+    font-size: 90%;
+    font-family: monospace;
+    background-color: #FFF;
+    white-space: pre-wrap;
+    position: absolute;
+    z-index: 1002;
+    box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.2);
+}
+
 #result {
     font-family: monospace;
 }
