@@ -59,9 +59,9 @@ def parse_rst(rst_source):
 
 def rst2inspections(rst_filename, out_filename):
     with open(rst_filename, "rb") as f:
-        info = parse_rst(f.read())
+        info = parse_rst(f.read().decode('utf8'))
 
-    with open(out_filename, "wb") as f:
+    with open(out_filename, "w") as f:
         json.dump(info, f, indent=2)
 
 
