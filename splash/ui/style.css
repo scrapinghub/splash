@@ -1,0 +1,126 @@
+/* fix bootstrap + harviewer compatibility issues */
+.label {
+    color: #000;
+    font-weight: normal;
+    font-size: 100%%;
+}
+
+table {
+    border-collapse: inherit;
+}
+
+#content pre {
+    border: 0;
+    padding: 1px;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    font-size: 13px;
+}
+.netInfoParamName {
+    font-size: 13px;
+}
+#content * {
+    box-sizing: content-box;
+}
+.netInfoHeadersText {
+    font-size: 13px;
+}
+.tab { /* nicer Headers tabs */
+    font-weight: inherit;
+}
+
+.netInfoHeadersGroup,
+.netInfoCookiesGroup {
+    font-weight: normal;
+}
+
+.harBody {
+    margin-bottom: 2em;
+}
+
+.tabBodies { /* fix an issue with extra horizontal scrollbar */
+    overflow: hidden;
+}
+
+.netCol.netOptionsCol { /* remove unsupported buttons */
+    display: none;
+}
+
+body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua support */
+    display: none;
+}
+
+/* styles for custom events */
+.netPageTimingBar {opacity: 0.3; width: 2px; }
+.timeInfoTip { width: 250px !important; }
+.customEventBar { background-color: gray; }
+._onStarted { background-color: marine; }
+._onPrepareStart { background-color: green; }
+._onCustomJsExecuted { background-color: green; }
+._onScreenshotPrepared { background-color: magenta; }
+._onPngRendered { background-color: magenta; }
+._onIframesRendered { background-color: black; }
+
+/* editor styling */
+#lua-code-editor-panel {
+    padding: 0;
+}
+
+.CodeMirror-hints {
+    z-index: 1001;
+}
+
+.splash-tooltip {
+    max-width: 25em;
+    border: 1px solid #C0C0C0;
+    border-radius: 3px;
+    color: #444;
+    padding: 2px 5px;
+    font-size: 90%;
+    font-family: monospace;
+    background-color: #FFF;
+    white-space: pre-wrap;
+    position: absolute;
+    z-index: 1002;
+    box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.2);
+}
+
+#result {
+    font-family: monospace;
+}
+#result .indent {
+    margin-left: 30px;
+}
+#result img.small {
+    max-width: 400px;
+    max-height: 300px;
+    border: 1px solid black;
+}
+#result textarea {
+    width: 100%;
+}
+
+#result .string {
+    color: #008000;
+    font-style: italic;
+}
+#result .number, #result .boolean {
+    color: red;
+}
+#result .type {
+    color: blue;
+}
+
+#result .key {
+    color: #00008B;
+}
+
+#result .colon, #result .punct {
+    color: #666;
+}
+
+#result .action {
+    color: #337AB7;
+    text-decoration: underline;
+    margin-left: 10px;
+    cursor: pointer;
+}

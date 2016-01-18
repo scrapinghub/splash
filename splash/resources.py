@@ -360,35 +360,18 @@ class PingResource(Resource):
 
 
 BOOTSTRAP_THEME = 'simplex'
-CODEMIRROR_OPTIONS = """{
-    mode: 'lua',
-    lineNumbers: true,
-    autofocus: true,
-    tabSize: 2,
-    matchBrackets: false,  // doesn't look good in mbo theme
-    autoCloseBrackets: true,
-    extraKeys: {
-        "Ctrl-Space": "autocomplete",
-        "Esc": "autocomplete",
-    },
-    hint: CodeMirror.hint.anyword,
-    theme: 'mbo',
-}
-"""
 
 CODEMIRROR_RESOURCES = """
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/mbo.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/monokai.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/midnight.min.css" rel="stylesheet">
-<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/codemirror.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/theme/mbo.min.css" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/show-hint.css" rel="stylesheet">
 
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/lua/lua.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/show-hint.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/hint/anyword-hint.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/matchbrackets.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/closebrackets.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/codemirror.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/mode/lua/lua.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/show-hint.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/anyword-hint.min.js"></scrip>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/matchbrackets.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/closebrackets.min.js"></script>
 
 """
 
@@ -432,66 +415,21 @@ class DemoUI(_ValidatingResource):
         # disable "phases" HAR Viewer feature
         request.addCookie('phaseInterval', 120000)
 
-        LUA_EDITOR = """
-          <a href="#" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
-          <div class="dropdown-menu panel panel-default" id="lua-code-editor-panel">
-            <div class="panel-body2">
-              <textarea id="lua-code-editor" name='lua_source'></textarea>
-            </div>
-          </div>
-        """
-
-        return ("""<html>
+        return ("""<!DOCTYPE html><html>
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
-            <link rel="stylesheet" href="_harviewer/css/harViewer.css" type="text/css"/>
+            <link rel="stylesheet" href="_ui/harviewer/css/harViewer.css" type="text/css"/>
 
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
             <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
             <script src="https://code.jquery.com/jquery-migrate-1.2.1.js"></script>
 
             <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-
             %(cm_resources)s
-
-            <style>
-                /* fix bootstrap + harviewer compatibility issues */
-                .label { color: #000; font-weight: normal; font-size: 100%%; }
-                table { border-collapse: inherit; }
-                #content pre {
-                    border: 0;
-                    padding: 1px;
-                    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
-                    font-size: 13px;
-                }
-                .netInfoParamName { font-size: 13px; }
-                #content * { box-sizing: content-box; }
-                .netInfoHeadersText { font-size: 13px; }
-                .tab {font-weight: inherit}  /* nicer Headers tabs */
-                .netInfoHeadersGroup, .netInfoCookiesGroup { font-weight: normal; }
-                .harBody { margin-bottom: 2em; }
-                .tabBodies {overflow: hidden;}  /* fix an issue with extra horizontal scrollbar */
-
-                /* remove unsupported buttons */
-                .netCol.netOptionsCol {display: none;}
-
-                /* styles for custom events */
-                .netPageTimingBar {opacity: 0.3; width: 2px; }
-                .timeInfoTip { width: 250px !important; }
-                .customEventBar { background-color: gray; }
-                ._onStarted { background-color: marine; }
-                ._onPrepareStart { background-color: green; }
-                ._onCustomJsExecuted { background-color: green; }
-                ._onScreenshotPrepared { background-color: magenta; }
-                ._onPngRendered { background-color: magenta; }
-                ._onIframesRendered { background-color: black; }
-
-                /* editor styling */
-                #lua-code-editor-panel {padding: 0}
-            </style>
+            <link rel="stylesheet" href="/_ui/style.css">
         </head>
-        <body class="harBody" style="color:#000">
+        <body class="harBody no-lua" style="color:#000">
             <div class="container"> <!-- style="margin: 0 auto; width: 95%%;"-->
 
                 <div class="navbar navbar-default">
@@ -517,7 +455,13 @@ class DemoUI(_ValidatingResource):
 
                       <div class="btn-group" id="render-form">
                           <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
-                          %(lua_editor)s
+
+                          <a href="#" class="btn btn-default dropdown-toggle if-lua" data-toggle="dropdown">Script&nbsp;<b class="caret"></b></a>
+                          <div class="dropdown-menu panel panel-default if-lua" id="lua-code-editor-panel">
+                            <div class="panel-body2">
+                              <textarea id="lua-code-editor" name='lua_source'></textarea>
+                            </div>
+                          </div>
                       </div>
                       <button class="btn btn-success" type="submit">Render!</button>
                     </form>
@@ -529,21 +473,9 @@ class DemoUI(_ValidatingResource):
                   </div>
                 </div>
 
-                <div class="pagePreview" style="display:none">
-                    <img class='center-block'>
-                    <br>
-                    <h3>
-                        Network Activity
-                        <a href="" style="display:none" id="har-download"><small>(download as .har)</small></a>
-                    </h3>
-                </div>
-
-                <div id="content" version="Splash %(version)s"></div>
-
-                <div class="pagePreview" style="display:none">
-                    <h3>HTML</h3>
-                    <textarea style="width: 100%%;" rows=15 id="renderedHTML"></textarea>
-                    <br>
+                <div id="result" style="display: none;">
+                    <span class="key">Splash Response</span><span class="colon">:</span>
+                    <span class="obj-item"></span>
                 </div>
 
                 <div id="errorMessage" style="display:none">
@@ -555,141 +487,21 @@ class DemoUI(_ValidatingResource):
                 </div>
             </div>
 
-            <script data-main="_harviewer/scripts/harViewer" src="_harviewer/scripts/require.js"></script>
-
-            <script>
-            var params = %(params)s;
-
-            /* Create editor */
-            var editor = null;
-            var textarea = document.getElementById('lua-code-editor');
-            if (textarea) {
-                textarea.value = params["lua_source"] || "";
-
-                $('#render-form').on("shown.bs.dropdown", function(e){
-                    if (editor === null) {
-                        editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
-                        editor.setSize(600, 464);
-                    }
-                });
-                $('#lua-code-editor-panel').click(function(e){e.stopPropagation();});
-            }
-
-            /* Initialize HAR viewer & send AJAX requests */
-            $("#content").bind("onViewerPreInit", function(event){
-                // Get application object
-                var viewer = event.target.repObject;
-
-                // Remove unnecessary/unsupported tabs
-                viewer.removeTab("Home");
-                viewer.removeTab("DOM");
-                viewer.removeTab("About");
-                viewer.removeTab("Schema");
-                // Hide the tab bar
-                viewer.showTabBar(false);
-
-                // Remove toolbar buttons
-                var preview = viewer.getTab("Preview");
-                preview.toolbar.removeButton("download");
-                preview.toolbar.removeButton("clear");
-                preview.toolbar.removeButton("showTimeline");
-
-                var events = [
-                    {name: "_onStarted", description: "Page processing is started"},
-                    {name: "_onPrepareStart", description: "Rendering begins"},
-                    {name: "_onFullViewportSet", description: "Viewport is changed to full"},
-                    {name: "_onCustomJsExecuted", description: "Custom JavaScript is executed"},
-                    {name: "_onScreenshotPrepared", description: "Screenshot is taken"},
-                    {name: "_onPngRendered", description: "Screenshot is encoded"},
-                    {name: "_onHtmlRendered", description: "HTML is rendered"},
-                    {name: "_onIframesRendered", description: "Iframes info is calculated"},
-                ];
-
-                for (var i=0; i<events.length; i++){
-                    var obj = events[i];
-                    obj["classes"] = "customEventBar " + obj["name"];
-                    preview.addPageTiming(obj);
-                }
-
-                // preview.toolbar.removeButton("showStats");
-
-                // Make sure stats are visible to the user by default
-                preview.showStats(true);
-
-            });
-
-            $("#content").bind("onViewerHARLoaded", function(event){
-                $("#status").hide();
-            });
-
-            $("#content").bind("onViewerInit", function(event){
-                var viewer = event.target.repObject;
-                $("#status").text("Rendering, please wait..");
-
-                $.ajax("/%(endpoint)s", {
-                    "contentType": "application/json",
-                    "dataType": "json",
-                    "type": "POST",
-                    "data": JSON.stringify(params)
-                }).done(function(data){
-                    if (!data){
-                        $("#status").text("Empty result");
-                        return;
-                    }
-
-                    var har = data['har'];
-                    var png = data['png'];
-                    var jpeg = data['jpeg'];
-                    var html = data['html'];
-
-                    if (har){
-                        viewer.appendPreview(har);
-                        var downloadLink = $('#har-download');
-                        var data = "application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(har));
-                        downloadLink.attr("href", "data:" + data);
-                        downloadLink.attr("download", "activity.har");
-                        downloadLink.show();
-                    }
-                    $("#status").text("Building UI..");
-                    if (png) {
-                        $(".pagePreview img").attr("src", "data:image/png;base64," + png);
-                    }
-                    if (jpeg) {
-                        $(".pagePreview img").attr("src", "data:image/jpeg;base64," + jpeg);
-                    }
-                    $("#renderedHTML").val(html);
-                    $(".pagePreview").show();
-                    $("#status").text("Success");
-                }).fail(function(xhr, status, err){
-                    $("#errorStatus").text(xhr.status + " (" + err + ")");
-                    var err = xhr.responseJSON;
-                    var resp = JSON.stringify(err, null, 4);
-                    $("#errorData").text(resp);
-                    $("#errorMessage").show();
-                    $("#status").text("Error occured");
-                    $("#errorMessageText").text(err['info']['message']);
-                    $("#errorDescription").text(err['description']);
-
-                    var errType = err['type'];
-                    if (err['info']['type']){
-                        errType += ' -> ' + err['info']['type'];
-                    }
-                    $("#errorType").text(errType);
-                });
-            });
-            </script>
+            <script> var splash = %(options)s; </script>
+            <script src="/_ui/main.js"> </script>
         </body>
         </html>
         """ % dict(
             version=splash.__version__,
-            params=json.dumps(params),
+            options=json.dumps({
+                "params": params,
+                "endpoint": "execute" if self.lua_enabled else "render.json",
+                "lua_enabled": self.lua_enabled,
+            }),
             timeout=timeout,
             url=url,
             theme=BOOTSTRAP_THEME,
-            cm_options=CODEMIRROR_OPTIONS,
             cm_resources=CODEMIRROR_RESOURCES if self.lua_enabled else "",
-            endpoint="execute" if self.lua_enabled else "render.json",
-            lua_editor=LUA_EDITOR if self.lua_enabled else "",
         )).encode('utf-8')
 
 
@@ -699,6 +511,14 @@ class Root(Resource):
         'vendor',
         'harviewer',
         'webapp',
+    )
+    UI_PATH = os.path.join(
+        os.path.dirname(__file__),
+        'ui',
+    )
+    INSPECTIONS_PATH = os.path.join(
+        os.path.dirname(__file__),
+        'kernel', 'inspections'
     )
 
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
@@ -732,7 +552,10 @@ class Root(Resource):
             ))
 
         if self.ui_enabled:
-            self.putChild(b"_harviewer", File(self.HARVIEWER_PATH))
+            ui = File(self.UI_PATH)
+            ui.putChild(b"harviewer", File(self.HARVIEWER_PATH))
+            ui.putChild(b"inspections", File(self.INSPECTIONS_PATH))
+            self.putChild(b"_ui", ui)
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
                 lua_enabled=self.lua_enabled,
@@ -761,35 +584,16 @@ end
 
     def render_GET(self, request):
         """ Index page """
-        LUA_EDITOR = """
-        <div class="input-group col-lg-10">
-          <textarea id='lua-code-editor' name='lua_source'>%(lua_script)s</textarea>
-        </div>
-        """ % dict(
-            lua_script=self.get_example_script(),
-        )
-
-        result = """<html>
+        result = """<!DOCTYPE html><html>
         <head>
             <title>Splash %(version)s</title>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
-
+            <link rel="stylesheet" href="/_ui/style.css">
             <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
-
             %(cm_resources)s
-
-            <script>
-               $(document).ready(function(){
-                    /* Create editor */
-                    var textarea = document.getElementById('lua-code-editor');
-                    var editor = CodeMirror.fromTextArea(textarea, %(cm_options)s);
-                    editor.setSize(464, 464);
-               });
-            </script>
-
         </head>
-        <body>
+        <body class="no-lua">
             <div class="container">
                 <div class="page-header">
                     <h1>Splash v%(version)s</h1>
@@ -839,20 +643,27 @@ end
                                   <button class="btn btn-success" type="submit">Render me!</button>
                                 </span>
                               </div>
-                              %(lua_editor)s
+                              <div class="input-group col-lg-10 if-lua">
+                                <textarea id='lua-code-editor' name='lua_source'></textarea>
+                              </div>
                             </div>
                           </fieldset>
                         </form>
                     </div>
                 </div>
             </div>
+            <script> var splash = %(options)s; </script>
+            <script src="/_ui/main.js"> </script>
         </body>
         </html>""" % dict(
             version=splash.__version__,
             theme=BOOTSTRAP_THEME,
-            cm_options=CODEMIRROR_OPTIONS,
+            options=json.dumps({
+                "endpoint": "execute" if self.lua_enabled else "render.json",
+                "lua_enabled": self.lua_enabled,
+                "example_script": self.get_example_script(),
+            }),
             cm_resources=CODEMIRROR_RESOURCES,
-            lua_editor=LUA_EDITOR if self.lua_enabled else "",
             timeout=self.max_timeout,
         )
         return result.encode('utf8')

@@ -12,6 +12,6 @@ class UITest(BaseRenderTest):
         self.assertIn("Splash", ui_main.text)
 
         if lua.is_supported():
-            self.assertIn("<textarea", ui_main.text)
+            self.assertIn('"lua_enabled": true', ui_main.text)
         else:
-            self.assertNotIn("<textarea", ui_main.text)
+            self.assertIn('"lua_enabled": false', ui_main.text)
