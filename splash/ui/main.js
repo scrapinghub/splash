@@ -187,6 +187,33 @@ function renderString(s, $cnt) {
     try_load('jpeg');
 }
 
+/**
+ * Get sorted properties of an object, some special properties override the
+ * alphanumeric sort order and are sorted at the begining
+ */
+function getProperties(obj) {
+    var special = ['png', 'jpeg', 'jpg', 'har', 'html'];
+    var props = [];
+
+    for (var k in obj) {
+        if(obj.hasOwnProperty(k)) {
+            props.push(k);
+        }
+    }
+
+    return props.sort(function(a, b){
+        var indexA = special.indexOf(a);
+        var indexB = special.indexOf(b);
+        if(indexA == -1 && indexB == -1) {
+            return a > b ? 1 : -1;
+        } else if (indexA >= 0 && indexB >= 0) {
+            return indexA - indexB;
+        } else {
+            return indexA == -1 ? 1 : -1;
+        }
+    });
+}
+
 function renderObject(obj, $cnt) {
     if(obj.log && obj.log.creator && obj.log.creator.name === 'Splash') { // Test if it's a har object
         $cnt.addClass('har')
@@ -205,16 +232,14 @@ function renderObject(obj, $cnt) {
     } else {
         $cnt.append('<span class="type">Object</span>');
     }
-    for (var k in obj) {
-        if(!obj.hasOwnProperty(k)) {
-            continue;
-        }
+    var props = getProperties(obj);
+    for (var i = 0, len = props.length; i < len; i++) {
         var $subcnt = $('<span/>').addClass('obj-item');
         $('<div/>').addClass('obj-item indent')
-            .append($('<span/>').addClass('key').text(k))
+            .append($('<span/>').addClass('key').text(props[i]))
             .append($('<span/>').addClass('colon').text(': '))
             .append($subcnt).appendTo($cnt);
-        renderValue(obj[k], $subcnt);
+        renderValue(obj[props[i]], $subcnt);
     }
 }
 
