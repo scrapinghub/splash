@@ -585,9 +585,6 @@ Curl example::
 To get the result of a javascript function executed within page
 context use `render.json`_ endpoint with :ref:`script <arg-script>` = 1 parameter.
 
-In :ref:`Splash-as-a-proxy <splash as a proxy>` mode use ``X-Splash-js-source``
-header instead of a POST request.
-
 .. _javascript profiles:
 
 Javascript Profiles
@@ -800,130 +797,6 @@ argument is not specified. If you have ``default.ini`` profile
 but don't want to apply it pass ``none`` as ``proxy`` value.
 
 
-.. _splash as a proxy:
-
-Splash as a Proxy
------------------
-
-Splash supports working as HTTP proxy. In this mode all the HTTP requests
-received will be proxied and the response will be rendered based in the
-following HTTP headers:
-
-X-Splash-render : string : required
-  The render mode to use, valid modes are: html, png, jpeg and json. These modes have
-  the same behavior as the endpoints: `render.html`_, `render.png`_, `render.jpeg`_
-  and `render.json`_ respectively.
-
-X-Splash-js-source : string
-  Allow to execute custom javascript code in page context.
-  See :ref:`execute javascript`.
-
-X-Splash-js : string
-  Same as :ref:`'js' <arg-js>` argument for `render.html`_.
-  See :ref:`Javascript Profiles`.
-
-X-Splash-timeout : string
-  Same as :ref:`'timeout' <arg-timeout>` argument for `render.html`_.
-
-X-Splash-resource-timeout : string
-  Same as :ref:`'wait' <arg-resource-timeout>` argument for `render.html`_.
-
-X-Splash-wait : string
-  Same as :ref:`'wait' <arg-wait>` argument for `render.html`_.
-
-X-Splash-proxy : string
-  Same as :ref:`'proxy' <arg-proxy>` argument for `render.html`_.
-
-X-Splash-filters : string
-  Same as :ref:`'filters' <arg-filters>` argument for `render.html`_.
-
-X-Splash-allowed-domains : string
-  Same as :ref:`'allowed_domains' <arg-allowed-domains>` argument for `render.html`_.
-
-X-Splash-viewport : string
-  Same as :ref:`'viewport' <arg-viewport>` argument for `render.html`_.
-
-X-Splash-images : string
-  Same as :ref:`'images' <arg-images>` argument for `render.html`_.
-
-X-Splash-width : string
-  Same as :ref:`'width' <arg-width>` argument for `render.png`_ and `render.jpeg`_.
-
-X-Splash-height : string
-  Same as :ref:`'height' <arg-height>` argument for `render.png`_ and `render.jpeg`_.
-
-X-Splash-render-all : string
-  Same as :ref:`'render_all' <arg-render-all>` argument for `render.png`_ and `render.jpeg`_.
-
-X-Splash-scale-method : string
-  Same as :ref:`'scale_method' <arg-scale-method>` argument for `render.png`_ and `render.jpeg`_.
-
-X-Splash-quality : string
-  Same as :ref:`'quality' <arg-quality>` argument for `render.jpeg`_.
-
-X-Splash-html : string
-  Same as :ref:`'html' <arg-html>` argument for `render.json`_.
-
-X-Splash-png : string
-  Same as :ref:`'png' <arg-png>` argument for `render.json`_.
-
-X-Splash-jpeg : string
-  Same as :ref:`'jpeg' <arg-jpeg>` argument for `render.json`_.
-
-X-Splash-iframes : string
-  Same as :ref:`'iframes' <arg-iframes>` argument for `render.json`_.
-
-X-Splash-script : string
-  Same as :ref:`'script' <arg-script>` argument for `render.json`_.
-
-X-Splash-console : string
-  Same as :ref:`'console' <arg-console>` argument for `render.json`_.
-
-X-Splash-history : string
-  Same as :ref:`'history' <arg-history>` argument for `render.json`_.
-
-X-Splash-har : string
-  Same as :ref:`'har' <arg-har>` argument for `render.json`_.
-
-.. note::
-
-    Proxying of HTTPS requests is not supported.
-
-Curl examples::
-
-    # Display json stats
-    curl -x localhost:8051 -H 'X-Splash-render: json' \
-        http://www.domain.com
-
-    # Get the html page and screenshot
-    curl -x localhost:8051 \
-        -H "X-Splash-render: json" \
-        -H "X-Splash-html: 1" \
-        -H "X-Splash-png: 1" \
-        http://www.mywebsite.com
-
-    # Execute JS and return output
-    curl -x localhost:8051 \
-        -H 'X-Splash-render: json' \
-        -H 'X-Splash-script: 1' \
-        -H 'X-Splash-js-source: function test(x){ return x; } test("abc");' \
-        http://www.domain.com
-
-    # Send POST request to site and save screenshot of results
-    curl -X POST -d '{"key":"val"}' -x localhost:8051 -o screenshot.png \
-        -H 'X-Splash-render: png' \
-        http://www.domain.com
-
-Splash proxy mode is enabled by default; it uses port 8051. To change the port
-use ``--proxy-portnum`` option::
-
-    python -m splash.server --proxy-portnum=8888
-
-To disable Splash proxy mode run splash server with ``--disable-proxy`` option::
-
-    python -m splash.server --disable-proxy
-
-
 Other Endpoints
 ---------------
 
@@ -952,7 +825,7 @@ objects) send a GET request to the ``/_debug`` endpoint::
 .. _http-ping:
 
 _ping
-~~~~~~
+~~~~~
 
 To ping Splash instance send a GET request to the ``/_ping`` endpoint::
 

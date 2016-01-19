@@ -27,17 +27,6 @@ def https_only(func):
     return wrapper
 
 
-def skip_proxy(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        try:
-            if self.__class__.proxy_test is False:
-                func(self, *args, **kwargs)
-        except AttributeError:
-            func(self, *args, **kwargs)
-    return wrapper
-
-
 class DirectRequestHandler(object):
 
     endpoint = "render.html"
@@ -174,7 +163,6 @@ class Base(object):
             r = self.request({"url": self.mockurl("delay?n=10"), "timeout": "999"})
             self.assertStatusCode(r, 400)
 
-        @skip_proxy
         def test_missing_url(self):
             r = self.request({})
             self.assertStatusCode(r, 400)
@@ -286,11 +274,7 @@ class RenderHtmlTest(Base.RenderTest):
         url = self.mockurl('getrequest') + '?param=' + nonascii_value
         r = self.request({'url': url})
         self.assertStatusCode(r, 200)
-        self.assertTrue(
-            repr(nonascii_value.encode('utf-8')) in r.text or  # direct request
-            urlparse.quote(nonascii_value.encode('utf-8')) in r.text,  # request in proxy mode
-            r.text
-        )
+        self.assertIn(repr(nonascii_value.encode('utf-8')), r.text)
 
     def test_path_encoding(self):
         r = self.request({'url': self.mockurl(u'echourl/例/')})
@@ -310,19 +294,15 @@ class RenderHtmlTest(Base.RenderTest):
         self.assertEqual(r2.encoding, 'utf-8')
         self.assertIn(u'проверка', r2.text)
 
-    @skip_proxy
     def test_404_get(self):
         self.assertResponse200Get(404)
 
-    @skip_proxy
     def test_403_get(self):
         self.assertResponse200Get(403)
 
-    @skip_proxy
     def test_500_get(self):
         self.assertResponse200Get(500)
 
-    @skip_proxy
     def test_503_get(self):
         self.assertResponse200Get(503)
 
@@ -422,17 +402,14 @@ class RenderPngTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all(self):
         r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertPng(r, height=2000)  # 2000px is hardcoded in that html
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
                           'render_all': 1, 'wait': '0.1'})
@@ -446,7 +423,6 @@ class RenderPngTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255, 255, 255, 255))
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
                           'render_all': 1, 'wait': '0.01', 'viewport': '50x1024'})
@@ -627,7 +603,6 @@ class RenderJsonTest(Base.RenderTest):
         self.assertSamePng(self.mockurl("jsrender"),
                            {'vwidth': 100})
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_png_size_viewport(self):
         self.assertSamePng(self.mockurl("jsrender"), {'wait': '0.1', 'viewport': 'full'})
         self.assertSamePng(self.mockurl("tall"), {'wait': '0.1', 'viewport': 'full'})
@@ -1013,7 +988,6 @@ class RenderJpegTest(Base.RenderTest):
                 r = self.request({"url": url, arg: val})
                 self.assertStatusCode(r, 400)
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full_wait(self):
         r = self.request({'url': self.mockurl("jsrender"), 'viewport': 'full'})
         self.assertStatusCode(r, 400)
@@ -1037,17 +1011,14 @@ class RenderJpegTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"), 'viewport': viewport})
             self.assertStatusCode(r, 400)
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_viewport_full(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': 'full', 'wait': '0.1'})
         self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all(self):
         r = self.request({'url': self.mockurl("tall"), 'render_all': 1, 'wait': '0.1'})
         self.assertJpeg(r, height=2000)  # 2000px is hardcoded in that html
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_render_all_with_viewport(self):
         r = self.request({'url': self.mockurl("tall"), 'viewport': '2000x1000',
                           'render_all': 1, 'wait': '0.1'})
@@ -1061,7 +1032,6 @@ class RenderJpegTest(Base.RenderTest):
         r = self.request({'url': self.mockurl("show-image"), 'viewport': '100x100', 'images': 0})
         self.assertPixelColor(r, 30, 30, (255, 255, 255))
 
-    @skip_proxy  # this test is slow and nothing changes in proxy mode
     def test_very_long_green_page(self):
         r = self.request({'url': self.mockurl("very-long-green-page"),
                           'render_all': 1, 'wait': '0.01', 'viewport': '50x1024', 'quality': '100'})

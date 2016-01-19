@@ -48,12 +48,8 @@ def parse_opts():
              "(WARNING: it could break rendering for some of the websites)" + _bool_default[defaults.JS_CROSS_DOMAIN_ENABLED])
     op.add_option("--manhole", action="store_true",
         help="enable manhole server")
-    op.add_option("--disable-proxy", action="store_true", default=False,
-        help="disable proxy server")
     op.add_option("--disable-ui", action="store_true", default=False,
         help="disable web UI")
-    op.add_option("--proxy-portnum", type="int", default=defaults.PROXY_PORT,
-        help="proxy port to listen to (default: %default)")
     op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
@@ -152,7 +148,7 @@ def manhole_server(portnum=None, username=None, password=None):
 
 def splash_server(portnum, slots, network_manager_factory, max_timeout,
                   splash_proxy_factory_cls=None,
-                  js_profiles_path=None, disable_proxy=False, proxy_portnum=None,
+                  js_profiles_path=None,
                   ui_enabled=True,
                   lua_enabled=True,
                   lua_sandbox_enabled=True,
@@ -187,11 +183,10 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
     # HTTP API
     onoff = {True: "enabled", False: "disabled"}
     log.msg(
-        "Web UI: %s, Lua: %s (sandbox: %s), Proxy Server: %s" % (
+        "Web UI: %s, Lua: %s (sandbox: %s)" % (
             onoff[ui_enabled],
             onoff[lua_enabled],
             onoff[lua_sandbox_enabled],
-            onoff[not disable_proxy],
         )
     )
 
@@ -206,13 +201,6 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
-
-    # HTTP Proxy
-    if not disable_proxy:
-        from splash.proxy_server import SplashProxyServerFactory
-        proxy_server_factory = SplashProxyServerFactory(pool, max_timeout=max_timeout)
-        proxy_portnum = defaults.PROXY_PORT if proxy_portnum is None else proxy_portnum
-        reactor.listenTCP(proxy_portnum, proxy_server_factory)
 
 
 def monitor_maxrss(maxrss):
@@ -246,7 +234,6 @@ def monitor_maxrss(maxrss):
 def default_splash_server(portnum, max_timeout, slots=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
-                          disable_proxy=False, proxy_portnum=None,
                           filters_path=None, allowed_schemes=None,
                           private_mode=True,
                           ui_enabled=True,
@@ -270,8 +257,6 @@ def default_splash_server(portnum, max_timeout, slots=None,
         network_manager_factory=network_manager_factory,
         splash_proxy_factory_cls=splash_proxy_factory_cls,
         js_profiles_path=js_profiles_path,
-        disable_proxy=disable_proxy,
-        proxy_portnum=proxy_portnum,
         ui_enabled=ui_enabled,
         lua_enabled=lua_enabled,
         lua_sandbox_enabled=lua_sandbox_enabled,
@@ -347,8 +332,6 @@ def main():
             proxy_profiles_path=opts.proxy_profiles_path,
             js_profiles_path=opts.js_profiles_path,
             js_disable_cross_domain_access=not opts.js_cross_domain_enabled,
-            disable_proxy=opts.disable_proxy,
-            proxy_portnum=opts.proxy_portnum,
             filters_path=opts.filters_path,
             allowed_schemes=opts.allowed_schemes,
             private_mode=not opts.disable_private_mode,

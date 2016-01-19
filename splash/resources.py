@@ -7,7 +7,6 @@ import os
 import gc
 import time
 import json
-import types
 import resource
 
 from twisted.web.server import NOT_DONE_YET
@@ -22,8 +21,13 @@ from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, JpegRender
 )
 from splash.lua import is_supported as lua_is_supported
-from splash.utils import get_num_fds, get_leaks, BinaryCapsule, \
-    SplashJSONEncoder, to_bytes, to_unicode, get_ru_maxrss
+from splash.utils import (
+    get_num_fds,
+    get_leaks,
+    BinaryCapsule,
+    SplashJSONEncoder,
+    get_ru_maxrss,
+)
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
@@ -74,11 +78,10 @@ class BaseRenderResource(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    def __init__(self, pool, max_timeout, is_proxy_request=False):
+    def __init__(self, pool, max_timeout):
         Resource.__init__(self)
         self.pool = pool
         self.js_profiles_path = self.pool.js_profiles_path
-        self.is_proxy_request = is_proxy_request
         self.max_timeout = max_timeout
 
     def render_GET(self, request):
@@ -106,12 +109,6 @@ class BaseRenderResource(_ValidatingResource):
         return NOT_DONE_YET
 
     def render_POST(self, request):
-        if self.is_proxy_request:
-            # If request comes from splash proxy service don't handle
-            # special content-types.
-            # TODO: pass http method to RenderScript explicitly.
-            return self.render_GET(request)
-
         request_content_type = request.getHeader(b'content-type').decode('latin1')
         supported_types = ['application/javascript', 'application/json']
         if not any(ct in request_content_type for ct in supported_types):
@@ -247,11 +244,11 @@ class RenderHtmlResource(BaseRenderResource):
 class ExecuteLuaScriptResource(BaseRenderResource):
     content_type = "text/plain; charset=utf-8"
 
-    def __init__(self, pool, is_proxy_request, sandboxed,
+    def __init__(self, pool, sandboxed,
                  lua_package_path,
                  lua_sandbox_allowed_modules,
                  max_timeout):
-        BaseRenderResource.__init__(self, pool, max_timeout, is_proxy_request)
+        BaseRenderResource.__init__(self, pool, max_timeout)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
@@ -544,7 +541,6 @@ class Root(Resource):
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
             self.putChild(b"execute", ExecuteLuaScriptResource(
                 pool=pool,
-                is_proxy_request=False,
                 sandboxed=lua_sandbox_enabled,
                 lua_package_path=lua_package_path,
                 lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
