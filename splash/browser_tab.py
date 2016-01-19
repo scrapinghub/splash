@@ -578,7 +578,7 @@ class BrowserTab(QObject):
         contains objects/arrays/primitives without circular references.
         """
         frame = self.web_page.mainFrame()
-        eval_expr = "eval({})".format(escape_js(js_source))
+        eval_expr = u"eval({})".format(escape_js(js_source))
 
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
@@ -639,7 +639,7 @@ class BrowserTab(QObject):
         self._callback_proxies_to_cancel.add(callback_proxy)
         frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
 
-        wrapped = """
+        wrapped = u"""
         (function () {
             try {
                 eval(%(script_text)s);

@@ -9,7 +9,7 @@ def escape_js(*args):
 # with a restriction on maximum allowed depth.
 # A more natural way would be to use JSON.stringify,
 # but user can override global JSON object to bypass protection.
-SANITIZE_FUNC_JS = """
+SANITIZE_FUNC_JS = u"""
 function (obj, max_depth){
     max_depth = max_depth ? max_depth : 100;
     function _s(o, d) {
@@ -69,7 +69,7 @@ def get_sanitized_result_js(expression, max_depth=0):
     QWebFrame.evaluateJavaScript - Qt5 can go mad if we try to return something
     else (objects with circular references, DOM elements, ...).
     """
-    return "({sanitize_func})({expression}, {max_depth})".format(
+    return u"({sanitize_func})({expression}, {max_depth})".format(
         sanitize_func=SANITIZE_FUNC_JS,
         expression=expression,
         max_depth=max_depth
@@ -83,7 +83,7 @@ def get_process_errors_js(expression):
     or ``{error: true, errorType: ..., errorMessage: ..., errorRepr: ...}``
     if expression raised an error when evaluating.
     """
-    return """
+    return u"""
     (function() {
         try{
             return {
