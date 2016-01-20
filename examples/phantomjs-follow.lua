@@ -33,6 +33,5 @@ end
 function main(splash)
   return {
     users=process(splash, USERS),
-    har=splash:har(),  -- it is not necessary, but it is nice in UI
   }
 end

@@ -378,7 +378,7 @@ CODEMIRROR_RESOURCES = """
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/codemirror.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/mode/lua/lua.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/show-hint.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/anyword-hint.min.js"></scrip>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/anyword-hint.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/matchbrackets.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/closebrackets.min.js"></script>
 
@@ -515,21 +515,6 @@ class DemoUI(_ValidatingResource):
 
 
 class Root(Resource):
-    HARVIEWER_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'vendor',
-        'harviewer',
-        'webapp',
-    )
-    UI_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'ui',
-    )
-    INSPECTIONS_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'kernel', 'inspections'
-    )
-
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
                  lua_package_path,
                  lua_sandbox_allowed_modules,
@@ -560,9 +545,16 @@ class Root(Resource):
             ))
 
         if self.ui_enabled:
-            ui = File(self.UI_PATH)
-            ui.putChild(b"harviewer", File(self.HARVIEWER_PATH))
-            ui.putChild(b"inspections", File(self.INSPECTIONS_PATH))
+            root = os.path.dirname(__file__)
+            ui = File(os.path.join(root, 'ui'))
+
+            har_path = os.path.join(root, 'vendor', 'harviewer', 'webapp')
+            ui.putChild(b"harviewer", File(har_path))
+            inspections_path = os.path.join(root, 'kernel', 'inspections')
+            ui.putChild(b"inspections", File(inspections_path))
+            examples_path = os.path.join(root, '..', 'examples')
+            ui.putChild(b"examples", File(examples_path))
+
             self.putChild(b"_ui", ui)
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
@@ -598,7 +590,8 @@ end
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="/_ui/style.css">
-            <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
             %(cm_resources)s
         </head>
         <body class="no-lua">
@@ -618,11 +611,11 @@ end
                         <ul>
                             <li>Process multiple webpages in parallel</li>
                             <li>Get HTML results and/or take screenshots</li>
-                            <li>Turn OFF images or use <a href="https://adblockplus.org">Adblock Plus</a>
+                            <li>Turn OFF images <a class="demo-link if-lua" href="#" onclick="splash.loadExample('disable-images')">Run live example</a> or use <a href="https://adblockplus.org">Adblock Plus</a>
                                 rules to make rendering faster</li>
-                            <li>Execute custom JavaScript in page context</li>
+                            <li>Execute custom JavaScript in page context <a class="demo-link if-lua" href="#" onclick="splash.loadExample('run-js')">Run live example</a></li>
                             <li>Write Lua browsing scripts;</li>
-                            <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format</li>
+                            <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format <a class="demo-link if-lua" href="#" onclick="splash.loadExample('har')">Run live example</a></li>
                         </ul>
 
                         <p class="lead">
@@ -630,11 +623,22 @@ end
                             Commercial support is also available by
                             <a href="http://scrapinghub.com/">Scrapinghub</a>.
                         </p>
-                        <p>
+                        <div>
                             <a class="btn btn-info" href="http://splash.readthedocs.org/">Documentation</a>
+                            <div class="dropdown examples-dropdown">
+                                <a class="btn btn-info if-lua dropdown-toggle" data-toggle="dropdown" href="#">Examples&nbsp;<b class="caret"></b></a>
+                                <ul class="dropdown-menu panel panel-default if-lua">
+                                    <li><a href="#" onclick="splash.loadExample('phantomjs-follow')">Count twitter followers</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('wait-for-element')">Wait for element</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('scroll')">Scroll page</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('preload-jquery')">Preload jQuery</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('preload-functions')">Preload functions</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('multiple-pages')">Load multiple pages</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('count-divs')">Count DIV tags</a></li>
+                                </ul>
+                            </div>
                             <a class="btn btn-info" href="https://github.com/scrapinghub/splash">Source code</a>
-                        </p>
-
+                        </div>
                     </div>
                     <div class="col-lg-6">
                         <form class="form-horizontal" method="GET" action="/info">
@@ -660,6 +664,9 @@ end
                     </div>
                 </div>
             </div>
+            <div class="tooltip top" role="tooltip" id="example-tooltip">
+                <div class="tooltip-arrow"></div>
+                <div class="tooltip-inner">
             <script> var splash = %(options)s; </script>
             <script src="/_ui/main.js"> </script>
         </body>
