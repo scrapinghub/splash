@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import requests
-from .test_render import BaseRenderTest, skip_proxy
+from .test_render import BaseRenderTest
 from .utils import SplashServer
 
 
@@ -73,7 +73,6 @@ test('Changed');"""
         r = self._runjs_request(CROSS_DOMAIN_JS, params=params).json()
         self.assertNotIn('script', r)
 
-    @skip_proxy
     def test_js_incorrect_content_type(self):
         js_source = "function test(x){ return x; } test('abc');"
         headers = {'content-type': 'text/plain'}
@@ -109,7 +108,6 @@ test('Changed');"""
 
 class RunJsCrossDomainTest(BaseRenderTest):
 
-    @skip_proxy
     def test_js_external_iframe_cross_domain_enabled(self):
         # cross-domain access should work if we enable it
         with SplashServer(extra_args=['--js-cross-domain-access']) as splash:

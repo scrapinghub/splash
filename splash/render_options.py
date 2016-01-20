@@ -62,20 +62,6 @@ class RenderOptions(object):
                     data['js_source'] = request.content.read().decode('utf-8')
                 request.content.seek(0)
 
-        # 4. handle proxy requests
-        if getattr(request, 'inspect_me', False):
-            headers = [
-                (name.decode('utf-8'), value.decode('utf-8'))
-                for name, values in request.requestHeaders.getAllRawHeaders()
-                for value in values
-                ]
-            data.setdefault('headers', headers)
-            data.setdefault('http_method', request.method.decode('utf-8'))
-
-            request.content.seek(0)
-            data.setdefault('body', bytes(request.content.read()))
-            request.content.seek(0)
-
         data['uid'] = id(request)
         return cls(data, max_timeout)
 
