@@ -612,7 +612,7 @@ end
                         <ul>
                             <li>Process multiple webpages in parallel</li>
                             <li>Get HTML results and/or take screenshots</li>
-                            <li>Turn OFF images <a class="demo-link if-lua" href="#" onclick="splash.loadExample('disable-images')">Run live example</a> or use <a href="https://adblockplus.org">Adblock Plus</a>
+                            <li>Turn OFF images <a class="demo-link if-lua" href="#" onclick="splash.loadExample('disable-images', 'http://flickr.com')">Run live example</a> or use <a href="https://adblockplus.org">Adblock Plus</a>
                                 rules to make rendering faster</li>
                             <li>Execute custom JavaScript in page context <a class="demo-link if-lua" href="#" onclick="splash.loadExample('run-js')">Run live example</a></li>
                             <li>Write Lua browsing scripts;</li>
@@ -629,12 +629,12 @@ end
                             <div class="dropdown examples-dropdown">
                                 <a class="btn btn-info if-lua dropdown-toggle" data-toggle="dropdown" href="#">Examples&nbsp;<b class="caret"></b></a>
                                 <ul class="dropdown-menu panel panel-default if-lua">
-                                    <li><a href="#" onclick="splash.loadExample('phantomjs-follow')">Count twitter followers</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('phantomjs-follow', '')">Count twitter followers</a></li>
                                     <li><a href="#" onclick="splash.loadExample('wait-for-element')">Wait for element</a></li>
-                                    <li><a href="#" onclick="splash.loadExample('scroll')">Scroll page</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('scroll', 'http://scrapinghub.com')">Scroll page</a></li>
                                     <li><a href="#" onclick="splash.loadExample('preload-jquery')">Preload jQuery</a></li>
                                     <li><a href="#" onclick="splash.loadExample('preload-functions')">Preload functions</a></li>
-                                    <li><a href="#" onclick="splash.loadExample('multiple-pages')">Load multiple pages</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('multiple-pages', '')">Load multiple pages</a></li>
                                     <li><a href="#" onclick="splash.loadExample('count-divs')">Count DIV tags</a></li>
                                 </ul>
                             </div>

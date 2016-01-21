@@ -21,7 +21,7 @@ end
 local base = "https://news.ycombinator.com/news?p="
 function main(splash)
     local result = treat.as_array({})
-    for i=1,10 do
+    for i=1,3 do
         local url =  base .. i
         result[i] = page_info(splash, url)
     end

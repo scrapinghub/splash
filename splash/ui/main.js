@@ -87,8 +87,11 @@ if(splash.lua_enabled) {
     });
 }
 
-splash.loadExample = function(name) {
+splash.loadExample = function(name, exampleUrl) {
     $.get('/_ui/examples/' + encodeURI(name) + '.lua', function(code) {
+        if(typeof exampleUrl === "string") {
+            $('input[name="url"]').val(exampleUrl);
+        }
         splash.editor.getDoc().setValue(code);
         var button = $('button[type="submit"]').tooltip({
             html: true,
