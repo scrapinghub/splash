@@ -47,16 +47,24 @@ class _ValidatingResource(Resource):
         try:
             return Resource.render(self, request)
         except BadOption as e:
-            return self._write_error(request, 400, e)
+            self._write_error(request, 400, e)
+            self._log_stats(request, {}, error=self._format_error(400, e))
+            return b"\n"
 
-    def _write_error_content(self, request, code, content, content_type=b'text/plain'):
+    def _write_error_content(self, request, code, err, content_type=b'text/plain'):
         request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
+        content = json.dumps(err).encode('utf8')
         request.write(content)
-        return b"\n"
+        return err
 
     def _write_error(self, request, code, exc):
         """Can be overridden by subclasses format errors differently"""
+        err = self._format_error(code, exc)
+        return self._write_error_content(request, code, err,
+                                         content_type=b"application/json")
+
+    def _format_error(self, code, exc):
         err = {
             "error": code,
             "type": exc.__class__.__name__,
@@ -67,10 +75,7 @@ class _ValidatingResource(Resource):
             err['info'] = exc.args[0]
         elif len(exc.args) > 1:
             err['info'] = exc.args
-
-        return self._write_error_content(request, code,
-                                         json.dumps(err).encode('utf8'),
-                                         content_type=b"application/json")
+        return err
 
 
 class BaseRenderResource(_ValidatingResource):
@@ -100,12 +105,12 @@ class BaseRenderResource(_ValidatingResource):
         request.notifyFinish().addErrback(self._request_failed, pool_d, timer)
 
         pool_d.addCallback(self._cancel_timer, timer)
-        pool_d.addCallback(self._write_output, request, options=render_options.data)
+        pool_d.addCallback(self._write_output, request)
         pool_d.addErrback(self._on_timeout_error, request, timeout=timeout)
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
-        pool_d.addBoth(self._finish_request, request)
+        pool_d.addBoth(self._finish_request, request, options=render_options.data)
         return NOT_DONE_YET
 
     def render_POST(self, request):
@@ -130,7 +135,8 @@ class BaseRenderResource(_ValidatingResource):
         timer.cancel()
         pool_d.cancel()
 
-    def _write_output(self, data, request, content_type=None, options=None):
+    def _write_output(self, data, request, content_type=None):
+
         # log.msg("_writeOutput: %s" % id(request))
         # log.msg("%r %r" % (data, content_type))
 
@@ -139,7 +145,7 @@ class BaseRenderResource(_ValidatingResource):
 
         if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
-            return self._write_output(data, request, b"application/json", options)
+            return self._write_output(data, request, b"application/json")
 
         if isinstance(data, tuple) and len(data) == 4:
             data, content_type, headers, status_code = data
@@ -147,13 +153,13 @@ class BaseRenderResource(_ValidatingResource):
             request.setResponseCode(status_code)
             for name, value in headers:
                 request.setHeader(name, value)
-            return self._write_output(data, request, content_type, options)
+            return self._write_output(data, request, content_type)
 
         if data is None or isinstance(data, (bool, six.integer_types, float)):
-            return self._write_output(str(data), request, content_type, options)
+            return self._write_output(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
-            return self._write_output(data.data, request, data.content_type, options)
+            return self._write_output(data.data, request, data.content_type)
 
         if not isinstance(data, bytes):
             data = data.encode('utf8')
@@ -163,14 +169,13 @@ class BaseRenderResource(_ValidatingResource):
 
         request.setHeader(b"content-type", content_type)
 
-        self._log_stats(request, options)
         if not isinstance(data, bytes):
             # Twisted expects bytes as response
             data = data.encode('utf-8')
 
         request.write(data)
 
-    def _log_stats(self, request, options):
+    def _log_stats(self, request, options, error=None):
 
         # def args_to_unicode(args):
         #     unicode_args = {}
@@ -198,9 +203,14 @@ class BaseRenderResource(_ValidatingResource):
             "timestamp": int(time.time()),
             "user-agent": (request.getHeader(b"user-agent").decode('utf-8')
                            if request.getHeader(b"user-agent") else None),
-            "args": repr(options)
+            "args": options,
+            "status_code": request.code,
+            "client_ip": request.client.host
         }
-        log.msg(json.dumps(msg), system="events")
+        if error:
+            msg["error"] = error
+        msg = json.dumps(msg).encode("utf8")
+        log.msg(msg, system="events")
 
     def _on_timeout_error(self, failure, request, timeout=None):
         failure.trap(defer.CancelledError)
@@ -224,9 +234,11 @@ class BaseRenderResource(_ValidatingResource):
         # log.msg("_on_bad_request: %s" % id(request))
         return self._write_error(request, 400, failure.value)
 
-    def _finish_request(self, _, request):
+    def _finish_request(self, failure, request, options):
+        self._log_stats(request, options, error=failure)
         if not request._disconnected:
             request.finish()
+
         # log.msg("_finishRequest: %s" % id(request))
 
     def _get_render(self, request, options):
