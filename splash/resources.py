@@ -415,9 +415,10 @@ class DemoUI(_ValidatingResource):
 
     def render_GET(self, request):
         params = self._validate_params(request)
-        url = params['url']
-        if not url.lower().startswith('http'):
+        url = params.get('url', '').strip()
+        if url and not url.lower().startswith('http'):
             url = 'http://' + url
+        params['url'] = url
         timeout = params['timeout']
         params = {k: v for k, v in params.items() if v is not None}
 
