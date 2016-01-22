@@ -46,7 +46,9 @@ setup_args = {
         'vendor/harviewer/webapp/scripts/syntax-highlighter/*.js',
         'vendor/harviewer/webapp/scripts/tabs/*.*',
         'vendor/harviewer/webapp/har.js',
+        'ui/*.*',
 
+        'examples/*.lua',
         'lua_modules/*.lua',
         'lua_modules/vendor/*.lua',
         'kernel/inspections/*.json',

@@ -91,7 +91,7 @@ To increase rendering speed and fix an issue with a queue it is recommended
 to start several Splash instances and use a load balancer capable of
 maintaining its own request queue. HAProxy_ has all necessary features;
 check an example config
-`here <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.
+`here <https://github.com/scrapinghub/splash/blob/master/splash/examples/splash-haproxy.conf>`__.
 A shared request queue in a load balancer also helps with reliability:
 you won't be loosing requests if a Splash instance needs to be restarted.
 
