@@ -8,6 +8,7 @@ include requirements.txt
 
 recursive-include scripts *.py
 recursive-include docs *.rst
+recursive-include splash/ui *.*
 recursive-include splash/examples *.lua
 recursive-include splash/lua_modules *.lua *.md *.rst *.txt
 recursive-include splash/tests *.txt *.js *.ini *.lua
