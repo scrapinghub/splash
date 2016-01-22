@@ -88,7 +88,9 @@ install_builddeps () {
         libsqlite3-dev \
         zlib1g-dev \
         libjpeg-turbo8-dev \
-        libgl1-mesa-dev-lts-utopic
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        mesa-common-dev
 }
 
 install_pyqt5 () {
