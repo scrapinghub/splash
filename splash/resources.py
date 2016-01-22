@@ -553,7 +553,7 @@ class Root(Resource):
             ui.putChild(b"harviewer", File(har_path))
             inspections_path = os.path.join(root, 'kernel', 'inspections')
             ui.putChild(b"inspections", File(inspections_path))
-            examples_path = os.path.join(root, '..', 'examples')
+            examples_path = os.path.join(root, 'examples')
             ui.putChild(b"examples", File(examples_path))
 
             self.putChild(b"_ui", ui)

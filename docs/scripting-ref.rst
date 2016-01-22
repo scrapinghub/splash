@@ -97,7 +97,7 @@ can see some images even if they are disabled at the beginning of the script.
 
 Example:
 
-.. literalinclude:: ../examples/disable-images.lua
+.. literalinclude:: ../splash/examples/disable-images.lua
    :language: lua
 
 Methods
@@ -273,7 +273,7 @@ code in page context.
 
 Example:
 
-.. literalinclude:: ../examples/count-divs.lua
+.. literalinclude:: ../splash/examples/count-divs.lua
    :language: lua
 
 Note how Lua ``[[ ]]`` string syntax is helpful here.
@@ -766,14 +766,14 @@ or replace JavaScript objects before a webpage has a chance to do it.
 
 Example:
 
-.. literalinclude:: ../examples/preload-functions.lua
+.. literalinclude:: ../splash/examples/preload-functions.lua
    :language: lua
 
 For the convenience, when a first :ref:`splash-autoload` argument starts
 with "http://" or "https://" a script from the passed URL is loaded.
 Example 2 - make sure a remote library is available:
 
-.. literalinclude:: ../examples/preload-jquery.lua
+.. literalinclude:: ../splash/examples/preload-jquery.lua
    :language: lua
 
 
@@ -841,7 +841,7 @@ exceptions happened in a callback.
 Example 1 - take two HTML snapshots, at 1.5s and 2.5s after page
 loading starts:
 
-.. literalinclude:: ../examples/call-later.lua
+.. literalinclude:: ../splash/examples/call-later.lua
    :language: lua
 
 :ref:`splash-call-later` returns a handle (a ``timer``). To cancel pending
@@ -999,7 +999,7 @@ Nothing prevents us from taking multiple HTML snapshots. For example, let's
 visit first 3 pages on a website, and for each page store
 initial HTML snapshot and an HTML snapshot after waiting 0.5s:
 
-.. literalinclude:: ../examples/multiple-pages.lua
+.. literalinclude:: ../splash/examples/multiple-pages.lua
    :language: lua
 
 .. _splash-png:
@@ -1051,7 +1051,7 @@ The result of ``splash:png`` is a :ref:`binary object <binary-objects>`,
 so you can return it directly from "main" function and it will be sent as
 a binary image data with a proper Content-Type header:
 
-.. literalinclude:: ../examples/render-png.lua
+.. literalinclude:: ../splash/examples/render-png.lua
    :language: lua
 
 If the result of ``splash:png()`` is returned as a table value, it is encoded
@@ -1788,7 +1788,7 @@ async methods like :ref:`splash-wait` or :ref:`splash-go`.
 
 Example 1 - log all URLs requested using :ref:`splash-request-url` attribute:
 
-.. literalinclude:: ../examples/log-requests.lua
+.. literalinclude:: ../splash/examples/log-requests.lua
    :language: lua
 
 Example 2 - to log full request information use :ref:`splash-request-info`
@@ -1916,7 +1916,7 @@ Example 1 - log content-type headers of all responses received while rendering
 
 Example 2 - abort reading body of all responses with content type ``text/css``
 
-.. literalinclude:: ../examples/block-css.lua
+.. literalinclude:: ../splash/examples/block-css.lua
    :language: lua
 
 Example 3 - extract all cookies set by website without downloading

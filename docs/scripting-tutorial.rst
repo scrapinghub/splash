@@ -43,7 +43,7 @@ endpoint in a :ref:`lua_source <arg-lua-source>` argument.
 
 Let's start with a basic example:
 
-.. literalinclude:: ../examples/return-title.lua
+.. literalinclude:: ../splash/examples/return-title.lua
    :language: lua
 
 If we submit this script to the :ref:`execute` endpoint in a ``lua_source``
@@ -161,7 +161,7 @@ instead.
 
 A similar Splash script:
 
-.. literalinclude:: ../examples/phantomjs-follow.lua
+.. literalinclude:: ../splash/examples/phantomjs-follow.lua
    :language: lua
 
 Observations:
