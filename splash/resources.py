@@ -636,6 +636,10 @@ end
                                     <li><a href="#" onclick="splash.loadExample('preload-functions')">Preload functions</a></li>
                                     <li><a href="#" onclick="splash.loadExample('multiple-pages', '')">Load multiple pages</a></li>
                                     <li><a href="#" onclick="splash.loadExample('count-divs')">Count DIV tags</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('call-later')">Call Later</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('render-png')">Render PNG</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('log-requests')">Log requested URLs</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('block-css')">Block CSS</a></li>
                                 </ul>
                             </div>
                             <a class="btn btn-info" href="https://github.com/scrapinghub/splash">Source code</a>

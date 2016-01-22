@@ -97,14 +97,8 @@ can see some images even if they are disabled at the beginning of the script.
 
 Example:
 
-.. code-block:: lua
-
-     function main(splash)
-         splash.images_enabled = false
-         assert(splash:go("http://example.com"))
-         return {png=splash:png()}
-     end
-
+.. literalinclude:: ../examples/disable-images.lua
+   :language: lua
 
 Methods
 ~~~~~~~
@@ -279,20 +273,8 @@ code in page context.
 
 Example:
 
-.. code-block:: lua
-
-    function main(splash)
-        local get_div_count = splash:jsfunc([[
-            function (){
-                var body = document.body;
-                var divs = body.getElementsByTagName('div');
-                return divs.length;
-            }
-        ]])
-
-        splash:go(splash.args.url)
-        return get_div_count()
-    end
+.. literalinclude:: ../examples/count-divs.lua
+   :language: lua
 
 Note how Lua ``[[ ]]`` string syntax is helpful here.
 
@@ -784,29 +766,16 @@ or replace JavaScript objects before a webpage has a chance to do it.
 
 Example:
 
-.. code-block:: lua
-
-    function main(splash)
-        splash:autoload([[
-            function get_document_title(){
-               return document.title;
-            }
-        ]])
-        assert(splash:go(splash.args.url))
-        return splash:evaljs("get_document_title()")
-    end
+.. literalinclude:: ../examples/preload-functions.lua
+   :language: lua
 
 For the convenience, when a first :ref:`splash-autoload` argument starts
 with "http://" or "https://" a script from the passed URL is loaded.
 Example 2 - make sure a remote library is available:
 
-.. code-block:: lua
+.. literalinclude:: ../examples/preload-jquery.lua
+   :language: lua
 
-    function main(splash)
-        assert(splash:autoload("https://code.jquery.com/jquery-2.1.3.min.js"))
-        assert(splash:go(splash.args.url))
-        return splash:evaljs("$.fn.jquery")  -- return jQuery version
-    end
 
 To disable URL auto-detection use 'source' and 'url' arguments:
 
@@ -872,20 +841,8 @@ exceptions happened in a callback.
 Example 1 - take two HTML snapshots, at 1.5s and 2.5s after page
 loading starts:
 
-.. code-block:: lua
-
-    function main(splash)
-        local snapshots = {}
-        local timer = splash:call_later(function()
-            snapshots["a"] = splash:html()
-            splash:wait(1.0)
-            snapshots["b"] = splash:html()
-        end, 1.5)
-        assert(splash:go(splash.args.url))
-        splash:wait(3.0)
-        timer:reraise()
-        return snapshots
-    end
+.. literalinclude:: ../examples/call-later.lua
+   :language: lua
 
 :ref:`splash-call-later` returns a handle (a ``timer``). To cancel pending
 task use its ``timer:cancel()`` method. If a callback is already
@@ -1039,37 +996,11 @@ Example:
      end
 
 Nothing prevents us from taking multiple HTML snapshots. For example, let's
-visit first 10 pages on a website, and for each page store
+visit first 3 pages on a website, and for each page store
 initial HTML snapshot and an HTML snapshot after waiting 0.5s:
 
-.. code-block:: lua
-
-     -- Given an url, this function returns a table with
-     -- two HTML snapshots: HTML right after page is loaded,
-     -- and HTML after waiting 0.5s.
-     function page_info(splash, url)
-         local ok, msg = splash:go(url)
-         if not ok then
-             return {ok=false, reason=msg}
-         end
-         local res = {before=splash:html()}
-         assert(splash:wait(0.5))  -- this shouldn't fail, so we wrap it in assert
-         res.after = splash:html() -- the same as res["after"] = splash:html()
-         res.ok = true
-         return res
-     end
-
-     -- visit first 10 http://example.com/pages/<num> pages,
-     -- return their html snapshots
-     function main(splash)
-         local result = {}
-         for i=1,10 do
-            local url = "http://example.com/pages/" .. page_num
-            result[i] = page_info(splash, url)
-         end
-         return result
-     end
-
+.. literalinclude:: ../examples/multiple-pages.lua
+   :language: lua
 
 .. _splash-png:
 
@@ -1120,16 +1051,8 @@ The result of ``splash:png`` is a :ref:`binary object <binary-objects>`,
 so you can return it directly from "main" function and it will be sent as
 a binary image data with a proper Content-Type header:
 
-.. code-block:: lua
-
-     -- A simplistic implementation of render.png endpoint
-     function main(splash)
-         assert(splash:go(splash.args.url))
-         return splash:png{
-            width=splash.args.width,
-            height=splash.args.height
-         }
-     end
+.. literalinclude:: ../examples/render-png.lua
+   :language: lua
 
 If the result of ``splash:png()`` is returned as a table value, it is encoded
 to base64 to make it possible to embed in JSON and build a data:uri
@@ -1865,17 +1788,8 @@ async methods like :ref:`splash-wait` or :ref:`splash-go`.
 
 Example 1 - log all URLs requested using :ref:`splash-request-url` attribute:
 
-.. code-block:: lua
-
-    treat = require("treat")
-    function main(splash)
-        local urls = {}
-        splash:on_request(function(request)
-            table.insert(urls, request.url)
-        end)
-        assert(splash:go(splash.args.url))
-        return treat.as_array(urls)
-    end
+.. literalinclude:: ../examples/log-requests.lua
+   :language: lua
 
 Example 2 - to log full request information use :ref:`splash-request-info`
 attribute; don't store ``request`` objects directly:
@@ -2002,18 +1916,8 @@ Example 1 - log content-type headers of all responses received while rendering
 
 Example 2 - abort reading body of all responses with content type ``text/css``
 
-.. code-block:: lua
-
-    function main(splash)
-        splash:on_response_headers(function(response)
-            local content_type = response.headers["Content-Type"]
-            if content_type == "text/css" then
-                response.abort()
-            end
-        end)
-        assert(splash:go(splash.args.url))
-        return splash:png()
-    end
+.. literalinclude:: ../examples/block-css.lua
+   :language: lua
 
 Example 3 - extract all cookies set by website without downloading
 response bodies

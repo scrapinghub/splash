@@ -43,14 +43,8 @@ endpoint in a :ref:`lua_source <arg-lua-source>` argument.
 
 Let's start with a basic example:
 
-.. code-block:: lua
-
-     function main(splash)
-         splash:go("http://example.com")
-         splash:wait(0.5)
-         local title = splash:evaljs("document.title")
-         return {title=title}
-     end
+.. literalinclude:: ../examples/return-title.lua
+   :language: lua
 
 If we submit this script to the :ref:`execute` endpoint in a ``lua_source``
 argument, Splash will go to the example.com website, wait until it loads,
@@ -167,32 +161,8 @@ instead.
 
 A similar Splash script:
 
-.. code-block:: lua
-
-    users = {'PhantomJS', 'ariyahidayat'}
-
-    function followers(splash, user)
-        local ok, msg = splash:go('http://mobile.twitter.com/' .. user)
-        if not ok then
-            return "?"
-        end
-        return splash:evaljs([[
-            document.querySelector('div.profile td.stat.stat-last div.statnum').innerText;
-        ]]);
-    end
-
-    function process(splash, users)
-        local result = {}
-        for idx, user in ipairs(users) do
-            result[user] = followers(splash, user)
-        end
-        return result
-    end
-
-    function main(splash)
-        local users = process(splash, users)
-        return {users=users}
-    end
+.. literalinclude:: ../examples/phantomjs-follow.lua
+   :language: lua
 
 Observations:
 
