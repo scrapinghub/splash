@@ -68,6 +68,7 @@ install_deps () {
         python3 \
         qt55base \
         qt55webkit \
+        qt55svg \
         libre2 \
         libicu52 \
         liblua5.2-0 \
@@ -123,6 +124,7 @@ install_pyqt5 () {
         -e QtNetwork \
         -e QtWebKit \
         -e QtWebKitWidgets \
+        -e QtSvg \
         -e QtPrintSupport && \
     make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
     make install && \
@@ -138,7 +140,7 @@ install_python_deps () {
     ${_PYTHON} -m pip install \
         qt5reactor==0.3 \
         psutil==3.2.2 \
-        Twisted==15.4.0 \
+        Twisted==15.5.0 \
         adblockparser==0.4 \
         xvfbwrapper==0.2.5 \
         funcparserlib==0.3.6 \
