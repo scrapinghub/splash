@@ -52,7 +52,8 @@ setup_args = {
         'lua_modules/*.lua',
         'lua_modules/vendor/*.lua',
         'kernel/inspections/*.json',
-        'kernel/kernels/splash/*.json',
+        'kernel/kernels/splash-py2/*.*',
+        'kernel/kernels/splash-py3/*.*',
     ]},
     'zip_safe': False,
     'install_requires': [

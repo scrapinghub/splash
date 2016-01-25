@@ -30,7 +30,8 @@ from splash.kernel.errors import error_repr
 
 def install(user=True):
     """ Install IPython kernel specification """
-    folder = os.path.join(os.path.dirname(__file__), 'kernels', 'splash')
+    name = 'splash-py2' if six.PY2 else 'splash-py3'
+    folder = os.path.join(os.path.dirname(__file__), 'kernels', name)
     install_kernel_spec(folder, kernel_name="splash", user=user, replace=True)
 
 
