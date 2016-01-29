@@ -892,6 +892,9 @@ class _SplashHttpClient(QObject):
 
         request = self.request_obj(url, headers=headers, body=body)
 
+        user_agent = self.web_page.userAgentForUrl(to_qurl(url))
+        request.setRawHeader(b"user-agent", bytes(user_agent, "utf8"))
+
         if method.upper() == "POST":
             reply = self.network_manager.post(request, body)
         else:

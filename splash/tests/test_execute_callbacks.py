@@ -397,7 +397,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         req = resp.json()
         self.assertEqual(req['url'], mocked_url)
         self.assertEqual(req['method'], 'GET')
-        self.assertEqual(req['headers'], {'fOo': 'Bar'})
+        self.assertEqual(req['headers'].get("fOo"), 'Bar')
         self.assertEqual(req['info']['url'], mocked_url)
 
     def test_other_response_attrs(self):
@@ -455,7 +455,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
             self.assertIn(elem, resp)
         self.assertEqual(resp["url"], mocked_url)
         self.assertEqual(resp["method"], "GET")
-        self.assertEqual(resp["headers"], {"hello": "world"})
+        self.assertEqual(resp["headers"].get("hello"), "world")
 
     def test_bad_callback(self):
         for arg in '', '"foo"', '123':

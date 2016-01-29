@@ -1884,6 +1884,21 @@ class SetUserAgentTest(BaseLuaRenderTest):
             self.assertIn("'user-agent': 'Foozilla'", data["res2"])
             self.assertIn("'user-agent': 'Foozilla'", data["res3"])
 
+    def test_set_user_agent_base_url(self):
+        resp = self.request_lua("""
+            function main(splash)
+                splash:set_user_agent("Foozilla")
+                splash:go{splash.args.url, baseurl="baseurl"}
+                return splash:har()
+            end
+            """, {"url": self.mockurl("baseurl")})
+
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+        headers = data["log"]["entries"][0]["request"]["headers"]
+        self.assertEqual(len(headers), 1)
+        self.assertEqual(headers[0]["value"], "Foozilla")
+
     def test_error(self):
         resp = self.request_lua("""
         function main(splash) splash:set_user_agent(123) end
@@ -2504,6 +2519,66 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(JsRender.template, resp.text)
 
+    def test_get_with_default_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            response = nil
+            splash:on_response(function (res)
+                response = res
+            end)
+            assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertNotEqual(len(headers), 0)
+        self.assertEqual(len(headers), 1)
+        self.assertIn("Mozilla/5.0", headers["user-agent"])
+
+    def test_get_with_custom_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = "Value 2",
+                })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertNotEqual(len(headers), 0)
+        self.assertEqual(headers["Header-1"], "Value 1")
+        self.assertEqual(headers["Header-2"], "Value 2")
+        self.assertIn("user-agent", headers)
+
+    def test_get_with_custom_ua(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_user_agent("CUSTOM UA")
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertNotEqual(len(headers), 0)
+        self.assertEqual(headers["user-agent"], "CUSTOM UA")
+
+    def test_get_with_custom_ua_in_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            response = assert(splash:http_get{splash.args.url, headers={["user-agent"]="Value 1"}})
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertNotEqual(len(headers), 0)
+        self.assertEqual(headers["user-agent"], "Value 1")
+
     def test_bad_url(self):
         resp = self.request_lua("""
         function main(splash)
@@ -2620,7 +2695,7 @@ class HttpGetTest(BaseLuaRenderTest):
 
         req = data['request']
         self.assertEqual(req['method'], 'GET')
-        self.assertEqual(req['headers'], {'X-My-HeaDer': '123'})
+        self.assertEqual(req['headers'].get('X-My-HeaDer'), '123')
         self.assertEqual(req['info']['httpVersion'], 'HTTP/1.1')  # har record
         # self.assertEqual(req['url'], response_url)  # XXX: is it correct?
 
@@ -2657,7 +2732,7 @@ class HttpGetTest(BaseLuaRenderTest):
 
         req = data['request']
         self.assertEqual(req['method'], 'GET')
-        self.assertEqual(req['headers'], {'X-My-HeaDer': '123'})
+        self.assertEqual(req['headers'].get("X-My-HeaDer"), '123')
         self.assertEqual(req['info']['httpVersion'], 'HTTP/1.1')  # har record
         self.assertEqual(req['url'], request_url)
 
