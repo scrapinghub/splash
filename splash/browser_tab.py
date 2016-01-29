@@ -951,6 +951,10 @@ class _SplashHttpClient(QObject):
         for name, value in headers or []:
             request.setRawHeader(to_bytes(name), to_bytes(value))
             if name.lower() == 'user-agent':
+                # XXX this sets user agent for all future requests not just one
+                # that it is called on, is that ok?
+                # e.g. doing splash:go{url, headers={["user-agent"]='foo'}} will also set UA
+                # to 'foo' for other requests from web-page
                 self.set_user_agent(value)
 
     def _delete_reply(self, reply):

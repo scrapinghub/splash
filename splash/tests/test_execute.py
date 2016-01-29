@@ -2579,6 +2579,32 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertNotEqual(len(headers), 0)
         self.assertEqual(headers["user-agent"], "Value 1")
 
+    def test_get_with_custom_ua_in_headers_and_set_with_splash(self):
+        resp = self.request_lua("""
+            function main(splash)
+                splash:set_user_agent("CUSTOM UA")
+                response1 = assert(splash:http_get(splash.args.url))
+                response2 = assert(splash:http_get{splash.args.url, headers={["user-agent"]="Value 1"}})
+                response3 = assert(splash:http_get(splash.args.url))
+
+                return {
+                    result1=response1.request.headers,
+                    result2=response2.request.headers,
+                    result3=response3.request.headers
+                }
+            end
+            """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        resp = resp.json()
+        headers1, headers2, headers3 = resp["result1"], resp["result2"], resp["result3"]
+        self.assertTrue(all("user-agent" in h for h in (headers1, headers2, headers3)))
+        self.assertEqual(headers1["user-agent"], "CUSTOM UA")
+        self.assertEqual(headers2["user-agent"], "Value 1")
+        # after setting UA with headers kwarg it is kept in future requests
+        # this is current behavior of Splash
+        self.assertEqual(headers3["user-agent"], "Value 1")
+
+
     def test_bad_url(self):
         resp = self.request_lua("""
         function main(splash)
