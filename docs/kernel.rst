@@ -39,11 +39,19 @@ notebooks::
 
     $ docker run -v `/bin/pwd`/notebooks:/notebooks -p 8888:8888 -it splash-jupyter
 
-Live Webkit window with web inspector is not available when Splash-Jupyter
-is executed from Docker. You can still use e.g. :ref:`splash-png` command
-to inspect what's going on.
+To view Live Webkit window with web inspector when Splash-Jupyter is executed
+from Docker, you will need to pass additional docker parameters to share the
+host system's X server with the docker container, and use the ``--disable-xvfb``
+command line flag::
 
-Currently to enable live Webkit window you must install Splash
+    $ docker run -e DISPLAY=unix$DISPLAY \
+                 -v /tmp/.X11-unix:/tmp/.X11-unix \
+                 -v $XAUTHORITY:$XAUTHORITY \
+                 -e XAUTHORITY=$XAUTHORITY \
+                 -p 8888:8888 \
+                 -it scrapinghub/splash-jupyter --disable-xvfb
+
+Alternatively, to enable live Webkit window you can install Splash
 in a "manual way" - see :ref:`manual-install-ubuntu`.
 
 1. Install IPython/Jupyter with notebook feature. Splash kernel requires
