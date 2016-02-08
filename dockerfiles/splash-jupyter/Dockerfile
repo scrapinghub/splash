@@ -30,11 +30,11 @@ RUN apt-get update -q && \
     rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m splash.kernel install && \
-    echo 'ipython notebook --no-browser --port=8888 --ip=*' > start-ipython.sh && \
+    echo '#!/bin/bash\nSPLASH_ARGS="$@" ipython notebook --no-browser --port=8888 --ip=*' > start-ipython.sh && \
     chmod +x start-ipython.sh
 
 VOLUME /notebooks
 WORKDIR /notebooks
 
 EXPOSE 8888
-ENTRYPOINT /start-ipython.sh
+ENTRYPOINT ["/start-ipython.sh"]
