@@ -2604,6 +2604,23 @@ class HttpGetTest(BaseLuaRenderTest):
         # this is current behavior of Splash
         self.assertEqual(headers3["user-agent"], "Value 1")
 
+    def test_ua_on_rendering(self):
+        resp = self.request_lua("""
+            function main(splash)
+                treat = require("treat")
+                local result = treat.as_array({})
+                splash:on_response_headers(function (response)
+                    result[#result+1] = response.request.headers
+                end)
+
+                response = assert(splash:go{splash.args.url, headers={["user-agent"]="Value 1"}})
+                return result
+            end
+            """, {"url": self.mockurl("subresources")})
+        self.assertStatusCode(resp, 200)
+        resp = resp.json()
+        uas = [r.get("User-Agent", r.get("user-agent")) for r in resp]
+        self.assertTrue(all(h == "Value 1" for h in uas))
 
     def test_bad_url(self):
         resp = self.request_lua("""
