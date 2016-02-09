@@ -2600,9 +2600,7 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertTrue(all("user-agent" in h for h in (headers1, headers2, headers3)))
         self.assertEqual(headers1["user-agent"], "CUSTOM UA")
         self.assertEqual(headers2["user-agent"], "Value 1")
-        # after setting UA with headers kwarg it is kept in future requests
-        # this is current behavior of Splash
-        self.assertEqual(headers3["user-agent"], "Value 1")
+        self.assertEqual(headers3["user-agent"], "CUSTOM UA")
 
     def test_ua_on_rendering(self):
         resp = self.request_lua("""

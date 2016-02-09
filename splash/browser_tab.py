@@ -255,6 +255,8 @@ class BrowserTab(QObject):
 
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
+        if isinstance(value, bytes):
+            value = value.decode("utf8")
         self.http_client.set_user_agent(value)
 
     def get_cookies(self):
@@ -298,6 +300,16 @@ class BrowserTab(QObject):
 
         if body is not None:
             body = to_bytes(body)
+
+        if headers is not None:
+            # headers can be list or dict, keys can be bytes or str, HTTP specs
+            # say headers are case-insensitive, so they can be uppercase or lowercase
+            if not isinstance(headers, dict):
+                headers = dict(headers)
+            headers = {to_bytes(k.lower()): to_bytes(v) for k, v in headers.items()}
+            user_agent = headers.get(b"user-agent")
+            if user_agent:
+                self.set_user_agent(user_agent)
 
         if baseurl:
             # If baseurl is used, we download the page manually,
@@ -892,8 +904,11 @@ class _SplashHttpClient(QObject):
 
         request = self.request_obj(url, headers=headers, body=body)
 
-        user_agent = self.web_page.userAgentForUrl(to_qurl(url))
-        request.setRawHeader(b"user-agent", bytes(user_agent, "utf8"))
+        if headers and "user-agent" in [k.lower() for k in headers.keys()]:
+            user_agent = headers.get("user-agent", headers.get("User-Agent"))
+        else:
+            user_agent = self.web_page.userAgentForUrl(to_qurl(url))
+        request.setRawHeader(b"user-agent", to_bytes(user_agent))
 
         if method.upper() == "POST":
             reply = self.network_manager.post(request, body)
@@ -951,12 +966,6 @@ class _SplashHttpClient(QObject):
         for name, value in headers or []:
             name, value = to_bytes(name), to_bytes(value)
             request.setRawHeader(name, value)
-            if name.lower() == b'user-agent':
-                # XXX this sets user agent for all future requests not just one
-                # that it is called on, is that ok?
-                # e.g. doing splash:go{url, headers={["user-agent"]='foo'}} will also set UA
-                # to 'foo' for other requests from web-page
-                self.set_user_agent(value.decode("utf8"))
 
     def _delete_reply(self, reply):
         self._replies.remove(reply)
