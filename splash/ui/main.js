@@ -87,6 +87,23 @@ if(splash.lua_enabled) {
     });
 }
 
+splash.loadExample = function(name, exampleUrl) {
+    $.get('/_ui/examples/' + encodeURI(name) + '.lua', function(code) {
+        if(typeof exampleUrl === "string") {
+            $('input[name="url"]').val(exampleUrl);
+        }
+        splash.editor.getDoc().setValue(code);
+        var button = $('button[type="submit"]').tooltip({
+            html: true,
+            title: "Example code loaded!<br/>Now click here to run.",
+            placement: "right"
+        }).tooltip("show");
+        $(document.body).one('click', function(){
+            button.tooltip('destroy');
+        });
+    });
+};
+
 function loadHarViewer(har) {
     if(splash.harLoaded) {
         return $(); // Multiple har files in response, only show UI for the first one
@@ -137,11 +154,9 @@ function loadHarViewer(har) {
 
         // Make sure stats are visible to the user by default
         preview.showStats(true);
-        console.log('viewerpreinit');
     });
 
     $container.bind("onViewerInit", function(event){
-        console.log('viewerinit');
         var viewer = event.target.repObject;
         viewer.appendPreview(har);
     });

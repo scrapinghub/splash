@@ -47,16 +47,24 @@ class _ValidatingResource(Resource):
         try:
             return Resource.render(self, request)
         except BadOption as e:
-            return self._write_error(request, 400, e)
+            self._write_error(request, 400, e)
+            self._log_stats(request, {}, error=self._format_error(400, e))
+            return b"\n"
 
-    def _write_error_content(self, request, code, content, content_type=b'text/plain'):
+    def _write_error_content(self, request, code, err, content_type=b'text/plain'):
         request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
+        content = json.dumps(err).encode('utf8')
         request.write(content)
-        return b"\n"
+        return err
 
     def _write_error(self, request, code, exc):
         """Can be overridden by subclasses format errors differently"""
+        err = self._format_error(code, exc)
+        return self._write_error_content(request, code, err,
+                                         content_type=b"application/json")
+
+    def _format_error(self, code, exc):
         err = {
             "error": code,
             "type": exc.__class__.__name__,
@@ -67,10 +75,7 @@ class _ValidatingResource(Resource):
             err['info'] = exc.args[0]
         elif len(exc.args) > 1:
             err['info'] = exc.args
-
-        return self._write_error_content(request, code,
-                                         json.dumps(err).encode('utf8'),
-                                         content_type=b"application/json")
+        return err
 
 
 class BaseRenderResource(_ValidatingResource):
@@ -100,12 +105,12 @@ class BaseRenderResource(_ValidatingResource):
         request.notifyFinish().addErrback(self._request_failed, pool_d, timer)
 
         pool_d.addCallback(self._cancel_timer, timer)
-        pool_d.addCallback(self._write_output, request, options=render_options.data)
+        pool_d.addCallback(self._write_output, request)
         pool_d.addErrback(self._on_timeout_error, request, timeout=timeout)
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
-        pool_d.addBoth(self._finish_request, request)
+        pool_d.addBoth(self._finish_request, request, options=render_options.data)
         return NOT_DONE_YET
 
     def render_POST(self, request):
@@ -130,7 +135,8 @@ class BaseRenderResource(_ValidatingResource):
         timer.cancel()
         pool_d.cancel()
 
-    def _write_output(self, data, request, content_type=None, options=None):
+    def _write_output(self, data, request, content_type=None):
+
         # log.msg("_writeOutput: %s" % id(request))
         # log.msg("%r %r" % (data, content_type))
 
@@ -139,7 +145,7 @@ class BaseRenderResource(_ValidatingResource):
 
         if isinstance(data, (dict, list)):
             data = json.dumps(data, cls=SplashJSONEncoder)
-            return self._write_output(data, request, b"application/json", options)
+            return self._write_output(data, request, b"application/json")
 
         if isinstance(data, tuple) and len(data) == 4:
             data, content_type, headers, status_code = data
@@ -147,13 +153,13 @@ class BaseRenderResource(_ValidatingResource):
             request.setResponseCode(status_code)
             for name, value in headers:
                 request.setHeader(name, value)
-            return self._write_output(data, request, content_type, options)
+            return self._write_output(data, request, content_type)
 
         if data is None or isinstance(data, (bool, six.integer_types, float)):
-            return self._write_output(str(data), request, content_type, options)
+            return self._write_output(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
-            return self._write_output(data.data, request, data.content_type, options)
+            return self._write_output(data.data, request, data.content_type)
 
         if not isinstance(data, bytes):
             data = data.encode('utf8')
@@ -163,14 +169,13 @@ class BaseRenderResource(_ValidatingResource):
 
         request.setHeader(b"content-type", content_type)
 
-        self._log_stats(request, options)
         if not isinstance(data, bytes):
             # Twisted expects bytes as response
             data = data.encode('utf-8')
 
         request.write(data)
 
-    def _log_stats(self, request, options):
+    def _log_stats(self, request, options, error=None):
 
         # def args_to_unicode(args):
         #     unicode_args = {}
@@ -198,9 +203,14 @@ class BaseRenderResource(_ValidatingResource):
             "timestamp": int(time.time()),
             "user-agent": (request.getHeader(b"user-agent").decode('utf-8')
                            if request.getHeader(b"user-agent") else None),
-            "args": repr(options)
+            "args": options,
+            "status_code": request.code,
+            "client_ip": request.client.host
         }
-        log.msg(json.dumps(msg), system="events")
+        if error:
+            msg["error"] = error
+        msg = json.dumps(msg).encode("utf8")
+        log.msg(msg, system="events")
 
     def _on_timeout_error(self, failure, request, timeout=None):
         failure.trap(defer.CancelledError)
@@ -224,9 +234,11 @@ class BaseRenderResource(_ValidatingResource):
         # log.msg("_on_bad_request: %s" % id(request))
         return self._write_error(request, 400, failure.value)
 
-    def _finish_request(self, _, request):
+    def _finish_request(self, failure, request, options):
+        self._log_stats(request, options, error=failure)
         if not request._disconnected:
             request.finish()
+
         # log.msg("_finishRequest: %s" % id(request))
 
     def _get_render(self, request, options):
@@ -366,7 +378,7 @@ CODEMIRROR_RESOURCES = """
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/codemirror.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/mode/lua/lua.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/show-hint.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/anyword-hint.min.js"></scrip>
+<script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/hint/anyword-hint.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/matchbrackets.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.10.0/addon/edit/closebrackets.min.js"></script>
 
@@ -403,9 +415,10 @@ class DemoUI(_ValidatingResource):
 
     def render_GET(self, request):
         params = self._validate_params(request)
-        url = params['url']
-        if not url.lower().startswith('http'):
+        url = params.get('url', '').strip()
+        if url and not url.lower().startswith('http'):
             url = 'http://' + url
+        params['url'] = url
         timeout = params['timeout']
         params = {k: v for k, v in params.items() if v is not None}
 
@@ -503,21 +516,6 @@ class DemoUI(_ValidatingResource):
 
 
 class Root(Resource):
-    HARVIEWER_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'vendor',
-        'harviewer',
-        'webapp',
-    )
-    UI_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'ui',
-    )
-    INSPECTIONS_PATH = os.path.join(
-        os.path.dirname(__file__),
-        'kernel', 'inspections'
-    )
-
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
                  lua_package_path,
                  lua_sandbox_allowed_modules,
@@ -548,9 +546,16 @@ class Root(Resource):
             ))
 
         if self.ui_enabled:
-            ui = File(self.UI_PATH)
-            ui.putChild(b"harviewer", File(self.HARVIEWER_PATH))
-            ui.putChild(b"inspections", File(self.INSPECTIONS_PATH))
+            root = os.path.dirname(__file__)
+            ui = File(os.path.join(root, 'ui'))
+
+            har_path = os.path.join(root, 'vendor', 'harviewer', 'webapp')
+            ui.putChild(b"harviewer", File(har_path))
+            inspections_path = os.path.join(root, 'kernel', 'inspections')
+            ui.putChild(b"inspections", File(inspections_path))
+            examples_path = os.path.join(root, 'examples')
+            ui.putChild(b"examples", File(examples_path))
+
             self.putChild(b"_ui", ui)
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
@@ -586,7 +591,8 @@ end
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="/_ui/style.css">
-            <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
             %(cm_resources)s
         </head>
         <body class="no-lua">
@@ -606,11 +612,11 @@ end
                         <ul>
                             <li>Process multiple webpages in parallel</li>
                             <li>Get HTML results and/or take screenshots</li>
-                            <li>Turn OFF images or use <a href="https://adblockplus.org">Adblock Plus</a>
+                            <li>Turn OFF images <a class="demo-link if-lua" href="#" onclick="splash.loadExample('disable-images', 'http://flickr.com')">Run live example</a> or use <a href="https://adblockplus.org">Adblock Plus</a>
                                 rules to make rendering faster</li>
-                            <li>Execute custom JavaScript in page context</li>
+                            <li>Execute custom JavaScript in page context <a class="demo-link if-lua" href="#" onclick="splash.loadExample('run-js')">Run live example</a></li>
                             <li>Write Lua browsing scripts;</li>
-                            <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format</li>
+                            <li>Get detailed rendering info in <a href="http://www.softwareishard.com/blog/har-12-spec/">HAR</a> format <a class="demo-link if-lua" href="#" onclick="splash.loadExample('har')">Run live example</a></li>
                         </ul>
 
                         <p class="lead">
@@ -618,11 +624,26 @@ end
                             Commercial support is also available by
                             <a href="http://scrapinghub.com/">Scrapinghub</a>.
                         </p>
-                        <p>
+                        <div>
                             <a class="btn btn-info" href="http://splash.readthedocs.org/">Documentation</a>
+                            <div class="dropdown examples-dropdown">
+                                <a class="btn btn-info if-lua dropdown-toggle" data-toggle="dropdown" href="#">Examples&nbsp;<b class="caret"></b></a>
+                                <ul class="dropdown-menu panel panel-default if-lua">
+                                    <li><a href="#" onclick="splash.loadExample('phantomjs-follow', '')">Count twitter followers</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('wait-for-element')">Wait for element</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('scroll', 'http://scrapinghub.com')">Scroll page</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('preload-jquery')">Preload jQuery</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('preload-functions')">Preload functions</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('multiple-pages', '')">Load multiple pages</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('count-divs')">Count DIV tags</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('call-later')">Call Later</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('render-png')">Render PNG</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('log-requests')">Log requested URLs</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('block-css')">Block CSS</a></li>
+                                </ul>
+                            </div>
                             <a class="btn btn-info" href="https://github.com/scrapinghub/splash">Source code</a>
-                        </p>
-
+                        </div>
                     </div>
                     <div class="col-lg-6">
                         <form class="form-horizontal" method="GET" action="/info">
@@ -648,6 +669,9 @@ end
                     </div>
                 </div>
             </div>
+            <div class="tooltip top" role="tooltip" id="example-tooltip">
+                <div class="tooltip-arrow"></div>
+                <div class="tooltip-inner">
             <script> var splash = %(options)s; </script>
             <script src="/_ui/main.js"> </script>
         </body>

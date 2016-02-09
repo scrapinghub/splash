@@ -16,7 +16,7 @@ RUN apt-get update -q && \
         libzmq3-dev \
         libsqlite3-dev && \
     pip3 install \
-        ipython[notebook]==4.0.2 && \
+        ipython[notebook]==4.0.3 && \
     apt-get remove -y --purge \
         python3-dev \
         build-essential \
@@ -30,11 +30,11 @@ RUN apt-get update -q && \
     rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m splash.kernel install && \
-    echo 'ipython notebook --no-browser --port=8888 --ip=*' > start-ipython.sh && \
+    echo '#!/bin/bash\nSPLASH_ARGS="$@" ipython notebook --no-browser --port=8888 --ip=*' > start-ipython.sh && \
     chmod +x start-ipython.sh
 
 VOLUME /notebooks
 WORKDIR /notebooks
 
 EXPOSE 8888
-ENTRYPOINT /start-ipython.sh
+ENTRYPOINT ["/start-ipython.sh"]

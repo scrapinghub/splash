@@ -68,6 +68,7 @@ install_deps () {
         python3 \
         qt55base \
         qt55webkit \
+        qt55svg \
         libre2 \
         libicu52 \
         liblua5.2-0 \
@@ -88,7 +89,9 @@ install_builddeps () {
         libsqlite3-dev \
         zlib1g-dev \
         libjpeg-turbo8-dev \
-        libgl1-mesa-dev-lts-utopic
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        mesa-common-dev
 }
 
 install_pyqt5 () {
@@ -121,6 +124,7 @@ install_pyqt5 () {
         -e QtNetwork \
         -e QtWebKit \
         -e QtWebKitWidgets \
+        -e QtSvg \
         -e QtPrintSupport && \
     make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
     make install && \
@@ -135,15 +139,15 @@ install_python_deps () {
     ${_PYTHON} -m pip install -U pip && \
     ${_PYTHON} -m pip install \
         qt5reactor==0.3 \
-        psutil==3.2.2 \
-        Twisted==15.4.0 \
+        psutil==3.4.2 \
+        Twisted==15.5.0 \
         adblockparser==0.4 \
         xvfbwrapper==0.2.5 \
         funcparserlib==0.3.6 \
-        Pillow==2.9.0 \
+        Pillow==3.1.0 \
         cython==0.23.4 && \
-    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/kmike/lupa/archive/c8903c49e8b4b1ebb0e0f6637cc1ed375f742008.zip#egg=lupa && \
-    ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=pyre2
+    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/scoder/lupa/archive/8c74d0a278b45df5d813abbab64377e80864bd56.zip#egg=lupa && \
+    ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=re2
 }
 
 install_msfonts() {

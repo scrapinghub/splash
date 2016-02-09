@@ -124,3 +124,20 @@ body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua
     margin-left: 10px;
     cursor: pointer;
 }
+.demo-link {
+    font-size: 75%;
+    vertical-align: 10%;
+}
+
+.demo-link::before {
+    content: "[";
+    color: #808080;
+}
+.demo-link::after{
+    content: "]";
+    color: #808080;
+}
+
+.examples-dropdown {
+    display: inline-block;
+}

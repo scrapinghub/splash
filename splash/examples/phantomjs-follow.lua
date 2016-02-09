@@ -1,4 +1,5 @@
--- Implementation of "follow.js" example from PhantomJS
+-- Implementation of "follow.js" example from
+-- PhantomJS
 -- https://github.com/ariya/phantomjs/blob/master/examples/follow.js
 
 USERS = {
@@ -12,8 +13,9 @@ USERS = {
   'Vitalliumm',
 }
 
+local base = 'http://mobile.twitter.com/'
 function follow(splash, user)
-  local ok, msg = splash:go('http://mobile.twitter.com/' .. user)
+  local ok, msg = splash:go(base .. user)
   if not ok then
     return "Can't get followers of " .. user .. ': ' .. msg
   end
@@ -33,6 +35,5 @@ end
 function main(splash)
   return {
     users=process(splash, USERS),
-    har=splash:har(),  -- it is not necessary, but it is nice in UI
   }
 end

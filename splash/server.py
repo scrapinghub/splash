@@ -18,19 +18,13 @@ def install_qtreactor(verbose):
     qt5reactor.install()
 
 
-def parse_opts():
+def parse_opts(jupyter=False, argv=sys.argv):
     _bool_default = {True:' (default)', False: ''}
 
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
         help="exit if max RSS reaches this value (in MB or ratio of physical mem) (default: %default)")
-    op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
-        help="port to listen to (default: %default)")
-    op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
-        help="number of render slots (default: %default)")
-    op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
-        help="maximum allowed value for timeout (default: %default)")
     op.add_option("--proxy-profiles-path",
         help="path to a folder with proxy profiles")
     op.add_option("--js-profiles-path",
@@ -46,10 +40,6 @@ def parse_opts():
         default=defaults.JS_CROSS_DOMAIN_ENABLED,
         help="enable support for cross domain access when executing custom javascript "
              "(WARNING: it could break rendering for some of the websites)" + _bool_default[defaults.JS_CROSS_DOMAIN_ENABLED])
-    op.add_option("--manhole", action="store_true",
-        help="enable manhole server")
-    op.add_option("--disable-ui", action="store_true", default=False,
-        help="disable web UI")
     op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
@@ -58,8 +48,6 @@ def parse_opts():
         help="disable private mode (WARNING: data may leak between requests)" + _bool_default[not defaults.PRIVATE_MODE])
     op.add_option("--disable-xvfb", action="store_true", default=False,
         help="disable Xvfb auto start")
-    op.add_option("--disable-lua", action="store_true", default=False,
-        help="disable Lua scripting")
     op.add_option("--disable-lua-sandbox", action="store_true", default=False,
         help="disable Lua sandbox")
     op.add_option("--lua-package-path", default="",
@@ -72,7 +60,33 @@ def parse_opts():
     op.add_option("--version", action="store_true",
         help="print Splash version number and exit")
 
-    return op.parse_args()
+    if not jupyter:
+        # This options are specific of splash server and not used in splash-jupyter
+        op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
+            help="port to listen to (default: %default)")
+        op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
+            help="number of render slots (default: %default)")
+        op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
+            help="maximum allowed value for timeout (default: %default)")
+        op.add_option("--manhole", action="store_true",
+            help="enable manhole server")
+        op.add_option("--disable-ui", action="store_true", default=False,
+            help="disable web UI")
+        op.add_option("--disable-lua", action="store_true", default=False,
+            help="disable Lua scripting")
+
+    opts, args = op.parse_args(argv)
+
+    if jupyter:
+        opts.manhole = False
+        opts.disable_ui = True
+        opts.disable_lua = False
+        opts.port = None
+        opts.slots = None
+        opts.max_timeout = None
+
+    return opts, args
+
 
 
 def start_logging(opts):
@@ -241,7 +255,8 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           lua_sandbox_enabled=True,
                           lua_package_path="",
                           lua_sandbox_allowed_modules=(),
-                          verbosity=None):
+                          verbosity=None,
+                          server_factory=splash_server):
     from splash import network_manager
     network_manager_factory = network_manager.NetworkManagerFactory(
         filters_path=filters_path,
@@ -251,7 +266,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
     _set_global_render_settings(js_disable_cross_domain_access, private_mode)
-    return splash_server(
+    return server_factory(
         portnum=portnum,
         slots=slots,
         network_manager_factory=network_manager_factory,
@@ -307,13 +322,14 @@ def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
     settings.setAttribute(QWebSettings.LocalStorageEnabled, not private_mode)
 
 
-def main():
-    opts, _ = parse_opts()
+def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
+    opts, _ = parse_opts(jupyter, argv)
     if opts.version:
         print(__version__)
         sys.exit(0)
 
-    start_logging(opts)
+    if not jupyter:
+        start_logging(opts)
     log_splash_version()
     bump_nofile_limit()
 
@@ -341,13 +357,15 @@ def main():
             lua_package_path=opts.lua_package_path.strip(";"),
             lua_sandbox_allowed_modules=opts.lua_sandbox_allowed_modules.split(";"),
             verbosity=opts.verbosity,
-            max_timeout=opts.max_timeout
+            max_timeout=opts.max_timeout,
+            server_factory=server_factory,
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
-        from twisted.internet import reactor
-        reactor.callWhenRunning(splash_started, opts, sys.stderr)
-        reactor.run()
+        if not jupyter:
+            from twisted.internet import reactor
+            reactor.callWhenRunning(splash_started, opts, sys.stderr)
+            reactor.run()
 
 
 if __name__ == "__main__":

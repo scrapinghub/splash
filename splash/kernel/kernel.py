@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import os
 import six
+import sys
 
 import lupa
 from ipykernel.kernelapp import IPKernelApp
@@ -18,23 +19,23 @@ from splash.qtrender_lua import (
 )
 from splash.qtutils import init_qt_app
 from splash.render_options import RenderOptions
-from splash import network_manager
 from splash import defaults
-from splash import xvfb
 from splash.kernel.kernelbase import Kernel
 from splash.utils import BinaryCapsule
 from splash.kernel.completer import Completer
 from splash.kernel.inspections import Inspector
 from splash.kernel.errors import error_repr
+import splash.server as server
 
 
 def install(user=True):
     """ Install IPython kernel specification """
-    folder = os.path.join(os.path.dirname(__file__), 'kernels', 'splash')
+    name = 'splash-py2' if six.PY2 else 'splash-py3'
+    folder = os.path.join(os.path.dirname(__file__), 'kernels', name)
     install_kernel_spec(folder, kernel_name="splash", user=user, replace=True)
 
 
-def init_browser():
+def init_browser(network_manager_factory):
     # TODO: support the same command-line options as HTTP server.
 
     # from splash.server import start_logging
@@ -42,14 +43,13 @@ def init_browser():
     #    logfile = "./kernel.log"
     # start_logging(opts)
 
-    manager = network_manager.NetworkManagerFactory()()
     proxy_factory = None  # TODO
 
     data = {}
     data['uid'] = id(data)
 
     tab = BrowserTab(
-        network_manager=manager,
+        network_manager=network_manager_factory(),
         splash_proxy_factory=proxy_factory,
         verbosity=2,  # TODO
         render_options=RenderOptions(data, defaults.MAX_TIMEOUT),  # TODO: timeout
@@ -139,7 +139,7 @@ class SplashKernel(Kernel):
 
     def __init__(self, **kwargs):
         super(SplashKernel, self).__init__(**kwargs)
-        self.tab = init_browser()
+        self.tab = init_browser(SplashKernel.network_manager_factory)
 
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
         self.exceptions = StoredExceptions()
@@ -271,11 +271,14 @@ class SplashKernel(Kernel):
         return self.lua.create_coroutine(main)
 
 
+def server_factory(network_manager_factory, verbosity, **kwargs):
+    init_qt_app(verbose=verbosity >= 5)
+    SplashKernel.network_manager_factory = network_manager_factory
+    kernel = IPKernelApp.instance(kernel_class=SplashKernel)
+    kernel.initialize()
+    kernel.kernel.eventloop = loop_qt5
+    kernel.start()
+
 def start():
-    with xvfb.autostart():
-        # FIXME: logs go to nowhere
-        init_qt_app(verbose=False)
-        kernel = IPKernelApp.instance(kernel_class=SplashKernel)
-        kernel.initialize()
-        kernel.kernel.eventloop = loop_qt5
-        kernel.start()
+    splash_args = os.environ.get('SPLASH_ARGS', '').split()
+    server.main(jupyter=True, argv=splash_args, server_factory=server_factory)
