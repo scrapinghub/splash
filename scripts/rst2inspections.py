@@ -57,9 +57,21 @@ def parse_rst(rst_source):
     )
 
 
+def resolve_literalinclude(rst_source, base_dir):
+    pattern = r"\.\. literalinclude::\s*(.+)\n\s*:language:.+\n"
+    def repl(m):
+        path = m.group(1)
+        with open(os.path.join(base_dir, path), 'rb') as f:
+            return f.read().decode('utf8')
+
+    return re.sub(pattern, repl, rst_source)
+
+
 def rst2inspections(rst_filename, out_filename):
     with open(rst_filename, "rb") as f:
-        info = parse_rst(f.read().decode('utf8'))
+        doc = f.read().decode('utf8')
+        doc = resolve_literalinclude(doc, os.path.dirname(rst_filename))
+        info = parse_rst(doc)
 
     with open(out_filename, "w") as f:
         json.dump(info, f, indent=2)
