@@ -1,8 +1,8 @@
 Changes
 =======
 
-2.0 (TBA)
----------
+2.0 (21-02-2016)
+----------------
 
 Splash 2.0 uses Qt 5.5.1 instead of Qt 4; it means the rendering
 engine now supports more HTML5 features and is more modern overall.
@@ -68,7 +68,6 @@ Another **backwards-incompatible** change is that Splash-as-a-proxy feature
 is removed. Please use regular HTTP API instead of this proxy interface.
 Of course, Splash will still support using proxies to make requests,
 these are two different features.
-
 
 
 1.8 (2015-09-29)
