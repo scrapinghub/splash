@@ -12,6 +12,7 @@ project.
 
 Splash 2.0 release introduces other cool new features:
 
+* many Splash HTTP UI improvements;
 * better support for :ref:`binary data <binary-data>`;
 * built-in :ref:`lib-json` and :ref:`lib-base64` libraries;
 * more :ref:`control <lib-treat>` for result serialization
@@ -22,12 +23,16 @@ Splash 2.0 release introduces other cool new features:
 * cookie handling is fixed;
 * downloader efficiency is improved;
 * request processing is stopped when client disconnects;
-* Splash UI improvements: it uses max timeout by default; it is
-  possible to download network activity as a HAR file;
 * logging inside callbacks now uses proper verbosity;
 * sandbox memory limit for user objects is increased to 50MB;
 * some sandboxing issues are fixed;
-* :ref:`splash-evaljs` and :ref:`splash-jsfunc` results are sanitized better.
+* :ref:`splash-evaljs` and :ref:`splash-jsfunc` results are sanitized better;
+* it is possible to pass arguments when starting Splash-Jupyter - it means
+  now you can get a browser window for splash-jupyter when it is executed
+  from docker;
+* proxy authentication is fixed;
+* logging improvements: logs now contain request arguments in JSON format;
+  errors are logged;
 
 There are **backwards-incompatible** changes
 to :ref:`Splash Scripting <scripting-tutorial>`: previously, different
@@ -49,10 +54,21 @@ Unfortunately this requires changes to existing user scripts:
   :ref:`splash-on-response` callbacks is changed: instead of
   ``response.request`` write ``response.request.info``.
 
-Splash no longer supports QT-based disk cache; it was disable by default
+Serialization of JS objects in :ref:`splash-jsfunc`, :ref:`splash-evaljs`
+and :ref:`splash-wait-for-resume` **is changed**: circular objects are
+no longer returned, Splash doesn't try to serialize DOM elements, and error
+messages are changed.
+
+Splash **no longer supports** QT-based disk cache; it was disable by default
 and it usage was discouraged since Splash 1.0, in Splash 2.0 ``--cache``
 command-line option is removed. For HTTP cache there are better options like
 `Squid <http://www.squid-cache.org/>`_.
+
+Another **backwards-incompatible** change is that Splash-as-a-proxy feature
+is removed. Please use regular HTTP API instead of this proxy interface.
+Of course, Splash will still support using proxies to make requests,
+these are two different features.
+
 
 
 1.8 (2015-09-29)
