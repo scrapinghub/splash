@@ -1,6 +1,14 @@
 Changes
 =======
 
+2.0.1 (25-02-2016)
+------------------
+
+This is a bugfix release:
+
+* XSS in HTTP UI is fixed;
+* Splash-Jupyter docker image is fixed.
+
 2.0 (21-02-2016)
 ----------------
 
