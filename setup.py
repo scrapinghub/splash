@@ -50,6 +50,7 @@ setup_args = {
 
         'examples/*.lua',
         'lua_modules/*.lua',
+        'lua_modules/libs/*.lua',
         'lua_modules/vendor/*.lua',
         'kernel/inspections/*.json',
         'kernel/kernels/splash-py2/*.*',
