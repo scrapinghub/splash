@@ -384,6 +384,10 @@ CODEMIRROR_RESOURCES = """
 
 """
 
+def safe_json(obj):
+    """ Encode JSON so that it can be embedded safely inside HTML"""
+    return json.dumps(obj).replace('<', '\\u003c')
+
 
 class DemoUI(_ValidatingResource):
     isLeaf = True
@@ -503,7 +507,7 @@ class DemoUI(_ValidatingResource):
         </html>
         """ % dict(
             version=splash.__version__,
-            options=json.dumps({
+            options=safe_json({
                 "params": params,
                 "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
@@ -678,7 +682,7 @@ end
         </html>""" % dict(
             version=splash.__version__,
             theme=BOOTSTRAP_THEME,
-            options=json.dumps({
+            options=safe_json({
                 "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
                 "example_script": self.get_example_script(),
