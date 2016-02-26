@@ -306,8 +306,8 @@ class BrowserTab(QObject):
             # say headers are case-insensitive, so they can be uppercase or lowercase
             if not isinstance(headers, dict):
                 headers = dict(headers)
-            headers = {to_bytes(k.lower()): to_bytes(v) for k, v in headers.items()}
-            user_agent = headers.get(b"user-agent")
+            headers_copy = {to_bytes(k.lower()): to_bytes(v) for k, v in headers.copy().items()}
+            user_agent = headers_copy.get(b"user-agent")
             if user_agent:
                 self.set_user_agent(user_agent)
 
@@ -964,8 +964,7 @@ class _SplashHttpClient(QObject):
             headers = headers.items()
 
         for name, value in headers or []:
-            name, value = to_bytes(name), to_bytes(value)
-            request.setRawHeader(name, value)
+            request.setRawHeader(to_bytes(name), to_bytes(value))
 
     def _delete_reply(self, reply):
         self._replies.remove(reply)
