@@ -1,6 +1,13 @@
 Changes
 =======
 
+2.0.2 (26-02-2016)
+------------------
+
+This is a bugfix release:
+
+* an issue which may cause segfaults is fixed.
+
 2.0.1 (25-02-2016)
 ------------------
 
