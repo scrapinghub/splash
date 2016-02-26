@@ -364,6 +364,7 @@ class BrowserTab(QObject):
         self.web_view.close()
         self.web_page.deleteLater()
         self.web_view.deleteLater()
+        self.network_manager.deleteLater()
         self._cancel_all_timers()
 
     def _on_before_close(self):
