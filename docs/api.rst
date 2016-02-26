@@ -55,7 +55,8 @@ resource_timeout : float : optional
   A timeout (in seconds) for individual network requests.
 
   See also: :ref:`splash-on-request` and its
-  ``request:set_timeout(timeout)`` method.
+  ``request:set_timeout(timeout)`` method; :ref:`splash-resource-timeout`
+  attribute.
 
 .. _arg-wait:
 
