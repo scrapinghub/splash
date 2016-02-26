@@ -3122,7 +3122,8 @@ class VersionTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, splash_version)
+        version_min_maj = '.'.join(splash_version.split('.')[:2])
+        self.assertEqual(resp.text, version_min_maj)
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
