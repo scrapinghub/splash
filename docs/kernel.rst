@@ -57,7 +57,7 @@ in a "manual way" - see :ref:`manual-install-ubuntu`.
 1. Install IPython/Jupyter with notebook feature. Splash kernel requires
    IPython 4.x::
 
-       $ pip3 install 'ipython[notebook] >= 4.0.0, < 5.0'
+       $ pip3 install 'ipython[notebook] >= 4.1.2, < 5.0'
 
 2. Make sure Splash is installed: run ``pip3 install -U splash``. If you use
    Splash master branch run ``pip3 install -U .`` from source checkout
