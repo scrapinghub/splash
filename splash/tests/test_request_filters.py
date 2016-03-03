@@ -35,7 +35,7 @@ class BaseFiltersTest(BaseRenderTest):
 
 class FiltersTestHTML(BaseFiltersTest):
 
-    def test_filtering_work(self):
+    def test_filtering_works(self):
         r = self.request(self.params())
         self.assertFiltersWork(r, noscript=False, noscript2=False)
 

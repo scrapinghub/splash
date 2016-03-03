@@ -29,7 +29,8 @@ class AllowedDomainsMiddleware(object):
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
         if not host_re.match(six.text_type(request.url().host())):
             if self.verbosity >= 2:
-                log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
+                msg = "Dropped offsite %s" % request_repr(request, operation)
+                log.msg(msg, system='request_middleware')
             drop_request(request)
         return request
 
@@ -199,5 +200,5 @@ class AdblockRulesRegistry(object):
     def get_unknown_filters(self, filter_names):
         return [
             name for name in filter_names
-            if not (self.filter_is_known(name) or name=='none')
+            if not (self.filter_is_known(name) or name == 'none')
         ]

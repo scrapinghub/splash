@@ -364,7 +364,6 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         self.request_middlewares = request_middlewares
         self.response_middlewares = response_middlewares
 
-
     def run_response_middlewares(self):
         reply = self.sender()
         reply.metaDataChanged.disconnect(self.run_response_middlewares)
@@ -378,6 +377,7 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
                 self.log(traceback.format_exc(), min_level=1, format_msg=False)
 
     def createRequest(self, operation, request, outgoingData=None):
+        # XXX: This method MUST return a reply, otherwise PyQT segfaults.
         render_options = self._get_render_options(request)
         if render_options:
             try:
