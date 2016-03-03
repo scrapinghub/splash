@@ -332,12 +332,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                 # should we raise errors here?
                 # https://github.com/scrapinghub/splash/issues/161
                 self.log("error in %s callback" % event_name, min_level=1)
-                # Log the traceback. It requires escaping because
-                # self.log uses str.format.
-                tb = traceback.format_exc().replace('{', '{{').replace('}', '}}')
-                self.log(tb, min_level=1)
+                self.log(traceback.format_exc(), min_level=1, format_msg=False)
 
-    def log(self, msg, reply=None, min_level=2):
+    def log(self, msg, reply=None, min_level=2, format_msg=True):
         if self.verbosity < min_level:
             return
 
@@ -348,7 +345,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             if not url:
                 return
 
-        msg = msg.format(url=url)
+        if format_msg:
+            msg = msg.format(url=url)
         log.msg(msg, system='network-manager')
 
 
@@ -372,14 +370,23 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
         reply.metaDataChanged.disconnect(self.run_response_middlewares)
         render_options = self._get_render_options(reply.request())
         if render_options:
-            for middleware in self.response_middlewares:
-                middleware.process(reply, render_options)
+            try:
+                for middleware in self.response_middlewares:
+                    middleware.process(reply, render_options)
+            except:
+                self.log("internal error in response middleware", min_level=1)
+                self.log(traceback.format_exc(), min_level=1, format_msg=False)
 
     def createRequest(self, operation, request, outgoingData=None):
         render_options = self._get_render_options(request)
         if render_options:
-            for middleware in self.request_middlewares:
-                request = middleware.process(request, render_options, operation, outgoingData)
+            try:
+                for middleware in self.request_middlewares:
+                    request = middleware.process(request, render_options, operation, outgoingData)
+            except:
+                self.log("internal error in request middleware", min_level=1)
+                self.log(traceback.format_exc(), min_level=1, format_msg=False)
+
         reply = super(SplashQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
         if render_options:
             reply.metaDataChanged.connect(self.run_response_middlewares)
