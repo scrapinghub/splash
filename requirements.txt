@@ -3,7 +3,7 @@
 twisted >= 15.5.0
 qt5reactor
 psutil
-adblockparser >= 0.4
+adblockparser >= 0.5
 https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=re2
 xvfbwrapper
 Pillow

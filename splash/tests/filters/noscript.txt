@@ -1,1 +1,4 @@
-^script.js|
+^script.js|$domain=0.0.0.0
+^script.js|$domain=localhost
+^script.js|$domain=127.0.0.1
+^script2.js|$domain=example.com

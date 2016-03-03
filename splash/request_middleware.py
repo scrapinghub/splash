@@ -108,7 +108,12 @@ class AdblockMiddleware(object):
             else:
                 return request
 
-        url, options = self._url_and_adblock_options(request, render_options)
+        url = six.text_type(request.url().toString())
+        browser_url = self._get_browser_url(request)
+        domain = urlsplit(browser_url).hostname or ''
+        # XXX: here we're using domain of a parent frame
+        # for requests coming from iframes.
+        options = {'domain': domain}
         blocking_filter = self.rules.get_blocking_filter(filter_names, url, options)
         if blocking_filter:
             if self.verbosity >= 2:
@@ -121,11 +126,14 @@ class AdblockMiddleware(object):
             drop_request(request)
         return request
 
-    def _url_and_adblock_options(self, request, render_options):
-        url = six.text_type(request.url().toString())
-        domain = urlsplit(render_options.get_url()).netloc
-        options = {'domain': domain}
-        return url, options
+    def _get_browser_url(self, request):
+        """ Return URL which is currently in 'address bar' """
+        current_frame = get_request_webframe(request)
+        if not current_frame:
+            return ""
+        # in case of iframes use URL from 'address bar', not iframe's URL
+        main_frame = current_frame.page().mainFrame()
+        return six.text_type(main_frame.url().toString())
 
 
 class AdblockRulesRegistry(object):

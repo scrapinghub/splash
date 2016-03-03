@@ -54,6 +54,14 @@ class FiltersTestHTML(BaseFiltersTest):
         self.assertStatusCode(r, 400)
         self.assertIn('foo', r.text)
 
+    def test_dont_filter_main_request(self):
+        r = self.request({
+            'url': self.mockurl('iframes/script.js'),
+            'filters': 'noscript'
+        })
+        self.assertStatusCode(r, 200)
+        self.assertIn('document.write', r.text)
+
 
 class DefaultFiltersTest(BaseFiltersTest):
     def ts_request(self, ts2, query=None, endpoint='render.html'):
