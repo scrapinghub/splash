@@ -1,6 +1,17 @@
 Changes
 =======
 
+2.0.3 (04-03-2016)
+------------------
+
+This is a bugfix release:
+
+* Splash Notebook is fixed to work with recent ipykernel versions;
+* segfaults in adblock middleware are fixed;
+* adblock parsing issues are fixed by upgrading adblockparser to v0.5;
+* fixed handling of adblock rules with 'domain' option: domain is now
+  extracted from the page URL, not necessarily from 'url' Splash argument.
+
 2.0.2 (26-02-2016)
 ------------------
 
