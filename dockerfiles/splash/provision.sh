@@ -141,7 +141,7 @@ install_python_deps () {
         qt5reactor==0.3 \
         psutil==3.4.2 \
         Twisted==15.5.0 \
-        adblockparser==0.4 \
+        adblockparser==0.5 \
         xvfbwrapper==0.2.5 \
         funcparserlib==0.3.6 \
         Pillow==3.1.0 \

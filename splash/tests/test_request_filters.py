@@ -35,7 +35,7 @@ class BaseFiltersTest(BaseRenderTest):
 
 class FiltersTestHTML(BaseFiltersTest):
 
-    def test_filtering_work(self):
+    def test_filtering_works(self):
         r = self.request(self.params())
         self.assertFiltersWork(r, noscript=False, noscript2=False)
 
@@ -53,6 +53,14 @@ class FiltersTestHTML(BaseFiltersTest):
         r = self.request(self.params(filters='foo,noscript2'))
         self.assertStatusCode(r, 400)
         self.assertIn('foo', r.text)
+
+    def test_dont_filter_main_request(self):
+        r = self.request({
+            'url': self.mockurl('iframes/script.js'),
+            'filters': 'noscript'
+        })
+        self.assertStatusCode(r, 200)
+        self.assertIn('document.write', r.text)
 
 
 class DefaultFiltersTest(BaseFiltersTest):

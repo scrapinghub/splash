@@ -29,7 +29,8 @@ class AllowedDomainsMiddleware(object):
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
         if not host_re.match(six.text_type(request.url().host())):
             if self.verbosity >= 2:
-                log.msg("Dropped offsite %s" % (request_repr(request, operation),), system='request_middleware')
+                msg = "Dropped offsite %s" % request_repr(request, operation)
+                log.msg(msg, system='request_middleware')
             drop_request(request)
         return request
 
@@ -107,7 +108,12 @@ class AdblockMiddleware(object):
             else:
                 return request
 
-        url, options = self._url_and_adblock_options(request, render_options)
+        url = six.text_type(request.url().toString())
+        browser_url = self._get_browser_url(request)
+        domain = urlsplit(browser_url).hostname or ''
+        # XXX: here we're using domain of a parent frame
+        # for requests coming from iframes.
+        options = {'domain': domain}
         blocking_filter = self.rules.get_blocking_filter(filter_names, url, options)
         if blocking_filter:
             if self.verbosity >= 2:
@@ -120,11 +126,14 @@ class AdblockMiddleware(object):
             drop_request(request)
         return request
 
-    def _url_and_adblock_options(self, request, render_options):
-        url = six.text_type(request.url().toString())
-        domain = urlsplit(render_options.get_url()).netloc
-        options = {'domain': domain}
-        return url, options
+    def _get_browser_url(self, request):
+        """ Return URL which is currently in 'address bar' """
+        current_frame = get_request_webframe(request)
+        if not current_frame:
+            return ""
+        # in case of iframes use URL from 'address bar', not iframe's URL
+        main_frame = current_frame.page().mainFrame()
+        return six.text_type(main_frame.url().toString())
 
 
 class AdblockRulesRegistry(object):
@@ -199,5 +208,5 @@ class AdblockRulesRegistry(object):
     def get_unknown_filters(self, filter_names):
         return [
             name for name in filter_names
-            if not (self.filter_is_known(name) or name=='none')
+            if not (self.filter_is_known(name) or name == 'none')
         ]
