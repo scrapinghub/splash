@@ -26,13 +26,13 @@ else:
             super(Kernel, self).__init__(**kwargs)
 
             # XXX: A HUGE HACK
-            # dispatch_control and dispatch_shell methods
+            # In existing ipykernel implementation
+            # `dispatch_control` and `dispatch_shell` methods
             # publish 'idle' state at the end. This is not correct
-            # in presence of async handlers. Overriding dispatch_control
-            # and dispatch_shell is problematic because it is a big copy-paste.
+            # in presence of async handlers. Overriding `dispatch_control` and
+            # `dispatch_shell` is problematic because it is a big copy-paste.
             # So all handlers are overridden to set "idle" at the end,
-            # and _publish_status skips "idle" by default.
-
+            # and `_publish_status` skips "idle" by default.
             this = self
             def send_idle(meth):
                 @functools.wraps(meth)
@@ -61,6 +61,11 @@ else:
 
         def execute_request(self, stream, ident, parent):
             """handle an execute_request"""
+            # This function is mostly a copy-pasted version from ipykernel,
+            # but it is split into several functions in order to allow
+            # overriding them in subclasses.
+
+            # ============ BEGIN COPY-PASTE =============
             try:
                 content = parent[u'content']
                 code = py3compat.cast_unicode_py2(content[u'code'])
@@ -73,7 +78,7 @@ else:
                 self.log.error("%s", parent)
                 return
 
-            md = self._make_metadata(parent['metadata'])
+            metadata = self.init_metadata(parent)
 
             # Re-broadcast our input for the benefit of listening clients, and
             # start computing output
@@ -83,42 +88,26 @@ else:
 
             reply_content = self.do_execute(code, silent, store_history,
                                             user_expressions, allow_stdin)
-            self.send_execute_reply(stream, ident, parent, md, reply_content)
 
-        def send_execute_reply(self, stream, ident, parent, md, reply_content):
+            # ============ END COPY-PASTE =============
+            self.send_execute_reply(stream, ident, parent, metadata, reply_content)
+
+        def send_execute_reply(self, stream, ident, parent, metadata, reply_content):
             """ Send a reply to execute_request """
 
-            # Flush output before sending the reply.
-            self._flush_execute_output()
+            # This function is mostly copy-pasted from the last part of
+            # ipykernel's execute_reply method.
+            # It is extracted to allow overriding in subclasses.
+            # Splash kernel overrides it for async replies: instead
+            # of returning result immediately it only calls the original
+            # implementation when async reply is received.
 
-            # Cleanup the reply and prepare metadata
-            reply_content = json_clean(reply_content)
-
-            md = md.copy()
-            md['status'] = reply_content['status']
-            if reply_content['status'] == 'error' and \
-                            reply_content['ename'] == 'UnmetDependency':
-                    md['dependencies_met'] = False
-
-            # Publish the reply
-            reply_msg = self.session.send(stream, u'execute_reply',
-                                          reply_content, parent, metadata=md,
-                                          ident=ident)
-            # Handle the reply message
             content = parent[u'content']
             stop_on_error = content.get('stop_on_error', True)
             silent = content[u'silent']
 
-            self.log.debug("%s", reply_msg)
+            # ============ BEGIN COPY-PASTE ============
 
-            if not silent and reply_msg['content']['status'] == u'error' and stop_on_error:
-                self._abort_queues()
-
-            self._publish_idle()
-            if hasattr(stream, 'flush'):
-                stream.flush()
-
-        def _flush_execute_output(self):
             # Flush output before sending the reply.
             sys.stdout.flush()
             sys.stderr.flush()
@@ -127,3 +116,22 @@ else:
             # to better understand what's going on.
             if self._execute_sleep:
                 time.sleep(self._execute_sleep)
+
+            # Send the reply
+            reply_content = json_clean(reply_content)
+            metadata = self.finish_metadata(parent, metadata, reply_content)
+
+            reply_msg = self.session.send(stream, u'execute_reply',
+                                          reply_content, parent, metadata=metadata,
+                                          ident=ident)
+            self.log.debug("%s", reply_msg)
+
+            if not silent and reply_msg['content']['status'] == u'error' and stop_on_error:
+                self._abort_queues()
+
+            # ============== END COPY-PASTE ==============
+
+            # fix idle signal handling for async replies
+            self._publish_idle()
+            if hasattr(stream, 'flush'):
+                stream.flush()

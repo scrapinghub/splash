@@ -279,6 +279,7 @@ def server_factory(network_manager_factory, verbosity, **kwargs):
     kernel.kernel.eventloop = loop_qt5
     kernel.start()
 
+
 def start():
     splash_args = os.environ.get('SPLASH_ARGS', '').split()
     server.main(jupyter=True, argv=splash_args, server_factory=server_factory)

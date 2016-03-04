@@ -700,6 +700,11 @@ If ``default.txt`` file is present in ``--filters-path`` folder it is
 used by default when ``filters`` argument is not specified. Pass
 ``filters=none`` if you don't want default filters to be applied.
 
+Only related resources are filtered out by request filters; 'main' page loading
+request can't be blocked this way. If you really want to do that consider
+checking URL against Adblock Plus filters before sending it to Splash
+(e.g. for Python there is `adblockparser`_ library).
+
 To learn about Adblock Plus filter syntax check these links:
 
 * https://adblockplus.org/en/filter-cheatsheet
