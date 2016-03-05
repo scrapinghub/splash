@@ -144,6 +144,10 @@ class BaseRenderTest(unittest.TestCase):
                          "Region color (%s) doesn't match the etalon (%s)" %
                          (color, etalon))
 
+    def assertImagesEqual(self, img1, img2):
+        diffbox = ImageChops.difference(img1, img2).getbbox()
+        self.assertIsNone(diffbox, ("Images differ in region %s" % (diffbox,)))
+
 
 class Base(object):
     # a hack to skip running of a base RenderTest
@@ -549,10 +553,6 @@ Tiling is enabled in raster mode when any dimension of the viewport reaches
             r = self.request(query)
             img = self.assertPng(r, width=99, height=height)
             self.assertImagesEqual(full_img.crop((0, 0, 99, height)), img)
-
-    def assertImagesEqual(self, img1, img2):
-        diffbox = ImageChops.difference(img1, img2).getbbox()
-        self.assertIsNone(diffbox, ("Images differ in region %s" % (diffbox,)))
 
 
 class RenderJsonTest(Base.RenderTest):
