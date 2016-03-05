@@ -3112,6 +3112,63 @@ end
                                 splash:set_viewport_full()
                                 """, url=self.mockurl('delay'))
 
+    def _test_render_region_impl(self, **kwargs):
+        script = """
+        function main(splash)
+            args = splash.args
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+            full = splash:png()
+            region = {args.left, args.top, args.right, args.bottom}
+            region = splash:png{region={300, 50, 700, 110},
+                                scale_method=args.scale_method}
+            return {region=region, full=full}
+        end
+        """
+        region = kwargs.get('region', (300, 50, 700, 110))
+        out = self.return_json_from_lua(
+            script,
+            url=self.mockurl('red-green'),
+            left=region[0], top=region[1], right=region[2], bottom=region[3],
+            scale_method=kwargs.get('scale_method', 'raster'))
+        full_img = Image.open(BytesIO(base64.b64decode(out['full'])))
+        region_img = Image.open(BytesIO(base64.b64decode(out['region'])))
+        self.assertEqual(region_img.size, (400, 60))
+        self.assertImagesEqual(full_img.crop((300, 50, 700, 110)),
+                               region_img)
+
+    def test_render_region_raster(self):
+        self._test_render_region_impl(scale_method='raster')
+
+    def test_render_region_vector(self):
+        self._test_render_region_impl(scale_method='vector')
+
+    @pytest.mark.xfail
+    def test_render_region_with_tiling(self):
+        # Should probably alter red-green page resource so that it can request
+        # bigger body size and render_all=1 would produce a tiled image.
+        # Otherwise the viewport size is limited by 20000x20000.
+        raise NotImplementedError("not implemented yet")
+
+    @pytest.mark.xfail
+    def test_render_region_with_resizing(self):
+        raise NotImplementedError("not implemented yet")
+
+    @pytest.mark.xfail
+    def test_render_region_with_resizing_and_height_trimming(self):
+        raise NotImplementedError("not implemented yet")
+
+    def test_render_region_errors(self):
+        out = self.request_lua("""
+        function main(splash) splash:png{region='foobar'} end
+        """)
+        assert out.status_code == 400
+        errmsg = out.json()
+        assert errmsg['error'] == 400
+        assert errmsg['info'] == ("region must be a table containing 4 numbers"
+                                  " {left, top, right, bottom} ")
+
 
 class VersionTest(BaseLuaRenderTest):
     def test_version(self):

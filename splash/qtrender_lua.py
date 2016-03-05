@@ -569,26 +569,40 @@ class Splash(BaseExposedObject):
 
     @command()
     def png(self, width=None, height=None, render_all=False,
-            scale_method=None):
+            scale_method=None, region=None):
         if width is not None:
             width = int(width)
         if height is not None:
             height = int(height)
+        if region is not None:
+            try:
+                region = tuple(int(region[r]) for r in range(1, 5))
+            except Exception:
+                raise ScriptError(
+                    "region must be a table containing 4 numbers"
+                    " {left, top, right, bottom} ")
         result = self.tab.png(width, height, b64=False, render_all=render_all,
-                              scale_method=scale_method)
+                              scale_method=scale_method, region=region)
         return BinaryCapsule(result, 'image/png')
 
     @command()
     def jpeg(self, width=None, height=None, render_all=False,
-             scale_method=None, quality=None):
+             scale_method=None, quality=None, region=None):
         if width is not None:
             width = int(width)
         if height is not None:
             height = int(height)
         if quality is not None:
             quality = int(quality)
+        if region is not None:
+            try:
+                region = tuple(int(region[r]) for r in range(1, 5))
+            except Exception:
+                raise ScriptError("region must be a table containing 4 numbers"
+                                  " {left, top, right, bottom} ")
         result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
-                               scale_method=scale_method, quality=quality)
+                               scale_method=scale_method, quality=quality,
+                               region=region)
         return BinaryCapsule(result, 'image/jpeg')
 
     @command()

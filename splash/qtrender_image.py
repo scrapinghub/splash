@@ -20,7 +20,7 @@ class QtImageRenderer(object):
     QPAINTER_MAXSIZE = 32766
 
     def __init__(self, web_page, logger=None, image_format=None,
-                 width=None, height=None, scale_method=None):
+                 width=None, height=None, scale_method=None, region=None):
         """Initialize renderer.
 
         :type web_page: PyQt5.QtWebKit.QWebPage
@@ -29,6 +29,7 @@ class QtImageRenderer(object):
         :type width: int
         :type height: int
         :type scale_method: str {'raster', 'vector'}
+        :type region: (int, int, int, int)
 
         """
         self.web_page = web_page
@@ -40,6 +41,7 @@ class QtImageRenderer(object):
         if scale_method is None:
             scale_method = defaults.IMAGE_SCALE_METHOD
         self.scale_method = scale_method
+        self.region = region
         self.image_format = image_format.upper()
         if not (self.is_png() or self.is_jpeg()):
             raise ValueError('Unexpected image format %s, should be PNG or JPEG' %
@@ -98,7 +100,11 @@ class QtImageRenderer(object):
         # 2. render_qwebpage_raster/-vector
         # 3. render_qwebpage_impl
         # 4. render_qwebpage_full/-tiled
-        web_viewport = QRect(QPoint(0, 0), self.web_page.viewportSize())
+        if self.region is None:
+            web_viewport = QRect(QPoint(0, 0), self.web_page.viewportSize())
+        else:
+            left, top, right, bottom = self.region
+            web_viewport = QRect(QPoint(left, top), QPoint(right - 1, bottom - 1))
         img_viewport, img_size = self._calculate_image_parameters(
             web_viewport, self.width, self.height)
         self.logger.log("image render: output size=%s, viewport=%s" %
@@ -160,6 +166,13 @@ class QtImageRenderer(object):
         :type image_size: QSize
 
         """
+        self.logger.log("image render (raster): rendering %s of the web page" %
+                        in_viewport, min_level=2)
+        self.logger.log("image render (raster): rendering into %s of the canvas" %
+                        out_viewport, min_level=2)
+        self.logger.log("image render (raster): canvas size=%s" % image_size,
+                        min_level=2)
+
         render_rect = QRect(in_viewport)
         if in_viewport.size() == out_viewport.size():
             # If no resizing is requested, we can make canvas of the size of the
@@ -190,7 +203,9 @@ class QtImageRenderer(object):
         # To perform pixel-wise rescaling, we first render the image without
         # rescaling via vector-based method and resize/crop afterwards.
         canvas = self._render_qwebpage_vector(
-            in_viewport=render_rect, out_viewport=render_rect, image_size=canvas_size)
+            in_viewport=render_rect,
+            out_viewport=QRect(QPoint(0, 0), render_rect.size()),
+            image_size=canvas_size)
         if in_viewport.size() != out_viewport.size():
             self.logger.log("Scaling canvas (%s) to image viewport (%s)" %
                             (canvas.size, out_viewport.size()), min_level=2)
