@@ -3118,15 +3118,15 @@ class RenderRegionTest(BaseLuaRenderTest):
         script = """
         treat = require('treat')
         function main(splash)
-            args = splash.args
+            local args = splash.args
             splash:set_viewport_size(1024, 768)
             splash:go(args.url)
             splash:wait(0.1)
-            full = splash:png()
-            coords = {args.left, args.top, args.right, args.bottom}
-            shot1 = splash:png{region=coords, scale_method=args.scale_method}
+            local full = splash:png()
+            local coords = {args.left, args.top, args.right, args.bottom}
+            local shot1 = splash:png{region=coords, scale_method=args.scale_method}
             treat.as_array(coords)
-            shot2 = splash:png{region=coords, scale_method=args.scale_method}
+            local shot2 = splash:png{region=coords, scale_method=args.scale_method}
             return {shots=treat.as_array({shot1, shot2}), full=full}
         end
         """
@@ -3164,15 +3164,49 @@ class RenderRegionTest(BaseLuaRenderTest):
         resp = self.request_lua(script, {'url': self.mockurl('red-green')})
         self.assertScriptError(resp, ScriptError.LUA_ERROR, 'assertion')
 
+    def _test_render_region_with_resizing_impl(self, scale_method):
+        script = """
+        function main(splash)
+            local args = splash.args
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+            local region = {args.left, args.top, args.right, args.bottom}
+            local full = splash:png()
+            local shot = splash:png{
+                region=region,
+                scale_method=args.scale_method,
+                width=args.width,
+            }
+            return {shot=shot, full=full}
+        end
+        """
+        region = (300, 50, 700, 110)
+        resp = self.request_lua(script, dict(
+            url=self.mockurl('red-green'),
+            left=region[0], top=region[1], right=region[2], bottom=region[3],
+            scale_method=scale_method,
+            width=200,  # 2x smaller image
+        ))
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out['full'])))
+        region_img = Image.open(BytesIO(base64.b64decode(out['shot'])))
+        self.assertEqual(region_img.size, (200, 30))
+        self.assertImagesEqual(full_img.crop(region).resize((200, 30)),
+                               region_img)
+
+    def test_render_region_with_resizing_raster(self):
+        self._test_render_region_with_resizing_impl(scale_method='raster')
+
+    def test_render_region_with_resizing_vector(self):
+        self._test_render_region_with_resizing_impl(scale_method='vector')
+
     @pytest.mark.xfail
     def test_render_region_with_tiling(self):
         # Should probably alter red-green page resource so that it can request
         # bigger body size and render_all=1 would produce a tiled image.
         # Otherwise the viewport size is limited by 20000x20000.
-        raise NotImplementedError("not implemented yet")
-
-    @pytest.mark.xfail
-    def test_render_region_with_resizing(self):
         raise NotImplementedError("not implemented yet")
 
     @pytest.mark.xfail
