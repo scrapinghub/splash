@@ -46,6 +46,9 @@ class QtImageRenderer(object):
         if not (self.is_png() or self.is_jpeg()):
             raise ValueError('Unexpected image format %s, should be PNG or JPEG' %
                              self.image_format)
+        if self.region is not None and self.height:
+            raise ValueError("'height' argument is not supported when "
+                             "'region' is argument is passed")
         # For JPEG it's okay to use this format as well, but canvas should be
         # white to remove black areas from image where it was transparent
         self.qt_image_format = QImage.Format_ARGB32

@@ -3209,9 +3209,19 @@ class RenderRegionTest(BaseLuaRenderTest):
         # Otherwise the viewport size is limited by 20000x20000.
         raise NotImplementedError("not implemented yet")
 
-    @pytest.mark.xfail
     def test_render_region_with_resizing_and_height_trimming(self):
-        raise NotImplementedError("not implemented yet")
+        script = """
+        function main(splash)
+            splash:set_viewport_size(1024, 768)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+            local img = splash:png{region={10, 10, 30, 30}, height=100}
+            return {img=img}
+        end
+        """
+        resp = self.request_lua(script, {'url': self.mockurl('red-green')})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               "'height' argument is not supported")
 
     def test_render_region_errors(self):
         out = self.request_lua("""
