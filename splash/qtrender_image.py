@@ -107,6 +107,10 @@ class QtImageRenderer(object):
             web_viewport = QRect(QPoint(left, top), QPoint(right - 1, bottom - 1))
         img_viewport, img_size = self._calculate_image_parameters(
             web_viewport, self.width, self.height)
+        if img_viewport.isEmpty() or img_size.isEmpty():
+            self.logger.log("requested image is empty", min_level=1)
+            return EmptyImage()
+
         self.logger.log("image render: output size=%s, viewport=%s" %
                         (img_size, img_viewport), min_level=2)
 
@@ -487,3 +491,21 @@ class WrappedPillowImage(WrappedImage):
         buf = BytesIO()
         self.img.save(buf, 'jpeg', quality=quality)
         return buf.getvalue()
+
+
+class EmptyImage(WrappedImage):
+    @property
+    def size(self):
+        return QSize()
+
+    def resize(self, new_size):
+        pass
+
+    def crop(self, rect):
+        pass
+
+    def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
+        return b''
+
+    def to_jpeg(self, quality=None):
+        return b''

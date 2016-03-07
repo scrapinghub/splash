@@ -3135,7 +3135,7 @@ class RenderRegionTest(BaseLuaRenderTest):
         resp = self.request_lua(script, dict(
             url=self.mockurl('red-green'),
             left=region[0], top=region[1], right=region[2], bottom=region[3],
-            scale_method=kwargs.get('scale_method', 'raster')
+            scale_method=kwargs.get('scale_method', 'raster'),
         ))
         self.assertStatusCode(resp, 200)
         out = resp.json()
@@ -3150,6 +3150,19 @@ class RenderRegionTest(BaseLuaRenderTest):
 
     def test_render_region_vector(self):
         self._test_render_region_impl(scale_method='vector')
+
+    def test_empty_rect(self):
+        script = """
+        function main(splash)
+            splash:set_viewport_size(1024, 768)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+            local img = assert(splash:png{region={10, 10, 10, 10}})
+            return {img=img}
+        end
+        """
+        resp = self.request_lua(script, {'url': self.mockurl('red-green')})
+        self.assertScriptError(resp, ScriptError.LUA_ERROR, 'assertion')
 
     @pytest.mark.xfail
     def test_render_region_with_tiling(self):

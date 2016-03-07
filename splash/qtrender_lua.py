@@ -577,6 +577,8 @@ class Splash(BaseExposedObject):
         region = self._validate_region(region)
         result = self.tab.png(width, height, b64=False, render_all=render_all,
                               scale_method=scale_method, region=region)
+        if not result:
+            return None
         return BinaryCapsule(result, 'image/png')
 
     @command()
@@ -593,6 +595,8 @@ class Splash(BaseExposedObject):
         result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
                                scale_method=scale_method, quality=quality,
                                region=region)
+        if not result:
+            return None
         return BinaryCapsule(result, 'image/jpeg')
 
     def _validate_region(self, region):

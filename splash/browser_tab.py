@@ -757,7 +757,7 @@ class BrowserTab(QObject):
 
     def jpeg(self, width=None, height=None, b64=False, render_all=False,
              scale_method=None, quality=None, region=None):
-        """Return screenshot in JPEG format."""
+        """ Return screenshot in JPEG format. """
         self.logger.log(
             "Getting JPEG: width=%s, height=%s, "
             "render_all=%s, scale_method=%s, quality=%s, region=%s" %

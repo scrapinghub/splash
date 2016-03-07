@@ -1020,6 +1020,7 @@ Return a `width x height` screenshot of a current page in PNG format.
   or ``'vector'``
 
 **Returns:** PNG screenshot data, as a :ref:`binary object <binary-objects>`.
+When the result is empty ``nil`` is returned.
 
 **Async:** no.
 
@@ -1065,9 +1066,16 @@ on a client (magic!):
          return {png=splash:png()}
      end
 
-If your script returns the result of ``splash:png()`` in a top-level
-``"png"`` key (as we've done in a previous example) then Splash UI
-will display it as an image.
+When an image is empty :ref:`splash-png` returns ``nil``. If you want Splash to
+raise an error in these cases use ``assert``:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         local png = assert(splash:png())
+         return {png=png}
+     end
 
 See also: :ref:`splash-jpeg`, :ref:`binary-objects`,
 :ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
@@ -1092,6 +1100,7 @@ Return a `width x height` screenshot of a current page in JPEG format.
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``
 
 **Returns:** JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
+When the image is empty ``nil`` is returned.
 
 **Async:** no.
 
@@ -1148,6 +1157,17 @@ on a client:
      function main(splash)
          assert(splash:go(splash.args.url))
          return {jpeg=splash:jpeg()}
+     end
+
+When an image is empty :ref:`splash-jpeg` returns ``nil``. If you want Splash to
+raise an error in these cases use `assert`:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         local jpeg = assert(splash:jpeg())
+         return {jpeg=jpeg}
      end
 
 See also: :ref:`splash-png`, :ref:`binary-objects`,
