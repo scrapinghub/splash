@@ -574,13 +574,7 @@ class Splash(BaseExposedObject):
             width = int(width)
         if height is not None:
             height = int(height)
-        if region is not None:
-            try:
-                region = tuple(int(region[r]) for r in range(1, 5))
-            except Exception:
-                raise ScriptError(
-                    "region must be a table containing 4 numbers"
-                    " {left, top, right, bottom} ")
+        region = self._validate_region(region)
         result = self.tab.png(width, height, b64=False, render_all=render_all,
                               scale_method=scale_method, region=region)
         return BinaryCapsule(result, 'image/png')
@@ -594,16 +588,23 @@ class Splash(BaseExposedObject):
             height = int(height)
         if quality is not None:
             quality = int(quality)
-        if region is not None:
-            try:
-                region = tuple(int(region[r]) for r in range(1, 5))
-            except Exception:
-                raise ScriptError("region must be a table containing 4 numbers"
-                                  " {left, top, right, bottom} ")
+
+        region = self._validate_region(region)
         result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
                                scale_method=scale_method, quality=quality,
                                region=region)
         return BinaryCapsule(result, 'image/jpeg')
+
+    def _validate_region(self, region):
+        if region is not None:
+            try:
+                if isinstance(region, dict):
+                    region = [region[i] for i in range(1, 5)]
+                region = tuple(int(region[i]) for i in range(4))
+            except Exception:
+                raise ScriptError("region must be a table containing 4 numbers"
+                                  " {left, top, right, bottom} ")
+        return region
 
     @command()
     def har(self, reset=False):

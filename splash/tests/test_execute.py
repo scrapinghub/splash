@@ -3112,31 +3112,38 @@ end
                                 splash:set_viewport_full()
                                 """, url=self.mockurl('delay'))
 
+
+class RenderRegionTest(BaseLuaRenderTest):
     def _test_render_region_impl(self, **kwargs):
         script = """
+        treat = require('treat')
         function main(splash)
             args = splash.args
             splash:set_viewport_size(1024, 768)
             splash:go(args.url)
             splash:wait(0.1)
             full = splash:png()
-            region = {args.left, args.top, args.right, args.bottom}
-            region = splash:png{region={300, 50, 700, 110},
-                                scale_method=args.scale_method}
-            return {region=region, full=full}
+            coords = {args.left, args.top, args.right, args.bottom}
+            shot1 = splash:png{region=coords, scale_method=args.scale_method}
+            treat.as_array(coords)
+            shot2 = splash:png{region=coords, scale_method=args.scale_method}
+            return {shots=treat.as_array({shot1, shot2}), full=full}
         end
         """
-        region = kwargs.get('region', (300, 50, 700, 110))
-        out = self.return_json_from_lua(
-            script,
+        region = 300, 50, 700, 110
+        region_size = 400, 60
+        resp = self.request_lua(script, dict(
             url=self.mockurl('red-green'),
             left=region[0], top=region[1], right=region[2], bottom=region[3],
-            scale_method=kwargs.get('scale_method', 'raster'))
+            scale_method=kwargs.get('scale_method', 'raster')
+        ))
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
         full_img = Image.open(BytesIO(base64.b64decode(out['full'])))
-        region_img = Image.open(BytesIO(base64.b64decode(out['region'])))
-        self.assertEqual(region_img.size, (400, 60))
-        self.assertImagesEqual(full_img.crop((300, 50, 700, 110)),
-                               region_img)
+        for shot in out['shots']:
+            region_img = Image.open(BytesIO(base64.b64decode(shot)))
+            self.assertEqual(region_img.size, region_size)
+            self.assertImagesEqual(full_img.crop(region), region_img)
 
     def test_render_region_raster(self):
         self._test_render_region_impl(scale_method='raster')
