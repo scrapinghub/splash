@@ -139,6 +139,10 @@ class SplashKernel(Kernel):
 
     def __init__(self, **kwargs):
         super(SplashKernel, self).__init__(**kwargs)
+        from twisted.internet import reactor
+        reactor.callLater(0, self._init)
+
+    def _init(self):
         self.tab = init_browser(SplashKernel.network_manager_factory)
 
         self.lua = SplashLuaRuntime(self.sandboxed, "", ())
