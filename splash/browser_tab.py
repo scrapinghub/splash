@@ -23,7 +23,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
-from splash.utils import to_bytes, lowercase_byte_dict
+from splash.utils import to_bytes
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -301,7 +301,7 @@ class BrowserTab(QObject):
         if body is not None:
             body = to_bytes(body)
 
-        headers_user_agent = lowercase_byte_dict(headers).get(b"user-agent")
+        headers_user_agent = _get_header_value(headers, b"user-agent")
         if headers_user_agent:
             # User passed User-Agent header to go() so we need to set
             # consistent UA for all rendering requests.
@@ -904,9 +904,9 @@ class _SplashHttpClient(QObject):
         request = self.request_obj(url, headers=headers, body=body)
 
         # setting UA for request that is not downloaded via webpage.mainFrame().load_to_mainframe()
-        ua_from_headers = lowercase_byte_dict(headers).get(b"user-agent")
+        ua_from_headers = _get_header_value(headers, b'user-agent')
         web_page_ua = self.web_page.userAgentForUrl(to_qurl(url))
-        user_agent = ua_from_headers if ua_from_headers else web_page_ua
+        user_agent = ua_from_headers or web_page_ua
         request.setRawHeader(b"user-agent", to_bytes(user_agent))
 
         if method.upper() == "POST":
@@ -1101,3 +1101,18 @@ class OneShotCallbackProxy(QObject):
 
         if self._timer is not None and self._timer.isActive():
             self._timer.stop()
+
+
+def _get_header_value(headers, name, default=None):
+    """ Return header value """
+    if not headers:
+        return default
+
+    if isinstance(headers, dict):
+        headers = headers.items()
+
+    name = to_bytes(name.lower())
+    for k, v in headers:
+        if name == to_bytes(k.lower()):
+            return v
+    return default
