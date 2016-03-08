@@ -185,3 +185,18 @@ def requires_attr(attr_name, raiser):
             return meth(self, *args, **kwargs)
         return wrapper
     return decorator
+
+
+def lowercase_byte_dict(some_dict):
+    """
+    Converts keys of dictionary to lowercase byte strings.
+    Useful when dealing with HTTP headers that are case insensitive and may
+    be bytes or strings.
+    """
+    if not isinstance(some_dict, dict):
+        try:
+            some_dict = dict(some_dict)
+        except TypeError:
+            return {}
+
+    return {to_bytes(k.lower()): v for k, v in some_dict.items()}
