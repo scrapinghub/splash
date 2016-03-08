@@ -1009,7 +1009,7 @@ splash:png
 
 Return a `width x height` screenshot of a current page in PNG format.
 
-**Signature:** ``png = splash:png{width=nil, height=nil, render_all=false, scale_method='raster'}``
+**Signature:** ``png = splash:png{width=nil, height=nil, render_all=false, scale_method='raster', region=nil}``
 
 **Parameters:**
 
@@ -1017,9 +1017,12 @@ Return a `width x height` screenshot of a current page in PNG format.
 * height - optional, height of a screenshot in pixels;
 * render_all - optional, if ``true`` render the whole webpage;
 * scale_method - optional, method to use when resizing the image, ``'raster'``
-  or ``'vector'``
+  or ``'vector'``;
+* region - optional, ``{left, top, right, bottom}`` coordinates of
+  a cropping rectangle.
 
 **Returns:** PNG screenshot data, as a :ref:`binary object <binary-objects>`.
+When the result is empty ``nil`` is returned.
 
 **Async:** no.
 
@@ -1040,6 +1043,21 @@ To set the viewport size use :ref:`splash-set-viewport-size`,
 :ref:`splash-set-viewport-full` or *render_all* argument.  ``render_all=true``
 is equivalent to running ``splash:set_viewport_full()`` just before the
 rendering and restoring the viewport size afterwards.
+
+To render an arbitrary part of a page use *region* parameter. It should
+be a table with ``{left, top, right, bottom}`` coordinates. Coordinates
+are relative to current scroll position. Currently you can't take anything
+which is not in a viewport; to make sure part of a page can be rendered call
+:ref:`splash-set-viewport-full` before using :ref:`splash-png` with *region*.
+This may be fixed in future Splash versions.
+
+.. _example-render-element:
+
+With ``region`` and a bit of JavaScript it is possible to render only a single
+HTML element. Example:
+
+.. literalinclude:: ../splash/examples/element-screenshot.lua
+   :language: lua
 
 *scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
 ``scale_method='raster'``, the image is resized per-pixel.  When
@@ -1065,9 +1083,16 @@ on a client (magic!):
          return {png=splash:png()}
      end
 
-If your script returns the result of ``splash:png()`` in a top-level
-``"png"`` key (as we've done in a previous example) then Splash UI
-will display it as an image.
+When an image is empty :ref:`splash-png` returns ``nil``. If you want Splash to
+raise an error in these cases use ``assert``:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         local png = assert(splash:png())
+         return {png=png}
+     end
 
 See also: :ref:`splash-jpeg`, :ref:`binary-objects`,
 :ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
@@ -1080,7 +1105,7 @@ splash:jpeg
 
 Return a `width x height` screenshot of a current page in JPEG format.
 
-**Signature:** ``jpeg = splash:jpeg{width=nil, height=nil, render_all=false, scale_method='raster', quality=75}``
+**Signature:** ``jpeg = splash:jpeg{width=nil, height=nil, render_all=false, scale_method='raster', quality=75, region=nil}``
 
 **Parameters:**
 
@@ -1088,10 +1113,13 @@ Return a `width x height` screenshot of a current page in JPEG format.
 * height - optional, height of a screenshot in pixels;
 * render_all - optional, if ``true`` render the whole webpage;
 * scale_method - optional, method to use when resizing the image, ``'raster'``
-  or ``'vector'``
-* quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``
+  or ``'vector'``;
+* quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``;
+* region - optional, ``{left, top, right, bottom}`` coordinates of
+  a cropping rectangle.
 
 **Returns:** JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
+When the image is empty ``nil`` is returned.
 
 **Async:** no.
 
@@ -1112,6 +1140,17 @@ To set the viewport size use :ref:`splash-set-viewport-size`,
 :ref:`splash-set-viewport-full` or *render_all* argument.  ``render_all=true``
 is equivalent to running ``splash:set_viewport_full()`` just before the
 rendering and restoring the viewport size afterwards.
+
+To render an arbitrary part of a page use *region* parameter. It should
+be a table with ``{left, top, right, bottom}`` coordinates. Coordinates
+are relative to current scroll position. Currently you can't take anything
+which is not in a viewport; to make sure part of a page can be rendered call
+:ref:`splash-set-viewport-full` before using :ref:`splash-jpeg` with *region*.
+This may be fixed in future Splash versions.
+
+With some JavaScript it is possible to render only a single HTML element
+using ``region`` parameter. See an
+:ref:`example <example-render-element>` in :ref:`splash-png` docs.
 
 *scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
 ``scale_method='raster'``, the image is resized per-pixel.  When
@@ -1148,6 +1187,17 @@ on a client:
      function main(splash)
          assert(splash:go(splash.args.url))
          return {jpeg=splash:jpeg()}
+     end
+
+When an image is empty :ref:`splash-jpeg` returns ``nil``. If you want Splash to
+raise an error in these cases use `assert`:
+
+.. code-block:: lua
+
+     function main(splash)
+         assert(splash:go(splash.args.url))
+         local jpeg = assert(splash:jpeg())
+         return {jpeg=jpeg}
      end
 
 See also: :ref:`splash-png`, :ref:`binary-objects`,

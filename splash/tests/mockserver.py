@@ -625,7 +625,9 @@ RgbStripesPage = _html_resource("""
             #ff0000, #ff0000 1px,
             #00ff00 1px, #00ff00 2px,
             #0000ff 2px, #0000ff 3px);
-    width: 10px; height: 10px}
+        width: 10px;
+        height: 10px
+    }
   </style>
   <body>
     &nbsp

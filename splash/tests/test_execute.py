@@ -3229,6 +3229,127 @@ end
                                 """, url=self.mockurl('delay'))
 
 
+class RenderRegionTest(BaseLuaRenderTest):
+    def _test_render_region_impl(self, **kwargs):
+        script = """
+        treat = require('treat')
+        function main(splash)
+            local args = splash.args
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+            local full = splash:png()
+            local coords = {args.left, args.top, args.right, args.bottom}
+            local shot1 = splash:png{region=coords, scale_method=args.scale_method}
+            treat.as_array(coords)
+            local shot2 = splash:png{region=coords, scale_method=args.scale_method}
+            return {shots=treat.as_array({shot1, shot2}), full=full}
+        end
+        """
+        region = 300, 50, 700, 110
+        region_size = 400, 60
+        resp = self.request_lua(script, dict(
+            url=self.mockurl('red-green'),
+            left=region[0], top=region[1], right=region[2], bottom=region[3],
+            scale_method=kwargs.get('scale_method', 'raster'),
+        ))
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out['full'])))
+        for shot in out['shots']:
+            region_img = Image.open(BytesIO(base64.b64decode(shot)))
+            self.assertEqual(region_img.size, region_size)
+            self.assertImagesEqual(full_img.crop(region), region_img)
+
+    def test_render_region_raster(self):
+        self._test_render_region_impl(scale_method='raster')
+
+    def test_render_region_vector(self):
+        self._test_render_region_impl(scale_method='vector')
+
+    def test_empty_rect(self):
+        script = """
+        function main(splash)
+            splash:set_viewport_size(1024, 768)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+            local img = assert(splash:png{region={10, 10, 10, 10}})
+            return {img=img}
+        end
+        """
+        resp = self.request_lua(script, {'url': self.mockurl('red-green')})
+        self.assertScriptError(resp, ScriptError.LUA_ERROR, 'assertion')
+
+    def _test_render_region_with_resizing_impl(self, scale_method):
+        script = """
+        function main(splash)
+            local args = splash.args
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+            local region = {args.left, args.top, args.right, args.bottom}
+            local full = splash:png()
+            local shot = splash:png{
+                region=region,
+                scale_method=args.scale_method,
+                width=args.width,
+            }
+            return {shot=shot, full=full}
+        end
+        """
+        region = (300, 50, 700, 110)
+        resp = self.request_lua(script, dict(
+            url=self.mockurl('red-green'),
+            left=region[0], top=region[1], right=region[2], bottom=region[3],
+            scale_method=scale_method,
+            width=200,  # 2x smaller image
+        ))
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out['full'])))
+        region_img = Image.open(BytesIO(base64.b64decode(out['shot'])))
+        self.assertEqual(region_img.size, (200, 30))
+        self.assertImagesEqual(full_img.crop(region).resize((200, 30)),
+                               region_img)
+
+    def test_render_region_with_resizing_raster(self):
+        self._test_render_region_with_resizing_impl(scale_method='raster')
+
+    def test_render_region_with_resizing_vector(self):
+        self._test_render_region_with_resizing_impl(scale_method='vector')
+
+    @pytest.mark.xfail
+    def test_render_region_with_tiling(self):
+        # Should probably alter red-green page resource so that it can request
+        # bigger body size and render_all=1 would produce a tiled image.
+        # Otherwise the viewport size is limited by 20000x20000.
+        raise NotImplementedError("not implemented yet")
+
+    def test_render_region_with_resizing_and_height_trimming(self):
+        script = """
+        function main(splash)
+            splash:set_viewport_size(1024, 768)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+            local img = splash:png{region={10, 10, 30, 30}, height=100}
+            return {img=img}
+        end
+        """
+        resp = self.request_lua(script, {'url': self.mockurl('red-green')})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               "'height' argument is not supported")
+
+    def test_render_region_errors(self):
+        out = self.request_lua("""
+        function main(splash) splash:png{region='foobar'} end
+        """)
+        assert out.status_code == 400
+        errmsg = out.json()
+        assert errmsg['error'] == 400
+        assert errmsg['info'] == ("region must be a table containing 4 numbers"
+                                  " {left, top, right, bottom} ")
+
+
 class VersionTest(BaseLuaRenderTest):
     def test_version(self):
         resp = self.request_lua("""
