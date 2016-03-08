@@ -642,6 +642,7 @@ end
                                     <li><a href="#" onclick="splash.loadExample('count-divs')">Count DIV tags</a></li>
                                     <li><a href="#" onclick="splash.loadExample('call-later')">Call Later</a></li>
                                     <li><a href="#" onclick="splash.loadExample('render-png')">Render PNG</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('element-screenshot')">Take a screenshot of a single element</a></li>
                                     <li><a href="#" onclick="splash.loadExample('log-requests')">Log requested URLs</a></li>
                                     <li><a href="#" onclick="splash.loadExample('block-css')">Block CSS</a></li>
                                 </ul>
