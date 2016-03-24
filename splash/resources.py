@@ -436,6 +436,7 @@ class DemoUI(_ValidatingResource):
             <link rel="stylesheet" href="_ui/harviewer/css/harViewer.css" type="text/css"/>
 
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
+            <link rel="icon" type="image/x-icon" href="/_ui/favicon.ico">
             <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
             <script src="https://code.jquery.com/jquery-migrate-1.2.1.js"></script>
 
@@ -595,6 +596,7 @@ end
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="/_ui/style.css">
+            <link rel="icon" type="image/x-icon" href="/_ui/favicon.ico">
             <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
             <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
             %(cm_resources)s
