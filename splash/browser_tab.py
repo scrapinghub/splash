@@ -912,7 +912,7 @@ class _SplashHttpClient(QObject):
         ua_from_headers = _get_header_value(headers, b'user-agent')
         web_page_ua = self.web_page.userAgentForUrl(to_qurl(url))
         user_agent = ua_from_headers or web_page_ua
-        request.setRawHeader(b"user-agent", to_bytes(user_agent))
+        request.setRawHeader(b"User-Agent", to_bytes(user_agent))
 
         if method.upper() == "POST":
             reply = self.network_manager.post(request, body)
