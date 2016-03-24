@@ -2552,7 +2552,7 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertNotEqual(len(headers), 0)
         self.assertEqual(headers["Header-1"], "Value 1")
         self.assertEqual(headers["Header-2"], "Value 2")
-        self.assertIn("user-agent", headers)
+        self.assertIn("User-Agent", headers)
 
     def test_get_with_custom_ua(self):
         resp = self.request_lua("""
