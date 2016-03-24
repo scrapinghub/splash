@@ -1395,11 +1395,11 @@ class JsonPostArgsTest(ArgsTest):
     request_handler = JsonPostRequestHandler
 
     def test_headers(self):
-        headers = {"user-agent": "Firefox", "content-type": "text/plain"}
+        headers = {"User-Agent": "Firefox", "content-type": "text/plain"}
         self.assertArgsPassed({"headers": headers})
 
     def test_headers_items(self):
-        headers = [["user-agent", "Firefox"], ["content-type", "text/plain"]]
+        headers = [["User-Agent", "Firefox"], ["content-type", "text/plain"]]
         self.assertArgsPassed({"headers": headers})
 
     def test_access_headers(self):
@@ -1407,12 +1407,12 @@ class JsonPostArgsTest(ArgsTest):
         function main(splash)
           local ua = "Unknown"
           if splash.args.headers then
-            ua = splash.args.headers['user-agent']
+            ua = splash.args.headers['User-Agent']
           end
           return {ua=ua, firefox=(ua=="Firefox")}
         end
         """
-        resp = self.request_lua(func, {'headers': {"user-agent": "Firefox"}})
+        resp = self.request_lua(func, {'headers': {"User-Agent": "Firefox"}})
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"ua": "Firefox", "firefox": True})
 
@@ -1876,13 +1876,13 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn("Mozilla", data["res3"])
 
         if six.PY3:
-            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
+            self.assertNotIn("b'User-Agent': b'Foozilla'", data["res1"])
+            self.assertIn("b'User-Agent': b'Foozilla'", data["res2"])
+            self.assertIn("b'User-Agent': b'Foozilla'", data["res3"])
         else:
-            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+            self.assertNotIn("'User-Agent': 'Foozilla'", data["res1"])
+            self.assertIn("'User-Agent': 'Foozilla'", data["res2"])
+            self.assertIn("'User-Agent': 'Foozilla'", data["res3"])
 
     def test_set_user_agent_base_url(self):
         resp = self.request_lua("""
@@ -2570,7 +2570,7 @@ class HttpGetTest(BaseLuaRenderTest):
     def test_get_with_custom_ua_in_headers(self):
         resp = self.request_lua("""
         function main(splash)
-            response = assert(splash:http_get{splash.args.url, headers={["user-agent"]="Value 1"}})
+            response = assert(splash:http_get{splash.args.url, headers={["User-Agent"]="Value 1"}})
             return response.request.headers
         end
         """, {"url": self.mockurl("jsrender")})
@@ -2584,7 +2584,7 @@ class HttpGetTest(BaseLuaRenderTest):
             function main(splash)
                 splash:set_user_agent("CUSTOM UA")
                 response1 = assert(splash:http_get(splash.args.url))
-                response2 = assert(splash:http_get{splash.args.url, headers={["user-agent"]="Value 1"}})
+                response2 = assert(splash:http_get{splash.args.url, headers={["User-Agent"]="Value 1"}})
                 response3 = assert(splash:http_get(splash.args.url))
 
                 return {
@@ -2598,9 +2598,9 @@ class HttpGetTest(BaseLuaRenderTest):
         resp = resp.json()
         headers1, headers2, headers3 = resp["result1"], resp["result2"], resp["result3"]
         self.assertTrue(all("User-Agent" in h for h in (headers1, headers2, headers3)))
-        self.assertEqual(headers1["user-agent"], "CUSTOM UA")
-        self.assertEqual(headers2["user-agent"], "Value 1")
-        self.assertEqual(headers3["user-agent"], "CUSTOM UA")
+        self.assertEqual(headers1["User-Agent"], "CUSTOM UA")
+        self.assertEqual(headers2["User-Agent"], "Value 1")
+        self.assertEqual(headers3["User-Agent"], "CUSTOM UA")
 
     def test_ua_on_rendering(self):
         resp = self.request_lua("""
@@ -2611,13 +2611,13 @@ class HttpGetTest(BaseLuaRenderTest):
                     result[#result+1] = response.request.headers
                 end)
 
-                response = assert(splash:go{splash.args.url, headers={["user-agent"]="Value 1"}})
+                response = assert(splash:go{splash.args.url, headers={["User-Agent"]="Value 1"}})
                 return result
             end
             """, {"url": self.mockurl("subresources")})
         self.assertStatusCode(resp, 200)
         resp = resp.json()
-        uas = [r.get("User-Agent", r.get("user-agent")) for r in resp]
+        uas = [r.get("User-Agent", r.get("User-Agent")) for r in resp]
         self.assertTrue(all(h == "Value 1" for h in uas))
 
     def test_bad_url(self):
