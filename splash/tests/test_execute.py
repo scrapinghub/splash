@@ -2534,7 +2534,7 @@ class HttpGetTest(BaseLuaRenderTest):
         headers = resp.json()
         self.assertNotEqual(len(headers), 0)
         self.assertEqual(len(headers), 1)
-        self.assertIn("Mozilla/5.0", headers["user-agent"])
+        self.assertIn("Mozilla/5.0", headers["User-Agent"])
 
     def test_get_with_custom_headers(self):
         resp = self.request_lua("""
@@ -2565,7 +2565,7 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         headers = resp.json()
         self.assertNotEqual(len(headers), 0)
-        self.assertEqual(headers["user-agent"], "CUSTOM UA")
+        self.assertEqual(headers["User-Agent"], "CUSTOM UA")
 
     def test_get_with_custom_ua_in_headers(self):
         resp = self.request_lua("""
@@ -2577,7 +2577,7 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         headers = resp.json()
         self.assertNotEqual(len(headers), 0)
-        self.assertEqual(headers["user-agent"], "Value 1")
+        self.assertEqual(headers["User-Agent"], "Value 1")
 
     def test_get_with_custom_ua_in_headers_and_set_with_splash(self):
         resp = self.request_lua("""
@@ -2597,7 +2597,7 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         resp = resp.json()
         headers1, headers2, headers3 = resp["result1"], resp["result2"], resp["result3"]
-        self.assertTrue(all("user-agent" in h for h in (headers1, headers2, headers3)))
+        self.assertTrue(all("User-Agent" in h for h in (headers1, headers2, headers3)))
         self.assertEqual(headers1["user-agent"], "CUSTOM UA")
         self.assertEqual(headers2["user-agent"], "Value 1")
         self.assertEqual(headers3["user-agent"], "CUSTOM UA")
