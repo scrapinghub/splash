@@ -368,6 +368,7 @@ class PingResource(Resource):
 
 
 
+HARVIEWER_PATH = 'harviewer-2.0.17' # Change to invalidate cache when updating harviewer
 BOOTSTRAP_THEME = 'simplex'
 
 CODEMIRROR_RESOURCES = """
@@ -433,7 +434,7 @@ class DemoUI(_ValidatingResource):
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
             <title>Splash %(version)s | %(url)s</title>
-            <link rel="stylesheet" href="_ui/harviewer/css/harViewer.css" type="text/css"/>
+            <link rel="stylesheet" href="_ui/%(harviewer_path)s/css/harViewer.css" type="text/css"/>
 
             <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/%(theme)s/bootstrap.min.css" rel="stylesheet">
             <link rel="icon" type="image/x-icon" href="/_ui/favicon.ico">
@@ -508,9 +509,11 @@ class DemoUI(_ValidatingResource):
         </html>
         """ % dict(
             version=splash.__version__,
+            harviewer_path=HARVIEWER_PATH,
             options=safe_json({
                 "params": params,
                 "endpoint": "execute" if self.lua_enabled else "render.json",
+                "harviewer_path": HARVIEWER_PATH,
                 "lua_enabled": self.lua_enabled,
             }),
             timeout=timeout,
@@ -555,7 +558,7 @@ class Root(Resource):
             ui = File(os.path.join(root, 'ui'))
 
             har_path = os.path.join(root, 'vendor', 'harviewer', 'webapp')
-            ui.putChild(b"harviewer", File(har_path))
+            ui.putChild(six.binary_type(HARVIEWER_PATH, 'ascii'), File(har_path))
             inspections_path = os.path.join(root, 'kernel', 'inspections')
             ui.putChild(b"inspections", File(inspections_path))
             examples_path = os.path.join(root, 'examples')

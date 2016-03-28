@@ -110,7 +110,8 @@ function loadHarViewer(har) {
     }
     splash.harLoaded = true;
     // Load HARViewer libraries
-    $('<script data-main="_ui/harviewer/scripts/harViewer" src="_ui/harviewer/scripts/require.js"></script>').appendTo(document.body);
+    var harPath = '_ui/' + splash.harviewer_path + '/scripts';
+    $('<script data-main="' + harPath + '/harViewer" src="' + harPath + '/require.js"></script>').appendTo(document.body);
 
     var $container = $('<div/>')
         .addClass('indent').attr('id', 'content') // Id is hardcoded into harviewer
