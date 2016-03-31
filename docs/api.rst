@@ -37,7 +37,8 @@ baseurl : string : optional
 
   Base HTML content will be feched from the URL given in the url
   argument, while relative referenced resources in the HTML-text used to
-  render the page are fetched from the URL given in the baseurl argument.
+  render the page are fetched using the URL given in the baseurl argument
+  as base.
 
 .. _arg-timeout:
 
