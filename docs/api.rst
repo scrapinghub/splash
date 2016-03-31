@@ -35,8 +35,9 @@ url : string : required
 baseurl : string : optional
   The base url to render the page with.
 
-  If given, base HTML content will be feched from the URL given in the url
-  argument, and render using this as the base url.
+  Base HTML content will be feched from the URL given in the url
+  argument, while relative referenced resources in the HTML-text used to
+  render the page are fetched from the URL given in the baseurl argument.
 
 .. _arg-timeout:
 
