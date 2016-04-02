@@ -6,7 +6,7 @@ import os
 import weakref
 import uuid
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, QEvent, pyqtSlot
+from PyQt5.QtCore import QObject, QSize, QPoint, Qt, QTimer, QEvent, pyqtSlot
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkRequest
