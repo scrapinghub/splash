@@ -729,6 +729,15 @@ class BrowserTab(QObject):
         self.store_har_timing("_onHtmlRendered")
         return result
 
+    def mouse_click(self, x, y):
+        """ mouse click on given point(x, y) of web_page"""        
+        self.logger.log("mouse click on point(%d, %d)" % (x,y), min_level=2)
+        evt = QMouseEvent(QEvent.MouseButtonPress, QPoint(x,y), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        QApplication.sendEvent(self.web_page, evt)
+        evt = QMouseEvent(QEvent.MouseButtonRelease, QPoint(x,y), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        QApplication.sendEvent(self.web_page, evt)
+        self.store_har_timing("_onClicked")
+
     def _get_image(self, image_format, width, height, render_all,
                    scale_method, region):
         old_size = self.web_page.viewportSize()
@@ -912,7 +921,7 @@ class _SplashHttpClient(QObject):
         ua_from_headers = _get_header_value(headers, b'user-agent')
         web_page_ua = self.web_page.userAgentForUrl(to_qurl(url))
         user_agent = ua_from_headers or web_page_ua
-        request.setRawHeader(b"user-agent", to_bytes(user_agent))
+        request.setRawHeader(b"User-Agent", to_bytes(user_agent))
 
         if method.upper() == "POST":
             reply = self.network_manager.post(request, body)

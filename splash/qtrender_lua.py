@@ -568,6 +568,10 @@ class Splash(BaseExposedObject):
         return self.tab.html()
 
     @command()
+    def mouse_click(self, x, y):
+        return self.tab.mouse_click(x, y) 
+
+    @command()
     def png(self, width=None, height=None, render_all=False,
             scale_method=None, region=None):
         if width is not None:
