@@ -163,6 +163,12 @@ function loadHarViewer(har) {
     return $container;
 }
 
+function downloadButton(fileName, encoding, contents) {
+    return $('<a/>').addClass('action').text('download')
+        .attr('download', fileName)
+        .attr('href', "data:" + encoding + "," + contents);
+}
+
 function renderString(s, $cnt) {
     // An string can be rendered as a simple string, as long string block or
     // as a base64-encoded image
@@ -183,10 +189,7 @@ function renderString(s, $cnt) {
         i.onload = function(){
             if(!rendered) {
                 $cnt.append('<span class="type">Image</span> (' + ext + ', ' + i.width + 'x' + i.height + ')').append(
-                    $('<a/>').addClass('action').text('download')
-                    .attr('download', splash.pageName + '.' + ext)
-                    .attr('href', "data:image/" + ext + ";base64," + s)
-                    .text('download')
+                    downloadButton(splash.pageName + '.' + ext, "image/" + ext + ";base64", s)
                 ).append(
                     $('<div/>').addClass('indent').append(
                         $('<a/>').attr('href', "data:image/" + ext + ";base64," + s)
@@ -202,10 +205,7 @@ function renderString(s, $cnt) {
             if(!rendered && --pending === 0) {
                 rendered = true;
                 $cnt.append('String (length ' + s.length + ')').append(
-                    $('<a/>').addClass('action').text('download')
-                    .attr('download', splash.pageName + '.txt')
-                    .attr('href', "data:text/plain;charset=utf-8," + encodeURI(s))
-                    .text('download')
+                    downloadButton(splash.pageName + '.txt', "text/plain;charset=utf-8", encodeURIComponent(s))
                 ).append(
                     $('<div/>').addClass('indent').append(
                         $('<textarea rows="15"></textarea>').val(s)
@@ -252,11 +252,7 @@ function renderObject(obj, $cnt) {
         $cnt.addClass('har')
             .append('<span class="type">HAR data</span>')
             .append(
-                $('<a/>').addClass('action')
-                .text('view')
-                .attr('download', splash.pageName + '.har')
-                .attr('href', "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj)))
-                .text('download')
+                downloadButton(splash.pageName + '.har', "application/json;charset=utf-8", encodeURIComponent(JSON.stringify(obj)))
             ).append(loadHarViewer(obj));
         return;
     }

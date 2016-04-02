@@ -23,6 +23,6 @@ function main(splash)
 
   -- let's get a screenshot of a first <a>
   -- element on a page, with extra 32px around it
-  local region = get_bbox("a:nth-of-type(1)")
-  return splash:png{region=pad(region, 32)}
+  local region = pad(get_bbox("a"), 32)
+  return splash:png{region=region}
 end
