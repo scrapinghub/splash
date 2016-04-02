@@ -197,6 +197,17 @@
     "details": "Example:\n\n.. code-block:: lua\n\n     -- A simplistic implementation of render.html endpoint\n     function main(splash)\n         splash:set_result_content_type(\"text/html; charset=utf-8\")\n         assert(splash:go(splash.args.url))\n         return splash:html()\n     end\n\nNothing prevents us from taking multiple HTML snapshots. For example, let's\nvisit first 3 pages on a website, and for each page store\ninitial HTML snapshot and an HTML snapshot after waiting 0.5s:\n\ntreat = require(\"treat\")\n\n-- Given an url, this function returns a table\n-- with the page screenshoot, it's HTML contents\n-- and it's title.\nfunction page_info(splash, url)\n    local ok, msg = splash:go(url)\n    if not ok then\n        return {ok=false, reason=msg}\n    end\n    local res = {\n        html=splash:html(),\n        title=splash:evaljs('document.title'),\n        image=splash:png(),\n        ok=true,\n    }\n    return res\nend\n\n-- visit first 3 pages of hacker news\nlocal base = \"https://news.ycombinator.com/news?p=\"\nfunction main(splash)\n    local result = treat.as_array({})\n    for i=1,3 do\n        local url =  base .. i\n        result[i] = page_info(splash, url)\n    end\n    return result\nend",
     "params": null
   },
+  "splash:mouse_click": {
+  "name": "mouse_click",
+  "header": "splash:mouse_click",
+  "content": "Click a given point(x, y) of web_page, usually (x, y) relate to an element of html",
+  "short": "Click a given point(x, y) of web_page",
+  "signature": "splash:mouse_click(x, y)",
+  "returns": "nil",
+  "async": "no.",
+  "details": "",
+  "params": "* x - x position of the mouse cursor, relative to web_page\n * y - y position of the mouse cursor, relative to web_page."
+  },
   "splash:png": {
     "name": "png",
     "header": "splash:png",
