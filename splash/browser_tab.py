@@ -733,12 +733,12 @@ class BrowserTab(QObject):
 
     def mouse_click(self, x, y):
         """ mouse click on given point(x, y) of web_page"""        
-        self.logger.log("mouse click on point(%d, %d)" % (x,y), min_level=2)
+        self.logger.log("mouse clicking on point(%d, %d)" % (x,y), min_level=2)
         evt = QMouseEvent(QEvent.MouseButtonPress, QPoint(x,y), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         QApplication.sendEvent(self.web_page, evt)
         evt = QMouseEvent(QEvent.MouseButtonRelease, QPoint(x,y), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         QApplication.sendEvent(self.web_page, evt)
-        self.store_har_timing("_onClicked")
+        self.store_har_timing("_onMouseClicked")
 
     def _get_image(self, image_format, width, height, render_all,
                    scale_method, region):
