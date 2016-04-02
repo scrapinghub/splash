@@ -9,7 +9,7 @@ import uuid
 from PyQt5.QtCore import QObject, QSize, Qt, QTimer, QEvent, pyqtSlot
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
-from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWebKit import QWebSettings, QApplication, QMouseEvent
 
 from twisted.internet import defer
 from twisted.python import log
