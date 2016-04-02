@@ -206,7 +206,7 @@
   "returns": "nil",
   "async": "no.",
   "details": "",
-  "params": "* x - x position of the mouse cursor, relative to web_page.\n* y - y position of the mouse cursor, relative to web_page."
+  "params": "* x - integer, position of the mouse cursor relative to web_page.\n* y - integer, position of the mouse cursor relative to web_page."
   },
   "splash:png": {
     "name": "png",
