@@ -166,3 +166,22 @@ up to 4GB RAM and daemonizes & restarts itself could look like this::
 
 You also need a load balancer; for example configs check Aquarium_ or
 an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.
+
+
+.. _disable-private-mode
+
+How do I disable Private mode?
+------------------------------
+
+With Splash>=2.0, you can disable Private mode (which is "on" by default).
+There are two ways to go about it:
+
+- at startup, with the ``--disable-private-mode`` argument, e.g., if you're
+  using Docker::
+
+        $ sudo docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
+
+- at runtime when using the ``/execute`` endpoint and setting
+  :ref:`splash-private-mode-enabled` attribute to ``false``
+
+
