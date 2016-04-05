@@ -29,12 +29,6 @@ class SplashQWebView(QWebView):
         else:
             event.accept()
 
-    def mousePressEvent(self, e):
-        print("*" * 99)
-        print("\n\n\n mouse is pressed \n\n")
-        print("*" * 99)
-
-
 
 class SplashQWebPage(QWebPage):
     """

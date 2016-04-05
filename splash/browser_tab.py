@@ -11,6 +11,7 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWidgets import QApplication
 
 from twisted.internet import defer
 from twisted.python import log
@@ -836,29 +837,26 @@ class BrowserTab(QObject):
         return res
 
     def click(self, element):
-        from splash.qtutils import _qtapp
-        from PyQt5.QtCore import Qt
+        """Clicks elements on webpage. Event coordinates are set to center of element
+        selected. If element is not found raises AssertError that results in 400 Bad Request
+        sent to client.
+
+        :param element: string with css selector that identifies element to click
+        :return: None
+        """
         frame = self.web_page.mainFrame()
-        # TODO make this new method
+        # TODO perhaps api could be splash:select("css selector").click()?
         element = frame.findFirstElement(element)
-        # TODO error handling
+        # TODO better error handling? this will just raise 400
         assert(not element.isNull())
-        x, y = element.geometry().x(), element.geometry().y()
-        event_type = QEvent.MouseButtonPress
-        point = QPointF()
-        point.setX(x)
-        point.setY(y)
-        buttons = _qtapp.mouseButtons()
-        modifiers = _qtapp.keyboardModifiers()
-        # there are couple of signatures for QMouseEvent, this one adds more info about
-        # relative event position
-        event = QMouseEvent(event_type, point, point, point, Qt.LeftButton, buttons, modifiers)
-
-        view = self.web_page.view()
-        # TODO this posts event but doesn't update html, why?
-        _qtapp.postEvent(view, event)
-
-
+        center = element.geometry().center()
+        point = QPointF(center.x(), center.y())
+        buttons = QApplication.mouseButtons()
+        modifiers = QApplication.keyboardModifiers()
+        press = QMouseEvent(QEvent.MouseButtonPress, point, Qt.LeftButton, buttons, modifiers)
+        release = QMouseEvent(QEvent.MouseButtonRelease, point, Qt.LeftButton, buttons, modifiers)
+        QApplication.postEvent(self.web_page, press)
+        QApplication.postEvent(self.web_page, release)
 
 
 class _SplashHttpClient(QObject):

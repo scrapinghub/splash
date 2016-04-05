@@ -672,16 +672,15 @@ class JsClickResource(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        js_code = """
+        js_code = u"""
         function modify_h1() {
-            console.log("modifying h1");
-            var h1 = document.getElementById("h1")
-            h1.remove()
+            var h1 = document.getElementById("h1");
+            h1.remove();
         }
         var element = document.getElementById("button");
-        document.addEventListener("click", modify_h1, false);
+        element.addEventListener("click", modify_h1, false);
         """
-        html_with_js = """
+        html_with_js = u"""
             <html>
             <head></head>
             <body>
