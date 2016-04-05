@@ -833,6 +833,17 @@ class BrowserTab(QObject):
 
         return res
 
+    def select(self, selector):
+        """ Find element by its selector """
+        self.logger.log("finding element using `%s` selector" % selector, min_level=3)
+        element = self.web_page.mainFrame().findFirstElement(selector)
+
+        # TODO: change error handling, it will raise 400 error
+        assert(not element.isNull())
+
+        return WebElement(element)
+
+
 
 class _SplashHttpClient(QObject):
     """ Wrapper class for making HTTP requests on behalf of a SplashQWebPage """
@@ -1121,3 +1132,17 @@ def _get_header_value(headers, name, default=None):
         if name == to_bytes(k.lower()):
             return v
     return default
+
+class WebElement(object):
+    """ Wrapper on QWebElement"""
+
+    def __init__(self, element):
+        self._element = element
+
+    def get_offset(self):
+        coords = self._element.geometry().getRect()
+        return {
+            'left': coords[0],
+            'top': coords[1]
+        }
+

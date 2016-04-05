@@ -683,6 +683,62 @@ class CP1251Resource(Resource):
                 '''.strip().encode('cp1251')
 
 
+class TwoAbsoluteElementsResource(Resource):
+    isLeaf = True
+
+    element1 = {
+        "top": 48,
+        "left": 1516
+    }
+
+    element2 = {
+        "top": 23,
+        "left": 42
+    }
+
+    def render_GET(self, request):
+        html_code = u"""
+        <html>
+        <head>
+            <style type="text/css">
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                }
+
+                .container {
+                    position: relative;
+                }
+
+                .element {
+                    width: 100px;
+                    height: 100px;
+
+                    position: absolute;
+                    top: %dpx;
+                    left: %dpx;
+
+                    background-color: red;
+                }
+
+                .element-mod {
+                    top: %dpx;
+                    left: %dpx;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="element"></div>
+                <div class="element element-mod"></div>
+            </div>
+        </body>
+        </html>
+        """ % (self.element1["top"], self.element1["left"], self.element2["top"], self.element2["left"])
+
+        return html_code.encode("utf8")
+
+
 class Subresources(Resource):
     """ Embedded css and image """
 
@@ -821,6 +877,7 @@ class Root(Resource):
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
+        self.putChild(b"two-absolute-elements", TwoAbsoluteElementsResource())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

@@ -487,6 +487,13 @@ class Splash(BaseExposedObject):
         ))
         return cmd
 
+    @command(async=False, decode_arguments=True)
+    def select(self, selector):
+        element = Element(self.lua, self.exceptions, self.tab.select(selector))
+
+        return element.getWrapped()
+
+
     @command(async=True, decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
         url = self.lua.lua2python(url, max_depth=1)
@@ -1320,6 +1327,23 @@ class _ExposedBoundResponse(_ExposedResponse):
     def abort(self):
         self.response.abort()
 
+
+
+class Element(BaseExposedObject):
+    def __init__(self, lua, exceptions, element):
+        super(Element, self).__init__(lua, exceptions)
+
+        self._element = element
+
+        wrapper = self.lua.eval("require('element')")
+        self._wrapped = wrapper._create(self)
+
+    @command()
+    def offset(self):
+        return self._element.get_offset()
+
+    def getWrapped(self):
+        return self._wrapped
 
 class Extras(BaseExposedObject):
     """
