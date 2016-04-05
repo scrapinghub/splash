@@ -668,6 +668,34 @@ class JsRedirectTo(Resource):
         """ % next_url).encode('utf-8')
 
 
+class JsClickResource(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        js_code = """
+        function modify_h1() {
+            console.log("modifying h1");
+            var h1 = document.getElementById("h1")
+            h1.remove()
+        }
+        var element = document.getElementById("button");
+        document.addEventListener("click", modify_h1, false);
+        """
+        html_with_js = """
+            <html>
+            <head></head>
+            <body>
+                <h1 id="h1"> this must be removed after click</h1>
+                <button id="button">press this</button>
+            <script>
+                %s
+            </script>
+            </body>
+            </html>
+        """ % js_code
+        return html_with_js.encode("utf8")
+
+
 class CP1251Resource(Resource):
 
     @use_chunked_encoding
@@ -821,6 +849,7 @@ class Root(Resource):
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
+        self.putChild(b"jsclick", JsClickResource())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

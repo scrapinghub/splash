@@ -3456,3 +3456,23 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertIn(u'world of splash', data["html1"])
         self.assertNotIn(u"world of splash", data["html2"])
+
+
+class MouseEventsTest(BaseLuaRenderTest):
+    def test_click(self):
+        resp = self.request_lua("""
+             function main(splash)
+                assert(splash:go(splash.args.url))
+                -- make sure we deal with page that hides elem on click
+                splash:evaljs("document.getElementById('button').click()")
+                html = splash:html()
+                assert(string.find(html, 'must be removed') == nil)
+
+                assert(splash:go(splash.args.url))
+                splash:click('button')
+                splash:wait(0.5)
+                return splash:html()
+            end
+            """, {"url": self.mockurl("jsclick")})
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn('this must be removed after click', resp.text)

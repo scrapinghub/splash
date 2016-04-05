@@ -6,7 +6,8 @@ import os
 import weakref
 import uuid
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot
+from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF
+from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
@@ -30,6 +31,7 @@ from splash.jsutils import (
     get_process_errors_js,
     escape_js,
 )
+
 
 
 def skip_if_closing(meth):
@@ -832,6 +834,31 @@ class BrowserTab(QObject):
             res["frameName"] = six.text_type(frame.frameName())
 
         return res
+
+    def click(self, element):
+        from splash.qtutils import _qtapp
+        from PyQt5.QtCore import Qt
+        frame = self.web_page.mainFrame()
+        # TODO make this new method
+        element = frame.findFirstElement(element)
+        # TODO error handling
+        assert(not element.isNull())
+        x, y = element.geometry().x(), element.geometry().y()
+        event_type = QEvent.MouseButtonPress
+        point = QPointF()
+        point.setX(x)
+        point.setY(y)
+        buttons = _qtapp.mouseButtons()
+        modifiers = _qtapp.keyboardModifiers()
+        # there are couple of signatures for QMouseEvent, this one adds more info about
+        # relative event position
+        event = QMouseEvent(event_type, point, point, point, Qt.LeftButton, buttons, modifiers)
+
+        view = self.web_page.view()
+        # TODO this posts event but doesn't update html, why?
+        _qtapp.postEvent(view, event)
+
+
 
 
 class _SplashHttpClient(QObject):
