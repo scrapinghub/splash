@@ -764,6 +764,12 @@ class Splash(BaseExposedObject):
         assert(isinstance(y, int) or isinstance(y, float))
         self.tab.click(x, y)
 
+    @command()
+    def hover(self, x, y):
+        assert(isinstance(x, int) or isinstance(x, float))
+        assert(isinstance(y, int) or isinstance(y, float))
+        self.tab.hover(x, y)
+
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
         if isinstance(data, six.text_type):

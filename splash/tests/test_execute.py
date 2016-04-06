@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-import os
 import base64
-import random
 import unittest
 from io import BytesIO
 import numbers
@@ -12,7 +10,6 @@ import time
 from PIL import Image
 import requests
 import six
-from six.moves.http_client import HTTPConnection
 import pytest
 lupa = pytest.importorskip("lupa")
 
@@ -3489,4 +3486,41 @@ class MouseEventsTest(BaseLuaRenderTest):
                 return splash:html()
             end
             """, {"url": self.mockurl("jsclick")})
-        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               'AssertionError()')
+
+    def test_hover(self):
+        resp = self.request_lua("""
+             function main(splash)
+                assert(splash:go(splash.args.url))
+                get_dimensions = splash:jsfunc([[
+                    function () {
+                        rect = document.getElementById('button').getBoundingClientRect();
+                        return {"x":rect.left, "y": rect.top}
+                    }
+                ]])
+                dimensions = get_dimensions()
+                assert(splash:go(splash.args.url))
+                splash:hover(dimensions.x, dimensions.y)
+                splash:wait(0.1)
+                return splash:html()
+            end
+            """, {"url": self.mockurl("jshover")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("button", resp.text)
+        self.assertNotIn('this must be removed after hover', resp.text)
+
+    def test_hover_with_bad_arguments(self):
+        resp = self.request_lua("""
+                     function main(splash)
+                        assert(splash:go(splash.args.url))
+                        splash:hover(nil, nil)
+                        splash:wait(0.1)
+                        return splash:html()
+                    end
+                    """, {"url": self.mockurl("jsclick")})
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                       'AssertionError()')
+
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               'AssertionError()')

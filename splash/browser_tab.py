@@ -851,6 +851,13 @@ class BrowserTab(QObject):
         QApplication.postEvent(self.web_page, press)
         QApplication.postEvent(self.web_page, release)
 
+    def hover(self, end_x, end_y):
+        end_point = QPointF(end_x, end_y)
+        event = QMouseEvent(QEvent.MouseMove, end_point, Qt.NoButton,
+                            QApplication.mouseButtons(),
+                            QApplication.keyboardModifiers())
+        QApplication.postEvent(self.web_page, event)
+
 
 class _SplashHttpClient(QObject):
     """ Wrapper class for making HTTP requests on behalf of a SplashQWebPage """

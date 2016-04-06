@@ -695,6 +695,43 @@ class JsClickResource(Resource):
         return html_with_js.encode("utf8")
 
 
+class JsHoverResource(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        js_code = u"""
+        function modify_h1(e) {
+            var h1 = document.getElementById("h1");
+            h1.remove();
+            msg = ""
+            node = document.createElement("p")
+            for (k in e) {
+                msg += k + ":" + e[k]
+            }
+            node.textContent = msg;
+            document.getElementById("container").appendChild(node);
+
+        }
+        var element = document.getElementById("button");
+        element.addEventListener("mouseover", modify_h1, false);
+        """
+        html_with_js = u"""
+            <html>
+            <head></head>
+            <body>
+                <div id="container">
+                <h1 id="h1"> this must be removed after hover</h1>
+                <button id="button">hover over this</button>
+                </div>
+            <script>
+                %s
+            </script>
+            </body>
+            </html>
+        """ % js_code
+        return html_with_js.encode("utf8")
+
+
 class CP1251Resource(Resource):
 
     @use_chunked_encoding
@@ -849,6 +886,7 @@ class Root(Resource):
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
         self.putChild(b"jsclick", JsClickResource())
+        self.putChild(b"jshover", JsHoverResource())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())
