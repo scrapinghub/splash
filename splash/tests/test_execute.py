@@ -3463,24 +3463,28 @@ class MouseEventsTest(BaseLuaRenderTest):
         resp = self.request_lua("""
              function main(splash)
                 assert(splash:go(splash.args.url))
-                -- make sure we deal with page that hides elem on click
-                splash:evaljs("document.getElementById('button').click()")
-                html = splash:html()
-                assert(string.find(html, 'must be removed') == nil)
+                get_dimensions = splash:jsfunc([[
+                    function () {
+                        rect = document.getElementById('button').getBoundingClientRect();
+                        return {"x":rect.left, "y": rect.top}
+                    }
+                ]])
+                dimensions = get_dimensions()
                 assert(splash:go(splash.args.url))
-                splash:click('button')
+                splash:click(dimensions.x, dimensions.y)
                 splash:wait(0.1)
                 return splash:html()
             end
             """, {"url": self.mockurl("jsclick")})
         self.assertStatusCode(resp, 200)
+        self.assertIn("button", resp.text)
         self.assertNotIn('this must be removed after click', resp.text)
 
-    def test_click_on_nonelement(self):
+    def test_click_with_bad_arguments(self):
         resp = self.request_lua("""
              function main(splash)
                 assert(splash:go(splash.args.url))
-                splash:click('non_such_elem')
+                splash:click(nil, nil)
                 splash:wait(0.1)
                 return splash:html()
             end

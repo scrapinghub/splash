@@ -759,8 +759,10 @@ class Splash(BaseExposedObject):
         self.tab.autoload_reset()
 
     @command()
-    def click(self, element):
-        self.tab.click(element)
+    def click(self, x, y):
+        assert(isinstance(x, int) or isinstance(x, float))
+        assert(isinstance(y, int) or isinstance(y, float))
+        self.tab.click(x, y)
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):

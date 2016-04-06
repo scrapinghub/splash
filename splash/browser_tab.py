@@ -836,21 +836,14 @@ class BrowserTab(QObject):
 
         return res
 
-    def click(self, element):
-        """Clicks elements on webpage. Event coordinates are set to center of element
-        selected. If element is not found raises AssertError that results in 400 Bad Request
-        sent to client.
+    def click(self, x, y):
+        """Clicks elements on webpage.
 
-        :param element: string with css selector that identifies element to click
+        :param x integer with X screen position to click
+        :param y integer with Y screen position to click
         :return: None
         """
-        frame = self.web_page.mainFrame()
-        # TODO perhaps api could be splash:select("css selector").click()?
-        element = frame.findFirstElement(element)
-        # TODO better error handling? this will just raise 400
-        assert(not element.isNull())
-        center = element.geometry().center()
-        point = QPointF(center.x(), center.y())
+        point = QPointF(x, y)
         buttons = QApplication.mouseButtons()
         modifiers = QApplication.keyboardModifiers()
         press = QMouseEvent(QEvent.MouseButtonPress, point, Qt.LeftButton, buttons, modifiers)
