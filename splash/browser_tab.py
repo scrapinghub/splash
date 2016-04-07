@@ -836,26 +836,38 @@ class BrowserTab(QObject):
 
         return res
 
-    def click(self, x, y):
+    def mouse_click(self, x, y, button="left"):
         """Clicks elements on webpage.
 
         :param x integer with X screen position to click
         :param y integer with Y screen position to click
+        :param button string specifying button type
         :return: None
         """
+        # XXX only left click supported for now, we can add support and tests for right click
+        # in the future if there is need for that
+        self.mouse_press(x, y, button)
+        self.mouse_release(x, y, button)
+
+    def mouse_press(self, x, y, button="left"):
+        self._post_mouse_event(QEvent.MouseButtonPress, button, x, y)
+
+    def mouse_release(self, x, y, button="left"):
+        self._post_mouse_event(QEvent.MouseButtonRelease, button, x, y)
+
+    def mouse_hover(self, end_x, end_y):
+        self._post_mouse_event(QEvent.MouseMove, "nobutton", end_x, end_y)
+
+    def _post_mouse_event(self, type, button, x, y):
+        q_button = {
+            # TODO perhaps add right button here
+            "left": Qt.LeftButton,
+            "nobutton": Qt.NoButton,
+        }.get(button)
         point = QPointF(x, y)
         buttons = QApplication.mouseButtons()
         modifiers = QApplication.keyboardModifiers()
-        press = QMouseEvent(QEvent.MouseButtonPress, point, Qt.LeftButton, buttons, modifiers)
-        release = QMouseEvent(QEvent.MouseButtonRelease, point, Qt.LeftButton, buttons, modifiers)
-        QApplication.postEvent(self.web_page, press)
-        QApplication.postEvent(self.web_page, release)
-
-    def hover(self, end_x, end_y):
-        end_point = QPointF(end_x, end_y)
-        event = QMouseEvent(QEvent.MouseMove, end_point, Qt.NoButton,
-                            QApplication.mouseButtons(),
-                            QApplication.keyboardModifiers())
+        event = QMouseEvent(type, point, q_button, buttons, modifiers)
         QApplication.postEvent(self.web_page, event)
 
 

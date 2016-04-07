@@ -758,17 +758,30 @@ class Splash(BaseExposedObject):
     def autoload_reset(self):
         self.tab.autoload_reset()
 
-    @command()
-    def click(self, x, y):
-        assert(isinstance(x, int) or isinstance(x, float))
-        assert(isinstance(y, int) or isinstance(y, float))
-        self.tab.click(x, y)
+    def _check_mouse_coordinantes(self, x, y):
+        msg = "mouse event x, y coordinates must be int or float"
+        assert isinstance(x, int) or isinstance(x, float), msg
+        assert isinstance(y, int) or isinstance(y, float), msg
 
     @command()
-    def hover(self, x, y):
-        assert(isinstance(x, int) or isinstance(x, float))
-        assert(isinstance(y, int) or isinstance(y, float))
-        self.tab.hover(x, y)
+    def mouse_click(self, x, y):
+        self._check_mouse_coordinantes(x, y)
+        self.tab.mouse_click(x, y)
+
+    @command()
+    def mouse_press(self, x, y):
+        self._check_mouse_coordinantes(x, y)
+        self.tab.mouse_press(x, y)
+
+    @command()
+    def mouse_release(self, x, y):
+        self._check_mouse_coordinantes(x, y)
+        self.tab.mouse_release(x, y)
+
+    @command()
+    def mouse_hover(self, x, y):
+        self._check_mouse_coordinantes(x, y)
+        self.tab.mouse_hover(x, y)
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):

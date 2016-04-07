@@ -668,37 +668,18 @@ class JsRedirectTo(Resource):
         """ % next_url).encode('utf-8')
 
 
-class JsClickResource(Resource):
+
+class JsEventResource(Resource):
     isLeaf = True
 
     def render_GET(self, request):
-        js_code = u"""
-        function modify_h1() {
-            var h1 = document.getElementById("h1");
-            h1.remove();
-        }
-        var element = document.getElementById("button");
-        element.addEventListener("click", modify_h1, false);
         """
-        html_with_js = u"""
-            <html>
-            <head></head>
-            <body>
-                <h1 id="h1"> this must be removed after click</h1>
-                <button id="button">press this</button>
-            <script>
-                %s
-            </script>
-            </body>
-            </html>
-        """ % js_code
-        return html_with_js.encode("utf8")
-
-
-class JsHoverResource(Resource):
-    isLeaf = True
-
-    def render_GET(self, request):
+        :param request: must contain event_type with valid string to use for filling up
+        JS event handler, e.g. "mouseover", "click" or something else.
+        :return: response will contain event data as strings in format property:value. h1 will dissappear
+        if event succeeds.
+        """
+        event_type = request.args[b"event_type"][0].decode("utf8")
         js_code = u"""
         function modify_h1(e) {
             var h1 = document.getElementById("h1");
@@ -706,29 +687,28 @@ class JsHoverResource(Resource):
             msg = ""
             node = document.createElement("p")
             for (k in e) {
-                msg += k + ":" + e[k]
+                msg += k + ":" + e[k] + ";"
             }
             node.textContent = msg;
             document.getElementById("container").appendChild(node);
-
         }
         var element = document.getElementById("button");
-        element.addEventListener("mouseover", modify_h1, false);
-        """
+        element.addEventListener("%s", modify_h1, false);
+        """ % event_type
         html_with_js = u"""
             <html>
             <head></head>
             <body>
                 <div id="container">
-                <h1 id="h1"> this must be removed after hover</h1>
-                <button id="button">hover over this</button>
+                <h1 id="h1"> this must be removed after {0}</h1>
+                <button id="button">{0} here</button>
                 </div>
             <script>
-                %s
+                {1}
             </script>
             </body>
             </html>
-        """ % js_code
+        """.format(event_type, js_code)
         return html_with_js.encode("utf8")
 
 
@@ -885,8 +865,7 @@ class Root(Resource):
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
-        self.putChild(b"jsclick", JsClickResource())
-        self.putChild(b"jshover", JsHoverResource())
+        self.putChild(b"jsevent", JsEventResource())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

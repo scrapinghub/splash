@@ -3456,6 +3456,10 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
 
 
 class MouseEventsTest(BaseLuaRenderTest):
+
+    def _assert_event_property(self, name, value, resp):
+        self.assertIn("{}:{}".format(name, value), resp.text)
+
     def test_click(self):
         resp = self.request_lua("""
              function main(splash)
@@ -3468,24 +3472,25 @@ class MouseEventsTest(BaseLuaRenderTest):
                 ]])
                 dimensions = get_dimensions()
                 assert(splash:go(splash.args.url))
-                splash:click(dimensions.x, dimensions.y)
+                splash:mouse_click(dimensions.x, dimensions.y)
                 splash:wait(0.1)
                 return splash:html()
             end
-            """, {"url": self.mockurl("jsclick")})
+            """, {"url": self.mockurl("jsevent?event_type=click")})
         self.assertStatusCode(resp, 200)
         self.assertIn("button", resp.text)
         self.assertNotIn('this must be removed after click', resp.text)
+        self._assert_event_property("type", "click", resp)
 
     def test_click_with_bad_arguments(self):
         resp = self.request_lua("""
              function main(splash)
                 assert(splash:go(splash.args.url))
-                splash:click(nil, nil)
+                splash:mouse_click(nil, nil)
                 splash:wait(0.1)
                 return splash:html()
             end
-            """, {"url": self.mockurl("jsclick")})
+            """, {"url": self.mockurl("jsevent?event_type=click")})
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                'AssertionError()')
 
@@ -3501,26 +3506,92 @@ class MouseEventsTest(BaseLuaRenderTest):
                 ]])
                 dimensions = get_dimensions()
                 assert(splash:go(splash.args.url))
-                splash:hover(dimensions.x, dimensions.y)
+                splash:mouse_hover(dimensions.x, dimensions.y)
                 splash:wait(0.1)
                 return splash:html()
             end
-            """, {"url": self.mockurl("jshover")})
+            """, {"url": self.mockurl("jsevent?event_type=mouseover")})
         self.assertStatusCode(resp, 200)
         self.assertIn("button", resp.text)
         self.assertNotIn('this must be removed after hover', resp.text)
+        self._assert_event_property("type", "mouseover", resp)
 
     def test_hover_with_bad_arguments(self):
         resp = self.request_lua("""
                      function main(splash)
                         assert(splash:go(splash.args.url))
-                        splash:hover(nil, nil)
+                        splash:mouse_hover(nil, nil)
                         splash:wait(0.1)
                         return splash:html()
                     end
-                    """, {"url": self.mockurl("jsclick")})
+                    """, {"url": self.mockurl("jsevent?event_type=mouseover")})
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                        'AssertionError()')
 
+    def test_mouse_press(self):
+        resp = self.request_lua("""
+                 function main(splash)
+                    assert(splash:go(splash.args.url))
+                    get_dimensions = splash:jsfunc([[
+                        function () {
+                            rect = document.getElementById('button').getBoundingClientRect();
+                            return {"x":rect.left, "y": rect.top}
+                        }
+                    ]])
+                    dimensions = get_dimensions()
+                    assert(splash:go(splash.args.url))
+                    splash:mouse_press(dimensions.x, dimensions.y)
+                    splash:wait(0.1)
+                    return splash:html()
+                end
+                """, {"url": self.mockurl("jsevent?event_type=mousedown")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("button", resp.text)
+        self.assertNotIn('this must be removed', resp.text)
+        self._assert_event_property("type", "mousedown", resp)
+
+    def test_press_with_bad_arguments(self):
+        resp = self.request_lua("""
+                         function main(splash)
+                            assert(splash:go(splash.args.url))
+                            splash:mouse_press(nil, nil)
+                            splash:wait(0.1)
+                            return splash:html()
+                        end
+                        """, {"url": self.mockurl("jsevent?event_type=mousedown")})
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               'AssertionError()')
+
+    def test_mouse_release(self):
+        resp = self.request_lua("""
+                 function main(splash)
+                    assert(splash:go(splash.args.url))
+                    get_dimensions = splash:jsfunc([[
+                        function () {
+                            rect = document.getElementById('button').getBoundingClientRect();
+                            return {"x":rect.left, "y": rect.top}
+                        }
+                    ]])
+                    dimensions = get_dimensions()
+                    assert(splash:go(splash.args.url))
+                    splash:mouse_release(dimensions.x, dimensions.y)
+                    splash:wait(0.1)
+                    return splash:html()
+                end
+                """, {"url": self.mockurl("jsevent?event_type=mouseup")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("button", resp.text)
+        self.assertNotIn('this must be removed', resp.text)
+        self._assert_event_property("type", "mouseup", resp)
+
+    def test_release_with_bad_arguments(self):
+        resp = self.request_lua("""
+                         function main(splash)
+                            assert(splash:go(splash.args.url))
+                            splash:mouse_release(nil, nil)
+                            splash:wait(0.1)
+                            return splash:html()
+                        end
+                        """, {"url": self.mockurl("jsevent?event_type=mouseup")})
         self.assertScriptError(resp, ScriptError.LUA_ERROR,
                                'AssertionError()')
