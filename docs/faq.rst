@@ -185,3 +185,10 @@ There are two ways to go about it:
   :ref:`splash-private-mode-enabled` attribute to ``false``
 
 
+.. _why-splash:
+
+Why was Splash created in the first place?
+------------------------------------------
+
+Please refer to `this great answer from kmike on reddit.
+<https://www.reddit.com/r/Python/comments/2xp5mr/handling_javascript_in_scrapy_with_splash/cp2vgd6>`__
