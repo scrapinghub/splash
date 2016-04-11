@@ -167,6 +167,14 @@ up to 4GB RAM and daemonizes & restarts itself could look like this::
 You also need a load balancer; for example configs check Aquarium_ or
 an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.
 
+Ansible Way
+~~~~~~~~~~~
+
+Ansible_ role for Splash is available via third-party project:
+https://github.com/nabilm/ansible-splash.
+
+.. _Ansible: https://www.ansible.com/
+
 
 .. _disable-private-mode
 
