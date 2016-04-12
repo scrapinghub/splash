@@ -28,7 +28,7 @@ http://splash.readthedocs.org/
 Using Splash with Scrapy
 ------------------------
 
-To use Splash with Scrapy, please refer to the `ScrapyJS library`_.
+To use Splash with Scrapy, please refer to the `scrapy-splash library`_.
 
 Support
 -------
@@ -40,4 +40,4 @@ Commercial support is also available by `Scrapinghub`_.
 
 .. _create a question issue: https://github.com/scrapinghub/splash/issues/new?labels=question
 .. _Scrapinghub: http://scrapinghub.com
-.. _ScrapyJS library: https://github.com/scrapinghub/scrapy-splash
+.. _scrapy-splash library: https://github.com/scrapy-plugins/scrapy-splash
