@@ -187,11 +187,21 @@ There are two ways to go about it:
 - at startup, with the ``--disable-private-mode`` argument, e.g., if you're
   using Docker::
 
-        $ sudo docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
+        $ sudo docker run -it -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
 
 - at runtime when using the ``/execute`` endpoint and setting
   :ref:`splash-private-mode-enabled` attribute to ``false``
 
+Note that if you disable private mode then browsing data such as cookies or
+items kept in localStorage may persist between requests. If you're using
+Splash in a shared environment it could mean your cookies or local storage
+items can be accessed by other clients, or that you can occasionally access
+other client's cookies.
+
+You may still want to turn Private mode off because in WebKit localStorage
+doesn't work when Private mode is enabled, and it is not possible
+to provide a JavaScript shim for localStorage. So for some websites you may
+have to turn Private model off.
 
 .. _why-splash:
 
