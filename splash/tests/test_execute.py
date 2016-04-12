@@ -3471,7 +3471,6 @@ class MouseEventsTest(BaseLuaRenderTest):
                     }
                 ]])
                 dimensions = get_dimensions()
-                assert(splash:go(splash.args.url))
                 splash:mouse_click(dimensions.x, dimensions.y)
                 splash:wait(0.1)
                 return splash:html()
@@ -3479,6 +3478,31 @@ class MouseEventsTest(BaseLuaRenderTest):
             """, {"url": self.mockurl("jsevent?event_type=click")})
         self.assertStatusCode(resp, 200)
         self.assertIn("button", resp.text)
+        self.assertNotIn('this must be removed after click', resp.text)
+        self._assert_event_property("type", "click", resp)
+
+    def test_click_outside_viewport(self):
+        """
+        Test clicking on element that is visible only after user scrolls to see it.
+        Clicking on element like this is only possible after setting viewport full.
+        """
+        resp = self.request_lua("""
+             function main(splash)
+                get_dimensions = splash:jsfunc([[
+                    function () {
+                        rect = document.getElementById('must_scroll_to_see').getBoundingClientRect();
+                        return {"x":rect.left, "y": rect.top}
+                    }
+                ]])
+                assert(splash:go(splash.args.url))
+                splash:set_viewport_full()
+                dimensions = get_dimensions()
+                splash:mouse_click(dimensions.x, dimensions.y)
+                splash:wait(0.1)
+                return splash:html()
+            end
+            """, {"url": self.mockurl("jsevent?event_type=click")})
+        self.assertStatusCode(resp, 200)
         self.assertNotIn('this must be removed after click', resp.text)
         self._assert_event_property("type", "click", resp)
 
@@ -3505,7 +3529,6 @@ class MouseEventsTest(BaseLuaRenderTest):
                     }
                 ]])
                 dimensions = get_dimensions()
-                assert(splash:go(splash.args.url))
                 splash:mouse_hover(dimensions.x, dimensions.y)
                 splash:wait(0.1)
                 return splash:html()
@@ -3539,7 +3562,6 @@ class MouseEventsTest(BaseLuaRenderTest):
                         }
                     ]])
                     dimensions = get_dimensions()
-                    assert(splash:go(splash.args.url))
                     splash:mouse_press(dimensions.x, dimensions.y)
                     splash:wait(0.1)
                     return splash:html()
@@ -3573,7 +3595,6 @@ class MouseEventsTest(BaseLuaRenderTest):
                         }
                     ]])
                     dimensions = get_dimensions()
-                    assert(splash:go(splash.args.url))
                     splash:mouse_release(dimensions.x, dimensions.y)
                     splash:wait(0.1)
                     return splash:html()

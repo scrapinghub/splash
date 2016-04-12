@@ -694,7 +694,9 @@ class JsEventResource(Resource):
         }
         var element = document.getElementById("button");
         element.addEventListener("%s", modify_h1, false);
-        """ % event_type
+        var element_outside_viewport = document.getElementById("must_scroll_to_see");
+        element_outside_viewport.addEventListener("%s", modify_h1, false);
+        """ % (event_type, event_type)
         html_with_js = u"""
             <html>
             <head></head>
@@ -703,6 +705,7 @@ class JsEventResource(Resource):
                 <h1 id="h1"> this must be removed after {0}</h1>
                 <button id="button">{0} here</button>
                 </div>
+                <button id="must_scroll_to_see" style="margin-top:1900px">button below sight level</button>
             <script>
                 {1}
             </script>
