@@ -1,6 +1,20 @@
 Changes
 =======
 
+2.1 (TBA)
+---------
+
+New features:
+
+* 'region' argument for :ref:`splash-png` and :ref:`splash-jpeg` methods
+  allow to take screenshots of parts of pages.
+
+Bug fixes:
+
+* User-Agent is set correctly for requests with baseurl;
+* "download" links in Splash UI are fixed;
+* an issue with ad blockers preventing Splash UI to work is fixed.
+
 2.0.3 (04-03-2016)
 ------------------
 

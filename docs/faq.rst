@@ -167,6 +167,14 @@ up to 4GB RAM and daemonizes & restarts itself could look like this::
 You also need a load balancer; for example configs check Aquarium_ or
 an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.
 
+Ansible Way
+~~~~~~~~~~~
+
+Ansible_ role for Splash is available via third-party project:
+https://github.com/nabilm/ansible-splash.
+
+.. _Ansible: https://www.ansible.com/
+
 
 .. _disable-private-mode
 
@@ -179,9 +187,26 @@ There are two ways to go about it:
 - at startup, with the ``--disable-private-mode`` argument, e.g., if you're
   using Docker::
 
-        $ sudo docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
+        $ sudo docker run -it -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
 
 - at runtime when using the ``/execute`` endpoint and setting
   :ref:`splash-private-mode-enabled` attribute to ``false``
 
+Note that if you disable private mode then browsing data such as cookies or
+items kept in localStorage may persist between requests. If you're using
+Splash in a shared environment it could mean your cookies or local storage
+items can be accessed by other clients, or that you can occasionally access
+other client's cookies.
 
+You may still want to turn Private mode off because in WebKit localStorage
+doesn't work when Private mode is enabled, and it is not possible
+to provide a JavaScript shim for localStorage. So for some websites you may
+have to turn Private model off.
+
+.. _why-splash:
+
+Why was Splash created in the first place?
+------------------------------------------
+
+Please refer to `this great answer from kmike on reddit.
+<https://www.reddit.com/r/Python/comments/2xp5mr/handling_javascript_in_scrapy_with_splash/cp2vgd6>`__

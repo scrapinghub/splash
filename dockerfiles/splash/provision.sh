@@ -139,14 +139,13 @@ install_python_deps () {
     ${_PYTHON} -m pip install -U pip && \
     ${_PYTHON} -m pip install \
         qt5reactor==0.3 \
-        psutil==3.4.2 \
-        Twisted==15.5.0 \
+        psutil==4.1.0 \
+        Twisted==16.1.1 \
         adblockparser==0.5 \
-        xvfbwrapper==0.2.5 \
+        xvfbwrapper==0.2.8 \
         funcparserlib==0.3.6 \
-        Pillow==3.1.1 \
-        cython==0.23.4 && \
-    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/scoder/lupa/archive/8c74d0a278b45df5d813abbab64377e80864bd56.zip#egg=lupa && \
+        Pillow==3.2.0 \
+        lupa==1.3 && \
     ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=re2
 }
 

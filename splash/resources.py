@@ -27,7 +27,7 @@ from splash.utils import (
     BinaryCapsule,
     SplashJSONEncoder,
     get_ru_maxrss,
-)
+    to_bytes)
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
@@ -558,7 +558,7 @@ class Root(Resource):
             ui = File(os.path.join(root, 'ui'))
 
             har_path = os.path.join(root, 'vendor', 'harviewer', 'webapp')
-            ui.putChild(six.binary_type(HARVIEWER_PATH, 'ascii'), File(har_path))
+            ui.putChild(to_bytes(HARVIEWER_PATH), File(har_path))
             inspections_path = os.path.join(root, 'kernel', 'inspections')
             ui.putChild(b"inspections", File(inspections_path))
             examples_path = os.path.join(root, 'examples')
