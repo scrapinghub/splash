@@ -3514,9 +3514,11 @@ class MouseEventsTest(BaseLuaRenderTest):
                 splash:wait(0.1)
                 return splash:html()
             end
+
             """, {"url": self.mockurl("jsevent?event_type=click")})
-        self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                               'AssertionError()')
+        msg = "x, y coordinates must be int or float "
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                               msg)
 
     def test_hover(self):
         resp = self.request_lua("""
@@ -3548,8 +3550,9 @@ class MouseEventsTest(BaseLuaRenderTest):
                         return splash:html()
                     end
                     """, {"url": self.mockurl("jsevent?event_type=mouseover")})
-        self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                       'AssertionError()')
+
+        msg = "x, y coordinates must be int or float "
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
 
     def test_mouse_press(self):
         resp = self.request_lua("""
@@ -3581,8 +3584,9 @@ class MouseEventsTest(BaseLuaRenderTest):
                             return splash:html()
                         end
                         """, {"url": self.mockurl("jsevent?event_type=mousedown")})
-        self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                               'AssertionError()')
+
+        msg = "x, y coordinates must be int or float"
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
 
     def test_mouse_release(self):
         resp = self.request_lua("""
@@ -3614,5 +3618,6 @@ class MouseEventsTest(BaseLuaRenderTest):
                             return splash:html()
                         end
                         """, {"url": self.mockurl("jsevent?event_type=mouseup")})
-        self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                               'AssertionError()')
+
+        msg = "x, y coordinates must be int or float"
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
