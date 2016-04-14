@@ -7,7 +7,10 @@ Changes
 New features:
 
 * 'region' argument for :ref:`splash-png` and :ref:`splash-jpeg` methods
-  allow to take screenshots of parts of pages.
+  allow to take screenshots of parts of pages;
+* :ref:`save_args <arg-save-args>` and :ref:`load_args <arg-load-args>`
+  parameters allow to save network traffic by caching large request arguments
+  inside Splash server.
 
 Bug fixes:
 
