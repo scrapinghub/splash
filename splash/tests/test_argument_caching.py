@@ -53,7 +53,6 @@ class ArgumentCachingTest(BaseLuaRenderTest):
         resp3 = self.request({"load_args": hashes, "baz": "!"})
         data = self.assertJsonError(resp3, 498, "ExpiredArguments")
         self.assertEqual(data['info'], {'expired': ['foo']})
-        assert 0
 
     def test_bad_save_args(self):
         resp = self.request_lua("function main(splash) return 'hi' end", {
