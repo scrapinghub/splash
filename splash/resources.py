@@ -17,6 +17,7 @@ from twisted.python import log
 import six
 
 import splash
+from splash.argument_cache import ArgumentCache
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, JpegRender
 )
@@ -34,6 +35,7 @@ from splash.qtutils import clear_caches
 from splash.exceptions import (
     BadOption, RenderError, InternalError,
     GlobalTimeoutError, UnsupportedContentType,
+    ExpiredArguments,
 )
 
 if lua_is_supported():
@@ -78,6 +80,9 @@ class _ValidatingResource(Resource):
         return err
 
 
+cache = ArgumentCache()
+
+
 class BaseRenderResource(_ValidatingResource):
 
     isLeaf = True
@@ -93,6 +98,21 @@ class BaseRenderResource(_ValidatingResource):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
         request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
+
+        # process argument cache
+        original_options = render_options.data.copy()
+        expired_args = render_options.get_expired_args(cache)
+        if expired_args:
+            error = self._write_expired_args(request, expired_args)
+            self._log_stats(request, original_options, error)
+            return b"\n"
+
+        saved_args = render_options.save_args_to_cache(cache)
+        if saved_args:
+            value = ';'.join("{}={}".format(name, value)
+                             for name, value in saved_args)
+            request.setHeader(b'X-Splash-Saved-Arguments', value.encode('utf8'))
+        render_options.load_cached_args(cache)
 
         # check arguments before starting the render
         render_options.get_filters(self.pool)
@@ -110,7 +130,8 @@ class BaseRenderResource(_ValidatingResource):
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
-        pool_d.addBoth(self._finish_request, request, options=render_options.data)
+        pool_d.addBoth(self._finish_request, request,
+                       options=original_options)
         return NOT_DONE_YET
 
     def render_POST(self, request):
@@ -174,6 +195,10 @@ class BaseRenderResource(_ValidatingResource):
             data = data.encode('utf-8')
 
         request.write(data)
+
+    def _write_expired_args(self, request, expired_args):
+        ex = ExpiredArguments({'expired': expired_args})
+        return self._write_error(request, 498, ex)
 
     def _log_stats(self, request, options, error=None):
 
@@ -407,6 +432,8 @@ class DemoUI(_ValidatingResource):
         options.get_filters(self.pool)  # check
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
+            'save_args': options.get_save_args(),
+            'load_args': options.get_load_args(),
             'timeout': options.get_timeout(),
             'har': 1,
             'png': 1,
