@@ -11,6 +11,7 @@ class RenderHtmlArgumentCachingTest(BaseRenderTest):
     endpoint = 'render.html'
 
     def test_cache_url(self):
+        # make a save_args request
         resp = self.request({
             "url": self.mockurl('jsrender'),
             "wait": 0.5,
@@ -19,10 +20,24 @@ class RenderHtmlArgumentCachingTest(BaseRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertIn("After", resp.text)
 
+        # use load_args to avoid sending parameter values
         header = resp.headers['X-Splash-Saved-Arguments']
         resp2 = self.request({"load_args": header})
         self.assertStatusCode(resp2, 200)
         assert resp2.text == resp.text
+
+        # clear cache
+        resp3 = self.post({}, endpoint="_gc")
+        self.assertStatusCode(resp3, 200)
+        data = resp3.json()
+        assert data['cached_args_removed'] >= 2
+        assert data['pyobjects_collected'] > 0
+        assert data['status'] == 'ok'
+
+        # check that argument cache is cleared
+        resp4 = self.request({"load_args": header})
+        data = self.assertJsonError(resp4, 498, 'ExpiredArguments')
+        assert set(data['info']['expired']) == {'wait', 'url'}
 
 
 class ArgumentCachingTest(BaseLuaRenderTest):
