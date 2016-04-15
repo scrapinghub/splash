@@ -175,7 +175,7 @@ http_method : string : optional
 
 save_args : JSON array or a comma-separated string : optional
     A list of argument names to put in cache. Splash will store each
-    argument value in an internal cache and return ``X-Splash-SHA1``
+    argument value in an internal cache and return ``X-Splash-Saved-Arguments``
     HTTP header with a list of SHA1 hashes for each argument
     (a semicolon-separated list of name=hash pairs)::
 
@@ -192,7 +192,7 @@ save_args : JSON array or a comma-separated string : optional
 load_args : JSON object or a string : optional
     Parameter values to load from cache.
     ``load_args`` should be either ``{"name": "<SHA1 hash>", ...}``
-    JSON object or a raw ``X-Splash-SHA1`` header value
+    JSON object or a raw ``X-Splash-Saved-Arguments`` header value
     (a semicolon-separated list of name=hash pairs).
 
     For each parameter in ``load_args`` Splash tries to fetch the
