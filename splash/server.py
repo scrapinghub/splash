@@ -74,6 +74,9 @@ def parse_opts(jupyter=False, argv=sys.argv):
             help="disable web UI")
         op.add_option("--disable-lua", action="store_true", default=False,
             help="disable Lua scripting")
+        op.add_option("--argument-cache-max-entries", type="int",
+            default=defaults.ARGUMENT_CACHE_MAX_ENTRIES,
+            help="maximum number of entries in arguments cache (default: %default)")
 
     opts, args = op.parse_args(argv)
 
@@ -84,9 +87,9 @@ def parse_opts(jupyter=False, argv=sys.argv):
         opts.port = None
         opts.slots = None
         opts.max_timeout = None
+        opts.argument_cache_max_entries = None
 
     return opts, args
-
 
 
 def start_logging(opts):
@@ -168,6 +171,7 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
                   lua_sandbox_enabled=True,
                   lua_package_path="",
                   lua_sandbox_allowed_modules=(),
+                  argument_cache_max_entries=None,
                   verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
@@ -181,6 +185,9 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
 
     slots = defaults.SLOTS if slots is None else slots
     log.msg("slots=%s" % slots)
+
+    if argument_cache_max_entries:
+        log.msg("argument_cache_max_entries=%s" % argument_cache_max_entries)
 
     pool = RenderPool(
         slots=slots,
@@ -211,7 +218,8 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
         lua_sandbox_enabled=lua_sandbox_enabled,
         lua_package_path=lua_package_path,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
-        max_timeout=max_timeout
+        max_timeout=max_timeout,
+        argument_cache_max_entries=argument_cache_max_entries,
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
@@ -255,6 +263,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           lua_sandbox_enabled=True,
                           lua_package_path="",
                           lua_sandbox_allowed_modules=(),
+                          argument_cache_max_entries=None,
                           verbosity=None,
                           server_factory=splash_server):
     from splash import network_manager
@@ -278,7 +287,8 @@ def default_splash_server(portnum, max_timeout, slots=None,
         lua_package_path=lua_package_path,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
         verbosity=verbosity,
-        max_timeout=max_timeout
+        max_timeout=max_timeout,
+        argument_cache_max_entries=argument_cache_max_entries,
     )
 
 
@@ -358,6 +368,7 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
             lua_sandbox_allowed_modules=opts.lua_sandbox_allowed_modules.split(";"),
             verbosity=opts.verbosity,
             max_timeout=opts.max_timeout,
+            argument_cache_max_entries=opts.argument_cache_max_entries,
             server_factory=server_factory,
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))

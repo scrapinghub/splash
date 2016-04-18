@@ -97,6 +97,10 @@ class BaseRenderTest(unittest.TestCase):
             self.assertEqual(data['type'], error_type)
         return data
 
+    def assertBadArgument(self, response, argname):
+        data = self.assertJsonError(response, 400, "BadOption")
+        self.assertEqual(data['info']['argument'], argname)
+
     def assertPng(self, response, width=None, height=None):
         self.assertStatusCode(response, 200)
         self.assertEqual(response.headers["content-type"], "image/png")
