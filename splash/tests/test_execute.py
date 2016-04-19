@@ -3487,17 +3487,49 @@ class MouseEventsTest(BaseLuaRenderTest):
         Clicking on element like this is only possible after setting viewport full.
         """
         resp = self.request_lua("""
-             function main(splash)
+            function main(splash)
+                assert(splash:go(splash.args.url))
                 get_dimensions = splash:jsfunc([[
                     function () {
                         rect = document.getElementById('must_scroll_to_see').getBoundingClientRect();
                         return {"x":rect.left, "y": rect.top}
                     }
                 ]])
-                assert(splash:go(splash.args.url))
                 splash:set_viewport_full()
+
                 dimensions = get_dimensions()
+                splash:wait(0.1)
                 splash:mouse_click(dimensions.x, dimensions.y)
+                -- wait split second to allow event to propagate
+                splash:wait(0.1)
+                return splash:html()
+            end
+            """, {"url": self.mockurl("jsevent?event_type=click")})
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn('this must be removed after click', resp.text)
+        self._assert_event_property("type", "click", resp)
+
+    def test_click_outside_viewport_do_scroll(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                get_dimensions = splash:jsfunc([[
+                    function () {
+                        rect = document.getElementById('must_scroll_to_see').getBoundingClientRect();
+                        return {"x":rect.left, "y": rect.top}
+                    }
+                ]])
+                scroll_down = splash:jsfunc([[
+                    function () {
+                        window.scrollTo(0, document.body.scrollHeight)
+                    }
+                ]])
+
+                scroll_down()
+                dimensions = get_dimensions()
+                splash:wait(0.1)
+                splash:mouse_click(dimensions.x, dimensions.y)
+                -- wait split second to allow event to propagate
                 splash:wait(0.1)
                 return splash:html()
             end
@@ -3516,7 +3548,7 @@ class MouseEventsTest(BaseLuaRenderTest):
             end
 
             """, {"url": self.mockurl("jsevent?event_type=click")})
-        msg = "x, y coordinates must be int or float "
+        msg = "coordinate must be a number "
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                msg)
 
@@ -3551,7 +3583,7 @@ class MouseEventsTest(BaseLuaRenderTest):
                     end
                     """, {"url": self.mockurl("jsevent?event_type=mouseover")})
 
-        msg = "x, y coordinates must be int or float "
+        msg = "coordinate must be a number "
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
 
     def test_mouse_press(self):
@@ -3585,7 +3617,7 @@ class MouseEventsTest(BaseLuaRenderTest):
                         end
                         """, {"url": self.mockurl("jsevent?event_type=mousedown")})
 
-        msg = "x, y coordinates must be int or float"
+        msg = "coordinate must be a number"
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
 
     def test_mouse_release(self):
@@ -3619,5 +3651,5 @@ class MouseEventsTest(BaseLuaRenderTest):
                         end
                         """, {"url": self.mockurl("jsevent?event_type=mouseup")})
 
-        msg = "x, y coordinates must be int or float"
+        msg = "coordinate must be a number"
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)

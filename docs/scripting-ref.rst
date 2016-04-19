@@ -2114,8 +2114,8 @@ Trigger mouse click event in web page.
 
 **Parameters:**
 
-* x - integer or float with x position of element to be clicked
-* y - integer or float with y position of element to be clicked
+* x - number with x position of element to be clicked (distance from the left, relative to viewport)
+* y - number with y position of element to be clicked (distance fromt the top, relative to viewport)
 
 **Returns:** nil
 
@@ -2124,19 +2124,28 @@ Trigger mouse click event in web page.
 
 .. note::
 
-    Coordinates for mouse events must be relative to web document. Element on which action is performed must be inside viewport (must be visible
+    Coordinates for mouse events must be relative to viewport. Element on which action is performed must be inside viewport (must be visible
     to the user). If element is outside viewport and user needs to scroll to see it, you must either scroll
     down with splash or simply set viewport to full with :ref:`splash-set-viewport-full`.
 
 .. note::
 
-    Mouse events are not propagated immediately, to see consequences of click  reflected in page source you must call :ref:`splash-wait`
+    Mouse events are not propagated immediately, to see consequences of click reflected in page source you must call :ref:`splash-wait`
+
+.. hint::
+
+    If you want to get coordinates of html element use JavaScript getBoundingClientRect_, x must be distance from the
+    left, and y distance from the top.
+
+    .. _getBoundingClientRect: https://developer.mozilla.org/en/docs/Web/API/Element/getBoundingClientRect
+
+
 
 Example:
 
 .. code-block:: lua
 
-    -- get button element dimensions with javascript and perform mouse click
+    -- Get button element dimensions with javascript and perform mouse click.
 
     function main(splash)
         assert(splash:go(splash.args.url))
@@ -2146,30 +2155,12 @@ Example:
                 return {"x":rect.left, "y": rect.top}
             }
         ]])
-        dimensions = get_dimensions()
-        splash:mouse_click(dimensions.x, dimensions.y)
-        -- wait split second to allow event to propagate
-        splash:wait(0.1)
-        return splash:html()
-    end
-
-Example 2:
-
-.. code-block:: lua
-
-    -- click on element outside viewport
-
-    function main(splash)
-        get_dimensions = splash:jsfunc([[
-            function () {
-                rect = document.getElementById('must_scroll_to_see').getBoundingClientRect();
-                return {"x":rect.left, "y": rect.top}
-            }
-        ]])
-        assert(splash:go(splash.args.url))
         splash:set_viewport_full()
+        splash:wait(0.1)
         dimensions = get_dimensions()
         splash:mouse_click(dimensions.x, dimensions.y)
+
+        -- Wait split second to allow event to propagate.
         splash:wait(0.1)
         return splash:html()
     end

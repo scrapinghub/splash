@@ -760,12 +760,12 @@ class Splash(BaseExposedObject):
 
     def _check_mouse_coordinantes(self, x, y):
         try:
-            assert isinstance(x, int) or isinstance(x, float)
-            assert isinstance(y, int) or isinstance(y, float)
-        except AssertionError:
+            assert isinstance(x, int) or isinstance(x, float), "x"
+            assert isinstance(y, int) or isinstance(y, float), "y"
+        except AssertionError as e:
             raise ScriptError({
-                "argument": "x, y",
-                "message": "splash mouse event x, y coordinates must be int or float "
+                "argument": e.args[0],
+                "message": "splash mouse event {} coordinate must be a number ".format(e.args[0])
         })
 
     @command()
