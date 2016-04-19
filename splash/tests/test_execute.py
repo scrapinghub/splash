@@ -25,7 +25,7 @@ from splash.har.utils import get_response_body_bytes
 from . import test_render
 from .test_jsonpost import JsonPostRequestHandler
 from .utils import NON_EXISTING_RESOLVABLE, SplashServer
-from .mockserver import JsRender
+from .mockserver import JsRender, TwoAbsoluteElementsResource
 from .. import defaults
 
 
@@ -3456,3 +3456,52 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertIn(u'world of splash', data["html1"])
         self.assertNotIn(u"world of splash", data["html2"])
+
+
+class ElementOffsetTest(BaseLuaRenderTest):
+    def test_offset1(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                return splash:select('.container .element:first-child'):offset()
+            end
+        """, {"url": self.mockurl("two-absolute-elements")})
+
+        self.assertStatusCode(resp, 200)
+
+        data = resp.json()
+
+        self.assertEqual(data["top"], TwoAbsoluteElementsResource.element1["top"])
+        self.assertEqual(data["left"], TwoAbsoluteElementsResource.element1["left"])
+
+    def test_offset2(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                return splash:select('.container .element-mod'):offset()
+            end
+        """, {"url": self.mockurl("two-absolute-elements")})
+
+        self.assertStatusCode(resp, 200)
+
+        data = resp.json()
+
+        self.assertEqual(data["top"], TwoAbsoluteElementsResource.element2["top"])
+        self.assertEqual(data["left"], TwoAbsoluteElementsResource.element2["left"])
+
+    def test_element_not_exist(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                return splash:select('.container .dharma'):offset()
+            end
+        """, {"url": self.mockurl("two-absolute-elements")})
+
+        self.assertStatusCode(resp, 400)
+
