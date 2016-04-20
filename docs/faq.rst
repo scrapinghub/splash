@@ -176,7 +176,7 @@ https://github.com/nabilm/ansible-splash.
 .. _Ansible: https://www.ansible.com/
 
 
-.. _disable-private-mode
+.. _disable-private-mode:
 
 How do I disable Private mode?
 ------------------------------
