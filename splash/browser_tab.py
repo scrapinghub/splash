@@ -6,10 +6,12 @@ import os
 import weakref
 import uuid
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot
+from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF
+from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWidgets import QApplication
 
 from twisted.internet import defer
 from twisted.python import log
@@ -30,6 +32,7 @@ from splash.jsutils import (
     get_process_errors_js,
     escape_js,
 )
+
 
 
 def skip_if_closing(meth):
@@ -832,6 +835,40 @@ class BrowserTab(QObject):
             res["frameName"] = six.text_type(frame.frameName())
 
         return res
+
+    def mouse_click(self, x, y, button="left"):
+        """Clicks elements on webpage.
+
+        :param x integer with X screen position to click
+        :param y integer with Y screen position to click
+        :param button string specifying button type
+        :return: None
+        """
+        # XXX only left click supported for now, we can add support and tests for right click
+        # in the future if there is need for that
+        self.mouse_press(x, y, button)
+        self.mouse_release(x, y, button)
+
+    def mouse_press(self, x, y, button="left"):
+        self._post_mouse_event(QEvent.MouseButtonPress, button, x, y)
+
+    def mouse_release(self, x, y, button="left"):
+        self._post_mouse_event(QEvent.MouseButtonRelease, button, x, y)
+
+    def mouse_hover(self, end_x, end_y):
+        self._post_mouse_event(QEvent.MouseMove, "nobutton", end_x, end_y)
+
+    def _post_mouse_event(self, type, button, x, y):
+        q_button = {
+            # TODO perhaps add right button here
+            "left": Qt.LeftButton,
+            "nobutton": Qt.NoButton,
+        }.get(button)
+        point = QPointF(x, y)
+        buttons = QApplication.mouseButtons()
+        modifiers = QApplication.keyboardModifiers()
+        event = QMouseEvent(type, point, q_button, buttons, modifiers)
+        QApplication.postEvent(self.web_page, event)
 
 
 class _SplashHttpClient(QObject):

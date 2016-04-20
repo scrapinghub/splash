@@ -668,6 +668,53 @@ class JsRedirectTo(Resource):
         """ % next_url).encode('utf-8')
 
 
+
+class JsEventResource(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        """
+        :param request: must contain event_type with valid string to use for filling up
+        JS event handler, e.g. "mouseover", "click" or something else.
+        :return: response will contain event data as strings in format property:value. h1 will dissappear
+        if event succeeds.
+        """
+        event_type = request.args[b"event_type"][0].decode("utf8")
+        js_code = u"""
+        function modify_h1(e) {
+            var h1 = document.getElementById("h1");
+            h1.remove();
+            msg = ""
+            node = document.createElement("p")
+            for (k in e) {
+                msg += k + ":" + e[k] + ";"
+            }
+            node.textContent = msg;
+            document.getElementById("container").appendChild(node);
+        }
+        var element = document.getElementById("button");
+        element.addEventListener("%s", modify_h1, false);
+        var element_outside_viewport = document.getElementById("must_scroll_to_see");
+        element_outside_viewport.addEventListener("%s", modify_h1, false);
+        """ % (event_type, event_type)
+        html_with_js = u"""
+            <html>
+            <head></head>
+            <body>
+                <div id="container">
+                <h1 id="h1"> this must be removed after {0}</h1>
+                <button id="button">{0} here</button>
+                </div>
+                <button id="must_scroll_to_see" style="margin-top:1900px">button below sight level</button>
+            <script>
+                {1}
+            </script>
+            </body>
+            </html>
+        """.format(event_type, js_code)
+        return html_with_js.encode("utf8")
+
+
 class CP1251Resource(Resource):
 
     @use_chunked_encoding
@@ -821,6 +868,7 @@ class Root(Resource):
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
+        self.putChild(b"jsevent", JsEventResource())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())
