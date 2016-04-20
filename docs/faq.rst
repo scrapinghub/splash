@@ -210,3 +210,9 @@ Why was Splash created in the first place?
 
 Please refer to `this great answer from kmike on reddit.
 <https://www.reddit.com/r/Python/comments/2xp5mr/handling_javascript_in_scrapy_with_splash/cp2vgd6>`__
+
+Why does Splash use Lua for scripting, not Python or JavaScript?
+----------------------------------------------------------------
+
+Check this `github issue <https://github.com/scrapinghub/splash/issues/117>`__
+for the motivation.
