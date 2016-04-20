@@ -121,6 +121,14 @@ class BrowserTab(QObject):
         settings = self.web_page.settings()
         return settings.testAttribute(QWebSettings.PrivateBrowsingEnabled)
 
+    def set_frame_flattening_enabled(self, val):
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.FrameFlatteningEnabled, val)
+
+    def get_frame_flattening_enabled(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(QWebSettings.FrameFlatteningEnabled)
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.

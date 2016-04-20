@@ -451,6 +451,16 @@ class Splash(BaseExposedObject):
     def set_js_enabled(self, value):
         self.tab.set_js_enabled(value)
 
+    @lua_property("frame_flattening_enabled")
+    @command()
+    def get_frame_flattening_enabled(self):
+        self.tab.get_frame_flattening_enabled()
+
+    @get_frame_flattening_enabled.lua_setter
+    @command()
+    def set_frame_flattening_enabled(self, value):
+        self.tab.set_frame_flattening_enabled(value)
+
     @lua_property("private_mode_enabled")
     @command()
     def get_private_mode_enabled(self):
