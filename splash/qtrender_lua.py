@@ -759,17 +759,15 @@ class Splash(BaseExposedObject):
         self.tab.autoload_reset()
 
     def _check_mouse_coordinantes(self, x, y):
-        bad_arg = ""
-        if not isinstance(x, int) and not isinstance(x, float):
-            bad_arg = "x"
-        if not isinstance(y, int) and not isinstance(y, float):
-            bad_arg = "y"
-
-        if bad_arg:
-            raise ScriptError({
-                "argument": bad_arg,
-                "message": "splash mouse event {} coordinate must be a number ".format(bad_arg)
-            })
+        def _assert_number(value, name):
+            if not isinstance(value, (int, float)):
+                raise ScriptError({
+                    "argument": name,
+                    "message": "splash mouse event {} coordinate must be "
+                               "a number ".format(name)
+                })
+        _assert_number(x, "x")
+        _assert_number(y, "y")
 
     @command()
     def mouse_click(self, x, y):

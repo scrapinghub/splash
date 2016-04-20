@@ -10,7 +10,10 @@ New features:
   allow to take screenshots of parts of pages;
 * :ref:`save_args <arg-save-args>` and :ref:`load_args <arg-load-args>`
   parameters allow to save network traffic by caching large request arguments
-  inside Splash server.
+  inside Splash server;
+* new :ref:`splash-mouse-click`, :ref:`splash-mouse-press`,
+  :ref:`splash-mouse-release` and :ref:`splash-mouse-hover` methods for sending
+  mouse events to web pages.
 
 Bug fixes:
 

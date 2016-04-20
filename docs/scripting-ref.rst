@@ -2114,50 +2114,42 @@ Trigger mouse click event in web page.
 
 **Parameters:**
 
-* x - number with x position of element to be clicked (distance from the left, relative to viewport)
-* y - number with y position of element to be clicked (distance fromt the top, relative to viewport)
+* x - number with x position of element to be clicked
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element to be clicked
+  (distance from the top, relative to the current viewport)
 
 **Returns:** nil
 
 **Async:**: no.
 
+Coordinates for mouse events must be relative to viewport.
+Element on which action is performed must be inside viewport
+(must be visible to the user). If element is outside viewport and
+user needs to scroll to see it, you must either scroll to the element
+with JavaScript or set viewport to full with
+:ref:`splash-set-viewport-full`.
 
-.. note::
+Mouse events are not propagated immediately, to see consequences of click
+reflected in page source you must call :ref:`splash-wait`
 
-    Coordinates for mouse events must be relative to viewport. Element on which action is performed must be inside viewport (must be visible
-    to the user). If element is outside viewport and user needs to scroll to see it, you must either scroll
-    down with splash or simply set viewport to full with :ref:`splash-set-viewport-full`.
-
-.. note::
-
-    Mouse events are not propagated immediately, to see consequences of click reflected in page source you must call :ref:`splash-wait`
-
-.. hint::
-
-    If you want to get coordinates of html element use JavaScript getBoundingClientRect_, x must be distance from the
-    left, and y distance from the top.
-
-    .. _getBoundingClientRect: https://developer.mozilla.org/en/docs/Web/API/Element/getBoundingClientRect
-
-
-
-Example:
+If you want to get coordinates of html element use JavaScript
+getBoundingClientRect_:
 
 .. code-block:: lua
 
     -- Get button element dimensions with javascript and perform mouse click.
-
     function main(splash)
         assert(splash:go(splash.args.url))
-        get_dimensions = splash:jsfunc([[
+        local get_dimensions = splash:jsfunc([[
             function () {
-                rect = document.getElementById('button').getBoundingClientRect();
-                return {"x":rect.left, "y": rect.top}
+                var rect = document.getElementById('button').getBoundingClientRect();
+                return {"x": rect.left, "y": rect.top}
             }
         ]])
         splash:set_viewport_full()
         splash:wait(0.1)
-        dimensions = get_dimensions()
+        local dimensions = get_dimensions()
         splash:mouse_click(dimensions.x, dimensions.y)
 
         -- Wait split second to allow event to propagate.
@@ -2165,11 +2157,12 @@ Example:
         return splash:html()
     end
 
+.. _getBoundingClientRect: https://developer.mozilla.org/en/docs/Web/API/Element/getBoundingClientRect
 
-Under the hood ``splash:mouse_click`` simply performs :ref:`splash-mouse-press` followed by :ref:`splash-mouse-release`.
+Under the hood :ref:`splash-mouse-click` performs :ref:`splash-mouse-press`
+followed by :ref:`splash-mouse-release`.
 
-At the moment only left click is supported by Splash. Click with right mouse button or double click is not supported.
-
+At the moment only left click is supported.
 
 .. _splash-mouse-hover:
 
@@ -2182,14 +2175,16 @@ Trigger mouse hover (JavaScript mouseover) event in web page.
 
 **Parameters:**
 
-* x - integer or float with x position of element to be hovered on
-* y - integer or float with y position of element to be hovered on
+* x - number with x position of element to be hovered on
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element to be hovered on
+  (distance from the top, relative to the current viewport)
 
 **Returns:** nil
 
 **Async:**: no.
 
-See notes about mouse events in :ref:`splash-mouse-click`
+See notes about mouse events in :ref:`splash-mouse-click`.
 
 
 .. _splash-mouse-press:
@@ -2203,14 +2198,16 @@ Trigger mouse press event in web page.
 
 **Parameters:**
 
-* x - integer or float with x position of element over which mouse button is pressed
-* y - integer or float with y position of element over which mouse button is pressed
+* x - number with x position of element over which mouse button is pressed
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element over which mouse button is pressed
+  (distance from the top, relative to the current viewport)
 
 **Returns:** nil
 
 **Async:**: no.
 
-See notes about mouse events in :ref:`splash-mouse-click`
+See notes about mouse events in :ref:`splash-mouse-click`.
 
 .. _splash-mouse-release:
 
@@ -2223,11 +2220,13 @@ Trigger mouse release event in web page.
 
 **Parameters:**
 
-* x - integer or float with x position of element over which mouse button is released
-* y - integer or float with y position of element over which mouse button is released
+* x - number with x position of element over which mouse button is released
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element over which mouse button is released
+  (distance from the top, relative to the current viewport)
 
 **Returns:** nil
 
 **Async:**: no.
 
-See notes about mouse events in :ref:`splash-mouse-click`
+See notes about mouse events in :ref:`splash-mouse-click`.
