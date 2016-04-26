@@ -865,8 +865,12 @@ class Splash(BaseExposedObject):
         self.tab.mouse_hover(x, y)
 
     @command()
-    def send_keys(self, text, key_type=None):
-        self.tab.send_keys(text, key_type)
+    def send_keys(self, text):
+        self.tab.send_keys(text)
+
+    @command()
+    def send_text(self, text):
+        self.tab.send_text(text)
 
     @command(async=True)
     def set_content(self, data, mime_type=None, baseurl=None):
