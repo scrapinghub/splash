@@ -26,7 +26,7 @@ OS X + Docker
 
        $ docker-machine start default
        
-       $ eval "$(docker-machine env default)"                                                            ☺
+       $ eval "$(docker-machine env default)"
 
 2. Pull the image::
 
