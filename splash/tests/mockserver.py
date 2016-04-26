@@ -635,6 +635,16 @@ RgbStripesPage = _html_resource("""
 </html>
 """)
 
+InputsPage = _html_resource("""
+<html>
+    <body>
+        <input type="text" id="input1"/>
+        <input type="text" id="input2"/>
+        <input type="text" id="input3"/>
+    </body>
+</html>
+""")
+
 
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
@@ -869,6 +879,7 @@ class Root(Resource):
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
         self.putChild(b"jsevent", JsEventResource())
+        self.putChild(b"inputs-page", InputsPage())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())

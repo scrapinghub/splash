@@ -3653,3 +3653,34 @@ class MouseEventsTest(BaseLuaRenderTest):
 
         msg = "coordinate must be a number"
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
+
+
+class KeyEventsTest(BaseLuaRenderTest):
+    def test_send_raw_key_events(self):
+        resp = self.request_lua("""
+             function main(splash)
+                assert(splash:go(splash.args.url))
+                join_inputs = splash:jsfunc([[
+                    function () {
+                        var inputs = document.getElementsByTagName('input');
+                        var values = [];
+                        for (var i = 0; i < inputs.length; i++) {
+                            values.push(inputs[i].value);
+                        }
+                        return values.join('|');
+                    }
+                ]])
+                splash:send_keys('', 'Tab')
+                splash:send_keys('Hello World')
+                splash:send_keys('', 'Tab')
+                splash:send_keys('Foo Bar')
+                splash:send_keys('', 'Tab')
+                splash:send_keys('Baz')
+                splash:wait(0)
+                inputs = join_inputs()
+                return inputs
+            end
+            """, {"url": self.mockurl("inputs-page")})
+        self.assertStatusCode(resp, 200)
+        expected = '|'.join(['Hello World', 'Foo Bar', 'Baz'])
+        self.assertEqual(expected, resp.text)
