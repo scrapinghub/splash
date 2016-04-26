@@ -22,8 +22,10 @@ OS X + Docker
 -------------
 
 1. Install Docker_ (via the Toolbox Instructions_).
-2. Run the Docker Machine & load its environment
+2. Create, run & load the configuration for the docker-machine
 
+       $ docker-machine create default
+       
        $ docker-machine start default
        
        $ eval "$(docker-machine env default)"
