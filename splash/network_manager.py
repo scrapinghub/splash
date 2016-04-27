@@ -6,7 +6,7 @@ import functools
 from datetime import datetime
 import traceback
 
-from PyQt5.QtCore import QByteArray, QTimer
+from PyQt5.QtCore import QByteArray, QTimer 
 from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
