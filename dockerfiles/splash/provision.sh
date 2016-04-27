@@ -15,6 +15,7 @@ install_pyqt5 -- install PyQT5 from sources
 install_python_deps -- install python-level dependencies
 install_msfonts -- agree with EULA and install Microsoft fonts
 install_extra_fonts -- install extra fonts
+install_flash -- install flash plugin
 remove_builddeps -- remove build-dependencies
 remove_extra -- remove files that are unnecessary to run Splash
 
@@ -167,6 +168,10 @@ install_extra_fonts() {
         fonts-arphic-bsmi00lp \
         fonts-arphic-gkai00mp \
         fonts-arphic-bkai00mp
+}
+
+install_flash () {
+    apt-get install -y flashplugin-installer
 }
 
 remove_builddeps () {

@@ -1241,7 +1241,7 @@ class _ExposedResponse(BaseExposedObject):
 
         if har_entry is None:
             if read_body:
-                resp_info = reply2har(reply, include_content=True, binary_content=False)
+                resp_info = reply2har(reply, include_content=True)
             else:
                 resp_info = reply2har(reply)
         else:

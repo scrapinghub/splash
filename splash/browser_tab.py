@@ -125,7 +125,7 @@ class BrowserTab(QObject):
         """
         settings = web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
-        settings.setAttribute(QWebSettings.PluginsEnabled, False)
+        settings.setAttribute(QWebSettings.PluginsEnabled, defaults.PLUGINS_ENABLED)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff

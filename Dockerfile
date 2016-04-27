@@ -14,8 +14,8 @@ RUN /tmp/provision.sh \
     install_extra_fonts \
     install_pyqt5 \
     install_python_deps \
-    remove_builddeps \
-    remove_extra && \
+    install_flash \
+    remove_builddeps && \
     rm /tmp/provision.sh
 
 ADD . /app

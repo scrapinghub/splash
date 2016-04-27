@@ -79,7 +79,7 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply, include_content=False, binary_content=False):
+def reply2har(reply, include_content=False):
     """ Serialize QNetworkReply to HAR. """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
@@ -129,15 +129,10 @@ def reply2har(reply, include_content=False, binary_content=False):
         res["redirectURL"] = ""
 
     if include_content:
-        data = bytes(reply.readAll())
-        if binary_content:
-            res["content"]["encoding"] = "binary"
-            res["content"]["text"] = data
-            res["content"]["size"] = len(data)
-        else:
-            res["content"]["encoding"] = "base64"
-            res["content"]["text"] = base64.b64encode(data)
-            res["content"]["size"] = len(data)
+        content = getattr(reply, 'content', None)
+        if content is not None:
+            res["content"]["text"] = str(content)
+            res["content"]["size"] = len(content)
 
     return res
 
