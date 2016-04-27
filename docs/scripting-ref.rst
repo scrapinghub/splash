@@ -2102,3 +2102,131 @@ Example:
              error("Splash 1.8 or newer required")
          end
      end
+
+.. _splash-mouse-click:
+
+splash:mouse_click
+------------------
+
+Trigger mouse click event in web page.
+
+**Signature:** ``splash:mouse_click(x, y)``
+
+**Parameters:**
+
+* x - number with x position of element to be clicked
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element to be clicked
+  (distance from the top, relative to the current viewport)
+
+**Returns:** nil
+
+**Async:**: no.
+
+Coordinates for mouse events must be relative to viewport.
+Element on which action is performed must be inside viewport
+(must be visible to the user). If element is outside viewport and
+user needs to scroll to see it, you must either scroll to the element
+with JavaScript or set viewport to full with
+:ref:`splash-set-viewport-full`.
+
+Mouse events are not propagated immediately, to see consequences of click
+reflected in page source you must call :ref:`splash-wait`
+
+If you want to get coordinates of html element use JavaScript
+getBoundingClientRect_:
+
+.. code-block:: lua
+
+    -- Get button element dimensions with javascript and perform mouse click.
+    function main(splash)
+        assert(splash:go(splash.args.url))
+        local get_dimensions = splash:jsfunc([[
+            function () {
+                var rect = document.getElementById('button').getBoundingClientRect();
+                return {"x": rect.left, "y": rect.top}
+            }
+        ]])
+        splash:set_viewport_full()
+        splash:wait(0.1)
+        local dimensions = get_dimensions()
+        splash:mouse_click(dimensions.x, dimensions.y)
+
+        -- Wait split second to allow event to propagate.
+        splash:wait(0.1)
+        return splash:html()
+    end
+
+.. _getBoundingClientRect: https://developer.mozilla.org/en/docs/Web/API/Element/getBoundingClientRect
+
+Under the hood :ref:`splash-mouse-click` performs :ref:`splash-mouse-press`
+followed by :ref:`splash-mouse-release`.
+
+At the moment only left click is supported.
+
+.. _splash-mouse-hover:
+
+splash:mouse_hover
+------------------
+
+Trigger mouse hover (JavaScript mouseover) event in web page.
+
+**Signature:** ``splash:mouse_hover(x, y)``
+
+**Parameters:**
+
+* x - number with x position of element to be hovered on
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element to be hovered on
+  (distance from the top, relative to the current viewport)
+
+**Returns:** nil
+
+**Async:**: no.
+
+See notes about mouse events in :ref:`splash-mouse-click`.
+
+
+.. _splash-mouse-press:
+
+splash:mouse_press
+------------------
+
+Trigger mouse press event in web page.
+
+**Signature:** ``splash:mouse_press(x, y)``
+
+**Parameters:**
+
+* x - number with x position of element over which mouse button is pressed
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element over which mouse button is pressed
+  (distance from the top, relative to the current viewport)
+
+**Returns:** nil
+
+**Async:**: no.
+
+See notes about mouse events in :ref:`splash-mouse-click`.
+
+.. _splash-mouse-release:
+
+splash:mouse_release
+--------------------
+
+Trigger mouse release event in web page.
+
+**Signature:** ``splash:mouse_release(x, y)``
+
+**Parameters:**
+
+* x - number with x position of element over which mouse button is released
+  (distance from the left, relative to the current viewport)
+* y - number with y position of element over which mouse button is released
+  (distance from the top, relative to the current viewport)
+
+**Returns:** nil
+
+**Async:**: no.
+
+See notes about mouse events in :ref:`splash-mouse-click`.

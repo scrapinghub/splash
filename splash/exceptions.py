@@ -27,6 +27,11 @@ class UnsupportedContentType(Exception):
     pass
 
 
+class ExpiredArguments(Exception):
+    """ Arguments stored with ``save_args`` are expired """
+    pass
+
+
 class ScriptError(BadOption):
     """ Error happened while executing Lua script """
     LUA_INIT_ERROR = 'LUA_INIT_ERROR'  # error happened before coroutine starts

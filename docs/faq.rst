@@ -176,7 +176,7 @@ https://github.com/nabilm/ansible-splash.
 .. _Ansible: https://www.ansible.com/
 
 
-.. _disable-private-mode
+.. _disable-private-mode:
 
 How do I disable Private mode?
 ------------------------------
@@ -210,3 +210,50 @@ Why was Splash created in the first place?
 
 Please refer to `this great answer from kmike on reddit.
 <https://www.reddit.com/r/Python/comments/2xp5mr/handling_javascript_in_scrapy_with_splash/cp2vgd6>`__
+
+.. _why-lua:
+
+Why does Splash use Lua for scripting, not Python or JavaScript?
+----------------------------------------------------------------
+
+Check this `github issue <https://github.com/scrapinghub/splash/issues/117>`__
+for the motivation.
+
+.. _render-html-doesnt-work:
+
+:ref:`render.html` result looks broken in a browser
+---------------------------------------------------
+
+When you check ``http://<splash-server>:8050/render.html?url=<url>``
+in a browser it is likely stylesheets & other resources won't
+load properly. It happens when resource URLs are relative - the browser
+will resolve them as relative to
+``http://<splash-server>:8050/render.html?url=<url>``, not to ``url``.
+This is not a Splash bug, it is a standard browser behaviour.
+
+If you just want to check how the page looks like after rendering
+use :ref:`render.png` or :ref:`render.jpeg` endpoints.
+If screenshot is not an option and you want to display html with images,
+etc. using a browser then you may post-process the HTML and add
+an appropriate `\<base\>`_ HTML tag to the page.
+
+.. _<base>: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+:ref:`baseurl <arg-baseurl>` Splash argument can't help here. It allows
+to render a page located at one URL as if it is located at another
+URL. For example, you can host a copy of page HTML on your server,
+but use baseurl of the original page. This way Splash will resolve
+relative URLs as relative to original page URL, so that you can get
+e.g. a proper screenshot or execute proper JavaScript code.
+
+But by passing baseurl you're instructing **Splash** to use it,
+not **your browser**. It doesn't change relative links to absolute in DOM,
+it makes Splash to treat them as relative to baseurl when rendering.
+
+Changing links to absolute in DOM tree is not what browsers do when
+base url is applied - e.g. if you check href attribute using JS code
+it will still contain relative value even if ``<base>`` tag is used.
+:ref:`render.html` returns DOM snapshot, so the links are not changed.
+
+When you load :ref:`render.html` result in a browser it is **your browser**
+who resolves relative links, not Splash, so they are resolved incorrectly.

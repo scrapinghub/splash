@@ -65,6 +65,27 @@ class RenderOptions(object):
         data['uid'] = id(request)
         return cls(data, max_timeout)
 
+    def get_expired_args(self, cache):
+        """
+        Return a list of argument names from load_args which can't be loaded
+        """
+        return cache.get_missing(self.get_load_args().items())
+
+    def save_args_to_cache(self, cache):
+        """
+        Process save_args and put all values to cache.
+        Return a list of (name, key) pairs.
+        """
+        save_args = self.get_save_args()
+        save_values = [self.data.get(name) for name in save_args]
+        keys = cache.add_many(save_values)
+        return list(zip(save_args, keys))
+
+    def load_cached_args(self, cache):
+        load_args = self.get_load_args()
+        for name, key in (load_args or {}).items():
+            self.data[name] = cache[key]
+
     def get(self, name, default=_REQUIRED, type=six.text_type, range=None):
         value = self.data.get(name)
         if value is not None:
@@ -215,6 +236,57 @@ class RenderOptions(object):
                     )
 
         return headers
+
+    def get_save_args(self):
+        save_args = self.get("save_args", default=None, type=None)
+        if save_args is None:
+            return []
+
+        if isinstance(save_args, six.text_type):
+            # comma-separated string
+            save_args = save_args.split(',')
+
+        if not isinstance(save_args, list):
+            self.raise_error(
+                argument="save_args",
+                description="'save_args' should be either a comma-separated "
+                            "string or a JSON array with argument names",
+            )
+
+        # JSON array
+        if not all(isinstance(a, six.text_type) for a in save_args):
+            self.raise_error(
+                argument="save_args",
+                description="'save_args' should be a list of strings",
+            )
+        return save_args
+
+    def get_load_args(self):
+        load_args = self.get("load_args", default=None, type=None)
+        if load_args is None:
+            return {}
+
+        if isinstance(load_args, six.text_type):
+            try:
+                load_args = dict(
+                    kv.split("=", 1) for kv in load_args.split(';')
+                )
+            except ValueError:
+                self.raise_error(
+                    argument="load_args",
+                    description="'load_args' string value is not a "
+                                "semicolon-separated list of name=hash pairs"
+                )
+
+        if not isinstance(load_args, dict):
+            self.raise_error(
+                argument="load_args",
+                description="'load_args' should be either a JSON object with "
+                            "argument hashes or a semicolon-separated list "
+                            "of name=hash pairs"
+            )
+
+        return load_args
 
     def get_viewport(self, wait=None):
         viewport = self.get("viewport", defaults.VIEWPORT_SIZE)

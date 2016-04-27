@@ -72,6 +72,9 @@ MANHOLE_PASSWORD = 'admin'
 # pool options
 SLOTS = 50
 
+# argument cache option
+ARGUMENT_CACHE_MAX_ENTRIES = 500
+
 # security options
 ALLOWED_SCHEMES = ['http', 'https', 'data', 'ftp', 'sftp', 'ws', 'wss']
 JS_CROSS_DOMAIN_ENABLED = False

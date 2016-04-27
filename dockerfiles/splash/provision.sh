@@ -146,8 +146,7 @@ install_python_deps () {
         xvfbwrapper==0.2.8 \
         funcparserlib==0.3.6 \
         Pillow==3.2.0 \
-        cython==0.24 && \
-    ${_PYTHON} -m pip install --install-option="--with-cython" https://github.com/scoder/lupa/archive/8c74d0a278b45df5d813abbab64377e80864bd56.zip#egg=lupa && \
+        lupa==1.3 && \
     ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=re2
 }
 

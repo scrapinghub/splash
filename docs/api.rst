@@ -38,7 +38,7 @@ baseurl : string : optional
   Base HTML content will be feched from the URL given in the url
   argument, while relative referenced resources in the HTML-text used to
   render the page are fetched using the URL given in the baseurl argument
-  as base.
+  as base. See also: :ref:`render-html-doesnt-work`.
 
 .. _arg-timeout:
 
@@ -171,6 +171,47 @@ http_method : string : optional
     HTTP method of outgoing Splash request. Default method is GET. Splash also
     supports POST.
 
+.. _arg-save-args:
+
+save_args : JSON array or a comma-separated string : optional
+    A list of argument names to put in cache. Splash will store each
+    argument value in an internal cache and return ``X-Splash-Saved-Arguments``
+    HTTP header with a list of SHA1 hashes for each argument
+    (a semicolon-separated list of name=hash pairs)::
+
+        name1=9a6747fc6259aa374ab4e1bb03074b6ec672cf99;name2=ba001160ef96fe2a3f938fea9e6762e204a562b3
+
+    Client can then use :ref:`load_args <arg-load-args>` parameter
+    to pass these hashes instead of argument values. This is most useful
+    when argument value is large and doesn't change often
+    (:ref:`js_source <arg-js-source>` or :ref:`lua_source <arg-lua-source>`
+    are often good candidates).
+
+.. _arg-load-args:
+
+load_args : JSON object or a string : optional
+    Parameter values to load from cache.
+    ``load_args`` should be either ``{"name": "<SHA1 hash>", ...}``
+    JSON object or a raw ``X-Splash-Saved-Arguments`` header value
+    (a semicolon-separated list of name=hash pairs).
+
+    For each parameter in ``load_args`` Splash tries to fetch the
+    value from the internal cache using a provided SHA1 hash as a key.
+    If all values are in cache then Splash uses them as argument values
+    and then handles the request as usual.
+
+    If at least on argument can't be found Splash returns **HTTP 498** status
+    code. In this case client should repeat the request, but
+    use :ref:`save_args <arg-save-args>` and send full argument values.
+
+    :ref:`load_args <arg-load-args>` and :ref:`save_args <arg-save-args>`
+    allow to save network traffic by not sending large arguments with each
+    request (:ref:`js_source <arg-js-source>` and
+    :ref:`lua_source <arg-lua-source>` are often good candidates).
+
+    Splash uses LRU cache to store values; the number of entries is limited,
+    and cache is cleared after each Splash restart. In other words, storage
+    is not persistent; client should be ready to re-send the arguments.
 
 Examples
 ~~~~~~~~
@@ -522,9 +563,10 @@ execute
 
 Execute a custom rendering script and return a result.
 
-:ref:`render.html`, :ref:`render.png`, :ref:`render.jpeg`, :ref:`render.har` and :ref:`render.json`
-endpoints cover many common use cases, but sometimes they are not enough.
-This endpoint allows to write custom :ref:`Splash Scripts <scripting-tutorial>`.
+:ref:`render.html`, :ref:`render.png`, :ref:`render.jpeg`, :ref:`render.har`
+and :ref:`render.json` endpoints cover many common use cases, but sometimes
+they are not enough. This endpoint allows to write custom
+:ref:`Splash Scripts <scripting-tutorial>`.
 
 Arguments:
 
@@ -546,6 +588,16 @@ proxy : string : optional
 
 filters : string : optional
   Same as :ref:`'filters' <arg-filters>` argument for `render.html`_.
+
+save_args : JSON array or a comma-separated string : optional
+  Same as :ref:`'save_args' <arg-save-args>` argument for `render.html`_.
+  Note that you can save not only default Splash arguments,
+  but any other parameters as well.
+
+load_args : JSON object or a string : optional
+  Same as :ref:`'load_args' <arg-load-args>` argument for `render.html`_.
+  Note that you can load not only default Splash arguments,
+  but any other parameters as well.
 
 .. _execute javascript:
 

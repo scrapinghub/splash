@@ -17,6 +17,7 @@ from twisted.python import log
 import six
 
 import splash
+from splash.argument_cache import ArgumentCache
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, JpegRender
 )
@@ -34,6 +35,7 @@ from splash.qtutils import clear_caches
 from splash.exceptions import (
     BadOption, RenderError, InternalError,
     GlobalTimeoutError, UnsupportedContentType,
+    ExpiredArguments,
 )
 
 if lua_is_supported():
@@ -83,16 +85,32 @@ class BaseRenderResource(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    def __init__(self, pool, max_timeout):
+    def __init__(self, pool, max_timeout, argument_cache):
         Resource.__init__(self)
         self.pool = pool
         self.js_profiles_path = self.pool.js_profiles_path
         self.max_timeout = max_timeout
+        self.argument_cache = argument_cache
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
         request.starttime = time.time()
         render_options = RenderOptions.fromrequest(request, self.max_timeout)
+
+        # process argument cache
+        original_options = render_options.data.copy()
+        expired_args = render_options.get_expired_args(self.argument_cache)
+        if expired_args:
+            error = self._write_expired_args(request, expired_args)
+            self._log_stats(request, original_options, error)
+            return b"\n"
+
+        saved_args = render_options.save_args_to_cache(self.argument_cache)
+        if saved_args:
+            value = ';'.join("{}={}".format(name, value)
+                             for name, value in saved_args)
+            request.setHeader(b'X-Splash-Saved-Arguments', value.encode('utf8'))
+        render_options.load_cached_args(self.argument_cache)
 
         # check arguments before starting the render
         render_options.get_filters(self.pool)
@@ -110,7 +128,8 @@ class BaseRenderResource(_ValidatingResource):
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
-        pool_d.addBoth(self._finish_request, request, options=render_options.data)
+        pool_d.addBoth(self._finish_request, request,
+                       options=original_options)
         return NOT_DONE_YET
 
     def render_POST(self, request):
@@ -174,6 +193,10 @@ class BaseRenderResource(_ValidatingResource):
             data = data.encode('utf-8')
 
         request.write(data)
+
+    def _write_expired_args(self, request, expired_args):
+        ex = ExpiredArguments({'expired': expired_args})
+        return self._write_error(request, 498, ex)
 
     def _log_stats(self, request, options, error=None):
 
@@ -259,8 +282,10 @@ class ExecuteLuaScriptResource(BaseRenderResource):
     def __init__(self, pool, sandboxed,
                  lua_package_path,
                  lua_sandbox_allowed_modules,
-                 max_timeout):
-        BaseRenderResource.__init__(self, pool, max_timeout)
+                 max_timeout,
+                 argument_cache,
+                 ):
+        BaseRenderResource.__init__(self, pool, max_timeout, argument_cache)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
@@ -316,8 +341,9 @@ class RenderHarResource(BaseRenderResource):
 class DebugResource(Resource):
     isLeaf = True
 
-    def __init__(self, pool, warn=False):
+    def __init__(self, pool, argument_cache, warn=False):
         Resource.__init__(self)
+        self.argument_cache = argument_cache
         self.pool = pool
         self.warn = warn
 
@@ -329,13 +355,14 @@ class DebugResource(Resource):
             "qsize": len(self.pool.queue.pending),
             "maxrss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "fds": get_num_fds(),
+            "argcache": len(self.argument_cache)
         }
         if self.warn:
             info['WARNING'] = "/debug endpoint is deprecated. " \
                               "Please use /_debug instead."
             # info['leaks'] = get_leaks()
 
-        return (json.dumps(info)).encode('utf-8')
+        return (json.dumps(info, sort_keys=True)).encode('utf-8')
 
     def get_repr(self, render):
         if hasattr(render, 'url'):
@@ -347,13 +374,20 @@ class ClearCachesResource(Resource):
     isLeaf = True
     content_type = "application/json"
 
+    def __init__(self, argument_cache):
+        Resource.__init__(self)
+        self.argument_cache = argument_cache
+
     def render_POST(self, request):
+        argcache_size = len(self.argument_cache)
+        self.argument_cache.clear()
         clear_caches()
         unreachable = gc.collect()
         return json.dumps({
             "status": "ok",
-            "pyobjects_collected": unreachable
-        }).encode('utf-8')
+            "pyobjects_collected": unreachable,
+            "cached_args_removed": argcache_size,
+        }, sort_keys=True).encode('utf-8')
 
 
 class PingResource(Resource):
@@ -364,7 +398,7 @@ class PingResource(Resource):
         return (json.dumps({
             "status": "ok",
             "maxrss": get_ru_maxrss(),
-        })).encode('utf-8')
+        }, sort_keys=True)).encode('utf-8')
 
 
 
@@ -407,6 +441,8 @@ class DemoUI(_ValidatingResource):
         options.get_filters(self.pool)  # check
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
+            'save_args': options.get_save_args(),
+            'load_args': options.get_load_args(),
             'timeout': options.get_timeout(),
             'har': 1,
             'png': 1,
@@ -527,22 +563,27 @@ class Root(Resource):
     def __init__(self, pool, ui_enabled, lua_enabled, lua_sandbox_enabled,
                  lua_package_path,
                  lua_sandbox_allowed_modules,
-                 max_timeout):
+                 max_timeout,
+                 argument_cache_max_entries,
+                 ):
         Resource.__init__(self)
+        self.argument_cache = ArgumentCache(argument_cache_max_entries)
         self.ui_enabled = ui_enabled
         self.lua_enabled = lua_enabled
-        self.putChild(b"render.html", RenderHtmlResource(pool, max_timeout))
-        self.putChild(b"render.png", RenderPngResource(pool, max_timeout))
-        self.putChild(b"render.jpeg", RenderJpegResource(pool, max_timeout))
-        self.putChild(b"render.json", RenderJsonResource(pool, max_timeout))
-        self.putChild(b"render.har", RenderHarResource(pool, max_timeout))
 
-        self.putChild(b"_debug", DebugResource(pool))
-        self.putChild(b"_gc", ClearCachesResource())
+        _args = pool, max_timeout, self.argument_cache
+        self.putChild(b"render.html", RenderHtmlResource(*_args))
+        self.putChild(b"render.png", RenderPngResource(*_args))
+        self.putChild(b"render.jpeg", RenderJpegResource(*_args))
+        self.putChild(b"render.json", RenderJsonResource(*_args))
+        self.putChild(b"render.har", RenderHarResource(*_args))
+
+        self.putChild(b"_debug", DebugResource(pool, self.argument_cache))
+        self.putChild(b"_gc", ClearCachesResource(self.argument_cache))
         self.putChild(b"_ping", PingResource())
 
         # backwards compatibility
-        self.putChild(b"debug", DebugResource(pool, warn=True))
+        self.putChild(b"debug", DebugResource(pool, self.argument_cache, warn=True))
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
             self.putChild(b"execute", ExecuteLuaScriptResource(
@@ -550,7 +591,8 @@ class Root(Resource):
                 sandboxed=lua_sandbox_enabled,
                 lua_package_path=lua_package_path,
                 lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
-                max_timeout=max_timeout
+                max_timeout=max_timeout,
+                argument_cache=self.argument_cache,
             ))
 
         if self.ui_enabled:
