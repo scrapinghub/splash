@@ -1015,6 +1015,8 @@ class Root(Resource):
 
         self.putChild(b"gzip", GzipRoot(self.children))
 
+        self.putChild(b"flashpage", FlashPage())
+
 
 def cert_path():
     return os.path.join(os.path.dirname(__file__), "server.pem")
