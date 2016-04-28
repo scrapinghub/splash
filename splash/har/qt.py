@@ -133,8 +133,10 @@ def reply2har(reply, include_content=False):
         content = getattr(reply, 'content', None)
         if content is not None:
             res["content"]["size"] = len(content)
-            if res["content"]["mimeType"].lower().find('charset=') != -1:
-                res["content"]["text"] = bytes(content)
+            mime_type = res["content"]["mimeType"].lower()
+
+            if mime_type.startswith('text') or mime_type.find('utf-8') != -1:
+                res["content"]["text"] = str(content, encoding='utf-8')
             else:
                 res["content"]["text"] = base64.b64encode(content)
                 res["content"]["encoding"] = 'base64'

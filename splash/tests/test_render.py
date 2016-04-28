@@ -2,7 +2,6 @@
 from array import array
 import unittest
 import base64
-from io import StringIO
 from functools import wraps
 from io import BytesIO
 
@@ -478,11 +477,11 @@ class RenderPngTest(Base.RenderTest):
 
     def test_flash(self):
         r = self.request({'url': self.mockurl('flashpage'), 'viewport': 'full', 'wait': 0.1})
-        img = Image.open(StringIO(r.content))
+        img = Image.open(BytesIO(r.content))
         self.assertTrue(self.assertOneColorImage(img))
 
         r = self.request({'url': self.mockurl('flashpage'), 'viewport': 'full', 'wait': 0.1, 'onscreen': 1})
-        img = Image.open(StringIO(r.content))
+        img = Image.open(BytesIO(r.content))
         # if flash was rendered correctly the image must have more than one color (background + flash)
         self.assertFalse(self.assertOneColorImage(img))
 
