@@ -80,7 +80,11 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply, include_content=False):
+def is_binary_string(bytes):
+    return bool(bytes.translate(None, bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})))
+
+
+def reply2har(reply, include_content=True):
     """ Serialize QNetworkReply to HAR. """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
@@ -133,10 +137,9 @@ def reply2har(reply, include_content=False):
         content = getattr(reply, 'content', None)
         if content is not None:
             res["content"]["size"] = len(content)
-            mime_type = res["content"]["mimeType"].lower()
 
-            if mime_type.startswith('text') or mime_type.find('utf-8') != -1:
-                res["content"]["text"] = str(content, encoding='utf-8')
+            if not is_binary_string(bytes(content)):
+                res["content"]["text"] = str(content.data(), 'utf_8')
             else:
                 res["content"]["text"] = base64.b64encode(content)
                 res["content"]["encoding"] = 'base64'
