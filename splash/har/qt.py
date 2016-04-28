@@ -80,7 +80,7 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply, include_content=True):
+def reply2har(reply, include_content=False):
     """ Serialize QNetworkReply to HAR. """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
