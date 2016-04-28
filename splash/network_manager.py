@@ -271,9 +271,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _on_reply_ready_read(self):
         reply = self.sender()
         req_id = self._get_request_id()
-        if not req_id in self._response_content:
-            self._response_content[req_id] = QByteArray()
-        self._response_content[req_id] += reply.peek(reply.bytesAvailable())
+        self._response_content.setdefault(req_id, QByteArray()).append(reply.peek(reply.bytesAvailable()))
 
     def _on_reply_finished(self):
         reply = self.sender()

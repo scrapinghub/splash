@@ -147,7 +147,7 @@ class HarBuilder(object):
                 entry["timings"]["send"] = 0
 
         # update other reply information
-        entry["response"].update(reply2har(reply))
+        entry["response"].update(reply2har(reply, include_content=True))
 
     def store_reply_headers_received(self, req_id, reply):
         """

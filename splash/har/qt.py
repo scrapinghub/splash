@@ -5,7 +5,6 @@ See http://www.softwareishard.com/blog/har-12-spec/.
 """
 from __future__ import absolute_import
 import base64
-import codecs
 
 from PyQt5.QtCore import Qt, QVariant, QUrlQuery
 from PyQt5.QtNetwork import QNetworkRequest
@@ -80,7 +79,11 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply, include_content=True):
+def is_binary_string(data):
+    return bool(data.translate(None, bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})))
+
+
+def reply2har(reply, include_content=False):
     """ Serialize QNetworkReply to HAR. """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
@@ -132,11 +135,13 @@ def reply2har(reply, include_content=True):
     if include_content:
         content = getattr(reply, 'content', None)
         if content is not None:
-            res["content"]["size"] = len(content)
-            if res["content"]["mimeType"].lower().find('charset=') != -1:
-                res["content"]["text"] = bytes(content)
+            res["content"]["size"] = content.size()
+            bytes_array = bytes(content)
+
+            if not is_binary_string(bytes_array):
+                res["content"]["text"] = bytes_array.decode('utf8', 'replace')
             else:
-                res["content"]["text"] = base64.b64encode(content)
+                res["content"]["text"] = base64.b64encode(bytes_array)
                 res["content"]["encoding"] = 'base64'
 
     return res
