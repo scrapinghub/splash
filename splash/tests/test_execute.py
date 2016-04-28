@@ -2551,6 +2551,21 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertEqual(headers["Header-2"], "Value 2")
         self.assertIn("user-agent", headers)
 
+    def test_get_with_integer_headers(self):
+        # header with integer value should not crash splash
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = 2
+                })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        msg = "splash:set_custom_headers\(\) arguments must be a table with strings as keys and values."
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
+
     def test_get_with_custom_ua(self):
         resp = self.request_lua("""
         function main(splash)
