@@ -814,6 +814,33 @@ class Index(Resource):
         """ % links).encode('utf-8')
 
 
+class FlashPage(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        return ("""
+                <html>
+                <body>
+                <object type="application/x-shockwave-flash" data="flash.swf" width="550" height="400"> 
+                </object>
+                </body>
+                </html>
+                """)
+
+    def getChild(self, name, request):
+        if name == b"flash.swf":
+            return self.Flash()
+        return self
+
+    class Flash(Resource):
+        def render_GET(self, request):
+            request.setHeader(b"Content-Type", b"application/x-shockwave-flash")
+            return base64.decodestring(b'RldTBRwBAAB4AAcIAAAcIAAADAMAIQgBAHgABwgAABwgAAEA/////wARDCfRwgerhA9I+B6x8AD \
+                PAQIACAEAAAAgAAAAAAAGACgIAwB4AAcIAAAcIAABAACAgP8AEQ3nCBwgfCPg9Y+B6OED1cIHhHwAACMIBAB//YcNH/YcNAABAP/ \
+                //wAAEQz2LH0cSHq4kPSO4esdwADeCQUAAQCKBgYBAAMAIAAAAACKBgYCAAQAIAAAAAAAAMYJBgABAAAAxgkHAAEAAACKBgYCAAU \
+                AIAAAAACKBgYDAAYAIAAAAACKBgYEAAcAIAAAAACKBgYKAAIAIAAAAAACAwcAQAACBwoAQAACBwIAAgcDAAIHBAAGA4ECAAAAAEAAAAA=')
+
+
 class GzipRoot(Resource):
     def __init__(self, original_children):
         Resource.__init__(self)
@@ -891,6 +918,8 @@ class Root(Resource):
         self.putChild(b"", Index(self.children))
 
         self.putChild(b"gzip", GzipRoot(self.children))
+
+        self.putChild(b"flashpage", FlashPage())
 
 
 def cert_path():

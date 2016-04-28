@@ -5,6 +5,7 @@ See http://www.softwareishard.com/blog/har-12-spec/.
 """
 from __future__ import absolute_import
 import base64
+import codecs
 
 from PyQt5.QtCore import Qt, QVariant, QUrlQuery
 from PyQt5.QtNetwork import QNetworkRequest
@@ -79,7 +80,11 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply, include_content=False, binary_content=False):
+def is_binary_string(bytes):
+    return bool(bytes.translate(None, bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})))
+
+
+def reply2har(reply, include_content=True):
     """ Serialize QNetworkReply to HAR. """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
@@ -129,15 +134,15 @@ def reply2har(reply, include_content=False, binary_content=False):
         res["redirectURL"] = ""
 
     if include_content:
-        data = bytes(reply.readAll())
-        if binary_content:
-            res["content"]["encoding"] = "binary"
-            res["content"]["text"] = data
-            res["content"]["size"] = len(data)
-        else:
-            res["content"]["encoding"] = "base64"
-            res["content"]["text"] = base64.b64encode(data)
-            res["content"]["size"] = len(data)
+        content = getattr(reply, 'content', None)
+        if content is not None:
+            res["content"]["size"] = len(content)
+
+            if not is_binary_string(bytes(content)):
+                res["content"]["text"] = str(content.data(), 'utf_8')
+            else:
+                res["content"]["text"] = base64.b64encode(content)
+                res["content"]["encoding"] = 'base64'
 
     return res
 

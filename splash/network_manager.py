@@ -6,7 +6,7 @@ import functools
 from datetime import datetime
 import traceback
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QByteArray, QTimer 
 from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
@@ -95,7 +95,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._default_proxy = self.proxy()
         self.cookiejar = SplashCookieJar(self)
         self.setCookieJar(self.cookiejar)
-
+        self._response_content = {}
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -151,6 +151,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply.error.connect(self._on_reply_error)
         reply.finished.connect(self._on_reply_finished)
         # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
+        reply.readyRead.connect(self._on_reply_ready_read)
+
         reply.metaDataChanged.connect(self._on_reply_headers)
         reply.downloadProgress.connect(self._on_reply_download_progress)
         return reply
@@ -259,10 +261,19 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             return setattr(web_frame.page(), attribute, value)
 
     def _on_reply_error(self, error_id):
+        self._response_content.pop(self._get_request_id(), None)
+        
         if error_id != QNetworkReply.OperationCanceledError:
             error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
             self.log('Download error %d: %s ({url})' % (error_id, error_msg),
                      self.sender(), min_level=2)
+
+    def _on_reply_ready_read(self):
+        reply = self.sender()
+        req_id = self._get_request_id()
+        if not req_id in self._response_content:
+            self._response_content[req_id] = QByteArray()
+        self._response_content[req_id] += reply.peek(reply.bytesAvailable())
 
     def _on_reply_finished(self):
         reply = self.sender()
@@ -272,6 +283,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         har_entry = None
         if har is not None:
             req_id = self._get_request_id()
+            reply.content = self._response_content.pop(req_id, None)
             har.store_reply_finished(req_id, reply)
             # We're passing HAR entry because reply object itself doesn't
             # have all information.

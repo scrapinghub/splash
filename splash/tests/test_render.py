@@ -7,7 +7,7 @@ from io import BytesIO
 
 import pytest
 import requests
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageStat
 from six.moves.urllib import parse as urlparse
 
 from splash import defaults
@@ -474,6 +474,21 @@ class RenderPngTest(Base.RenderTest):
         img = self.assertPng(r, width=200, height=200)
         self.assertTrue(self.vertical_split_is_sharp(img),
                         "Split is not sharp")
+
+    def test_flash(self):
+        r = self.request({'url': self.mockurl('flashpage'), 'viewport': 'full', 'wait': 0.1})
+        img = Image.open(BytesIO(r.content))
+        self.assertTrue(self.assertOneColorImage(img))
+
+        r = self.request({'url': self.mockurl('flashpage'), 'viewport': 'full', 'wait': 0.1, 'onscreen': 1})
+        img = Image.open(BytesIO(r.content))
+        # if flash was rendered correctly the image must have more than one color (background + flash)
+        self.assertFalse(self.assertOneColorImage(img))
+
+    def assertOneColorImage(self, img):
+        # Return true if the image contains exactly one color
+        stat = ImageStat.Stat(img)
+        return 1 == len(set(stat.extrema))
 
 
 class RenderPngScalingAndCroppingTest(BaseRenderTest):
