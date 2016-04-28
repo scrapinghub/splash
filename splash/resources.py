@@ -448,6 +448,10 @@ class DemoUI(_ValidatingResource):
             'png': 1,
             'html': 1,
         })
+        filters = options.get('filters', default='')
+        if filters:
+            params['filters'] = filters
+
         if self.lua_enabled:
             params.update({
                 'lua_source': options.get_lua_source(),
