@@ -2,6 +2,7 @@
 from array import array
 import unittest
 import base64
+from cStringIO import StringIO
 from functools import wraps
 from io import BytesIO
 
