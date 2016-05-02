@@ -143,7 +143,7 @@ def reply2har(reply, include_content=False):
             else:
                 res["content"]["text"] = base64.b64encode(bytes_array)
                 res["content"]["encoding"] = 'base64'
-
+                
     return res
 
 
