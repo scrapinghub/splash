@@ -3670,11 +3670,10 @@ class KeyEventsTest(BaseLuaRenderTest):
                         return values.join('|');
                     }
                 ]])
-                splash:send_keys('', 'Tab')
-                splash:send_keys('Hello World')
-                splash:send_keys('', 'Tab')
-                splash:send_keys('Foo Bar')
-                splash:send_keys('', 'Tab')
+                splash:send_keys('<Tab>')
+                splash:send_keys('Hello SPC World TAB')
+                splash:send_keys('Foo SPC Bar')
+                splash:send_keys('TAB')
                 splash:send_keys('Baz')
                 splash:wait(0)
                 inputs = join_inputs()

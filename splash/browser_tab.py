@@ -870,17 +870,44 @@ class BrowserTab(QObject):
         event = QMouseEvent(type, point, q_button, buttons, modifiers)
         QApplication.postEvent(self.web_page, event)
 
-    def send_keys(self, text, key_type=None):
+    def send_keys(self, text):
         """
         Send key events to webpage
         :param text string to be sent as key strokes
         :param key_type string representing the pressed key
         :return: None
         """
-        key_type = key_type or 'unknown'
-        # http://doc.qt.io/qt-5/qt.html#Key-enum
-        key_type = getattr(Qt, 'Key_%s' % key_type, Qt.Key_unknown)
-        self._send_keys(text, key_type)
+        for word in text.split():
+            self._send_word(word)
+
+    EDMACRO_SHORTCUTS = {
+        'RET': ('', Qt.Key_Return),
+        'SPC': (' ', Qt.Key_Space),
+        'TAB': ('\t', Qt.Key_Tab),
+        'DEL': ('', Qt.Key_Delete),
+        'ESC': ('', Qt.Key_Escape),
+        # 'LFD': ('', 0), ## QChar.LineFeed?
+        # 'NUL': ('', 0), ## QChar.Null?
+    }
+
+    def _send_word(self, word):
+        # FIXME: support more edmacro shortcuts
+        try:
+            text, key_type = self.EDMACRO_SHORTCUTS[word]
+        except KeyError:
+            pass
+        else:
+            return self._send_keys(text, key_type)
+
+        if word.startswith('<') and word.endswith('>'):
+            # http://doc.qt.io/qt-5/qt.html#Key-enum
+            key_type = getattr(Qt, 'Key_%s' % word, None)
+            if key_type is not None:
+                return self._send_keys(text='', key_type=key_type)
+        # key_type=0 means "the event is not a result of a known key; for
+        # example, it may be the result of a compose sequence or keyboard
+        # macro."
+        return self._send_keys(text=word, key_type=0)
 
     def _send_keys(self, text, key_type):
         modifiers = QApplication.keyboardModifiers()
