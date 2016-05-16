@@ -21,7 +21,15 @@ Linux + Docker
 OS X + Docker
 -------------
 
-1. Install Docker_ (via Boot2Docker_).
+1. Install Docker_ (via the Toolbox Instructions_).
+2. Create, run & load the configuration for the docker-machine
+
+       $ docker-machine create default
+       
+       $ docker-machine start default
+       
+       $ eval "$(docker-machine env default)"
+
 2. Pull the image::
 
        $ docker pull scrapinghub/splash
@@ -30,17 +38,17 @@ OS X + Docker
 
        $ docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash
 
-4. Figure out the ip address of boot2docker::
+4. Figure out the ip address of the docker-machine::
 
-       $ boot2docker ip
+       $ docker-machine ip default 
 
-       The VM's Host only interface IP address is: 192.168.59.103
+       192.168.59.103
 
 5. Splash is available at the returned IP address at ports
    8050 (http), 8051 (https) and 5023 (telnet).
 
 .. _Docker: http://docker.io
-.. _Boot2Docker: http://boot2docker.io/
+.. _Instructions: https://docs.docker.com/mac/
 
 
 .. _manual-install-ubuntu:
