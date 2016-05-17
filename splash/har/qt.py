@@ -141,7 +141,7 @@ def reply2har(reply, include_content=False):
             if not is_binary_string(bytes_array):
                 res["content"]["text"] = bytes_array.decode('utf8', 'replace')
             else:
-                res["content"]["text"] = six.text_type(base64.urlsafe_b64encode(bytes_array))
+                res["content"]["text"] = base64.b64encode(bytes_array).decode('utf8')
                 res["content"]["encoding"] = 'base64'
                 
     return res
