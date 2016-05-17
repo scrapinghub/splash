@@ -138,13 +138,13 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('meta-redirect-target/'), 200),
         ])
 
-    # def test_meta_redirect_slowload2_wait_more(self):
-    #     data = self.assertValidHar(self.mockurl('meta-redirect-slowload2'), wait=0.3)
-    #     self.assertRequestedUrlsStatuses(data, [
-    #         (self.mockurl('meta-redirect-slowload2'), 200),
-    #         (self.mockurl('slow.gif?n=2'), 200),
-    #         (self.mockurl('meta-redirect-target/'), 200),
-    #     ])
+    def test_meta_redirect_slowload2_wait_more(self):
+        data = self.assertValidHar(self.mockurl('meta-redirect-slowload2'), wait=0.3)
+        self.assertRequestedUrlsStatuses(data, [
+            (self.mockurl('meta-redirect-slowload2'), 200),
+            (self.mockurl('slow.gif?n=2'), 200),
+            (self.mockurl('meta-redirect-target/'), 200),
+        ])
 
     def test_redirect_nowait(self):
         data = self.assertValidHar(self.mockurl('jsredirect'))
