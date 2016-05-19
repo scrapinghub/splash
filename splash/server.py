@@ -334,25 +334,11 @@ def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
 
 
 def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
-    if not hasattr(OrderedDict, 'move_to_end'):
-        # See https://github.com/twitter/commons/blob/master/src/python/twitter/common/collections/ordereddict.py#L284
-        def move_to_end(self, key, last=True):
-            link_prev, link_next, key = link = self.__map[key]
-            link_prev[1] = link_next
-            link_next[0] = link_prev
-            root = self.__root
-            if last:
-                last = root[0]
-                link[0] = last
-                link[1] = root
-                last[1] = root[0] = link
-            else:
-                first = root[1]
-                link[0] = root
-                link[1] = first
-                root[1] = first[0] = link
-        OrderedDict.move_to_end = move_to_end
-
+    opts, _ = parse_opts(jupyter, argv)
+    if opts.version:
+        print(__version__)
+        sys.exit(0)
+        
     if not jupyter:
         start_logging(opts)
     log_splash_version()
