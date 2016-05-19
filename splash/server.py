@@ -338,7 +338,7 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
     if opts.version:
         print(__version__)
         sys.exit(0)
-        
+
     if not jupyter:
         start_logging(opts)
     log_splash_version()
