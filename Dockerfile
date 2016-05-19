@@ -33,7 +33,6 @@ EXPOSE 8050 8051 5023
 
 ENTRYPOINT [ \
     "python3", \
-    # "-m", "trace", \
     "/app/bin/splash", \
     "--proxy-profiles-path", "/etc/splash/proxy-profiles", \
     "--js-profiles-path", "/etc/splash/js-profiles", \
