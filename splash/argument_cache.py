@@ -12,7 +12,7 @@ if not hasattr(OrderedDict, 'move_to_end'):
         link_prev, link_next, key = link = self._OrderedDict__map[key]
         link_prev[1] = link_next
         link_next[0] = link_prev
-        root = self.__root
+        root = self._OrderedDict__root
         if last:
             last = root[0]
             link[0] = last
