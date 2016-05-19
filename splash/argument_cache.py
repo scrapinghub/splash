@@ -9,7 +9,7 @@ from collections import OrderedDict
 # See https://github.com/twitter/commons/blob/master/src/python/twitter/common/collections/ordereddict.py#L284
 if not hasattr(OrderedDict, 'move_to_end'):
     def move_to_end(self, key, last=True):
-        link_prev, link_next, key = link = self.__map[key]
+        link_prev, link_next, key = link = self._OrderedDict__map[key]
         link_prev[1] = link_next
         link_next[0] = link_prev
         root = self.__root

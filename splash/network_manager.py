@@ -95,6 +95,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._default_proxy = self.proxy()
         self.cookiejar = SplashCookieJar(self)
         self.setCookieJar(self.cookiejar)
+        
         self._response_content = {}
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
