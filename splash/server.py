@@ -10,7 +10,6 @@ import functools
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
-from collections import OrderedDict
 
 
 def install_qtreactor(verbose):
