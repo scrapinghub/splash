@@ -696,6 +696,7 @@ end
                                     <li><a href="#" onclick="splash.loadExample('element-screenshot')">Take a screenshot of a single element</a></li>
                                     <li><a href="#" onclick="splash.loadExample('log-requests')">Log requested URLs</a></li>
                                     <li><a href="#" onclick="splash.loadExample('block-css')">Block CSS</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('with-timeout')">Execute function with timeout</a></li>
                                 </ul>
                             </div>
                             <a class="btn btn-info" href="https://github.com/scrapinghub/splash">Source code</a>

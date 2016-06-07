@@ -59,6 +59,10 @@ class AsyncBrowserCommand(AsyncCommand):
         )
 
 
+class AsyncFunctionCommand(AsyncCommand):
+    pass
+
+
 class StoredExceptions(object):
     def __init__(self):
         self._exceptions = []
@@ -75,7 +79,7 @@ class StoredExceptions(object):
 
 
 def command(async=False, can_raise_async=False, table_argument=False,
-            sets_callback=False, decode_arguments=True):
+            sets_callback=False, decode_arguments=True, pack_results=False):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
@@ -106,6 +110,7 @@ def command(async=False, can_raise_async=False, table_argument=False,
         meth._is_async = async
         meth._can_raise_async = can_raise_async
         meth._sets_callback = sets_callback
+        meth._pack_results = pack_results
         return meth
 
     return decorator
@@ -274,6 +279,7 @@ def get_commands(obj):
                 'returns_error_flag': getattr(value, '_returns_error_flag', False),
                 'can_raise_async': getattr(value, '_can_raise_async', False),
                 'sets_callback': getattr(value, '_sets_callback', False),
+                'pack_results': getattr(value, '_pack_results', False),
             }
     return commands
 
@@ -485,6 +491,75 @@ class Splash(BaseExposedObject):
             onredirect=redirect if cancel_on_redirect else False,
             onerror=error if cancel_on_error else False,
         ))
+        return cmd
+
+    @command(async=True, sets_callback=True, decode_arguments=False, pack_results=True)
+    def with_timeout(self, func, timeout):
+        if timeout is None:
+            ScriptError({
+                "argument": "timeout",
+                "message": "splash:with_timeout timeout must be specified",
+                "splash_method": "with_timeout",
+            })
+        if not isinstance(timeout, (float, int)):
+            raise ScriptError({
+                "argument": "timeout",
+                "message": "splash:with_timeout timeout must be a number",
+                "splash_method": "with_timeout",
+            })
+
+        timeout = int(float(timeout) * 1000)
+
+        if timeout < 0:
+            raise ScriptError({
+                "argument": "timeout",
+                "message": "splash:with_timeout timeout must be >= 0",
+                "splash_method": "with_timeout",
+            })
+
+        if lupa.lua_type(func) != 'function':
+            raise ScriptError({
+                "argument": "func",
+                "message": "splash:with_timeout func is not a function",
+                "splash_method": "with_timeout",
+            })
+
+        qtimer = QTimer(self.tab)
+        qtimer.setSingleShot(True)
+
+        def timer_callback():
+            run_coro.runner.stop()
+            cmd.return_result(None, "timeout_over")
+
+        qtimer.timeout.connect(timer_callback)
+
+        def coro_success(result):
+            if not qtimer.isActive():
+                return
+
+            qtimer.stop()
+            cmd.return_result(True, result)
+
+        def coro_error(ex):
+            if not qtimer.isActive():  # pragma: no cover
+                raise AssertionError("Should not happen")
+
+            qtimer.stop()
+
+            info = str(ex.args[0]["error"])
+            cmd.return_result(None, info)
+
+        run_coro = self.get_coroutine_run_func(
+            "splash:with_timeout", func, coro_success, coro_error)
+
+        def start():
+            qtimer.start(timeout)
+            run_coro.runner = run_coro()
+
+        cmd = AsyncFunctionCommand("with_timeout", dict(
+            func=start
+        ))
+
         return cmd
 
     @command(async=True, decode_arguments=False)
@@ -1094,9 +1169,14 @@ class Splash(BaseExposedObject):
         return self._wrapped
 
     def run_async_command(self, cmd):
-        """ Execute _AsyncBrowserCommand """
-        meth = getattr(self.tab, cmd.name)
-        return meth(**cmd.kwargs)
+        """ Execute _AsyncBrowserCommand or _AsyncCallbackCommand"""
+        if isinstance(cmd, AsyncBrowserCommand):
+            meth = getattr(self.tab, cmd.name)
+            return meth(**cmd.kwargs)
+        elif isinstance(cmd, AsyncFunctionCommand):
+            return cmd.kwargs["func"]()
+
+        raise TypeError('Unknown async command type.')
 
     def get_coroutine_run_func(self, name, callback,
                                return_result=None, return_error=None):
@@ -1111,6 +1191,7 @@ class Splash(BaseExposedObject):
             runner = SplashCoroutineRunner(self.lua, self, log, False)
             coro = self.lua.create_coroutine(callback)
             runner.start(coro, coro_args, return_result, return_error)
+            return runner
 
         return func
 
@@ -1415,7 +1496,6 @@ class SplashCoroutineRunner(BaseScriptRunner):
     """
     Utility class for running Splash async functions (e.g. callbacks).
     """
-
     def __init__(self, lua, splash, log, sandboxed):
         self.splash = splash
         super(SplashCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
