@@ -18,11 +18,6 @@ if not hasattr(OrderedDict, 'move_to_end'):
             link[0] = last
             link[1] = root
             last[1] = root[0] = link
-        else:
-            first = root[1]
-            link[0] = root
-            link[1] = first
-            root[1] = first[0] = link
     OrderedDict.move_to_end = move_to_end
 
 
