@@ -109,7 +109,8 @@ class SplashLuaRuntime(object):
         self._setup_lua_paths(runtime, lua_package_path)
         return runtime
 
-    def _setup_lua_paths(self, lua, lua_package_path):
+    @staticmethod
+    def _setup_lua_paths(lua, lua_package_path):
         root = os.path.join(os.path.dirname(__file__), 'lua_modules')
         at_root = lambda *p: os.path.abspath(os.path.join(root, *p))
         default_path = "{root}/?.lua;{libs}/?.lua".format(

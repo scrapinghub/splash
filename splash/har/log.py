@@ -83,14 +83,16 @@ class HarLog(object):
             }
         }
 
-    def _get_browser(self):
+    @staticmethod
+    def _get_browser():
         return {
             "name": "QWebKit",
             "version": six.text_type(qWebKitVersion()),
             "comment": "PyQt %s, Qt %s" % (PYQT_VERSION_STR, QT_VERSION_STR),
         }
 
-    def _empty_page(self, page_id, started_dt):
+    @staticmethod
+    def _empty_page(page_id, started_dt):
         if not isinstance(started_dt, six.string_types):
             started_dt = format_datetime(started_dt)
 

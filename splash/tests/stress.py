@@ -1,18 +1,22 @@
 from __future__ import print_function
 
-import sys, requests, random, optparse, time, json
+import json
+import optparse
+import random
+import sys
+import time
+from collections import Counter
 from itertools import islice
 from threading import Thread
-from collections import Counter
-import requests
 
+import requests
 import six
 from six.moves.queue import Queue
 
 from .utils import SplashServer, MockServer
 
-class StressTest():
 
+class StressTest:
     def __init__(self, reqs, host="localhost:8050", requests=1000, concurrency=50, shuffle=False, verbose=False):
         self.reqs = reqs
         self.host = host
@@ -47,7 +51,7 @@ class StressTest():
         print("Total requests: %d" % len(args))
         print("Concurrency   : %d" % self.concurrency)
         print("Elapsed time  : %.3fs" % elapsed)
-        print("Avg time p/req: %.3fs" % (elapsed/len(args)))
+        print("Avg time p/req: %.3fs" % (elapsed / len(args)))
         print("Received (per status code or error):")
         for c, n in Counter(outputs).items():
             print("  %s: %d" % (c, n))
@@ -79,7 +83,6 @@ def worker(host, q, p, verbose=False):
 
 
 class MockArgs(object):
-
     ok_urls = 0.5
     error_urls = 0.3
     timeout_urls = 0.2
@@ -110,7 +113,6 @@ class MockArgs(object):
 
 
 class ArgsFromUrlFile(object):
-
     def __init__(self, urlfile):
         self.urlfile = urlfile
 
@@ -123,7 +125,6 @@ class ArgsFromUrlFile(object):
 
 
 class ArgsFromLogfile(object):
-
     def __init__(self, logfile):
         self.logfile = logfile
 
@@ -155,7 +156,7 @@ def lua_runonce(script, timeout=60., splash_args=None, **kwargs):
         splash_args = ['--disable-lua-sandbox',
                        '--allowed-schemes=file,http,https', ]
     with SplashServer(extra_args=splash_args) as s, \
-         MockServer() as ms:
+            MockServer() as ms:
         if kwargs.get('url', '').startswith('mock://'):
             kwargs['url'] = ms.url(kwargs['url'][7:])
         params = {'lua_source': script}
@@ -211,19 +212,19 @@ end
 def parse_opts():
     op = optparse.OptionParser()
     op.add_option("-H", dest="host", default="localhost:8050",
-            help="splash hostname & port (default: %default)")
+                  help="splash hostname & port (default: %default)")
     op.add_option("-u", dest="urlfile", metavar="FILE",
-            help="read urls from FILE instead of using mock server ones")
+                  help="read urls from FILE instead of using mock server ones")
     op.add_option("-l", dest="logfile", metavar="FILE",
-            help="read urls from splash log file (useful for replaying)")
+                  help="read urls from splash log file (useful for replaying)")
     op.add_option("-s", dest="shuffle", action="store_true", default=False,
-            help="shuffle (randomize) requests (default: %default)")
+                  help="shuffle (randomize) requests (default: %default)")
     op.add_option("-v", dest="verbose", action="store_true", default=False,
-            help="verbose mode (default: %default)")
+                  help="verbose mode (default: %default)")
     op.add_option("-c", dest="concurrency", type="int", default=50,
-            help="concurrency (default: %default)")
+                  help="concurrency (default: %default)")
     op.add_option("-n", dest="requests", type="int", default=1000,
-            help="number of requests (default: %default)")
+                  help="number of requests (default: %default)")
     return op.parse_args()
 
 
@@ -237,6 +238,7 @@ def main():
         urls = MockArgs(opts.requests)
     t = StressTest(urls, opts.host, opts.requests, opts.concurrency, opts.shuffle, opts.verbose)
     t.run()
+
 
 if __name__ == "__main__":
     main()

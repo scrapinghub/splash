@@ -35,7 +35,7 @@ url : string : required
 baseurl : string : optional
   The base url to render the page with.
 
-  Base HTML content will be feched from the URL given in the url
+  Base HTML content will be fetched from the URL given in the url
   argument, while relative referenced resources in the HTML-text used to
   render the page are fetched using the URL given in the baseurl argument
   as base. See also: :ref:`render-html-doesnt-work`.
@@ -249,7 +249,7 @@ width : integer : optional
 .. _arg-height:
 
 height : integer : optional
-  Crop the renderd image to the given height (in pixels). Often used in
+  Crop the rendered image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
 
 .. _arg-render-all:

@@ -99,10 +99,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
-    def _on_ssl_errors(self, reply, errors):
+    @staticmethod
+    def _on_ssl_errors(reply, errors):
         reply.ignoreSslErrors()
 
-    def _on_finished(self, reply):
+    @staticmethod
+    def _on_finished(reply):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
@@ -248,12 +250,14 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             request = self.sender().request()
         return self._get_webpage_attribute(request, "har")
 
-    def _get_webpage_attribute(self, request, attribute):
+    @staticmethod
+    def _get_webpage_attribute(request, attribute):
         web_frame = get_request_webframe(request)
         if web_frame:
             return getattr(web_frame.page(), attribute, None)
 
-    def _set_webpage_attribute(self, request, attribute, value):
+    @staticmethod
+    def _set_webpage_attribute(request, attribute, value):
         web_frame = get_request_webframe(request)
         if web_frame:
             return setattr(web_frame.page(), attribute, value)

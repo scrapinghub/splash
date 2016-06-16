@@ -25,7 +25,8 @@ class Inspector(object):
     def parse(self, code, cursor_pos):
         return self.parser.parse(code, cursor_pos, allow_inside=True)
 
-    def doc_repr(self, doc):
+    @staticmethod
+    def doc_repr(doc):
         if not doc.get("signature"):
             return doc["content"]
 

@@ -999,7 +999,8 @@ class _SplashHttpClient(QObject):
         reply = self.sender()
         callback(reply)
 
-    def _set_request_headers(self, request, headers):
+    @staticmethod
+    def _set_request_headers(request, headers):
         """ Set HTTP headers for the request. """
         if isinstance(headers, dict):
             headers = headers.items()

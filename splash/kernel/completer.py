@@ -119,7 +119,8 @@ class Completer(object):
         methods = self.completer.obj_attrs(value, False, True)
         return sorted_with_prefix(prefix, to_unicode_all(methods.values()))
 
-    def complete_keyword(self, prefix):
+    @staticmethod
+    def complete_keyword(prefix):
         return sorted_with_prefix(prefix, LUA_KEYWORDS)
 
     def complete_global_variable(self, prefix):

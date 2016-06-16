@@ -1,11 +1,11 @@
 """This module handles rendering QWebPage into PNG and JPEG images."""
-import sys
 import array
+import sys
 from abc import ABCMeta, abstractmethod, abstractproperty
 from io import BytesIO
 from math import ceil, floor
-import six
 
+import six
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QImage, QPainter, QRegion
@@ -14,7 +14,6 @@ from splash import defaults
 
 
 class QtImageRenderer(object):
-
     # QPainter cannot render a region with any dimension greater than
     # this value.
     QPAINTER_MAXSIZE = 32766
@@ -84,7 +83,8 @@ class QtImageRenderer(object):
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
 
-    def swap_byte_order_i32(self, buf):
+    @staticmethod
+    def swap_byte_order_i32(buf):
         """Swap order of bytes in each 32-bit word of given byte sequence."""
         arr = array.array('I')
         arr.fromstring(buf)
@@ -298,7 +298,7 @@ class QtImageRenderer(object):
                     top = j * tile_qimage.height()
                     painter.setViewport(render_rect.translated(-left, -top))
                     self.logger.log("Rendering with viewport=%s"
-                               % painter.viewport(), min_level=2)
+                                    % painter.viewport(), min_level=2)
 
                     clip_rect = QRect(
                         QPoint(floor(left / ratio),
@@ -329,7 +329,8 @@ class QtImageRenderer(object):
             painter.end()
         return WrappedPillowImage(canvas)
 
-    def _calculate_image_parameters(self, web_viewport, img_width, img_height):
+    @staticmethod
+    def _calculate_image_parameters(web_viewport, img_width, img_height):
         """
         :return: (image_viewport, image_size)
         """
@@ -349,7 +350,8 @@ class QtImageRenderer(object):
         image_size = QSize(img_width, img_height)
         return image_viewport, image_size
 
-    def _calculate_tiling(self, to_paint):
+    @staticmethod
+    def _calculate_tiling(to_paint):
         tile_maxsize = defaults.TILE_MAXSIZE
         tile_hsize = min(tile_maxsize, to_paint.width())
         tile_vsize = min(tile_maxsize, to_paint.height())
@@ -360,7 +362,8 @@ class QtImageRenderer(object):
                 'vertical_count': vtiles,
                 'tile_size': tile_size}
 
-    def _qsize_to_tuple(self, sz):
+    @staticmethod
+    def _qsize_to_tuple(sz):
         return sz.width(), sz.height()
 
     def _qpainter_needs_tiling(self, render_rect, canvas_size):
@@ -371,6 +374,7 @@ class QtImageRenderer(object):
 
 class _DummyLogger(object):
     """Logger to use when no logger is passed into rendering functions."""
+
     def log(self, *args, **kwargs):
         pass
 
@@ -384,6 +388,7 @@ class WrappedImage(six.with_metaclass(ABCMeta, object)):
     use one or another.
 
     """
+
     @abstractproperty
     def size(self):
         """

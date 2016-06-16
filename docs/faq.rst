@@ -50,7 +50,7 @@ render use resource timeouts. For render.*** endpoints use
 for :ref:`execute` use either :ref:`splash-resource-timeout` or
 ``request:set_timeout`` (see :ref:`splash-on-request`).
 
-It is a good practive to always set resource_timeout; something similar to
+It is a good practice to always set resource_timeout; something similar to
 ``resource_timeout=20`` often works well.
 
 .. _504-slow-script:
