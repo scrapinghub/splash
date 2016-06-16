@@ -1857,6 +1857,24 @@ class GoTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
         self.assertIn("request body must be a string", resp.text)
 
+    def test_go_redirect_hashurl_status_200(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            return splash:url()
+        end""", {"url": self.mockurl("jsrender#keep-this-part")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("jsrender#keep-this-part", resp.text)
+
+    def test_go_redirect_hashurl_status_302(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            return splash:url()
+        end""", {"url": self.mockurl("redirect-hash#keep-this-part")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("redirect-hash#keep-this-part", resp.text)
+
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
     if not has_min_qt_version('5.5.1'):
