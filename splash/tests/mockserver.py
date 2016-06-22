@@ -723,6 +723,25 @@ KeyUpDownEventLoggerPage = _html_resource("""
 </html>
 """)
 
+VariousElementsPage = _html_resource("""
+<html>
+<body>
+<button type="button" onclick="document.getElementById('title').style.display = 'block'">Click me</button>
+<h1 class="tittle" style="display: none ">Title</h1>
+
+<form id="login">
+   <input type="text" name="username" value="admin" />
+   <input type="password" name="password" value="pass123" />
+</form>
+
+<div id="editable" contenteditable style="width: 100px; height: 100px;"></div>
+
+<p id="multiline-inline" style="width: 5px"><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</span></p>
+</body>
+</html>
+""")
+
+
 
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
@@ -963,6 +982,7 @@ class Root(Resource):
         self.putChild(b"form-inputs-event-page", FormInputsEventPage())
         self.putChild(b"key-press-event-logger-page", KeyPressEventLoggerPage())
         self.putChild(b"key-up-down-event-logger-page", KeyUpDownEventLoggerPage())
+        self.putChild(b"various-elements", VariousElementsPage())
 
         # self.putChild(b"flashpage", FlashPage())
 

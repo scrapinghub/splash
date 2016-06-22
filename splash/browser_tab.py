@@ -32,8 +32,9 @@ from splash.jsutils import (
     SANITIZE_FUNC_JS,
     get_process_errors_js,
     escape_js,
+    store_dom_elements,
 )
-
+from splash.html_element import HTMLElement
 
 def skip_if_closing(meth):
     @functools.wraps(meth)
@@ -90,6 +91,7 @@ class BrowserTab(QObject):
 
         self._set_default_webpage_options(self.web_page)
         self._setup_webpage_events()
+        self._init_elements_storage()
 
         self.web_view = SplashQWebView()
         self.web_view.setPage(self.web_page)
@@ -104,6 +106,11 @@ class BrowserTab(QObject):
         # XXX: hack to ensure that default window size is not 640x480.
         self.web_view.resize(
             QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
+
+    def _init_elements_storage(self):
+        frame = self.web_page.mainFrame()
+        self._elements_storage = ElementsStorage(self)
+        frame.addToJavaScriptWindowObject(self._elements_storage.name, self._elements_storage)
 
     def set_js_enabled(self, val):
         settings = self.web_page.settings()
@@ -568,6 +575,8 @@ class BrowserTab(QObject):
         self._autoload_scripts = []
 
     def _on_javascript_window_object_cleared(self):
+        self._init_elements_storage()
+
         for script in self._autoload_scripts:
             # XXX: handle_errors=False is used to execute autoload scripts
             # in a global context (not inside a closure).
@@ -594,7 +603,7 @@ class BrowserTab(QObject):
                               follow_redirects=follow_redirects,
                               body=body)
 
-    def evaljs(self, js_source, handle_errors=True, result_protection=True):
+    def evaljs(self, js_source, handle_errors=True, result_protection=True, dom_elements=True):
         """
         Run JS code in page context and return the result.
 
@@ -606,9 +615,17 @@ class BrowserTab(QObject):
         badly written or malicious scripts is activated. Disable it
         when the script result is known to be good, i.e. it only
         contains objects/arrays/primitives without circular references.
+
+        When `dom_elements` is True (default) DOM elements will be
+        saved in JS field of window object under `self._elements_storage.name` key.
+        The result of evaluation will be object with `type` property and `id` property.
+        In JS the original DOM element can accessed through window[self._elements_storage.name][id].
         """
         frame = self.web_page.mainFrame()
         eval_expr = u"eval({})".format(escape_js(js_source))
+
+        if dom_elements:
+            eval_expr = store_dom_elements(eval_expr, self._elements_storage.name)
 
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
@@ -905,6 +922,15 @@ class BrowserTab(QObject):
         for key in text.split():
             qt_send_key(key, self.web_page)
 
+    def select(self, selector):
+        """ Selects DOM element and returns an instance of `HTMLElement`
+
+        :param selector valid CSS selector
+        :return element
+        """
+        js_query = u"document.querySelector({})".format(escape_js(selector))
+        return HTMLElement(self, self._elements_storage, self.evaljs(js_query, result_protection=False))
+
 
 class _SplashHttpClient(QObject):
     """ Wrapper class for making HTTP requests on behalf of a SplashQWebPage """
@@ -1114,6 +1140,16 @@ class _BrowserTabLogger(object):
 
         message = "[%s] %s" % (self.uid, message)
         log.msg(message, system='render')
+
+
+class ElementsStorage(QObject):
+    def __init__(self, parent):
+        self.name = str(uuid.uuid1())
+        super(ElementsStorage, self).__init__(parent)
+
+    @pyqtSlot(name="getId", result=str)
+    def get_id(self):
+        return str(uuid.uuid1())
 
 
 class OneShotCallbackProxy(QObject):

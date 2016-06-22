@@ -44,8 +44,8 @@ from splash.qtutils import (
     get_versions,
     get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
-from splash.exceptions import ScriptError
-
+from splash.exceptions import ScriptError, DOMError
+from splash.html_element import HTMLElement
 
 class AsyncBrowserCommand(AsyncCommand):
     def __repr__(self):
@@ -80,7 +80,7 @@ class StoredExceptions(object):
 
 
 def command(table_argument=False, sets_callback=False,
-            decode_arguments=True):
+            decode_arguments=True, flag=False):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
@@ -105,7 +105,8 @@ def command(table_argument=False, sets_callback=False,
         meth = exceptions_as_return_values(
             can_raise(
                 emits_lua_objects(meth)
-            )
+            ),
+            flag
         )
         meth._is_command = True
         meth._sets_callback = sets_callback
@@ -218,7 +219,12 @@ def can_raise(meth):
     return can_raise_wrapper
 
 
-def exceptions_as_return_values(meth):
+def add_flag(tuple, flag):
+    new_tuple = tuple[:1] + (flag,) + tuple[1:]
+    return new_tuple
+
+
+def exceptions_as_return_values(meth, flag=False):
     """Decorator for allowing Python exceptions to be caught from Lua.
 
     TODO: this decorator is the last one on the way from Python to Lua and thus
@@ -234,8 +240,15 @@ def exceptions_as_return_values(meth):
                 res = res.result
             else:
                 res = (b'return',) + ensure_tuple(res)
+            if flag:
+                res = add_flag(res, True)
         except Exception as e:
-            res = (b'raise', repr(e))
+            if flag and self.FLAG_EXCEPTIONS is not None \
+                    and any(isinstance(e, x) for x in self.FLAG_EXCEPTIONS):
+                res = (b'return', False, repr(e))
+            else:
+                res = (b'raise', repr(e))
+
         return res
 
     return exceptions_as_return_values_wrapper
@@ -1160,6 +1173,17 @@ class Splash(BaseExposedObject):
         return timer
 
     @command()
+    def private_select(self, selector):
+        try:
+            return _ExposedElement(self.lua, self.exceptions, self.tab.select(selector), self)
+        except DOMError:
+            raise ScriptError({
+                "message": "cannot select the specified element",
+                "type": ScriptError.SPLASH_LUA_ERROR,
+                "splash_method": "select",
+            })
+
+    @command()
     def on_response_reset(self):
         self.tab.clear_callbacks("on_response")
 
@@ -1275,6 +1299,115 @@ class _ExposedTimer(BaseExposedObject):
         self.timer = None
         super(_ExposedTimer, self).clear()
 
+
+class _ExposedElement(BaseExposedObject):
+    FLAG_EXCEPTIONS = [DOMError]
+
+    def __init__(self, lua, exceptions, element, splash):
+        self.element = element
+        self.splash = splash
+        super(_ExposedElement, self).__init__(lua, exceptions)
+
+    def return_exposed_element_if_html_element(self, result):
+        if isinstance(result, HTMLElement):
+            return _ExposedElement(self.lua, self.exceptions, result, self.splash), True
+
+        return result
+
+    @command(flag=True)
+    def private_node_method(self, method_name):
+        js_method = u"{element}[{method}].bind({element})".format(
+                element=self.element.element_js,
+                method=escape_js(method_name),
+            )
+
+        return _WrappedJavascriptFunction(self.splash, js_method)
+
+    @command(flag=True)
+    def private_node_property(self, property_name):
+        result = self.element.node_property(property_name)
+        return self.return_exposed_element_if_html_element(result)
+
+    @lua_property('id')
+    @command()
+    def get_id(self):
+        return self.element.id
+
+    @command(flag=True)
+    def exists(self):
+        return self.element.exists()
+
+    @command(flag=True)
+    def mouse_click(self):
+        self.element.mouse_click()
+
+    @command(flag=True)
+    def mouse_hover(self):
+        self.element.mouse_hover()
+
+    @command(flag=True)
+    def get_styles(self):
+        return self.element.get_styles()
+
+    @command(flag=True)
+    def get_bounds(self):
+        return self.element.get_bounds()
+
+    @command(flag=True)
+    def png(self, width=None, height=None, scale_method=None):
+        if width is not None:
+            width = int(width)
+        if height is not None:
+            height = int(height)
+
+        result = self.element.png(width, height, scale_method=scale_method)
+
+        if not result:
+            return None
+        return BinaryCapsule(result, 'image/png')
+
+    @command(flag=True)
+    def jpeg(self, width=None, height=None, scale_method=None, quality=None):
+        if width is not None:
+            width = int(width)
+        if height is not None:
+            height = int(height)
+        if quality is not None:
+            quality = int(quality)
+
+        result = self.element.jpeg(width, height, scale_method=scale_method, quality=quality)
+
+        if not result:
+            return None
+        return BinaryCapsule(result, 'image/jpeg')
+
+    @command(flag=True)
+    def visible(self):
+        return self.element.visible()
+
+    @command(flag=True)
+    def fetch_text(self):
+        return self.element.fetch_text()
+
+    @command(flag=True)
+    def info(self):
+        return self.element.info()
+
+    @command(flag=True)
+    def field_value(self):
+        return self.element.field_value()
+
+    @command(flag=True)
+    def form_values(self):
+        return self.element.form_values()
+
+    @command(flag=True)
+    def send_keys(self, text):
+        return self.element.send_keys(text)
+
+    @command(flag=True)
+    def send_text(self, text):
+        return self.element.send_text(text)
 
 requires_request = requires_attr(
     "request",

@@ -3937,3 +3937,127 @@ class KeyEventsTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                message="Unknown key")
+
+
+class HTMLElementTest(BaseLuaRenderTest):
+    def test_select(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                local p = splash:select('p')
+                local form = splash:select('form#login')
+                local username = splash:select('input[name="username"]')
+                local password = splash:select('input[name="password"]')
+                local title = splash:select('.tittle')
+
+                print(p.id)
+                print(form.id)
+                print(username.id)
+                print(password.id)
+                print(title.id)
+
+                return {
+                    p=select(2, assert(p:node_property('nodeName'))):lower(),
+                    form=select(2, assert(form:node_property('nodeName'))):lower(),
+                    username=select(2, assert(username:node_property('nodeName'))):lower(),
+                    password=select(2, assert(password:node_property('nodeName'))):lower(),
+                    title=select(2, assert(title:node_property('nodeName'))):lower(),
+                }
+            end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "p": "p",
+            "form": "form",
+            "username": "input",
+            "password": "input",
+            "title": "h1"
+        })
+
+    def test_element_ids(self):
+        resp = self.request_lua("""
+            local treat = require('treat')
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                local p = splash:select('p')
+                local form = splash:select('form#login')
+                local username = splash:select('input[name="username"]')
+                local password = splash:select('input[name="password"]')
+                local title = splash:select('.tittle')
+
+                return treat.as_array({
+                    p.id,
+                    form.id,
+                    username.id,
+                    password.id,
+                    title.id,
+                })
+            end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        ids = resp.json()
+        self.assertEqual(len(ids) == (len(set(ids))), True)
+
+    def test_bad_selector(self):
+        resp = self.request_lua("""
+             function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                local element = splash:select('!notaselector')
+
+                return element:exists()
+            end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertEqual(err["info"]["splash_method"], "select")
+
+    def test_node_property_returns_element(self):
+        resp = self.request_lua("""
+            function main(splash)
+                assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                local p = splash:select('p')
+                local ok, parent = p:node_property('parentNode')
+                local ok, remove = parent:node_method('remove')
+
+                remove()
+
+                local ok, exists = p:exists()
+
+                return ok, exists
+            end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [True, False])
+
+    def test_flag(self):
+        resp = self.request_lua("""
+            function main(splash)
+                  assert(splash:go(splash.args.url))
+                assert(splash:wait(0.5))
+
+                local p = splash:select('p')
+                local ok, parent = p:node_property('parentNode')
+                local ok, remove = parent:node_method('remove')
+
+                remove()
+
+                local ok, info = p:info()
+
+                return ok, info
+            end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [False, "DOMError({'message': 'Element no longer exists in DOM'},)"])

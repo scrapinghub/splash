@@ -53,3 +53,8 @@ class JsError(Exception):
 class OneShotCallbackError(Exception):
     """ A one shot callback was called more than once. """
     pass
+
+
+class DOMError(Exception):
+    """ Error occurred during DOM operations"""
+    pass
