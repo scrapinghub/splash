@@ -89,7 +89,7 @@ def get_alive():
         'SplashCookieJar', 'OneShotCallbackProxy',
         '_ExposedRequest', '_ExposedBoundRequest',
         '_ExposedResponse', '_ExposedBoundResponse',
-        '_ExposedTimer',
+        '_ExposedTimer', '_ExposedElement',
         'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
         'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
