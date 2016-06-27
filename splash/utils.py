@@ -185,3 +185,63 @@ def requires_attr(attr_name, raiser):
             return meth(self, *args, **kwargs)
         return wrapper
     return decorator
+
+
+class PyResult(object):
+    """Representation of Python operation result.
+
+    Usage::
+
+       return PyResult('foo', 'bar')
+
+       return PyResult(AsyncResult(), op='yield')
+
+       return PyResult('errmsg', op='raise')
+
+    Internally, the op will come as the first value of the tuple passed
+    to Lua runtime where wraputils:unwrap_python_result should unwrap the
+    arguments and apply the selected operation.  There are three ops to
+    choose from:
+
+    - ``return`` (**default**)
+
+      Ex: ``PyResult([ arg1, ... ], op='return')``
+
+      Passes args as return values to Lua interpreter.  It is the default, so
+      you can write ``PyResult([ arg1, ... ])`` too.
+
+    - ``raise``
+
+      Ex: ``PyResult([ arg1, ... ], op='raise')``.
+
+      Raises an error in Lua interpreter.
+
+    - ``yield``
+
+      Ex: ``PyResult([ arg1, ... ], op='yield')``
+
+      Passes args be returned to Lua interpreter asynchronously via
+      ``coroutine.yield``
+
+    """
+    def __init__(self, *result, **kwargs):
+        op = kwargs.get('op', 'return')
+        if op not in ('return', 'raise', 'yield'):
+            raise ValueError('Invalid PyResult operation: %r' % op)
+        self.result = (op,) + result
+
+    def __repr__(self):
+        return '%s(%s)' % (type(self).__name__,
+                           ', '.join(repr(x) for x in self.result))
+
+
+def ensure_tuple(val):
+    """If val is not a tuple, make it a 1-tuple containing val.
+
+    This is useful for uniform processing of Lua output which can be either a
+    single value or a tuple of values.
+
+    """
+    if not isinstance(val, tuple):
+        return (val,)
+    return val

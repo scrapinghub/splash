@@ -5,7 +5,7 @@ import re
 import functools
 import datetime
 
-from splash.utils import to_bytes, to_unicode
+from splash.utils import to_bytes, to_unicode, PyResult
 from twisted.python import log
 try:
     import lupa
@@ -225,6 +225,9 @@ def python2lua(lua, obj, max_depth=100, encoding='utf8', keep_tuples=True):
     def p2l(obj, depth):
         if depth <= 0:
             raise ValueError("Can't convert Python object to Lua: depth limit is reached")
+
+        if isinstance(obj, PyResult):
+            return tuple(p2l(elt, depth-1) for elt in obj.result)
 
         if isinstance(obj, dict):
             return lua.table_from({

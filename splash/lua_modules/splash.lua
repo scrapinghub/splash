@@ -26,7 +26,7 @@ end
 --
 function Splash:jsfunc(...)
   local func = Splash_private.jsfunc(self, ...)
-  return wraputils.unwraps_errors(func)
+  return wraputils.unwraps_python_result(func)
 end
 
 --

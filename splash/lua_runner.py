@@ -8,12 +8,7 @@ import lupa
 
 from splash.exceptions import ScriptError
 from splash.lua import parse_error_message
-from splash.utils import truncated
-
-
-class ImmediateResult(object):
-    def __init__(self, value):
-        self.value = value
+from splash.utils import truncated, PyResult, ensure_tuple
 
 
 class AsyncCommand(object):
@@ -29,9 +24,10 @@ class AsyncCommand(object):
         self.dispatcher = dispatcher
         self.id = id
 
-    def return_result(self, *args):
+    def return_result(self, result):
         """ Return result and resume the dispatcher. """
-        self.dispatcher.dispatch(self.id, *args)
+        assert isinstance(result, PyResult)
+        self.dispatcher.dispatch(self.id, result)
 
 
 class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
@@ -54,6 +50,7 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         self._command_ids = itertools.count()
         self._waiting_for_result_id = None
         self._is_stopped = False
+        self._is_first_iter = True
 
     def start(self, coro_func, coro_args=None):
         """
@@ -90,31 +87,51 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
 
     def dispatch(self, cmd_id, *args):
         """ Execute the script """
-        args = args or None
-        args_repr = truncated("{!r}".format(args), max_length=400, msg="...[long arguments truncated]")
-        self.log("[lua_runner] dispatch cmd_id={}, args={}".format(cmd_id, args_repr))
+        args = args or ()
+
+        def truncated_repr(x):
+            return truncated("{!r}".format(x),
+                             max_length=400,
+                             msg="...[long arguments truncated]")
+        self.log("[lua_runner] dispatch cmd_id={}".format(cmd_id))
 
         self.log(
             "[lua_runner] arguments are for command %s, waiting for result of %s" % (cmd_id, self._waiting_for_result_id),
             min_level=3,
         )
         if cmd_id != self._waiting_for_result_id:
-            self.log("[lua_runner] skipping an out-of-order result {}".format(args_repr), min_level=1)
+            self.log("[lua_runner] skipping an out-of-order result {}".format(truncated_repr(args)), min_level=1)
             return
 
         while True:
+            self.log('[lua_runner] entering dispatch/loop body, args={}'.format(truncated_repr(args)))
             try:
-                args = args or None
+                if self._is_first_iter:
+                    args = None
+                else:
+                    is_python_result = (len(args) == 1 and
+                                        isinstance(args[0], PyResult))
+                    if is_python_result:
+                        args = args[0]
+                    else:
+                        args = PyResult(*args)
 
                 if self._is_stopped:
                     raise StopIteration
 
                 # Got arguments from an async command; send them to coroutine
                 # and wait for the next async command.
-                self.log("[lua_runner] send %s" % args_repr)
-                cmd = self.coro.send(self.lua.python2lua(args))  # cmd is a next async command
+                self.log("[lua_runner] send %s" % truncated_repr(args))
+                as_lua = self.lua.python2lua(args)
+                self.log("[lua_runner] send (lua) %s" % truncated_repr(as_lua))
 
-                args = None  # don't re-send the same value
+                cmd = self.coro.send(as_lua)  # cmd is a next async command
+                if self._is_first_iter:
+                    self._is_first_iter = False
+
+                # If cmd is a synchronous result, prepare it to be passed into
+                # the next coroutine step.
+                args = ensure_tuple(cmd)
                 cmd_repr = truncated(repr(cmd), max_length=400, msg='...[long result truncated]')
                 self.log("[lua_runner] got {}".format(cmd_repr))
                 self._print_instructions_used()
@@ -173,19 +190,13 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
                 self._waiting_for_result_id = cmd.id
                 self.on_async_command(cmd)
                 return
-            elif isinstance(cmd, ImmediateResult):
+
+            if isinstance(cmd, PyResult):
                 self.log("[lua_runner] got result {!r}".format(cmd))
-                args = cmd.value
-                continue
             else:
                 self.log("[lua_runner] got non-command")
-
-                if isinstance(cmd, tuple):
-                    cmd = list(cmd)
-
                 self.result = cmd
 
     def _print_instructions_used(self):
         if self.sandboxed:
             self.log("[lua_runner] instructions used: %d" % self.lua.instruction_count())
-
