@@ -2134,7 +2134,7 @@ Mouse events are not propagated immediately, to see consequences of click
 reflected in page source you must call :ref:`splash-wait`
 
 If you want to get coordinates of html element use JavaScript
-getBoundingClientRect_:
+getClientRects_:
 
 .. code-block:: lua
 
@@ -2143,7 +2143,7 @@ getBoundingClientRect_:
         assert(splash:go(splash.args.url))
         local get_dimensions = splash:jsfunc([[
             function () {
-                var rect = document.getElementById('button').getBoundingClientRect();
+                var rect = document.getElementById('button').getClientRects()[0];
                 return {"x": rect.left, "y": rect.top}
             }
         ]])
@@ -2157,7 +2157,7 @@ getBoundingClientRect_:
         return splash:html()
     end
 
-.. _getBoundingClientRect: https://developer.mozilla.org/en/docs/Web/API/Element/getBoundingClientRect
+.. _getClientRects: https://developer.mozilla.org/en/docs/Web/API/Element/getClientRects
 
 Under the hood :ref:`splash-mouse-click` performs :ref:`splash-mouse-press`
 followed by :ref:`splash-mouse-release`.
