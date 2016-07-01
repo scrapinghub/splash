@@ -53,6 +53,7 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         self.result = None
         self._command_ids = itertools.count()
         self._waiting_for_result_id = None
+        self._is_stopped = False
 
     def start(self, coro_func, coro_args=None):
         """
@@ -65,6 +66,9 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         self.result = ''
         self._waiting_for_result_id = self._START_CMD
         self.dispatch(self._waiting_for_result_id)
+
+    def stop(self):
+        self._is_stopped = True
 
     @abc.abstractmethod
     def on_result(self, result):
@@ -101,6 +105,9 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         while True:
             try:
                 args = args or None
+
+                if self._is_stopped:
+                    raise StopIteration
 
                 # Got arguments from an async command; send them to coroutine
                 # and wait for the next async command.

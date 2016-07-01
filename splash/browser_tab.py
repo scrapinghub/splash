@@ -42,6 +42,7 @@ def skip_if_closing(meth):
             self.logger.log("%s is not called because BrowserTab is closing" % meth.__name__, min_level=2)
             return
         return meth(self, *args, **kwargs)
+
     return wrapped
 
 

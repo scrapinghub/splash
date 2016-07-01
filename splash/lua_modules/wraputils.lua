@@ -85,7 +85,7 @@ local function yields_result(func)
     -- The code below could be just "return coroutine.yield(func(...))";
     -- it is more complex because of error handling: errors are catched
     -- and reraised to preserve the original line number.
-    local f = function (...)
+    local f = function(...)
       return table.pack(coroutine.yield(func(...)))
     end
     local ok, res = pcall(f, ...)
@@ -109,6 +109,31 @@ local function sets_callback(func, storage)
   end
 end
 
+local function pack_callback_return_value(func)
+  return function(f, ...)
+    local my_f = f
+
+    if type(f) == 'function' then
+      my_f = function(...)
+        return { f(...) }
+      end
+    end
+
+    return func(my_f, ...)
+  end
+end
+
+local function unpack_result(func)
+  return function(...)
+    local ok, res = func(...)
+
+    if ok then
+      return ok, table.unpack(res)
+    end
+
+    return ok, res
+  end
+end
 
 local PRIVATE_PREFIX = "private_"
 
@@ -134,6 +159,10 @@ local function setup_commands(py_object, self, private_self, async)
       command = sets_callback(command, py_object.tmp_storage)
     end
 
+    if opts.pack_results then
+      command = pack_callback_return_value(command)
+    end
+
     command = drops_self_argument(command)
 
     if opts.returns_error_flag then
@@ -156,14 +185,17 @@ local function setup_commands(py_object, self, private_self, async)
       end
     end
 
+    if opts.pack_results then
+      command = unpack_result(command)
+    end
+
     if is_private_name(key) then
-      local short_key = string.sub(key, PRIVATE_PREFIX:len()+1)
+      local short_key = string.sub(key, PRIVATE_PREFIX:len() + 1)
       private_self[short_key] = command
     else
       self[key] = command
     end
   end
-
 end
 
 --
@@ -215,7 +247,7 @@ end
 --
 local function create_metatable()
   return {
-    __wrapped=true
+    __wrapped = true
   }
 end
 

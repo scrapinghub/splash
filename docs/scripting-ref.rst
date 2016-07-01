@@ -2230,3 +2230,74 @@ Trigger mouse release event in web page.
 **Async:**: no.
 
 See notes about mouse events in :ref:`splash-mouse-click`.
+
+
+.. _splash-with-timeout:
+
+splash:with_timeout
+-------------------
+
+Run the function with the allowed timeout
+
+**Signature:** ``ok, result = splash:with_timeout(func, timeout)``
+
+**Parameters:**
+
+* func - the function to run
+* timeout - timeout, in seconds
+
+**Returns:** ``ok, result`` pair. If ``ok`` is not ``true`` then error happened during
+the function call or the timeout expired; ``result`` provides an information
+about error type. If ``result`` is equal to ``timeout_over`` then the specified timeout period elapsed.
+Otherwise, if ``ok`` is ``true`` then ``result`` contains the result of the executed function.
+If your function returns several values, they will be assigned to the next variables to ``result``.
+
+**Async:** yes.
+
+Example 1:
+
+.. literalinclude:: ../splash/examples/with-timeout.lua
+   :language: lua
+
+Example 2 - the function returns several values
+
+.. code-block:: lua
+
+    function main(splash)
+        local ok, result1, result2, result3 = splash:with_timeout(function()
+            splash:wait(0.5)
+            return 1, 2, 3
+        end, 1)
+
+        return result1, result2, result3
+    end
+
+Note that if the specified timeout period elapsed Splash will try to interrupt the running function.
+However, Splash scripts are executed in `cooperative multitasking`_ manner and because of that sometimes
+Splash won't be able to stop your running function upon timeout expiration. In two words, cooperative multitasking
+means that the managing program (in our example, it is Splash scripting engine) won't stop the running function if it doesn't
+*ask* for that. In Splash scripting the running function can be interrupted only if some *async* operation was called.
+On the contrary, non of the *sync* operations can be interrupted.
+
+.. note::
+
+    Splash scripts are executing in `cooperative multitasking`_ manner. You should be careful while running sync
+    functions.
+
+Let's see the difference in examples.
+
+Example 3:
+
+.. code-block:: lua
+
+    function main(splash)
+        local ok, result = splash:with_timeout(function()
+            splash:go(splash.args.url) -- during this operation the current function can be stopped
+            splash:evaljs(long_js_operation) -- during JS function evaluation the function cannot be stopped
+            local png = splash:png() -- sync operation and during it the function cannot be stopped
+            return png
+        end, 0.1)
+
+        return result
+    end
+.. _cooperative multitasking: https://en.wikipedia.org/wiki/Cooperative_multitasking
