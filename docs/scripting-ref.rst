@@ -2103,6 +2103,7 @@ Example:
          end
      end
 
+
 .. _splash-mouse-click:
 
 splash:mouse_click
@@ -2121,7 +2122,7 @@ Trigger mouse click event in web page.
 
 **Returns:** nil
 
-**Async:**: no.
+**Async:** no.
 
 Coordinates for mouse events must be relative to viewport.
 Element on which action is performed must be inside viewport
@@ -2164,6 +2165,7 @@ followed by :ref:`splash-mouse-release`.
 
 At the moment only left click is supported.
 
+
 .. _splash-mouse-hover:
 
 splash:mouse_hover
@@ -2182,7 +2184,7 @@ Trigger mouse hover (JavaScript mouseover) event in web page.
 
 **Returns:** nil
 
-**Async:**: no.
+**Async:** no.
 
 See notes about mouse events in :ref:`splash-mouse-click`.
 
@@ -2205,9 +2207,10 @@ Trigger mouse press event in web page.
 
 **Returns:** nil
 
-**Async:**: no.
+**Async:** no.
 
 See notes about mouse events in :ref:`splash-mouse-click`.
+
 
 .. _splash-mouse-release:
 
@@ -2227,7 +2230,7 @@ Trigger mouse release event in web page.
 
 **Returns:** nil
 
-**Async:**: no.
+**Async:** no.
 
 See notes about mouse events in :ref:`splash-mouse-click`.
 
@@ -2301,3 +2304,135 @@ Example 3:
         return result
     end
 .. _cooperative multitasking: https://en.wikipedia.org/wiki/Cooperative_multitasking
+
+
+.. _splash-send-keys:
+
+splash:send_keys
+----------------
+
+Send keyboard events to page context.
+
+**Signature:** ``splash:send_keys(keys)``
+
+**Parameters**
+
+* keys - string representing the keys to be sent as keyboard events.
+
+**Returns:** nil
+
+**Async:** no.
+
+Key sequences are specified by using a small subset of emacs edmacro syntax:
+
+* whitespace is ignored and only used to separate the different keys
+* characters are literally represented
+* words within brackets represent function keys, like ``<Return>``, ``<Left>``
+  or ``<Home>``. See `Qt docs`__ for a full list of function keys. ``<Foo>``
+  will try to match ``Qt::Key_Foo``.
+
+__ http://doc.qt.io/qt-5/qt.html#Key-enum
+
+Following table shows some examples of macros and what they would generate on
+an input:
+
+============================    ===============
+Macro                           Result
+============================    ===============
+``Hello World``                 ``HelloWorld``
+``Hello <Space> World``         ``Hello World``
+``< S p a c e >``               ``<Space>``
+``Hello <Home> <Delete>``       ``ello``
+``Hello <Backspace>``           ``Hell``
+============================    ===============
+
+Key events are not propagated immediately until event loop regains control,
+thus :ref:`splash-wait` must be called to reflect the events.
+
+.. _Qt key-enum: http://doc.qt.io/qt-5/qt.html#Key-enum
+
+.. _splash-send-text:
+
+
+splash:send_text
+----------------
+
+Send text as input to page context, literally, character by character.
+
+**Signature:** ``splash:send_text(text)``
+
+**Parameters:**
+
+* text - string to be sent as input.
+
+**Returns:** nil
+
+**Async:** no.
+
+Key events are not propagated immediately until event loop regains control,
+thus :ref:`splash-wait` must be called to reflect the events.
+
+
+This function in conjuction with :ref:`splash-send-keys` covers most needs on
+keyboard input, such as filling in forms and submitting them.
+
+Example 1: focus first input, fill in a form and submit
+
+.. code-block:: lua
+
+    function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.5))
+        splash:send_keys("<Tab>")
+        splash:send_text("zero cool")
+        splash:send_keys("<Tab>")
+        splash:send_text("hunter2")
+        splash:send_keys("<Return>")
+        -- note how this could be translated to
+        -- splash:send_keys("<Tab> zero <Space> cool <Tab> hunter2 <Return>")
+        assert(splash:wait(0))
+        -- ...
+    end
+
+Example 2: focus inputs with javascript or :ref:`splash-mouse-click`
+
+We can't always assume that a `<Tab>` will focus the input we want or an
+`<Enter>` will submit a form. Selecting an input can either be accomplished
+by focusing it or by clicking it. Submitting a form can also be done by
+firing a submit event on the form, or simply by clicking on the submit button.
+
+The following example will focus an input, fill in a form and click on the
+submit button using :ref:`splash-mouse-click`. It assumes there are two
+arguments passed to splash, `username` and `password`.
+
+.. code-block:: lua
+
+    function main(splash)
+        local get_elem_pos = splash:jsfunc([[
+            function (selector) {
+                var elem = document.querySelector(selector);
+                var rect = elem.getClientRects()[0];
+                return {"x": rect.left, "y": rect.top}
+            }
+        ]])
+
+        local focus = splash:jsfunc([[
+            function (selector) {
+                var elem = document.querySelector(selector);
+                return elem.focus();
+            }
+        ]])
+
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.5))
+        focus('input[name=username]')
+        splash:send_text(splash.args.username)
+        assert(splash:wait(0))
+        focus('input[name=password]')
+        splash:send_text(splash.args.password)
+        local submit = get_elem_pos('input[type=submit]')
+        splash:mouse_click(submit.x, submit.y)
+        assert(splash:wait(0))
+        -- Usually, wait for the submit request to finish
+        -- ...
+    end

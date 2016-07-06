@@ -635,6 +635,94 @@ RgbStripesPage = _html_resource("""
 </html>
 """)
 
+InputsPage = _html_resource("""
+<html>
+    <body>
+        <input type="text" id="input1"/>
+        <input type="text" id="input2"/>
+        <input type="text" id="input3"/>
+    </body>
+</html>
+""")
+
+FocusedTextareaPage = _html_resource("""
+<html>
+    <body onload="load();">
+        <textarea id="text"></textarea>
+        <script type="text/javascript">
+            var load = function() {
+                document.getElementById('text').focus();
+            }
+        </script>
+    </body>
+</html>
+""")
+
+FormInputsEventPage = _html_resource("""
+<html>
+    <body onload="load();">
+        <h1 id="result"></h1>
+        <form>
+            <input name="username" type="text" />
+            <input name="password" type="text" />
+            <input type="submit"/>
+        </form>
+        <script type="text/javascript">
+        var load = function() {
+            document.querySelector('form').onsubmit = function(ev) {
+              var inputs = document.querySelectorAll('input[type="text"]');
+              var values = [];
+              for (var i = 0; i < inputs.length; i++)
+                  values.push(inputs[i].value);
+              document.getElementById('result').innerHTML = values.join('|');
+              return false;
+            };
+        };
+        </script>
+    </body>
+</html>
+""")
+
+KeyPressEventLoggerPage = _html_resource("""
+<html>
+  <body onload="load();">
+  <script type="text/javascript">
+    var load = function() {
+      document.onkeypress = function(ev) {
+        ev.preventDefault();
+        var out = '<li>' + ev.keyCode + '</li>'
+        document.getElementById('output').innerHTML += out;
+        return false;
+      };
+    }
+  </script>
+    <ul id="output"></ul>
+  </body>
+</html>
+""")
+
+KeyUpDownEventLoggerPage = _html_resource("""
+<html>
+  <body onload="load();">
+  <script type="text/javascript">
+    var load = function() {
+      var handle_key = function(prefix) {
+        return function(ev) {
+          ev.preventDefault();
+          var out = '<li>' + prefix + ev.keyCode + '</li>'
+          document.getElementById('output').innerHTML += out;
+          return false;
+        }
+      };
+      document.onkeydown = handle_key('+');
+      document.onkeyup = handle_key('-');
+    }
+  </script>
+    <ul id="output"></ul>
+  </body>
+</html>
+""")
+
 
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
@@ -869,6 +957,11 @@ class Root(Resource):
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
         self.putChild(b"bad-content-type2", InvalidContentTypeResource2())
         self.putChild(b"jsevent", JsEventResource())
+        self.putChild(b"inputs-page", InputsPage())
+        self.putChild(b"focused-input", FocusedTextareaPage())
+        self.putChild(b"form-inputs-event-page", FormInputsEventPage())
+        self.putChild(b"key-press-event-logger-page", KeyPressEventLoggerPage())
+        self.putChild(b"key-up-down-event-logger-page", KeyUpDownEventLoggerPage())
 
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())
