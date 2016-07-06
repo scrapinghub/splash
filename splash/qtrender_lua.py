@@ -485,7 +485,7 @@ class Splash(BaseExposedObject):
             onredirect=redirect if cancel_on_redirect else False,
             onerror=error if cancel_on_error else False,
         ))
-        return PyResult(cmd, op='yield')
+        return PyResult.yield_(cmd)
 
     @command(sets_callback=True, decode_arguments=False)
     def with_timeout(self, func, timeout):
@@ -554,7 +554,7 @@ class Splash(BaseExposedObject):
             func=start
         ))
 
-        return PyResult(cmd, op='yield')
+        return PyResult.yield_(cmd)
 
     @command(decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
@@ -631,7 +631,7 @@ class Splash(BaseExposedObject):
             body=body,
             headers=headers,
         ))
-        return PyResult(cmd, op='yield')
+        return PyResult.yield_(cmd)
 
     @command()
     def html(self):
@@ -726,7 +726,7 @@ class Splash(BaseExposedObject):
             errmsg = "JavaScript error: %s" % msg
             op = 'raise' if raise_ else 'not_ok'
             if raise_:
-                result = PyResult(errmsg, op='raise')
+                result = PyResult.raise_(errmsg)
             else:
                 result = PyResult(None, errmsg)
             cmd.return_result(result)
@@ -737,7 +737,7 @@ class Splash(BaseExposedObject):
             errback=errback,
             timeout=timeout,
         ))
-        return PyResult(cmd, op='yield')
+        return PyResult.yield_(cmd)
 
     @command()
     def private_jsfunc(self, func):
@@ -768,7 +768,7 @@ class Splash(BaseExposedObject):
         if browser_command == "http_post":
             command_args.update(dict(body=body))
         cmd = AsyncBrowserCommand(browser_command, command_args)
-        return PyResult(cmd, op='yield')
+        return PyResult.yield_(cmd)
 
     @command()
     def http_get(self, url, headers=None, follow_redirects=True):
@@ -828,7 +828,7 @@ class Splash(BaseExposedObject):
                 url=url,
                 callback=callback
             ))
-            return PyResult(cmd, op='yield')
+            return PyResult.yield_(cmd)
 
     @command()
     def autoload_reset(self):
@@ -892,7 +892,7 @@ class Splash(BaseExposedObject):
             callback=success,
             errback=error,
         ))
-        return PyResult(cmd, op='yield')
+        return PyResult.yield_(cmd)
 
     @command()
     def lock_navigation(self):

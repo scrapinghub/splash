@@ -192,47 +192,50 @@ class PyResult(object):
 
     Usage::
 
-       return PyResult('foo', 'bar')
+       return PyResult('foo', 'bar')  # same as PyResult.return_('foo', 'bar')
 
-       return PyResult(AsyncResult(), op='yield')
+       return PyResult.yield_(AsyncResult())
 
-       return PyResult('errmsg', op='raise')
+       return PyResult.raise_('errmsg')
 
-    Internally, the op will come as the first value of the tuple passed
-    to Lua runtime where wraputils:unwrap_python_result should unwrap the
-    arguments and apply the selected operation.  There are three ops to
-    choose from:
+    There are three ways the result might be handled in Lua (carried out by
+    wraputils:unwrap_python_result):
 
-    - ``return`` (**default**)
-
-      Ex: ``PyResult([ arg1, ... ], op='return')``
+    - ``PyResult(*args)`` (or ``PyResult.return_(*args)``)
 
       Passes args as return values to Lua interpreter.  It is the default, so
       you can write ``PyResult([ arg1, ... ])`` too.
 
-    - ``raise``
-
-      Ex: ``PyResult([ arg1, ... ], op='raise')``.
+    - ``PyResult.raise_(error)``
 
       Raises an error in Lua interpreter.
 
-    - ``yield``
+    - ``PyResult.yield_(*args)``
 
-      Ex: ``PyResult([ arg1, ... ], op='yield')``
-
-      Passes args be returned to Lua interpreter asynchronously via
-      ``coroutine.yield``
+      Passes args asynchronously to Lua interpreter via ``coroutine.yield``
 
     """
     def __init__(self, *result, **kwargs):
-        op = kwargs.get('op', 'return')
-        if op not in ('return', 'raise', 'yield'):
-            raise ValueError('Invalid PyResult operation: %r' % op)
-        self.result = (op,) + result
+        operation = kwargs.get('_operation', 'return')
+        if operation not in ('return', 'raise', 'yield'):
+            raise ValueError('Invalid PyResult operation: %r' % operation)
+        self.result = (operation,) + result
 
     def __repr__(self):
         return '%s(%s)' % (type(self).__name__,
                            ', '.join(repr(x) for x in self.result))
+
+    @staticmethod
+    def raise_(error):
+        return PyResult(error, _operation='raise')
+
+    @staticmethod
+    def return_(*args):
+        return PyResult(*args, _operation='return')
+
+    @staticmethod
+    def yield_(*args):
+        return PyResult(*args, _operation='yield')
 
 
 def ensure_tuple(val):
