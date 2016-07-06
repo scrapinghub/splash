@@ -218,10 +218,12 @@ def can_raise(meth):
 
 
 def exceptions_as_return_values(meth):
-    """
-    Decorator for allowing Python exceptions to be caught from Lua.
+    """Decorator for allowing Python exceptions to be caught from Lua.
 
-    FIXME: new docstring
+    TODO: this decorator is the last one on the way from Python to Lua and thus
+    is responsible for converting non-PyResult values to PyResult.  This is
+    suboptimal and should be fixed.
+
     """
     @functools.wraps(meth)
     def exceptions_as_return_values_wrapper(self, *args, **kwargs):
@@ -605,7 +607,7 @@ class Splash(BaseExposedObject):
                                "message": "GET request cannot have body"})
 
         if self.tab.web_page.navigation_locked:
-            return PyResult(None, 'navigation_locked')
+            return None, 'navigation_locked'
 
         def success():
             try:
@@ -709,12 +711,12 @@ class Splash(BaseExposedObject):
     def runjs(self, snippet):
         try:
             self.tab.runjs(snippet)
-            return PyResult(True)
+            return True
         except JsError as e:
             info = e.args[0]
             info['type'] = ScriptError.JS_ERROR
             info['splash_method'] = 'runjs'
-            return PyResult(None, info)
+            return None, info
 
     @command()
     def wait_for_resume(self, snippet, timeout=0):
@@ -812,7 +814,7 @@ class Splash(BaseExposedObject):
         if source is not None:
             # load source directly
             self.tab.autoload(source)
-            return PyResult(True)
+            return True
         else:
             # load JS from a remote resource
             def callback(reply):
