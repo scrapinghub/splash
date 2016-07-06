@@ -57,7 +57,8 @@ class _BlackWhiteSplashProxyFactory(object):
 
         return not bool(self.whitelist)
 
-    def _get_default_proxy_list(self):
+    @staticmethod
+    def _get_default_proxy_list():
         return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
 
     def _get_custom_proxy_list(self):

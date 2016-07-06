@@ -273,7 +273,7 @@ class SlowGif(Resource):
         request, n = request_info
         # write 1px black gif
         gif_data = b'AQABAIAAAAAAAAAAACH5BAAAAAAALAAAAAABAAEAAAICTAEAOw=='
-        request.write(base64.decodestring(gif_data))
+        request.write(base64.decodebytes(gif_data))
         if not request._disconnected:
             request.finish()
 
@@ -764,7 +764,7 @@ class Subresources(Resource):
         @use_chunked_encoding
         def render_GET(self, request):
             request.setHeader(b"Content-Type", b"image/gif")
-            return base64.decodestring(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
+            return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
 class SetHeadersResource(Resource):

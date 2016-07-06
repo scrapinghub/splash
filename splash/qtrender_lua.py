@@ -674,7 +674,8 @@ class Splash(BaseExposedObject):
             return None
         return BinaryCapsule(result, 'image/jpeg')
 
-    def _validate_region(self, region):
+    @staticmethod
+    def _validate_region(region):
         if region is not None:
             try:
                 if isinstance(region, dict):
@@ -833,7 +834,8 @@ class Splash(BaseExposedObject):
     def autoload_reset(self):
         self.tab.autoload_reset()
 
-    def _check_mouse_coordinantes(self, x, y):
+    @staticmethod
+    def _check_mouse_coordinantes(x, y):
         def _assert_number(value, name):
             if not isinstance(value, (int, float)):
                 raise ScriptError({
@@ -1145,7 +1147,8 @@ class Splash(BaseExposedObject):
         })
         return versions
 
-    def _error_info_to_lua(self, error_info):
+    @staticmethod
+    def _error_info_to_lua(error_info):
         if error_info is None:
             return "error"
         res = "%s%s" % (error_info.type.lower(), error_info.code)
@@ -1296,7 +1299,8 @@ class _ExposedBoundRequest(BaseExposedObject):
         super(_ExposedBoundRequest, self).clear()
         self.request = None
 
-    def _on_request_required(self, meth, attr_name):
+    @staticmethod
+    def _on_request_required(meth, attr_name):
         raise ScriptError({
             "message": "request is used outside a callback",
             "type": ScriptError.SPLASH_LUA_ERROR,
@@ -1401,7 +1405,8 @@ class _ExposedResponse(BaseExposedObject):
         self._info = None
         self._info_lua = None
 
-    def _on_response_required(self, meth, attr_name):
+    @staticmethod
+    def _on_response_required(meth, attr_name):
         raise ScriptError({
             "message": "response is used outside a callback",
             "type": ScriptError.SPLASH_LUA_ERROR,
@@ -1574,7 +1579,8 @@ class MainCoroutineRunner(SplashCoroutineRunner):
 
         raise ScriptError(py_info)
 
-    def _make_script_error(self, ex):
+    @staticmethod
+    def _make_script_error(ex):
         if not isinstance(ex, (TypeError, ValueError)):
             return ex
 

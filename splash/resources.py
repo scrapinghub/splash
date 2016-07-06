@@ -53,7 +53,8 @@ class _ValidatingResource(Resource):
             self._log_stats(request, {}, error=self._format_error(400, e))
             return b"\n"
 
-    def _write_error_content(self, request, code, err, content_type=b'text/plain'):
+    @staticmethod
+    def _write_error_content(request, code, err, content_type=b'text/plain'):
         request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
         content = json.dumps(err).encode('utf8')
@@ -66,7 +67,8 @@ class _ValidatingResource(Resource):
         return self._write_error_content(request, code, err,
                                          content_type=b"application/json")
 
-    def _format_error(self, code, exc):
+    @staticmethod
+    def _format_error(code, exc):
         err = {
             "error": code,
             "type": exc.__class__.__name__,
@@ -144,12 +146,14 @@ class BaseRenderResource(_ValidatingResource):
 
         return self.render_GET(request)
 
-    def _cancel_timer(self, _, timer):
+    @staticmethod
+    def _cancel_timer(_, timer):
         #log.msg("_cancelTimer")
         timer.cancel()
         return _
 
-    def _request_failed(self, _, pool_d, timer):
+    @staticmethod
+    def _request_failed(_, pool_d, timer):
         log.msg("Client disconnected: %s" % _.value)
         timer.cancel()
         pool_d.cancel()
@@ -364,7 +368,8 @@ class DebugResource(Resource):
 
         return (json.dumps(info, sort_keys=True)).encode('utf-8')
 
-    def get_repr(self, render):
+    @staticmethod
+    def get_repr(render):
         if hasattr(render, 'url'):
             return render.url
         return render.tab.url
@@ -393,7 +398,8 @@ class ClearCachesResource(Resource):
 class PingResource(Resource):
     isLeaf = True
 
-    def render_GET(self, request):
+    @staticmethod
+    def render_GET(request):
         request.setHeader(b"content-type", b"application/json")
         return (json.dumps({
             "status": "ok",
@@ -623,7 +629,8 @@ class Root(Resource):
             return self
         return Resource.getChild(self, name, request)
 
-    def get_example_script(self):
+    @staticmethod
+    def get_example_script():
         return """
 function main(splash)
   local url = splash.args.url

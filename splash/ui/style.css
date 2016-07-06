@@ -2,7 +2,7 @@
 .label {
     color: #000;
     font-weight: normal;
-    font-size: 100%%;
+    font-size: 100%;
 }
 
 table {
@@ -53,7 +53,7 @@ body.no-lua .if-lua { /* Hide stuff that requires lua support if there is no lua
 .netPageTimingBar {opacity: 0.3; width: 2px; }
 .timeInfoTip { width: 250px !important; }
 .customEventBar { background-color: gray; }
-._onStarted { background-color: marine; }
+._onStarted { background-color: maroon; }
 ._onPrepareStart { background-color: green; }
 ._onCustomJsExecuted { background-color: green; }
 ._onScreenshotPrepared { background-color: magenta; }
