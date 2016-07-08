@@ -5,7 +5,7 @@ import re
 import functools
 import datetime
 
-from splash.utils import to_bytes, to_unicode, PyResult
+from splash.utils import to_bytes, to_unicode
 from twisted.python import log
 try:
     import lupa
@@ -314,3 +314,54 @@ def parse_error_message(error_text):
         'line_number': int(m.group(2)),
         'error': m.group(3)
     }
+
+
+class PyResult(object):
+    """Representation of Python operation result.
+
+    Usage::
+
+       return PyResult('foo', 'bar')  # same as PyResult.return_('foo', 'bar')
+
+       return PyResult.yield_(AsyncResult())
+
+       return PyResult.raise_('errmsg')
+
+    There are three ways the result might be handled in Lua (carried out by
+    wraputils:unwrap_python_result):
+
+    - ``PyResult(*args)`` (or ``PyResult.return_(*args)``)
+
+      Passes args as return values to Lua interpreter.  It is the default, so
+      you can write ``PyResult([ arg1, ... ])`` too.
+
+    - ``PyResult.raise_(error)``
+
+      Raises an error in Lua interpreter.
+
+    - ``PyResult.yield_(*args)``
+
+      Passes args asynchronously to Lua interpreter via ``coroutine.yield``
+
+    """
+    def __init__(self, *result, **kwargs):
+        operation = kwargs.get('_operation', 'return')
+        if operation not in ('return', 'raise', 'yield'):
+            raise ValueError('Invalid PyResult operation: %r' % operation)
+        self.result = (operation,) + result
+
+    def __repr__(self):
+        return '%s(%s)' % (type(self).__name__,
+                           ', '.join(repr(x) for x in self.result))
+
+    @staticmethod
+    def raise_(error):
+        return PyResult(error, _operation='raise')
+
+    @staticmethod
+    def return_(*args):
+        return PyResult(*args, _operation='return')
+
+    @staticmethod
+    def yield_(*args):
+        return PyResult(*args, _operation='yield')

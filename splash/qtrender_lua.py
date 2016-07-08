@@ -22,7 +22,8 @@ from splash.lua_runner import (
     AsyncCommand,
 )
 from splash.qtrender import RenderScript, stop_on_error
-from splash.lua import get_main, get_main_sandboxed, parse_error_message
+from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
+                        PyResult)
 from splash.har.qt import reply2har, request2har
 from splash.har.utils import get_response_body_bytes
 from splash.render_options import RenderOptions
@@ -33,7 +34,7 @@ from splash.utils import (
     requires_attr,
     SplashJSONEncoder,
     to_unicode,
-    PyResult, ensure_tuple)
+    ensure_tuple)
 from splash.jsutils import escape_js, get_process_errors_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
