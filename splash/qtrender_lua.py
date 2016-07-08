@@ -473,14 +473,13 @@ class Splash(BaseExposedObject):
             })
 
         def success():
-            cmd.return_result(PyResult(True))
+            cmd.return_result(True)
 
         def redirect(error_info):
-            cmd.return_result(PyResult(None, 'redirect'))
+            cmd.return_result(None, 'redirect')
 
         def error(error_info):
-            cmd.return_result(
-                PyResult(None, self._error_info_to_lua(error_info)))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
         cmd = AsyncBrowserCommand("wait", dict(
             time_ms=time * 1000,
@@ -526,7 +525,7 @@ class Splash(BaseExposedObject):
 
         def timer_callback():
             run_coro.runner.stop()
-            cmd.return_result(PyResult(None, 'timeout_over'))
+            cmd.return_result(None, 'timeout_over')
 
         qtimer.timeout.connect(timer_callback)
 
@@ -535,7 +534,7 @@ class Splash(BaseExposedObject):
                 return
 
             qtimer.stop()
-            cmd.return_result(PyResult(True, *ensure_tuple(result)))
+            cmd.return_result(True, *ensure_tuple(result))
 
         def coro_error(ex):
             if not qtimer.isActive():  # pragma: no cover
@@ -544,7 +543,7 @@ class Splash(BaseExposedObject):
             qtimer.stop()
 
             info = str(ex.args[0]["error"])
-            cmd.return_result(PyResult(None, info))
+            cmd.return_result(None, info)
 
         run_coro = self.get_coroutine_run_func(
             "splash:with_timeout", func, coro_success, coro_error)
@@ -615,15 +614,14 @@ class Splash(BaseExposedObject):
                 code = self.tab.last_http_status()
                 if code and 400 <= code < 600:
                     # return HTTP errors as errors
-                    cmd.return_result(PyResult(None, "http%d" % code))
+                    cmd.return_result(None, "http%d" % code)
                 else:
-                    cmd.return_result(PyResult(True))
+                    cmd.return_result(True)
             except Exception as e:
-                cmd.return_result(PyResult(None, "internal_error"))
+                cmd.return_result(None, "internal_error")
 
         def error(error_info):
-            cmd.return_result(
-                PyResult(None, self._error_info_to_lua(error_info)))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
         cmd = AsyncBrowserCommand("go", dict(
             url=url,
@@ -723,16 +721,14 @@ class Splash(BaseExposedObject):
     def wait_for_resume(self, snippet, timeout=0):
         def callback(result):
             assert result is not None
-            cmd.return_result(PyResult(result))
+            cmd.return_result(result)
 
         def errback(msg, raise_):
             errmsg = "JavaScript error: %s" % msg
-            op = 'raise' if raise_ else 'not_ok'
             if raise_:
-                result = PyResult.raise_(errmsg)
+                cmd.raise_error(errmsg)
             else:
-                result = PyResult(None, errmsg)
-            cmd.return_result(result)
+                cmd.return_result(None, errmsg)
 
         cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
@@ -760,7 +756,7 @@ class Splash(BaseExposedObject):
             self._objects_to_clear.add(req)
             self._objects_to_clear.add(resp)
             resp_wrapped = self.response_wrapper._create(resp)
-            cmd.return_result(PyResult(resp_wrapped))
+            cmd.return_result(resp_wrapped)
 
         command_args = dict(
             url=url,
@@ -821,11 +817,11 @@ class Splash(BaseExposedObject):
             def callback(reply):
                 if reply.error():
                     reason = REQUEST_ERRORS_SHORT.get(reply.error(), '?')
-                    cmd.return_result(PyResult(None, reason))
+                    cmd.return_result(None, reason)
                 else:
                     source = bytes(reply.readAll()).decode('utf-8')
                     self.tab.autoload(source)
-                    cmd.return_result(PyResult(True))
+                    cmd.return_result(True)
 
             cmd = AsyncBrowserCommand("http_get", dict(
                 url=url,
@@ -882,11 +878,10 @@ class Splash(BaseExposedObject):
             data = data.encode('utf8')
 
         def success():
-            cmd.return_result(PyResult(True))
+            cmd.return_result(True)
 
         def error(error_info):
-            cmd.return_result(
-                PyResult(None, self._error_info_to_lua(error_info)))
+            cmd.return_result(None, self._error_info_to_lua(error_info))
 
         cmd = AsyncBrowserCommand("set_content", dict(
             data=data,

@@ -24,10 +24,15 @@ class AsyncCommand(object):
         self.dispatcher = dispatcher
         self.id = id
 
-    def return_result(self, result):
+    def return_result(self, *args):
         """ Return result and resume the dispatcher. """
-        assert isinstance(result, PyResult)
-        self.dispatcher.dispatch(self.id, result)
+        self.dispatcher.dispatch(self.id, PyResult.return_(*args))
+
+    def raise_error(self, msg):
+        self.dispatcher.dispatch(self.id, PyResult.raise_(msg))
+
+    def yield_result(self, *args):
+        self.dispatcher.dispatch(self.id, PyResult.yield_(*args))
 
 
 class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
