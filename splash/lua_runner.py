@@ -7,8 +7,8 @@ import six
 import lupa
 
 from splash.exceptions import ScriptError
-from splash.lua import parse_error_message, PyResult, ensure_tuple
-from splash.utils import truncated
+from splash.lua import parse_error_message, PyResult
+from splash.utils import truncated, ensure_tuple
 
 
 class AsyncCommand(object):
