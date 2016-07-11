@@ -185,3 +185,15 @@ def requires_attr(attr_name, raiser):
             return meth(self, *args, **kwargs)
         return wrapper
     return decorator
+
+
+def ensure_tuple(val):
+    """If val is not a tuple, make it a 1-tuple containing val.
+
+    This is useful for uniform processing of Lua output which can be either a
+    single value or a tuple of values.
+
+    """
+    if not isinstance(val, tuple):
+        return (val,)
+    return val

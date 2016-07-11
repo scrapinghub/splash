@@ -19,11 +19,11 @@ import splash
 from splash.browser_tab import JsError
 from splash.lua_runner import (
     BaseScriptRunner,
-    ImmediateResult,
     AsyncCommand,
 )
 from splash.qtrender import RenderScript, stop_on_error
-from splash.lua import get_main, get_main_sandboxed, parse_error_message
+from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
+                        PyResult)
 from splash.har.qt import reply2har, request2har
 from splash.har.utils import get_response_body_bytes
 from splash.render_options import RenderOptions
@@ -33,7 +33,8 @@ from splash.utils import (
     to_bytes,
     requires_attr,
     SplashJSONEncoder,
-    to_unicode)
+    to_unicode,
+    ensure_tuple)
 from splash.jsutils import escape_js, get_process_errors_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
@@ -78,8 +79,8 @@ class StoredExceptions(object):
             return self._exceptions[-1]
 
 
-def command(async=False, can_raise_async=False, table_argument=False,
-            sets_callback=False, decode_arguments=True, pack_results=False):
+def command(table_argument=False, sets_callback=False,
+            decode_arguments=True):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
@@ -107,10 +108,7 @@ def command(async=False, can_raise_async=False, table_argument=False,
             )
         )
         meth._is_command = True
-        meth._is_async = async
-        meth._can_raise_async = can_raise_async
         meth._sets_callback = sets_callback
-        meth._pack_results = pack_results
         return meth
 
     return decorator
@@ -139,6 +137,9 @@ def emits_lua_objects(meth):
     @functools.wraps(meth)
     def emits_lua_objects_wrapper(self, *args, **kwargs):
         res = meth(self, *args, **kwargs)
+        if isinstance(res, PyResult):
+            res.result = tuple(self.lua.python2lua(v) for v in res.result)
+            return res
         return self.lua.python2lua(res)
 
     return emits_lua_objects_wrapper
@@ -218,26 +219,25 @@ def can_raise(meth):
 
 
 def exceptions_as_return_values(meth):
-    """
-    Decorator for allowing Python exceptions to be caught from Lua.
+    """Decorator for allowing Python exceptions to be caught from Lua.
 
-    It makes wrapped methods return ``True, result`` and ``False, repr(exception)``
-    pairs instead of raising an exception; Lua script should handle it itself
-    and raise an error when needed. In Splash this is done by
-    splash/lua_modules/splash.lua unwraps_errors decorator.
+    TODO: this decorator is the last one on the way from Python to Lua and thus
+    is responsible for converting non-PyResult values to PyResult.  This is
+    suboptimal and should be fixed.
+
     """
     @functools.wraps(meth)
     def exceptions_as_return_values_wrapper(self, *args, **kwargs):
         try:
-            result = meth(self, *args, **kwargs)
-            if isinstance(result, tuple):
-                return (True,) + result
+            res = meth(self, *args, **kwargs)
+            if isinstance(res, PyResult):
+                res = res.result
             else:
-                return True, result
+                res = (b'return',) + ensure_tuple(res)
         except Exception as e:
-            return False, repr(e)
+            res = (b'raise', repr(e))
+        return res
 
-    exceptions_as_return_values_wrapper._returns_error_flag = True
     return exceptions_as_return_values_wrapper
 
 
@@ -275,11 +275,7 @@ def get_commands(obj):
         value = getattr(obj, name)
         if is_command(value):
             commands[name] = {
-                'is_async': getattr(value, '_is_async'),
-                'returns_error_flag': getattr(value, '_returns_error_flag', False),
-                'can_raise_async': getattr(value, '_can_raise_async', False),
                 'sets_callback': getattr(value, '_sets_callback', False),
-                'pack_results': getattr(value, '_pack_results', False),
             }
     return commands
 
@@ -467,7 +463,7 @@ class Splash(BaseExposedObject):
     def set_private_mode_enabled(self, value):
         self.tab.set_private_mode_enabled(bool(value))
 
-    @command(async=True)
+    @command()
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
         time = float(time)
         if time < 0:
@@ -491,9 +487,9 @@ class Splash(BaseExposedObject):
             onredirect=redirect if cancel_on_redirect else False,
             onerror=error if cancel_on_error else False,
         ))
-        return cmd
+        return PyResult.yield_(cmd)
 
-    @command(async=True, sets_callback=True, decode_arguments=False, pack_results=True)
+    @command(sets_callback=True, decode_arguments=False)
     def with_timeout(self, func, timeout):
         if timeout is None:
             ScriptError({
@@ -529,7 +525,7 @@ class Splash(BaseExposedObject):
 
         def timer_callback():
             run_coro.runner.stop()
-            cmd.return_result(None, "timeout_over")
+            cmd.return_result(None, 'timeout_over')
 
         qtimer.timeout.connect(timer_callback)
 
@@ -538,7 +534,7 @@ class Splash(BaseExposedObject):
                 return
 
             qtimer.stop()
-            cmd.return_result(True, result)
+            cmd.return_result(True, *ensure_tuple(result))
 
         def coro_error(ex):
             if not qtimer.isActive():  # pragma: no cover
@@ -560,9 +556,9 @@ class Splash(BaseExposedObject):
             func=start
         ))
 
-        return cmd
+        return PyResult.yield_(cmd)
 
-    @command(async=True, decode_arguments=False)
+    @command(decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
         url = self.lua.lua2python(url, max_depth=1)
         baseurl = self.lua.lua2python(baseurl, max_depth=1)
@@ -611,7 +607,7 @@ class Splash(BaseExposedObject):
                                "message": "GET request cannot have body"})
 
         if self.tab.web_page.navigation_locked:
-            return ImmediateResult((None, "navigation_locked"))
+            return None, 'navigation_locked'
 
         def success():
             try:
@@ -636,7 +632,7 @@ class Splash(BaseExposedObject):
             body=body,
             headers=headers,
         ))
-        return cmd
+        return PyResult.yield_(cmd)
 
     @command()
     def html(self):
@@ -721,14 +717,18 @@ class Splash(BaseExposedObject):
             info['splash_method'] = 'runjs'
             return None, info
 
-    @command(async=True, can_raise_async=True)
+    @command()
     def wait_for_resume(self, snippet, timeout=0):
         def callback(result):
+            assert result is not None
             cmd.return_result(result)
 
         def errback(msg, raise_):
-            args = [None, "JavaScript error: %s" % msg, raise_]
-            cmd.return_result(*args)
+            errmsg = "JavaScript error: %s" % msg
+            if raise_:
+                cmd.raise_error(errmsg)
+            else:
+                cmd.return_result(None, errmsg)
 
         cmd = AsyncBrowserCommand("wait_for_resume", dict(
             js_source=snippet,
@@ -736,7 +736,7 @@ class Splash(BaseExposedObject):
             errback=errback,
             timeout=timeout,
         ))
-        return cmd
+        return PyResult.yield_(cmd)
 
     @command()
     def private_jsfunc(self, func):
@@ -767,13 +767,13 @@ class Splash(BaseExposedObject):
         if browser_command == "http_post":
             command_args.update(dict(body=body))
         cmd = AsyncBrowserCommand(browser_command, command_args)
-        return cmd
+        return PyResult.yield_(cmd)
 
-    @command(async=True)
+    @command()
     def http_get(self, url, headers=None, follow_redirects=True):
         return self._http_request(url, headers, follow_redirects)
 
-    @command(async=True)
+    @command()
     def http_post(self, url, headers=None, follow_redirects=True, body=None):
         """
         :param url: string with url to fetch
@@ -794,7 +794,7 @@ class Splash(BaseExposedObject):
 
         return self._http_request(url, headers, follow_redirects, body, browser_command="http_post")
 
-    @command(async=True)
+    @command()
     def autoload(self, source_or_url=None, source=None, url=None):
         if len([a for a in [source_or_url, source, url] if a is not None]) != 1:
             raise ScriptError({
@@ -811,7 +811,7 @@ class Splash(BaseExposedObject):
         if source is not None:
             # load source directly
             self.tab.autoload(source)
-            return ImmediateResult(True)
+            return True
         else:
             # load JS from a remote resource
             def callback(reply):
@@ -827,7 +827,7 @@ class Splash(BaseExposedObject):
                 url=url,
                 callback=callback
             ))
-            return cmd
+            return PyResult.yield_(cmd)
 
     @command()
     def autoload_reset(self):
@@ -872,7 +872,7 @@ class Splash(BaseExposedObject):
     def send_text(self, text):
         self.tab.send_text(text)
 
-    @command(async=True)
+    @command()
     def set_content(self, data, mime_type=None, baseurl=None):
         if isinstance(data, six.text_type):
             data = data.encode('utf8')
@@ -890,7 +890,7 @@ class Splash(BaseExposedObject):
             callback=success,
             errback=error,
         ))
-        return cmd
+        return PyResult.yield_(cmd)
 
     @command()
     def lock_navigation(self):
@@ -1544,6 +1544,13 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         super(MainCoroutineRunner, self).start(main_coro, args, return_result, return_error)
 
     def on_result(self, result):
+        # Request writer expects JSON-like values and misbehaves when the
+        # result is a tuple.  Wrap tuples to be returned as JSON lists, as they
+        # would be serialized like that anyway.
+        #
+        # FIXME: maybe request writer must be fixed?
+        if isinstance(result, tuple):
+            result = list(result)
         self.return_result((
             result,
             self.splash.result_content_type(),

@@ -15,6 +15,7 @@
 --
 local function assertx(nlevels, ok, ...)
   if not ok then
+    -- print("Assertx nlevels=", nlevels, "tb: ", debug.traceback())
     local msg = tostring(select(1, ...))
     error(msg, 1 + nlevels)
   else
@@ -23,24 +24,38 @@ local function assertx(nlevels, ok, ...)
 end
 
 
---
 -- Python Splash commands return
 --
---     ok, result1, [ result2, ... ]
+--   operation, [ result1, result2, ... ]
 --
--- tuples.  If "ok" is false, this decorator raises an error using "result1" as
--- message.  Otherwise, it returns
+-- tuples.  Operation can be one of the following:
 --
---     result1, [result2, ...]
+--   * "return": return the rest of the tuple
 --
-local function unwraps_errors(func, nlevels)
+--   * "yield": yield the rest of the tuple with coroutine.yield
+--
+--   * "raise": raise an error using the rest of the tuple
+--
+local function unwrap_python_result(error_nlevels, op, ...)
+  if op == 'return' then
+    return ...
+  elseif op == 'raise' then
+    assertx(error_nlevels, nil, ...)
+  elseif op == 'yield' then
+    return unwrap_python_result(error_nlevels, coroutine.yield(...))
+  else
+    error('Invalid operation: ' .. tostring(op))
+  end
+end
+
+
+local function unwraps_python_result(func, nlevels)
   if nlevels == nil then
-    -- assertx is tail-call-optimized and extra stack level is not
-    -- created, hence nlevels==1.
+    -- nlevels is passed straight to the corresponding assertx func.
     nlevels = 1
   end
   return function(...)
-    return assertx(nlevels, func(...))
+    return unwrap_python_result(1 + nlevels, func(...))
   end
 end
 
@@ -58,46 +73,6 @@ end
 
 
 --
--- Allows an async function to raise a Lua error by returning ok, err, raise.
---
--- If raise is true and ok is nil, then an error will be raised using res
--- as the reason.
---
-local function raises_async(func)
-  return function(...)
-    local ok, err, raise = func(...)
-    if ok == nil and raise then
-      error(err, 2)
-    else
-      return ok, err
-    end
-  end
-end
-
---
--- This decorator makes function yield the result instead of returning it
---
-local function yields_result(func)
-  return function(...)
-    -- XXX: can Lua code access func(...) result
-    -- from here? It should be prevented.
-
-    -- The code below could be just "return coroutine.yield(func(...))";
-    -- it is more complex because of error handling: errors are catched
-    -- and reraised to preserve the original line number.
-    local f = function(...)
-      return table.pack(coroutine.yield(func(...)))
-    end
-    local ok, res = pcall(f, ...)
-    if ok then
-      return table.unpack(res)
-    else
-      error(res, 2)
-    end
-  end
-end
-
---
 -- A decorator that fixes an issue with passing callbacks from Lua to Python
 -- by putting the callback to a table provided by the caller.
 -- See https://github.com/scoder/lupa/pull/49 for more.
@@ -109,37 +84,13 @@ local function sets_callback(func, storage)
   end
 end
 
-local function pack_callback_return_value(func)
-  return function(f, ...)
-    local my_f = f
-
-    if type(f) == 'function' then
-      my_f = function(...)
-        return { f(...) }
-      end
-    end
-
-    return func(my_f, ...)
-  end
-end
-
-local function unpack_result(func)
-  return function(...)
-    local ok, res = func(...)
-
-    if ok then
-      return ok, table.unpack(res)
-    end
-
-    return ok, res
-  end
-end
 
 local PRIVATE_PREFIX = "private_"
 
 local function is_private_name(key)
   return string.find(key, "^" .. PRIVATE_PREFIX) ~= nil
 end
+
 
 --
 -- Create a Lua wrapper for a Python object.
@@ -159,35 +110,15 @@ local function setup_commands(py_object, self, private_self, async)
       command = sets_callback(command, py_object.tmp_storage)
     end
 
-    if opts.pack_results then
-      command = pack_callback_return_value(command)
-    end
-
     command = drops_self_argument(command)
 
-    if opts.returns_error_flag then
-      local nlevels = nil
-      if is_private_name(key) then
-        -- private functions are wrapped, so nlevels
-        -- is set to 2 to show error line number in user code
-        nlevels = 2
-      end
-      command = unwraps_errors(command, nlevels)
+    local nlevels = 1
+    if is_private_name(key) then
+      -- private functions are wrapped, so nlevels is set to 2 to show error
+      -- line number in user code
+      nlevels = 2
     end
-
-    if async then
-      if opts.is_async then
-        command = yields_result(command)
-      end
-
-      if opts.can_raise_async then
-        command = raises_async(command)
-      end
-    end
-
-    if opts.pack_results then
-      command = unpack_result(command)
-    end
+    command = unwraps_python_result(command, nlevels)
 
     if is_private_name(key) then
       local short_key = string.sub(key, PRIVATE_PREFIX:len() + 1)
@@ -198,6 +129,7 @@ local function setup_commands(py_object, self, private_self, async)
   end
 end
 
+
 --
 -- Handle @lua_property decorators.
 --
@@ -205,9 +137,9 @@ local function setup_property_access(py_object, self, cls)
   local setters = {}
   local getters = {}
   for name, opts in pairs(py_object.lua_properties) do
-    getters[name] = unwraps_errors(drops_self_argument(py_object[opts.getter]))
+    getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
     if opts.setter ~= nil then
-      setters[name] = unwraps_errors(drops_self_argument(py_object[opts.setter]))
+      setters[name] = unwraps_python_result(drops_self_argument(py_object[opts.setter]))
     else
       setters[name] = function()
         error("Attribute " .. name .. " is read-only.", 2)
@@ -251,6 +183,7 @@ local function create_metatable()
   }
 end
 
+
 --
 -- Return true if an object is a wrapped Python object
 --
@@ -266,7 +199,7 @@ end
 -- Exposed API
 return {
   assertx = assertx,
-  unwraps_errors = unwraps_errors,
+  unwraps_python_result = unwraps_python_result,
   drops_self_argument = drops_self_argument,
   raises_async = raises_async,
   yields_result = yields_result,
