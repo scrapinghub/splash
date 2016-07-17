@@ -9,11 +9,12 @@ local Extras = {}
 local Extras_private = {}
 
 function Extras._create(py_extras)
-  local self = {}
-  setmetatable(self, Extras)
-  wraputils.wrap_exposed_object(py_extras, self, Extras_private, false)
-  wraputils.setup_property_access(py_extras, self, Extras)
-  return self
+  local extras = {}
+  setmetatable(extras, Extras)
+  Extras.__index = Extras
+  Extras.__newindex = rawset
+  wraputils.wrap_exposed_object(py_extras, extras, Extras_private, false)
+  return extras
 end
 
 return Extras

@@ -134,32 +134,33 @@ end
 -- Handle @lua_property decorators.
 --
 local function setup_property_access(py_object, self, cls)
-  local setters = {}
-  local getters = {}
+  self.setters = {}
+  self.getters = {}
+
   for name, opts in pairs(py_object.lua_properties) do
-    getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
+    self.getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
     if opts.setter ~= nil then
-      setters[name] = unwraps_python_result(drops_self_argument(py_object[opts.setter]))
+      self.setters[name] = unwraps_python_result(drops_self_argument(py_object[opts.setter]))
     else
-      setters[name] = function()
+      self.setters[name] = function()
         error("Attribute " .. name .. " is read-only.", 2)
       end
     end
   end
 
-  function cls:__newindex(index, value)
-    if setters[index] then
-      return setters[index](self, value)
+  function cls:__index(index)
+    if self.getters[index] then
+      return self.getters[index](self)
     else
-      return rawset(cls, index, value)
+      return rawget(cls, index)
     end
   end
 
-  function cls:__index(index)
-    if getters[index] then
-      return getters[index](self)
+  function cls:__newindex(index, value)
+    if self.setters[index] then
+      return self.setters[index](self, value)
     else
-      return rawget(cls, index)
+      return rawset(self, index, value)
     end
   end
 end

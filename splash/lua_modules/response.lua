@@ -9,14 +9,16 @@ local Response = wraputils.create_metatable()
 local Response_private = {}
 
 function Response._create(py_response)
-  local self = {
+  local response = {
     headers=treat.as_case_insensitive(py_response.headers),
     request=Request._create(py_response.request),
   }
-  setmetatable(self, Response)
+  setmetatable(response, Response)
+  Response.__index = Response
+  Response.__newindex = rawset
 
-  wraputils.wrap_exposed_object(py_response, self, Response, Response_private, false)
-  return self
+  wraputils.wrap_exposed_object(py_response, response, Response, Response_private, false)
+  return response
 end
 
 
