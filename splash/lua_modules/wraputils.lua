@@ -170,6 +170,9 @@ end
 -- Create a Lua wrapper for a Python object.
 --
 local function wrap_exposed_object(py_object, self, cls, private_self, async)
+  setmetatable(self, cls)
+  cls.__newindex = rawset
+
   setup_commands(py_object, self, private_self, async)
   setup_property_access(py_object, self, cls)
 end
@@ -178,8 +181,9 @@ end
 --
 -- Return a metatable for a wrapped Python object
 --
-local function create_metatable()
+local function create_metatable(metatable)
   return {
+    __index = metatable,
     __wrapped = true
   }
 end

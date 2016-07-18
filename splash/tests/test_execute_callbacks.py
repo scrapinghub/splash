@@ -834,6 +834,9 @@ class CallLaterTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "error")
 
+    """
+    This test check whether multiple instance of Timer class can be created simultaneously.
+    """
     def test_multiple_calls(self):
         resp = self.request_lua("""
         local treat = require('treat')

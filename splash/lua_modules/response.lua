@@ -5,7 +5,7 @@ local wraputils = require("wraputils")
 local treat = require("libs/treat")
 local Request = require("request")
 
-local Response = wraputils.create_metatable()
+local Response = wraputils.create_metatable(Response)
 local Response_private = {}
 
 function Response._create(py_response)
@@ -13,9 +13,6 @@ function Response._create(py_response)
     headers=treat.as_case_insensitive(py_response.headers),
     request=Request._create(py_response.request),
   }
-  setmetatable(response, Response)
-  Response.__index = Response
-  Response.__newindex = rawset
 
   wraputils.wrap_exposed_object(py_response, response, Response, Response_private, false)
   return response

@@ -8,12 +8,11 @@ local wraputils = require("wraputils")
 local Extras = {}
 local Extras_private = {}
 
+Extras.__index = Extras
+
 function Extras._create(py_extras)
   local extras = {}
-  setmetatable(extras, Extras)
-  Extras.__index = Extras
-  Extras.__newindex = rawset
-  wraputils.wrap_exposed_object(py_extras, extras, Extras_private, false)
+  wraputils.wrap_exposed_object(py_extras, extras, Extras, Extras_private, false)
   return extras
 end
 

@@ -10,14 +10,11 @@ local Request = require("request")
 --
 -- Lua wrapper for Splash Python object.
 --
-local Splash = wraputils.create_metatable()
+local Splash = wraputils.create_metatable(Splash)
 local Splash_private = {}
 
 function Splash._create(py_splash)
   local splash = { args = py_splash.args }
-  setmetatable(splash, Splash)
-  Splash.__index = Splash
-  Splash.__newindex = rawset
   wraputils.wrap_exposed_object(py_splash, splash, Splash, Splash_private, true)
   return splash
 end
@@ -68,14 +65,11 @@ end
 --
 -- Timer Lua wrapper
 --
-local Timer = wraputils.create_metatable()
+local Timer = wraputils.create_metatable(Timer)
 local Timer_private = {}
 
 function Timer._create(py_timer)
   local timer = {}
-  setmetatable(timer, Timer)
-  Timer.__index = Timer
-  Timer.__newindex = rawset
   wraputils.wrap_exposed_object(py_timer, timer, Timer, Timer_private, true)
   return timer
 end
