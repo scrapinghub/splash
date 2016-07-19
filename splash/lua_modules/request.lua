@@ -4,7 +4,7 @@
 local wraputils = require("wraputils")
 local treat = require("libs/treat")
 
-local Request = wraputils.create_metatable(Request)
+local Request = wraputils.create_metatable()
 local Request_private = {}
 
 function Request._create(py_request)

@@ -5,7 +5,7 @@ local wraputils = require("wraputils")
 local treat = require("libs/treat")
 local Request = require("request")
 
-local Response = wraputils.create_metatable(Response)
+local Response = wraputils.create_metatable()
 local Response_private = {}
 
 function Response._create(py_response)

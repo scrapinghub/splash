@@ -124,7 +124,8 @@ local function setup_commands(py_object, self, private_self, async)
       local short_key = string.sub(key, PRIVATE_PREFIX:len() + 1)
       private_self[short_key] = command
     else
-      self[key] = command
+      -- avoid custom setter, which is initialized in `setup_property_access`
+      rawset(self, key, command)
     end
   end
 end
@@ -134,8 +135,8 @@ end
 -- Handle @lua_property decorators.
 --
 local function setup_property_access(py_object, self, cls)
-  self.setters = {}
-  self.getters = {}
+  rawset(self, 'getters', {})
+  rawset(self, 'setters', {})
 
   for name, opts in pairs(py_object.lua_properties) do
     self.getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
@@ -157,7 +158,7 @@ local function setup_property_access(py_object, self, cls)
   end
 
   function cls:__newindex(index, value)
-    if self.setters[index] then
+    if  self.setters[index] then
       return self.setters[index](self, value)
     else
       return rawset(self, index, value)
@@ -171,8 +172,6 @@ end
 --
 local function wrap_exposed_object(py_object, self, cls, private_self, async)
   setmetatable(self, cls)
-  cls.__newindex = rawset
-
   setup_commands(py_object, self, private_self, async)
   setup_property_access(py_object, self, cls)
 end
@@ -181,9 +180,8 @@ end
 --
 -- Return a metatable for a wrapped Python object
 --
-local function create_metatable(metatable)
+local function create_metatable()
   return {
-    __index = metatable,
     __wrapped = true
   }
 end
