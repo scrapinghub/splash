@@ -12,6 +12,7 @@ local Request = require("request")
 --
 local Splash = wraputils.create_metatable()
 local Splash_private = {}
+wraputils.set_metamethods(Splash)
 
 function Splash._create(py_splash)
   local splash = { args = py_splash.args }
@@ -67,6 +68,7 @@ end
 --
 local Timer = wraputils.create_metatable()
 local Timer_private = {}
+wraputils.set_metamethods(Timer)
 
 function Timer._create(py_timer)
   local timer = {}

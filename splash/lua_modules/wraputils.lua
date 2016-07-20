@@ -4,7 +4,6 @@
 -- utilities in qtrender_lua.
 --
 
-
 -- This function works very much like standard Lua assert, but:
 --
 -- * the first argument is the stack level to report the error at (1 being
@@ -101,7 +100,7 @@ end
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
-local function setup_commands(py_object, self, private_self, async)
+local function setup_commands(py_object, self, private_self)
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -124,7 +123,7 @@ local function setup_commands(py_object, self, private_self, async)
       local short_key = string.sub(key, PRIVATE_PREFIX:len() + 1)
       private_self[short_key] = command
     else
-      -- avoid custom setter, which is initialized in `setup_property_access`
+      -- avoid custom setter
       rawset(self, key, command)
     end
   end
@@ -148,31 +147,15 @@ local function setup_property_access(py_object, self, cls)
       end
     end
   end
-
-  function cls:__index(index)
-    if self.__getters[index] then
-      return self.__getters[index](self)
-    else
-      return rawget(cls, index)
-    end
-  end
-
-  function cls:__newindex(index, value)
-    if  self.__setters[index] then
-      return self.__setters[index](self, value)
-    else
-      return rawset(self, index, value)
-    end
-  end
 end
 
 
 --
 -- Create a Lua wrapper for a Python object.
 --
-local function wrap_exposed_object(py_object, self, cls, private_self, async)
+local function wrap_exposed_object(py_object, self, cls, private_self)
   setmetatable(self, cls)
-  setup_commands(py_object, self, private_self, async)
+  setup_commands(py_object, self, private_self)
   setup_property_access(py_object, self, cls)
 end
 
@@ -181,9 +164,11 @@ end
 -- Return a metatable for a wrapped Python object
 --
 local function create_metatable()
-  return {
+  local cls = {
     __wrapped = true
   }
+
+  return cls
 end
 
 
@@ -198,6 +183,27 @@ local function is_wrapped(obj)
   return mt.__wrapped == true
 end
 
+--
+-- Set metamethods for accessing custom getters and setters
+--
+
+local function set_metamethods(cls)
+  cls.__index = function(self, index)
+    if self.__getters[index] then
+      return self.__getters[index](self)
+    else
+      return rawget(cls, index)
+    end
+  end
+
+  cls.__newindex = function(self, index, value)
+    if self.__setters[index] then
+      return self.__setters[index](self, value)
+    else
+      return rawset(self, index, value)
+    end
+  end
+end
 
 -- Exposed API
 return {
@@ -212,5 +218,6 @@ return {
   setup_property_access = setup_property_access,
   wrap_exposed_object = wrap_exposed_object,
   create_metatable = create_metatable,
+  set_metamethods = set_metamethods,
   is_wrapped = is_wrapped,
 }
