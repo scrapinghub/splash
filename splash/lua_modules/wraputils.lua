@@ -187,6 +187,7 @@ end
 -- Set metamethods for accessing custom getters and setters
 --
 
+-- FIXME: move this function to `create_metatable` function
 local function set_metamethods(cls)
   cls.__index = function(self, index)
     if self.__getters[index] then
