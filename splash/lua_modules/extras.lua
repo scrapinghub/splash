@@ -5,9 +5,8 @@
 --
 local wraputils = require("wraputils")
 
-local Extras = {}
+local Extras = wraputils.create_metatable()
 local Extras_private = {}
-wraputils.set_metamethods(Extras)
 
 function Extras._create(py_extras)
   local extras = {}

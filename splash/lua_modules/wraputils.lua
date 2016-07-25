@@ -163,10 +163,30 @@ end
 --
 -- Return a metatable for a wrapped Python object
 --
+-- WARNING: setting this metatable on an empty table might cause infinite
+-- recursion during the lookup of __getters & __setters.  To minimize the risk,
+-- the calling code should add these fields to the table ASAP, preferably with
+-- rawset.
 local function create_metatable()
   local cls = {
     __wrapped = true
   }
+
+  cls.__index = function(self, index)
+    if self.__getters[index] then
+      return self.__getters[index](self)
+    else
+      return rawget(cls, index)
+    end
+  end
+
+  cls.__newindex = function(self, index, value)
+    if self.__setters[index] then
+      return self.__setters[index](self, value)
+    else
+      return rawset(self, index, value)
+    end
+  end
 
   return cls
 end
@@ -183,29 +203,6 @@ local function is_wrapped(obj)
   return mt.__wrapped == true
 end
 
---
--- Set metamethods for accessing custom getters and setters
---
-
--- FIXME: move this function to `create_metatable` function
-local function set_metamethods(cls)
-  cls.__index = function(self, index)
-    if self.__getters[index] then
-      return self.__getters[index](self)
-    else
-      return rawget(cls, index)
-    end
-  end
-
-  cls.__newindex = function(self, index, value)
-    if self.__setters[index] then
-      return self.__setters[index](self, value)
-    else
-      return rawset(self, index, value)
-    end
-  end
-end
-
 -- Exposed API
 return {
   assertx = assertx,
@@ -219,6 +216,5 @@ return {
   setup_property_access = setup_property_access,
   wrap_exposed_object = wrap_exposed_object,
   create_metatable = create_metatable,
-  set_metamethods = set_metamethods,
   is_wrapped = is_wrapped,
 }
