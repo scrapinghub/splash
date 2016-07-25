@@ -834,6 +834,38 @@ class CallLaterTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "error")
 
+    """
+    This test check whether multiple instance of Timer class can be created simultaneously.
+    """
+    def test_multiple_calls(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+          local o = {false, false, false, false, false, false}
+
+          local timer1 = splash:call_later(function() o[1] = true end, 0.5)
+          local timer2 = splash:call_later(function() o[2] = true end, 0.5)
+          local timer3 = splash:call_later(function() o[3] = true end, 0.5)
+          local timer4 = splash:call_later(function() o[4] = true end, 0.5)
+          local timer5 = splash:call_later(function() o[5] = true end, 0.5)
+          local timer6 = splash:call_later(function() o[6] = true end, 0.5)
+
+          timer1:cancel()
+          timer2:cancel()
+          timer3:cancel()
+          timer4:cancel()
+          timer5:cancel()
+          timer6:cancel()
+
+          splash:wait(1)
+
+          return treat.as_array(o)
+        end
+        """)
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [False, False, False, False, False, False])
+
 
 class WithTimeoutTest(BaseLuaRenderTest):
     def test_with_timeout(self):

@@ -12,12 +12,12 @@ local Request = require("request")
 --
 local Splash = wraputils.create_metatable()
 local Splash_private = {}
+wraputils.set_metamethods(Splash)
 
 function Splash._create(py_splash)
-  local self = {args=py_splash.args}
-  setmetatable(self, Splash)
-  wraputils.wrap_exposed_object(py_splash, self, Splash, Splash_private, true)
-  return self
+  local splash = { args = py_splash.args }
+  wraputils.wrap_exposed_object(py_splash, splash, Splash, Splash_private, true)
+  return splash
 end
 
 --
@@ -46,7 +46,7 @@ function Splash:on_response_headers(cb)
   if type(cb) ~= 'function' then
     error("splash:on_response_headers callback is not a function", 2)
   end
-  Splash_private.on_response_headers(self, function (response)
+  Splash_private.on_response_headers(self, function(response)
     local res = Response._create(response)
     return cb(res)
   end)
@@ -56,7 +56,7 @@ function Splash:on_response(cb)
   if type(cb) ~= 'function' then
     error("splash:on_response callback is not a function", 2)
   end
-  Splash_private.on_response(self, function (response)
+  Splash_private.on_response(self, function(response)
     local res = Response._create(response)
     return cb(res)
   end)
@@ -68,12 +68,12 @@ end
 --
 local Timer = wraputils.create_metatable()
 local Timer_private = {}
+wraputils.set_metamethods(Timer)
 
 function Timer._create(py_timer)
-  local self = {}
-  setmetatable(self, Timer)
-  wraputils.wrap_exposed_object(py_timer, self, Timer, Timer_private, true)
-  return self
+  local timer = {}
+  wraputils.wrap_exposed_object(py_timer, timer, Timer, Timer_private, true)
+  return timer
 end
 
 function Splash:call_later(cb, delay)
