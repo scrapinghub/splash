@@ -11,12 +11,11 @@ local Request = require("request")
 -- Lua wrapper for Splash Python object.
 --
 local Splash = wraputils.create_metatable()
-local Splash_private = {}
 wraputils.set_metamethods(Splash)
 
 function Splash._create(py_splash)
   local splash = { args = py_splash.args }
-  wraputils.wrap_exposed_object(py_splash, splash, Splash, Splash_private, true)
+  wraputils.wrap_exposed_object(py_splash, splash, Splash)
   return splash
 end
 
@@ -25,7 +24,7 @@ end
 -- It is required to handle errors properly.
 --
 function Splash:jsfunc(...)
-  local func = Splash_private.jsfunc(self, ...)
+  local func = self.__private.jsfunc(self, ...)
   return wraputils.unwraps_python_result(func)
 end
 
@@ -36,7 +35,7 @@ function Splash:on_request(cb)
   if type(cb) ~= 'function' then
     error("splash:on_request callback is not a function", 2)
   end
-  Splash_private.on_request(self, function(py_request)
+  self.__private.on_request(self, function(py_request)
     local req = Request._create(py_request)
     return cb(req)
   end)
@@ -46,7 +45,7 @@ function Splash:on_response_headers(cb)
   if type(cb) ~= 'function' then
     error("splash:on_response_headers callback is not a function", 2)
   end
-  Splash_private.on_response_headers(self, function(response)
+  self.__private.on_response_headers(self, function(response)
     local res = Response._create(response)
     return cb(res)
   end)
@@ -56,7 +55,7 @@ function Splash:on_response(cb)
   if type(cb) ~= 'function' then
     error("splash:on_response callback is not a function", 2)
   end
-  Splash_private.on_response(self, function(response)
+  self.__private.on_response(self, function(response)
     local res = Response._create(response)
     return cb(res)
   end)
@@ -67,17 +66,16 @@ end
 -- Timer Lua wrapper
 --
 local Timer = wraputils.create_metatable()
-local Timer_private = {}
 wraputils.set_metamethods(Timer)
 
 function Timer._create(py_timer)
   local timer = {}
-  wraputils.wrap_exposed_object(py_timer, timer, Timer, Timer_private, true)
+  wraputils.wrap_exposed_object(py_timer, timer, Timer)
   return timer
 end
 
 function Splash:call_later(cb, delay)
-  local py_timer = Splash_private.call_later(self, cb, delay)
+  local py_timer = self.__private.call_later(self, cb, delay)
   return Timer._create(py_timer)
 end
 

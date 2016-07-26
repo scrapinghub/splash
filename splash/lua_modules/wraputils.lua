@@ -97,10 +97,12 @@ end
 -- * Lua methods are created for Python methods wrapped in @command.
 -- * Async methods are wrapped with `coroutine.yield`.
 -- * Lua <-> Python error handling is fixed.
--- * Private methods are stored in `private_self`, public methods are
+-- * Private methods are stored in `self.__private`, public methods are
 --   stored in `self`.
 --
-local function setup_commands(py_object, self, private_self)
+local function setup_commands(py_object, self)
+  rawset(self, '__private', {})
+
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -121,7 +123,7 @@ local function setup_commands(py_object, self, private_self)
 
     if is_private_name(key) then
       local short_key = string.sub(key, PRIVATE_PREFIX:len() + 1)
-      private_self[short_key] = command
+      self.__private[short_key] = command
     else
       -- avoid custom setter
       rawset(self, key, command)
@@ -133,7 +135,7 @@ end
 --
 -- Handle @lua_property decorators.
 --
-local function setup_property_access(py_object, self, cls)
+local function setup_property_access(py_object, self)
   rawset(self, '__getters', {})
   rawset(self, '__setters', {})
 
@@ -153,10 +155,10 @@ end
 --
 -- Create a Lua wrapper for a Python object.
 --
-local function wrap_exposed_object(py_object, self, cls, private_self)
+local function wrap_exposed_object(py_object, self, cls)
   setmetatable(self, cls)
-  setup_commands(py_object, self, private_self)
-  setup_property_access(py_object, self, cls)
+  setup_commands(py_object, self)
+  setup_property_access(py_object, self)
 end
 
 
