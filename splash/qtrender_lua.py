@@ -245,7 +245,7 @@ def exceptions_as_return_values(meth, flag=False):
         except Exception as e:
             if flag and self.FLAG_EXCEPTIONS is not None \
                     and any(isinstance(e, x) for x in self.FLAG_EXCEPTIONS):
-                res = (b'return', False, repr(e))
+                res = (b'return', False, repr(e).encode('utf-8'))
             else:
                 res = (b'raise', repr(e))
 
@@ -1176,7 +1176,7 @@ class Splash(BaseExposedObject):
     def private_select(self, selector):
         try:
             return _ExposedElement(self.lua, self.exceptions, self.tab.select(selector), self)
-        except DOMError:
+        except (JsError, DOMError):
             raise ScriptError({
                 "message": "cannot select the specified element",
                 "type": ScriptError.SPLASH_LUA_ERROR,
@@ -1302,6 +1302,7 @@ class _ExposedTimer(BaseExposedObject):
 
 class _ExposedElement(BaseExposedObject):
     FLAG_EXCEPTIONS = [DOMError]
+    _attribute_whitelist = ['id']
 
     def __init__(self, lua, exceptions, element, splash):
         self.element = element
@@ -1327,11 +1328,6 @@ class _ExposedElement(BaseExposedObject):
     def private_node_property(self, property_name):
         result = self.element.node_property(property_name)
         return self.return_exposed_element_if_html_element(result)
-
-    @lua_property('id')
-    @command()
-    def get_id(self):
-        return self.element.id
 
     @command(flag=True)
     def exists(self):

@@ -53,7 +53,7 @@ class MainFunctionTest(BaseLuaRenderTest):
           return {
             mystatus="ok",
             number=5,
-            float=-0.5,
+            float=-0.1,
             obj=obj,
             bool=true,
             bool2=false,
@@ -3792,7 +3792,7 @@ class KeyEventsTest(BaseLuaRenderTest):
         resp = self.request_lua(u"""
             function main(splash)
                 assert(splash:go(splash.args.url))
-                assert(splash:wait(05))
+                assert(splash:wait(0.5))
                 get_input = splash:jsfunc([[
                     function () {
                         return document.getElementById('text').value
@@ -3942,31 +3942,25 @@ class KeyEventsTest(BaseLuaRenderTest):
 class HTMLElementTest(BaseLuaRenderTest):
     def test_select(self):
         resp = self.request_lua("""
-            function main(splash)
-                assert(splash:go(splash.args.url))
-                assert(splash:wait(0.5))
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
 
-                local p = splash:select('p')
-                local form = splash:select('form#login')
-                local username = splash:select('input[name="username"]')
-                local password = splash:select('input[name="password"]')
-                local title = splash:select('.tittle')
+            local p = splash:select('p')
+            local form = splash:select('form#login')
+            local username = splash:select('input[name="username"]')
+            local password = splash:select('input[name="password"]')
+            local title = splash:select('.title')
 
-                print(p.id)
-                print(form.id)
-                print(username.id)
-                print(password.id)
-                print(title.id)
-
-                return {
-                    p=select(2, assert(p:node_property('nodeName'))):lower(),
-                    form=select(2, assert(form:node_property('nodeName'))):lower(),
-                    username=select(2, assert(username:node_property('nodeName'))):lower(),
-                    password=select(2, assert(password:node_property('nodeName'))):lower(),
-                    title=select(2, assert(title:node_property('nodeName'))):lower(),
-                }
-            end
-            """, {"url": self.mockurl("various-elements")})
+            return {
+                p=select(2, assert(p:node_property('nodeName'))):lower(),
+                form=select(2, assert(form:node_property('nodeName'))):lower(),
+                username=select(2, assert(username:node_property('nodeName'))):lower(),
+                password=select(2, assert(password:node_property('nodeName'))):lower(),
+                title=select(2, assert(title:node_property('nodeName'))):lower(),
+            }
+        end
+        """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {
@@ -3979,26 +3973,26 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_element_ids(self):
         resp = self.request_lua("""
-            local treat = require('treat')
-            function main(splash)
-                assert(splash:go(splash.args.url))
-                assert(splash:wait(0.5))
+        local treat = require('treat')
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
 
-                local p = splash:select('p')
-                local form = splash:select('form#login')
-                local username = splash:select('input[name="username"]')
-                local password = splash:select('input[name="password"]')
-                local title = splash:select('.tittle')
+            local p = splash:select('p')
+            local form = splash:select('form#login')
+            local username = splash:select('input[name="username"]')
+            local password = splash:select('input[name="password"]')
+            local title = splash:select('.title')
 
-                return treat.as_array({
-                    p.id,
-                    form.id,
-                    username.id,
-                    password.id,
-                    title.id,
-                })
-            end
-            """, {"url": self.mockurl("various-elements")})
+            return treat.as_array({
+                p.id,
+                form.id,
+                username.id,
+                password.id,
+                title.id,
+            })
+        end
+        """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         ids = resp.json()
@@ -4006,15 +4000,15 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_bad_selector(self):
         resp = self.request_lua("""
-             function main(splash)
-                assert(splash:go(splash.args.url))
-                assert(splash:wait(0.5))
+         function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
 
-                local element = splash:select('!notaselector')
+            local element = splash:select('!notaselector')
 
-                return element:exists()
-            end
-            """, {"url": self.mockurl("various-elements")})
+            return element:exists()
+        end
+        """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 400)
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
@@ -4022,42 +4016,356 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_node_property_returns_element(self):
         resp = self.request_lua("""
-            function main(splash)
-                assert(splash:go(splash.args.url))
-                assert(splash:wait(0.5))
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
 
-                local p = splash:select('p')
-                local ok, parent = p:node_property('parentNode')
-                local ok, remove = parent:node_method('remove')
+            local p = splash:select('p')
+            local ok, parent = p:node_property('parentNode')
+            local ok, remove = parent:node_method('remove')
 
-                remove()
+            remove()
 
-                local ok, exists = p:exists()
+            local ok, exists = p:exists()
 
-                return ok, exists
-            end
-            """, {"url": self.mockurl("various-elements")})
+            return ok, exists
+        end
+        """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), [True, False])
 
     def test_flag(self):
         resp = self.request_lua("""
-            function main(splash)
-                  assert(splash:go(splash.args.url))
-                assert(splash:wait(0.5))
+        function main(splash)
+              assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
 
-                local p = splash:select('p')
-                local ok, parent = p:node_property('parentNode')
-                local ok, remove = parent:node_method('remove')
+            local p = splash:select('p')
+            local ok, parent = p:node_property('parentNode')
+            local ok, remove = parent:node_method('remove')
 
-                remove()
+            remove()
 
-                local ok, info = p:info()
+            local ok, info = p:info()
 
-                return ok, info
-            end
-            """, {"url": self.mockurl("various-elements")})
+            return ok, info
+        end
+        """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), [False, "DOMError({'message': 'Element no longer exists in DOM'},)"])
+
+    def test_exists(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local block = splash:select('#block')
+
+            local ok, existsBefore = assert(block:exists())
+            assert(splash:runjs('document.write("<body></body>")'))
+            assert(splash:wait(0.1))
+            local ok, existsAfter = assert(block:exists())
+
+            return { before = existsBefore, after = existsAfter }
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"before": True, "after": False})
+
+    def test_mouse_click(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local clickMe = splash:select('#clickMe')
+
+            assert(clickMe:mouse_click())
+            assert(clickMe:mouse_click())
+            assert(clickMe:mouse_click())
+
+            assert(splash:wait(0))
+
+            local ok, text = assert(clickMe:fetch_text())
+
+            return text
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "3")
+
+    def test_mouse_hover(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local hoverMe = splash:select('#hoverMe')
+
+            assert(hoverMe:mouse_hover())
+            assert(hoverMe:mouse_hover())
+            assert(hoverMe:mouse_hover())
+
+            assert(splash:wait(0))
+
+            local ok, text = assert(hoverMe:fetch_text())
+
+            return text
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "3")
+
+    def test_get_styles(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local title = splash:select('.title')
+
+            local ok, styles = assert(title:get_styles())
+
+            return styles
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json()["display"], "none")
+
+    def test_get_bounds(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local block = splash:select('#block')
+            local nestedBlock = splash:select('#nestedBlock')
+
+            local ok, blockBounds = assert(block:get_bounds())
+            local ok, nestedBlockBounds = assert(nestedBlock:get_bounds())
+
+            return {
+                top = nestedBlockBounds.top - blockBounds.top,
+                left = nestedBlockBounds.left - blockBounds.left
+            }
+        end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"top": 10, "left": 10})
+
+    def test_visible(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local title = splash:select('.title')
+
+            local ok, visibleBefore = assert(title:visible())
+
+            assert(splash:runjs('document.querySelector(".title").style.display = "block"'))
+            assert(splash:wait(0))
+
+            local ok, visibleAfter = assert(title:visible())
+
+            return { before = visibleBefore, after = visibleAfter }
+        end
+            """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"before": False, "after": True})
+
+    def text_fetch_text(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local input = splash:select('input[name="username"]')
+            local block = splash:select('#block')
+            local h1 = splash:select('h1')
+
+            local ok, inputText = assert(input:fetch_text())
+            local ok, blockText = assert(block:fetch_text())
+            local ok, h1Text = assert(h1:fetch_text())
+
+            return { input = inputText, block = blockText, h1 = h1Text }
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"input": "admin", "block": "nested", "h1": "Title"})
+
+    def test_info(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local h1 = splash:select('h1')
+            local ok, info = assert(h1:info())
+
+            return info
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "nodeName": "h1",
+            "attributes": {"class": "title", "style": "display: none "},
+            "tag": '<h1 class="title" style="display: none ">Title</h1>',
+            "html": "Title",
+            "text": "Title",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "visible": False
+        })
+
+    def test_form_values(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('form')
+            local ok, values = assert(form:form_values())
+
+            return values
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            "username": "admin",
+            "password": "pass123"
+        })
+
+    def test_form_values_of_not_form(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local input = splash:select('input')
+
+            local ok, values = assert(input:form_values())
+            return values
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR, message="DOMError")
+
+    def test_field_value(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local username = splash:select('input[name="username"]')
+            local ok, value = assert(username:field_value())
+
+            return value
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "admin")
+
+    def test_send_keys(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local username = splash:select('input[name="username"]')
+            assert(username:send_keys('super <Space>'))
+            assert(splash:wait(0))
+            local ok, value = assert(username.field_value())
+
+            return value
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "super admin")
+
+    def test_send_text(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local username = splash:select('input[name="username"]')
+            assert(username:send_text('super '))
+            assert(splash:wait(0))
+            local ok, value = assert(username.field_value())
+
+            return value
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "super admin")
+
+    def test_png(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:png()
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:png())
+            local ok, bounds = assert(left:get_bounds())
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        region_size = 1024 / 2, 768
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
+
+    def test_png_invisible_element(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local left = splash:select('#left')
+            assert(splash:runjs('document.querySelector("#left").style.visibility = "hidden"'))
+            assert(splash:wait(0))
+            local ok, left_shot = assert(left:png())
+
+            return left_shot
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'None')

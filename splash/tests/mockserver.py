@@ -726,8 +726,8 @@ KeyUpDownEventLoggerPage = _html_resource("""
 VariousElementsPage = _html_resource("""
 <html>
 <body>
-<button type="button" onclick="document.getElementById('title').style.display = 'block'">Click me</button>
-<h1 class="tittle" style="display: none ">Title</h1>
+<button type="button" onclick="document.querySelector('.title').style.display = 'block'">Click me</button>
+<h1 class="title" style="display: none ">Title</h1>
 
 <form id="login">
    <input type="text" name="username" value="admin" />
@@ -737,6 +737,12 @@ VariousElementsPage = _html_resource("""
 <div id="editable" contenteditable style="width: 100px; height: 100px;"></div>
 
 <p id="multiline-inline" style="width: 5px"><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</span></p>
+
+<div id="block" onclick="this.parentNode.remove()" style="position: relative">
+    <div id="nestedBlock" style="position: absolute; top: 10px; left: 10px;">nested</div>
+</div>
+<div id="clickMe" onclick="this.innerText = (+this.innerText) + 1">0</div>
+<div id="hoverMe" onmousemove="this.innerText = (+this.innerText) + 1">0</div>
 </body>
 </html>
 """)
