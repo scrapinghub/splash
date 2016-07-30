@@ -2436,3 +2436,21 @@ arguments passed to splash, `username` and `password`.
         -- Usually, wait for the submit request to finish
         -- ...
     end
+
+
+.. _splash-select:
+
+
+splash:select
+-------------
+
+Select HTML element from DOM of the current web page
+
+**Signature:** ``splash:select(selector)``
+
+**Parameters:**
+
+* selector - valid CSS selector
+
+**Returns:** a :ref:`splash-element`.
+
