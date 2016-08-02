@@ -11,6 +11,7 @@ from PIL import Image
 import requests
 import six
 import pytest
+
 lupa = pytest.importorskip("lupa")
 
 from splash.exceptions import ScriptError
@@ -1629,7 +1630,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertTrue(
             "param2=bar&amp;param1=foo" in resp.text or
             "param1=foo&amp;param2=bar" in resp.text
-        , resp.text)
+            , resp.text)
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
     def test_splash_go_body_and_invalid_method(self):
@@ -1687,7 +1688,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertTrue(
             "param2=bar&amp;param1=foo" in resp.text or
             "param1=foo&amp;param2=bar" in resp.text
-        , resp.text)
+            , resp.text)
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
     def test_splash_bad_http_method(self):
@@ -2882,9 +2883,9 @@ class HttpPostTest(BaseLuaRenderTest):
                 return resp.body
             end
             """, {
-                "url": self.mockurl("postrequest"),
-                "postbody": base64.b64encode(postbody)
-            })
+            "url": self.mockurl("postrequest"),
+            "postbody": base64.b64encode(postbody)
+        })
         self.assertStatusCode(resp, 200)
         self.assertIn(repr(postbody), resp.text)
 
@@ -3000,7 +3001,7 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         """
         out = self.request_lua(func).json()
         self.assertEqual(sorted(list(out.keys())),
-                              sorted(['walltime', 'cputime', 'maxrss']))
+                         sorted(['walltime', 'cputime', 'maxrss']))
         self.assertIsInstance(out['cputime'], numbers.Real)
         self.assertIsInstance(out['walltime'], numbers.Real)
         self.assertIsInstance(out['maxrss'], numbers.Integral)
@@ -3361,7 +3362,6 @@ class VersionTest(BaseLuaRenderTest):
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
-
     LOCAL_STORAGE_WORKS_JS = """
     (function () {
         localStorage.setItem("hello", "world of splash");
@@ -3401,9 +3401,9 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 return splash:evaljs(splash.args.js)
             end
             """, {
-                "js": self.LOCAL_STORAGE_WORKS_JS,
-                "url": self.mockurl("jsrender")
-            })
+            "js": self.LOCAL_STORAGE_WORKS_JS,
+            "url": self.mockurl("jsrender")
+        })
         err = self.assertJsonError(resp, 400)
         self.assertEqual(
             err['info']['js_error'],
@@ -3418,9 +3418,9 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 return splash:evaljs(splash.args.js)
             end
             """, {
-                "js": self.LOCAL_STORAGE_WORKS_JS,
-                "url": self.mockurl("jsrender")
-            })
+            "js": self.LOCAL_STORAGE_WORKS_JS,
+            "url": self.mockurl("jsrender")
+        })
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "True")
 
@@ -3468,7 +3468,6 @@ class PluginsEnabledTest(BaseLuaRenderTest):
 
 
 class MouseEventsTest(BaseLuaRenderTest):
-
     def _assert_event_property(self, name, value, resp):
         self.assertIn("{}:{}".format(name, value), resp.text)
 
@@ -3889,12 +3888,12 @@ class KeyEventsTest(BaseLuaRenderTest):
             """, {"url": self.mockurl("key-up-down-event-logger-page")})
         self.assertStatusCode(resp, 200)
         expected = [
-            13, -13,    # <Return>
-            13, -13,    # <Enter>
-            32, -32,    # <Space>
-            9, -9,      # <Tab>
-            46, -46,    # <Delete>
-            27, -27     # <Escape>
+            13, -13,  # <Return>
+            13, -13,  # <Enter>
+            32, -32,  # <Space>
+            9, -9,  # <Tab>
+            46, -46,  # <Delete>
+            27, -27  # <Escape>
         ]
         result = list(map(int, resp.text.split(',')))
         self.assertEqual(expected, result)
@@ -4367,3 +4366,26 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'None')
+
+    def test_event_handlers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local o = { run = false, x = 0, y = 0 }
+            local button = splash:select('button')
+            button.onclick = function(event)
+                o.run = true
+                o.x = event.clientX
+                o.y = event.clientY
+            end
+            assert(button:mouse_click())
+            assert(splash:wait(2))
+
+            return o
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"run": True, "x": 10, "y": 10})

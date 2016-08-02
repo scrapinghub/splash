@@ -24,7 +24,7 @@ FETCH_TEXT_JS_FUNC = """
 class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
-    def __init__(self, tab, storage, node):
+    def __init__(self, tab, storage, node, func_storage):
         if not node:
             raise DOMError({
                 'message': "Cannot find the requested element"
@@ -32,6 +32,7 @@ class HTMLElement(object):
 
         self.tab = tab
         self.storage = storage
+        self.func_storage = func_storage
         self.id = node["id"]
         self.element_js = self.get_element_js()
         self.tab.logger.log("HTMLElement is created with id = %s in object %s" % (self.id, self.element_js),
@@ -217,3 +218,15 @@ class HTMLElement(object):
 
         self.mouse_click()
         self.tab.send_text(text)
+
+    def set_event_handler(self, event_name, coro):
+        self.assert_element_exists()
+
+        func_id = self.func_storage.add(coro)
+
+        self.tab.evaljs(u"{element}[{event_name}] = function(event) {{ {func} }}".format(
+            element=self.element_js,
+            event_name=escape_js(event_name),
+            func=u"window[{storage_name}].runFunction({func_id}, Array.prototype.slice.call(arguments))".format(storage_name=escape_js(self.func_storage.name),
+                                                                     func_id=escape_js(func_id))
+        ))

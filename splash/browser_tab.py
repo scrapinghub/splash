@@ -112,6 +112,11 @@ class BrowserTab(QObject):
         self._elements_storage = ElementsStorage(self)
         frame.addToJavaScriptWindowObject(self._elements_storage.name, self._elements_storage)
 
+    def _init_functions_storage(self):
+        frame = self.web_page.mainFrame()
+        self._functions_storage = FunctionsStorage(self)
+        frame.addToJavaScriptWindowObject(self._functions_storage.name, self._functions_storage)
+
     def set_js_enabled(self, val):
         settings = self.web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, val)
@@ -576,6 +581,7 @@ class BrowserTab(QObject):
 
     def _on_javascript_window_object_cleared(self):
         self._init_elements_storage()
+        self._init_functions_storage()
 
         for script in self._autoload_scripts:
             # XXX: handle_errors=False is used to execute autoload scripts
@@ -929,7 +935,7 @@ class BrowserTab(QObject):
         :return element
         """
         js_query = u"document.querySelector({})".format(escape_js(selector))
-        return HTMLElement(self, self._elements_storage, self.evaljs(js_query, result_protection=False))
+        return HTMLElement(self, self._elements_storage, self.evaljs(js_query, result_protection=False), self._functions_storage)
 
 
 class _SplashHttpClient(QObject):
@@ -1150,6 +1156,22 @@ class ElementsStorage(QObject):
     @pyqtSlot(name="getId", result=str)
     def get_id(self):
         return str(uuid.uuid1())
+
+
+class FunctionsStorage(QObject):
+    def __init__(self, parent):
+        self.name = str(uuid.uuid1())
+        self.storage = {}
+        super(FunctionsStorage, self).__init__(parent)
+
+    def add(self, coro):
+        coro_id = str(uuid.uuid1())
+        self.storage[coro_id] = coro
+        return coro_id
+
+    @pyqtSlot(str, 'QVariantList', name="runFunction")
+    def run_function(self, func_id, args):
+        self.storage[func_id](*args)
 
 
 class OneShotCallbackProxy(QObject):

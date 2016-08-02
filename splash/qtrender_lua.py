@@ -1405,6 +1405,26 @@ class _ExposedElement(BaseExposedObject):
     def send_text(self, text):
         return self.element.send_text(text)
 
+    @lua_property("onclick")
+    @command()
+    def get_onclick(self):
+        pass
+
+    @get_onclick.lua_setter
+    @command(decode_arguments=False)
+    def set_onclick(self, handler):
+        def log_error(error):
+            self.splash.log("[element:onclick] error %s" % error, min_level=3)
+
+        coro = self.splash.get_coroutine_run_func(
+            "element:onclick", handler, return_error=log_error
+        )
+
+        def run_coro(*args):
+            coro(*(self.lua.python2lua(x) for x in (args or [])))
+
+        self.element.set_event_handler('onclick', run_coro)
+
 requires_request = requires_attr(
     "request",
     lambda self, meth, attr_name: self._on_request_required(meth, attr_name)
