@@ -4014,14 +4014,12 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             remove()
 
-            local ok, exists = p:exists()
-
-            return ok, exists
+            return p:exists()
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), [True, False])
+        self.assertEqual(resp.json(), False)
 
     def test_flag(self):
         resp = self.request_lua("""
@@ -4052,10 +4050,10 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local block = splash:select('#block')
 
-            local ok, existsBefore = assert(block:exists())
+            local existsBefore = block:exists()
             assert(splash:runjs('document.write("<body></body>")'))
             assert(splash:wait(0.1))
-            local ok, existsAfter = assert(block:exists())
+            local existsAfter = block:exists()
 
             return { before = existsBefore, after = existsAfter }
         end
