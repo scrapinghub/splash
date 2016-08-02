@@ -1329,7 +1329,7 @@ class _ExposedElement(BaseExposedObject):
         result = self.element.node_property(property_name)
         return self.return_exposed_element_if_html_element(result)
 
-    @command(flag=True)
+    @command()
     def exists(self):
         return self.element.exists()
 

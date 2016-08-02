@@ -37,11 +37,9 @@ element:exists
 Check whether the element exists in DOM. If the element doesn't exist almost all other
 methods will fail.
 
-**Signature:** ``ok, exists = element:exists()``
+**Signature:** ``exists = element:exists()``
 
-**Returns:** ``ok, exists`` pair. If ``ok`` is nil then error happened during the check;
-``exists`` provides an information about error type; otherwise ``exists`` indicated whether
-the element exists.
+**Returns:** ``exists`` indicated whether the element exists.
 
 **Async:** no.
 
