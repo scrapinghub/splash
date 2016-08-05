@@ -47,6 +47,17 @@ from splash.lua_runtime import SplashLuaRuntime
 from splash.exceptions import ScriptError, DOMError
 from splash.html_element import HTMLElement
 
+try:
+    from functools import partialmethod
+except ImportError:
+    class partialmethod(functools.partial):
+        def __get__(self, instance, owner):
+            if instance is None:
+                return self
+            return functools.partial(self.func, instance,
+                                     *(self.args or ()), **(self.keywords or {}))
+
+
 class AsyncBrowserCommand(AsyncCommand):
     def __repr__(self):
         kwargs = self.kwargs.copy()
@@ -77,6 +88,14 @@ class StoredExceptions(object):
     def get_last(self):
         if self._exceptions:
             return self._exceptions[-1]
+
+
+def rename(name):
+    def decorator(meth):
+        meth.__name__ = name
+        return meth
+
+    return decorator
 
 
 def command(table_argument=False, sets_callback=False,
@@ -1302,12 +1321,84 @@ class _ExposedTimer(BaseExposedObject):
 
 class _ExposedElement(BaseExposedObject):
     FLAG_EXCEPTIONS = [DOMError]
-    _attribute_whitelist = ['id']
+    _attribute_whitelist = ['']
+    HTMLELEMENT_PROPERTIES = [
+        ('accessKey', False),
+        ('accessKeyLabel', True),
+        ('contentEditable', False),
+        ('isContentEditable', True),
+    ]
+    ELEMENT_PROPERTIES = [
+        ('attributes', True), # NamedNodeMap
+        ('classList', True), # DOMTokenList
+        ('className', False),
+        ('clientHeight', True),
+        ('clientLeft', True),
+        ('clientTop', True),
+        ('clientWidth', True),
+        ('id', False),
+        ('innerHTML', False),
+        ('localeName', True),
+        ('namespaceURI', True),
+        ('nextElementSibling', True),
+        ('outerHTML', False),
+        ('prefix', True),
+        ('previousElementSibling', True),
+        ('scrollHeight', True),
+        ('scrollLeft', False),
+        ('scrollTop', False),
+        ('scrollWidth', True),
+        ('tabStop', False),
+        ('tagName', True),
+    ]
+    NODE_PROPERTIES = [
+        ('baseURI', True),
+        # ('childNodes', True),
+        ('firstChild', True),
+        ('lastChild', True),
+        ('nextSibling', True),
+        ('nodeType', True),
+        ('nodeValue', True),
+        ('ownerDocument', True),
+        ('parentNode', True),
+        ('parentElement', True),
+        ('previousSibling', True),
+        ('rootNode', True),
+        ('textContent', False),
+
+
+    ]
 
     def __init__(self, lua, exceptions, element, splash):
         self.element = element
         self.splash = splash
         super(_ExposedElement, self).__init__(lua, exceptions)
+
+    @staticmethod
+    def init_properties():
+        available_properties = _ExposedElement.NODE_PROPERTIES + _ExposedElement.ELEMENT_PROPERTIES + \
+                               _ExposedElement.HTMLELEMENT_PROPERTIES
+
+        for (property_name, read_only) in available_properties:
+            @lua_property(property_name)
+            @command()
+            def get_property(self, property_name=property_name):
+                return _ExposedElement.private_node_property(self, property_name)
+
+            get_property.__name__ = 'get_' + property_name
+
+            setattr(_ExposedElement, 'get_' + property_name, get_property)
+
+            if not read_only:
+                @get_property.lua_setter
+                @command()
+                @rename('set_' + property_name)
+                def set_property(self, value, property_name=property_name):
+                    return _ExposedElement.private_set_node_property(self, property_name, value)
+
+                set_property.__name__ = 'set_' + property_name
+
+                setattr(_ExposedElement, 'set_' + property_name, set_property)
 
     def return_exposed_element_if_html_element(self, result):
         if isinstance(result, HTMLElement):
@@ -1324,9 +1415,12 @@ class _ExposedElement(BaseExposedObject):
 
         return _WrappedJavascriptFunction(self.splash, js_method)
 
-    @command(flag=True)
     def private_node_property(self, property_name):
         result = self.element.node_property(property_name)
+        return self.return_exposed_element_if_html_element(result)
+
+    def private_set_node_property(self, property_name, property_value):
+        result = self.element.set_node_property(property_name, property_value)
         return self.return_exposed_element_if_html_element(result)
 
     @command()
@@ -1424,6 +1518,8 @@ class _ExposedElement(BaseExposedObject):
             coro(*(self.lua.python2lua(x) for x in (args or [])))
 
         self.element.set_event_handler('onclick', run_coro)
+
+_ExposedElement.init_properties()
 
 requires_request = requires_attr(
     "request",

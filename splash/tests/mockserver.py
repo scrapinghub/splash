@@ -736,12 +736,12 @@ VariousElementsPage = _html_resource("""
 
 <div id="editable" contenteditable style="width: 100px; height: 100px;"></div>
 
-<p id="multiline-inline" style="width: 5px"><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</span></p>
+<p class="p" id="multiline-inline" style="width: 5px"><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</span></p>
 
 <div id="block" onclick="this.parentNode.remove()" style="position: relative">
     <div id="nestedBlock" style="position: absolute; top: 10px; left: 10px;">nested</div>
 </div>
-<div id="clickMe" onclick="this.innerText = (+this.innerText) + 1">0</div>
+<div class="test" id="clickMe" onclick="this.innerText = (+this.innerText) + 1">0</div>
 <div id="hoverMe" onmousemove="this.innerText = (+this.innerText) + 1">0</div>
 </body>
 </html>

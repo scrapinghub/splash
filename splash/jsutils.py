@@ -49,6 +49,16 @@ function (obj, max_depth){
             else if (o instanceof ClientRectList) {
                 return _s(Array.prototype.slice.call(o))
             }
+            else if (o instanceof NamedNodeMap) {
+                var nodes = {};
+                Array.prototype.forEach.call(o, function(node) {
+                    nodes[node.name.toLowerCase()] = node.value;
+                });
+                return nodes;
+            }
+            else if (o instanceof DOMTokenList) {
+                return _s(Array.prototype.slice.call(o))
+            }
             else {
                 // likely host object
                 return undefined;

@@ -3970,33 +3970,6 @@ class HTMLElementTest(BaseLuaRenderTest):
             "title": "h1"
         })
 
-    def test_element_ids(self):
-        resp = self.request_lua("""
-        local treat = require('treat')
-        function main(splash)
-            assert(splash:go(splash.args.url))
-            assert(splash:wait(0.1))
-
-            local p = splash:select('p')
-            local form = splash:select('form#login')
-            local username = splash:select('input[name="username"]')
-            local password = splash:select('input[name="password"]')
-            local title = splash:select('.title')
-
-            return treat.as_array({
-                p.id,
-                form.id,
-                username.id,
-                password.id,
-                title.id,
-            })
-        end
-        """, {"url": self.mockurl("various-elements")})
-
-        self.assertStatusCode(resp, 200)
-        ids = resp.json()
-        self.assertEqual(len(ids) == (len(set(ids))), True)
-
     def test_bad_selector(self):
         resp = self.request_lua("""
          function main(splash)
@@ -4373,19 +4346,78 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:go(splash.args.url)
             splash:wait(0.1)
 
-            local o = { run = false, x = 0, y = 0 }
+            local x, y = 0, 0
+            local run = false
+
             local button = splash:select('button')
+
             button.onclick = function(event)
-                o.run = true
-                o.x = event.clientX
-                o.y = event.clientY
+                run = true
+                x = event.clientX
+                y = event.clientY
             end
+
+            local ok, click = assert(button:node_method('click'))
+
             assert(button:mouse_click())
             assert(splash:wait(2))
 
-            return o
+            return {run=run, x=x, y=y}
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"run": True, "x": 10, "y": 10})
+
+    def test_element_properties_getters(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+
+            local properties = splash.args.properties;
+            local element = splash:select('#clickMe')
+
+            local properties = {
+                'attributes',
+                'className',
+            }
+            local lua_properties = {}
+
+            print(properties)
+            for i,v in ipairs(properties) do
+                lua_properties[v] = element[v]
+            end
+
+            return lua_properties
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'attributes': {
+                'onclick': 'this.innerText = (+this.innerText) + 1',
+                'id': 'clickMe',
+                'class': 'test'
+            },
+            'className': 'test',
+        })
+
+    def test_element_properties_setters(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local properties = splash.args.properties;
+            local element = splash:select('#clickMe')
+
+            element.className = 'my-class'
+
+            return splash:evaljs('document.querySelector("#clickMe").className')
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.test, 'my-class')

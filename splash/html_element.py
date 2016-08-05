@@ -98,6 +98,16 @@ class HTMLElement(object):
         ))
         return self.return_html_element_if_node(result)
 
+    def set_node_property(self, property_name, property_value):
+        """ Sett value of the specified property of the element """
+        self.assert_element_exists()
+        result = self.tab.evaljs(u"{element}[{property}] = {value}".format(
+            element=self.element_js,
+            property=escape_js(property_name),
+            value=escape_js(property_value)
+        ))
+        return self.return_html_element_if_node(result)
+
     def node_method(self, method_name):
         """ Return function which will call the specified method of the element """
         self.assert_element_exists()
