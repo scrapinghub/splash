@@ -47,16 +47,6 @@ from splash.lua_runtime import SplashLuaRuntime
 from splash.exceptions import ScriptError, DOMError
 from splash.html_element import HTMLElement
 
-try:
-    from functools import partialmethod
-except ImportError:
-    class partialmethod(functools.partial):
-        def __get__(self, instance, owner):
-            if instance is None:
-                return self
-            return functools.partial(self.func, instance,
-                                     *(self.args or ()), **(self.keywords or {}))
-
 
 class AsyncBrowserCommand(AsyncCommand):
     def __repr__(self):
@@ -147,6 +137,12 @@ def lua_property(name):
         return meth
 
     return decorator
+
+
+def returns_self_type(meth):
+    """ Decorator for marking methods that they can return object with the its type """
+    meth._returns_self_type = True
+    return meth
 
 
 def emits_lua_objects(meth):
@@ -308,6 +304,7 @@ def get_commands(obj):
         if is_command(value):
             commands[name] = {
                 'sets_callback': getattr(value, '_sets_callback', False),
+                'returns_self_type': getattr(value, '_returns_self_type', False),
             }
     return commands
 
@@ -323,8 +320,10 @@ def get_lua_properties(obj):
         value = getattr(obj, attr_name)
         if is_lua_property(value):
             property_name = getattr(value, '_name')
+
             lua_properties[property_name] = {
                 'getter': attr_name,
+                'returns_self_type': getattr(value, '_returns_self_type', False),
                 'setter': getattr(value, '_setter_method', None),
             }
     return lua_properties
@@ -386,8 +385,9 @@ class _WrappedJavascriptFunction(object):
 
 class BaseExposedObject(object):
     """ Base class for objects exposed to Lua """
-    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage']
+    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage', 'is_exposed']
     _attribute_whitelist = []
+    is_exposed = True
 
     def __init__(self, lua, exceptions):
         self.lua = lua
@@ -1194,7 +1194,7 @@ class Splash(BaseExposedObject):
     @command()
     def private_select(self, selector):
         try:
-            return _ExposedElement(self.lua, self.exceptions, self.tab.select(selector), self)
+            return _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
         except (JsError, DOMError):
             raise ScriptError({
                 "message": "cannot select the specified element",
@@ -1369,40 +1369,41 @@ class _ExposedElement(BaseExposedObject):
 
     ]
 
-    def __init__(self, lua, exceptions, element, splash):
+    def __init__(self, lua, exceptions, splash, element):
         self.element = element
         self.splash = splash
         super(_ExposedElement, self).__init__(lua, exceptions)
 
-    @staticmethod
-    def init_properties():
-        available_properties = _ExposedElement.NODE_PROPERTIES + _ExposedElement.ELEMENT_PROPERTIES + \
-                               _ExposedElement.HTMLELEMENT_PROPERTIES
+    @classmethod
+    def init_properties(cls):
+        available_properties = cls.NODE_PROPERTIES + cls.ELEMENT_PROPERTIES + \
+                               cls.HTMLELEMENT_PROPERTIES
 
         for (property_name, read_only) in available_properties:
             @lua_property(property_name)
+            @returns_self_type
             @command()
             def get_property(self, property_name=property_name):
-                return _ExposedElement.private_node_property(self, property_name)
+                return cls.private_node_property(self, property_name)
 
             get_property.__name__ = 'get_' + property_name
 
-            setattr(_ExposedElement, 'get_' + property_name, get_property)
+            setattr(cls, 'get_' + property_name, get_property)
 
             if not read_only:
                 @get_property.lua_setter
                 @command()
                 @rename('set_' + property_name)
                 def set_property(self, value, property_name=property_name):
-                    return _ExposedElement.private_set_node_property(self, property_name, value)
+                    return cls.private_set_node_property(self, property_name, value)
 
                 set_property.__name__ = 'set_' + property_name
 
-                setattr(_ExposedElement, 'set_' + property_name, set_property)
+                setattr(cls, 'set_' + property_name, set_property)
 
     def return_exposed_element_if_html_element(self, result):
         if isinstance(result, HTMLElement):
-            return _ExposedElement(self.lua, self.exceptions, result, self.splash), True
+            return _ExposedElement(self.lua, self.exceptions, self.splash, result), True
 
         return result
 

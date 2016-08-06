@@ -935,7 +935,8 @@ class BrowserTab(QObject):
         :return element
         """
         js_query = u"document.querySelector({})".format(escape_js(selector))
-        return HTMLElement(self, self._elements_storage, self.evaljs(js_query, result_protection=False), self._functions_storage)
+        return HTMLElement(self, self._elements_storage, self._functions_storage,
+                           self.evaljs(js_query, result_protection=False))
 
 
 class _SplashHttpClient(QObject):

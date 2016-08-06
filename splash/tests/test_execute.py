@@ -4420,4 +4420,28 @@ class HTMLElementTest(BaseLuaRenderTest):
           """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.test, 'my-class')
+        self.assertEqual(resp.text, 'my-class')
+
+    def test_element_properties_returns_element(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local el = splash:select('button')
+            local ids = {}
+
+            while el do
+                table.insert(ids, el.id)
+                el = el.nextSibling
+            end
+
+            return treat.as_array(ids)
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), ['showTitleBtn', 'title', 'login', 'editable',
+                                       'multiline-inline', 'block', 'clickMe', 'hoverMe'])
+

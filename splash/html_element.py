@@ -24,7 +24,7 @@ FETCH_TEXT_JS_FUNC = """
 class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
-    def __init__(self, tab, storage, node, func_storage):
+    def __init__(self, tab, storage, func_storage, node):
         if not node:
             raise DOMError({
                 'message': "Cannot find the requested element"
@@ -60,7 +60,7 @@ class HTMLElement(object):
     def return_html_element_if_node(self, result):
         """ Returns a new instance of HTMLElement if the `result.type` is "node" """
         if isinstance(result, dict) and result.get("type", None) == 'node':
-            return HTMLElement(self.tab, self.storage, result)
+            return HTMLElement(self.tab, self.storage, self.func_storage, result)
 
         return result
 

@@ -726,8 +726,8 @@ KeyUpDownEventLoggerPage = _html_resource("""
 VariousElementsPage = _html_resource("""
 <html>
 <body>
-<button type="button" onclick="document.querySelector('.title').style.display = 'block'">Click me</button>
-<h1 class="title" style="display: none ">Title</h1>
+<button id="showTitleBtn" type="button" onclick="document.querySelector('.title').style.display = 'block'">Click me</button>
+<h1 id="title" class="title" style="display: none ">Title</h1>
 
 <form id="login">
    <input type="text" name="username" value="admin" />

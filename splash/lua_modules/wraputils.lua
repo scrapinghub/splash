@@ -83,12 +83,31 @@ local function sets_callback(func, storage)
   end
 end
 
+local function is_exposed_object(obj)
+  return obj.is_exposed
+end
+
+--
+-- A decorator that calls `_create` method of the provided `cls` table
+-- if the return value of the function is an exposed object
+--
+local function create_new_table_if_needed(func, cls)
+  return function(...)
+    local result = func(...)
+    if type(result) == 'userdata' then
+      local ok, is_exposed = pcall(is_exposed_object, result)
+      if ok and is_exposed then
+        return cls._create(result)
+      end
+    end
+    return result
+  end
+end
 
 local function is_private_name(name)
   -- Method/attribute name is private true if it starts with an underscore.
   return name:sub(1, 1) == "_"
 end
-
 
 --
 -- Create a Lua wrapper for a Python object.
@@ -122,7 +141,6 @@ local function setup_commands(py_object, self)
   end
 end
 
-
 --
 -- Handle @lua_property decorators.
 --
@@ -132,6 +150,11 @@ local function setup_property_access(py_object, self, cls)
 
   for name, opts in pairs(py_object.lua_properties) do
     self.__getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
+
+    if opts.returns_self_type then
+      self.__getters[name] = create_new_table_if_needed(self.__getters[name], cls)
+    end
+
     if opts.setter ~= nil then
       self.__setters[name] = unwraps_python_result(drops_self_argument(py_object[opts.setter]))
     else
