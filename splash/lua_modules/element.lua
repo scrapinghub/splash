@@ -39,4 +39,8 @@ function Element:node_property(...)
   return true, result
 end
 
+function Element:serialize()
+  return {type='node', id=self.inner_id}
+end
+
 return Element

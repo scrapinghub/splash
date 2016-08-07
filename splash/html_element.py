@@ -40,7 +40,7 @@ class HTMLElement(object):
 
     def get_element_js(self):
         """ Return JS object to which the element is assigned """
-        return "window['%s']['%s']" % (self.storage.name, self.id)
+        return 'window["%s"]["%s"]' % (self.storage.name, self.id)
 
     def assert_element_exists(self):
         """ Raise exception if the element no longer exists in DOM """
@@ -91,7 +91,6 @@ class HTMLElement(object):
 
     def node_property(self, property_name):
         """ Return value of the specified property of the element """
-        self.assert_element_exists()
         result = self.tab.evaljs(u"{element}[{property}]".format(
             element=self.element_js,
             property=escape_js(property_name)
@@ -100,7 +99,6 @@ class HTMLElement(object):
 
     def set_node_property(self, property_name, property_value):
         """ Sett value of the specified property of the element """
-        self.assert_element_exists()
         result = self.tab.evaljs(u"{element}[{property}] = {value}".format(
             element=self.element_js,
             property=escape_js(property_name),
@@ -110,13 +108,11 @@ class HTMLElement(object):
 
     def node_method(self, method_name):
         """ Return function which will call the specified method of the element """
-        self.assert_element_exists()
-
         def call(*args):
             result = self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,
                 method=escape_js(method_name),
-                args=escape_js(*args)
+                args=','.join([arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg) for arg in args])
             ))
             return self.return_html_element_if_node(result)
 
@@ -142,12 +138,10 @@ class HTMLElement(object):
 
     def get_styles(self):
         """ Return computed styles of the element """
-        self.assert_element_exists()
         return self.tab.evaljs("getComputedStyle(%s)" % self.element_js, result_protection=False)
 
     def get_bounds(self):
         """ Return bounding client rectangle of the element"""
-        self.assert_element_exists()
         return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js, result_protection=False)
 
     def png(self, width=None, height=None, scale_method=None):
@@ -182,13 +176,10 @@ class HTMLElement(object):
 
     def fetch_text(self):
         """ Return text of the element """
-        self.assert_element_exists()
         return self.tab.evaljs(FETCH_TEXT_JS_FUNC % self.element_js)
 
     def info(self):
         """ Return information about the element """
-        self.assert_element_exists()
-
         return self.tab.evaljs(u"({element_info_func})({element}, {visible_func})".format(
             element_info_func=ELEMENT_INFO_JS,
             element=self.element_js,
@@ -197,8 +188,6 @@ class HTMLElement(object):
 
     def field_value(self):
         """ Return the value of the element if it is a field """
-        self.assert_element_exists()
-
         return self.tab.evaljs(u"({field_value_func})({element})".format(
             field_value_func=FIELD_VALUE_JS,
             element=self.element_js
@@ -206,7 +195,6 @@ class HTMLElement(object):
 
     def form_values(self):
         """ Return all values of the element if it is a form"""
-        self.assert_element_exists()
         self.assert_node_type('form')
 
         return self.tab.evaljs(u"({form_values_func})({element}, {field_value_func})".format(
@@ -230,8 +218,6 @@ class HTMLElement(object):
         self.tab.send_text(text)
 
     def set_event_handler(self, event_name, coro):
-        self.assert_element_exists()
-
         func_id = self.func_storage.add(coro)
 
         self.tab.evaljs(u"{element}[{event_name}] = function(event) {{ {func} }}".format(

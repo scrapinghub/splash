@@ -4445,3 +4445,26 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), ['showTitleBtn', 'title', 'login', 'editable',
                                        'multiline-inline', 'block', 'clickMe', 'hoverMe'])
 
+    def test_element_methods(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local clickMe = splash:select('#clickMe')
+
+            clickMe:click()
+            clickMe:click()
+            clickMe:click()
+
+            assert(splash:wait(0))
+
+            return clickMe.innerHTML
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '')
+

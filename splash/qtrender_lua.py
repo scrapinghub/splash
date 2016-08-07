@@ -1319,14 +1319,48 @@ class _ExposedTimer(BaseExposedObject):
         super(_ExposedTimer, self).clear()
 
 
+def unpack_elements(meth):
+    @functools.wraps(meth)
+    def unpack_exposed_elements(self, *args, **kwargs):
+        def try_to_serialize(lua_table):
+            serialized = None
+            try:
+                serialized = self.element.return_html_element_if_node(self.lua.lua2python(lua_table.serialize(lua_table)))
+            except (TypeError, AttributeError):
+                serialized = self.lua.lua2python(lua_table)
+            except:
+                serialized = lua_table
+
+            return serialized
+
+        args = map(try_to_serialize, args)
+        return meth(self, *args, **kwargs)
+
+    return unpack_exposed_elements
+
+
 class _ExposedElement(BaseExposedObject):
     FLAG_EXCEPTIONS = [DOMError]
-    _attribute_whitelist = ['']
+    _attribute_whitelist = ['inner_id']
     HTMLELEMENT_PROPERTIES = [
         ('accessKey', False),
         ('accessKeyLabel', True),
         ('contentEditable', False),
         ('isContentEditable', True),
+        ('dataset ', True),
+        ('dir ', False),
+        ('draggable ', False),
+        ('hidden ', False),
+        ('lang ', False),
+        ('offsetHeight', True),
+        ('offsetLeft', True),
+        ('offsetParent', True),
+        ('offsetTop', True),
+        ('spellcheck', False),
+        # ('style', False),
+        ('tabIndex', False),
+        ('title', False),
+        ('translate', False),
     ]
     ELEMENT_PROPERTIES = [
         ('attributes', True), # NamedNodeMap
@@ -1365,13 +1399,61 @@ class _ExposedElement(BaseExposedObject):
         ('previousSibling', True),
         ('rootNode', True),
         ('textContent', False),
+    ]
 
-
+    HTMLELEMENT_METHODS = [
+        'blur',
+        'click',
+        'focus'
+    ]
+    ELEMENT_METHODS = [
+        # 'addEventListener',
+        # 'dispatchEvent',
+        'getAttribute',
+        'getAttributeNS',
+        'getBoundingClientRect',
+        'getClientRects',
+        # 'getElementsByClassName',
+        # 'getElementsByTagName()',
+        # 'getElementsByTagNameNS',
+        'hasAttribute',
+        'hasAttributeNS',
+        'hasAttributes',
+        'querySelector',
+        # 'querySelectorAll',
+        'releasePointerCapture',
+        'remove',
+        'removeAttribute',
+        'removeAttributeNS',
+        # 'removeEventListener',
+        'requestFullscreen',
+        'requestPointerLock',
+        'scrollIntoView',
+        'setAttribute',
+        'setAttributeNS',
+        'setPointerCapture'
+    ]
+    NODE_METHODS = [
+        'appendChild',
+        'cloneNode',
+        'compareDocumentPosition',
+        'contains',
+        'hasChildNodes',
+        'insertBefore',
+        'isDefaultNamespace',
+        'isEqualNode',
+        'isSameNode',
+        'lookupPrefix',
+        'lookupNamespaceURI',
+        'normalize',
+        'removeChild',
+        'replaceChild'
     ]
 
     def __init__(self, lua, exceptions, splash, element):
         self.element = element
         self.splash = splash
+        self.inner_id = element.id
         super(_ExposedElement, self).__init__(lua, exceptions)
 
     @classmethod
@@ -1401,20 +1483,28 @@ class _ExposedElement(BaseExposedObject):
 
                 setattr(cls, 'set_' + property_name, set_property)
 
+    @classmethod
+    def init_methods(cls):
+        available_methods = cls.NODE_METHODS + cls.ELEMENT_METHODS + \
+                            cls.HTMLELEMENT_METHODS
+
+        for method_name in available_methods:
+            @unpack_elements
+            @command(table_argument=True, decode_arguments=False)
+            def call_method(self, *args, method_name=method_name):
+                    return cls.private_node_method(self, method_name, *args)
+
+            setattr(cls, method_name, call_method)
+
     def return_exposed_element_if_html_element(self, result):
         if isinstance(result, HTMLElement):
             return _ExposedElement(self.lua, self.exceptions, self.splash, result), True
 
         return result
 
-    @command(flag=True)
-    def private_node_method(self, method_name):
-        js_method = u"{element}[{method}].bind({element})".format(
-                element=self.element.element_js,
-                method=escape_js(method_name),
-            )
-
-        return _WrappedJavascriptFunction(self.splash, js_method)
+    def private_node_method(self, method_name, *args):
+        result = self.element.node_method(method_name)(*args)
+        return self.return_exposed_element_if_html_element(result)
 
     def private_node_property(self, property_name):
         result = self.element.node_property(property_name)
@@ -1423,6 +1513,11 @@ class _ExposedElement(BaseExposedObject):
     def private_set_node_property(self, property_name, property_value):
         result = self.element.set_node_property(property_name, property_value)
         return self.return_exposed_element_if_html_element(result)
+
+    @lua_property('inner_id')
+    @command()
+    def get_inner_id(self):
+        return self.inner_id
 
     @command()
     def exists(self):
@@ -1521,6 +1616,7 @@ class _ExposedElement(BaseExposedObject):
         self.element.set_event_handler('onclick', run_coro)
 
 _ExposedElement.init_properties()
+_ExposedElement.init_methods()
 
 requires_request = requires_attr(
     "request",

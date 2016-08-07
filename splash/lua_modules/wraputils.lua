@@ -118,7 +118,7 @@ end
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
-local function setup_commands(py_object, self)
+local function setup_commands(py_object, self, cls)
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -136,6 +136,9 @@ local function setup_commands(py_object, self)
       nlevels = 2
     end
     command = unwraps_python_result(command, nlevels)
+    if opts.returns_self_type then
+      command = create_new_table_if_needed(command, cls)
+    end
 
     rawset(self, key, command)
   end
@@ -175,7 +178,7 @@ local EXPOSED_OBJ_METATABLE_PLACEHOLDER = '<wrapped object>'
 --
 local function wrap_exposed_object(py_object, private_self, cls)
   setmetatable(private_self, cls)
-  setup_commands(py_object, private_self)
+  setup_commands(py_object, private_self, cls)
   setup_property_access(py_object, private_self)
 
   -- "Public" metatable that prevents access to private elements and to itself.
