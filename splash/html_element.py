@@ -98,13 +98,28 @@ class HTMLElement(object):
         return self.return_html_element_if_node(result)
 
     def set_node_property(self, property_name, property_value):
-        """ Sett value of the specified property of the element """
+        """ Set value of the specified property of the element """
         result = self.tab.evaljs(u"{element}[{property}] = {value}".format(
             element=self.element_js,
             property=escape_js(property_name),
             value=escape_js(property_value)
         ))
         return self.return_html_element_if_node(result)
+
+    def get_node_style(self, property_name):
+        """ Get value of the style property of the element """
+        return self.tab.evaljs(u"{element}.style[{property}]".format(
+            element=self.element_js,
+            property=escape_js(property_name),
+        ))
+
+    def set_node_style(self, property_name, property_value):
+        """ Set value of the style property of the element """
+        return self.tab.evaljs(u"{element}.style[{property}] = {value}".format(
+            element=self.element_js,
+            property=escape_js(property_name),
+            value=escape_js(property_value)
+        ))
 
     def node_method(self, method_name):
         """ Return function which will call the specified method of the element """

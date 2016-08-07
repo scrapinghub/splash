@@ -1514,6 +1514,10 @@ class _ExposedElement(BaseExposedObject):
         result = self.element.set_node_property(property_name, property_value)
         return self.return_exposed_element_if_html_element(result)
 
+    @command()
+    def private_get_style(self):
+        return _ExposedElementStyle(self.lua, self.exceptions, self.element)
+
     @lua_property('inner_id')
     @command()
     def get_inner_id(self):
@@ -1615,8 +1619,24 @@ class _ExposedElement(BaseExposedObject):
 
         self.element.set_event_handler('onclick', run_coro)
 
+
 _ExposedElement.init_properties()
 _ExposedElement.init_methods()
+
+
+class _ExposedElementStyle(BaseExposedObject):
+    def __init__(self, lua, exceptions, element):
+        self.element = element
+        super(_ExposedElementStyle, self).__init__(lua, exceptions)
+
+    @command()
+    def private_get_style(self, name):
+        return self.element.get_node_style(name)
+
+    @command()
+    def private_set_style(self, name, value):
+        return self.element.set_node_style(name, value)
+
 
 requires_request = requires_attr(
     "request",

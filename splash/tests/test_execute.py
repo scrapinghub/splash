@@ -4468,3 +4468,23 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, '')
 
+    def test_element_style(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local title = splash:select('#title')
+            title.style.display = 'block';
+
+            local ok, styles = assert(title:get_styles())
+
+            return styles.display
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'block')
+

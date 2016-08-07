@@ -40,7 +40,40 @@ function Element:node_property(...)
 end
 
 function Element:serialize()
-  return {type='node', id=self.inner_id}
+  return { type = 'node', id = self.inner_id }
+end
+
+function Element:style()
+  return { type = 'node', id = self.inner_id }
+end
+
+
+local ElementStyle = wraputils.create_metatable()
+local ElementStyle_private = {}
+
+ElementStyle.__index = function(self, index)
+  return ElementStyle_private.get_style(self, index)
+end
+
+ElementStyle.__newindex = function(self, index, value)
+  return ElementStyle_private.set_style(self, index, value)
+end
+
+function ElementStyle._create(py_element_style)
+  local element_style = {}
+  wraputils.wrap_exposed_object(py_element_style, element_style, ElementStyle, ElementStyle_private, false)
+  return element_style
+end
+
+local element_index = Element.__index
+
+Element.__index = function(self, index)
+  if index == 'style' then
+    local py_element_style = Element_private.get_style(self)
+    return ElementStyle._create(py_element_style)
+  end
+
+  return element_index(self, index)
 end
 
 return Element
