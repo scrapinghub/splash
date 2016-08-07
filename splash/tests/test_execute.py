@@ -4349,15 +4349,12 @@ class HTMLElementTest(BaseLuaRenderTest):
             local x, y = 0, 0
             local run = false
 
-            local button = splash:select('button')
-
+            local button = splash:select('button')\
             button.onclick = function(event)
                 run = true
                 x = event.clientX
                 y = event.clientY
             end
-
-            local ok, click = assert(button:node_method('click'))
 
             assert(button:mouse_click())
             assert(splash:wait(2))

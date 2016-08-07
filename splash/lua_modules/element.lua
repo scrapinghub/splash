@@ -65,7 +65,17 @@ function ElementStyle._create(py_element_style)
   return element_style
 end
 
+
+function is_event_name(str)
+  return string.sub(str, 1, 2) == 'on'
+end
+
+function get_event_name(str)
+  return string.sub(str, 3, string.len(str))
+end
+
 local element_index = Element.__index
+local element_newindex = Element.__newindex
 
 Element.__index = function(self, index)
   if index == 'style' then
@@ -73,7 +83,21 @@ Element.__index = function(self, index)
     return ElementStyle._create(py_element_style)
   end
 
+  if is_event_name(index) then
+    local event_name = get_event_name(index)
+    return Element_private.get_event_handler(self, event_name)
+  end
+
   return element_index(self, index)
+end
+
+Element.__newindex = function(self, index, value)
+  if string.sub(index, 1, 2) == 'on' then
+    local event_name = get_event_name(index)
+    return Element_private.set_event_handler(self, event_name, value)
+  end
+
+  return element_newindex(self, index, value)
 end
 
 return Element

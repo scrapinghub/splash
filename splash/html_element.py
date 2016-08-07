@@ -232,12 +232,16 @@ class HTMLElement(object):
         self.mouse_click()
         self.tab.send_text(text)
 
-    def set_event_handler(self, event_name, coro):
-        func_id = self.func_storage.add(coro)
+    def set_event_handler(self, event_name, handler):
+        func_id = self.func_storage.add(handler)
 
         self.tab.evaljs(u"{element}[{event_name}] = function(event) {{ {func} }}".format(
             element=self.element_js,
             event_name=escape_js(event_name),
-            func=u"window[{storage_name}].runFunction({func_id}, Array.prototype.slice.call(arguments))".format(storage_name=escape_js(self.func_storage.name),
-                                                                     func_id=escape_js(func_id))
+            func=u"window[{storage_name}].runFunction({func_id}, [event])".format(
+                storage_name=escape_js(self.func_storage.name),
+                func_id=escape_js(func_id)
+            )
         ))
+
+        return func_id

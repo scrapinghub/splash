@@ -1454,6 +1454,7 @@ class _ExposedElement(BaseExposedObject):
         self.element = element
         self.splash = splash
         self.inner_id = element.id
+        self.event_handlers = {}
         super(_ExposedElement, self).__init__(lua, exceptions)
 
     @classmethod
@@ -1517,6 +1518,42 @@ class _ExposedElement(BaseExposedObject):
     @command()
     def private_get_style(self):
         return _ExposedElementStyle(self.lua, self.exceptions, self.element)
+
+    @command()
+    def private_get_event_handler(self, event_name):
+        return self.event_handlers[event_name]
+
+    @command(decode_arguments=False)
+    def private_set_event_handler(self, event_name, handler):
+        if event_name is None:
+            raise ScriptError({
+                "argument": "event_name",
+                "message": "element:set_event_handler event_name must be specified",
+                "splash_method": "set_event_handler",
+            })
+
+        event_name = self.lua.lua2python(event_name)
+
+        if lupa.lua_type(handler) != 'function':
+            raise ScriptError({
+                "argument": "handler",
+                "message": "element:set_event_handler handler is not a function",
+                "splash_method": "set_event_handler",
+            })
+
+        def log_error(error, event_name=event_name):
+            self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
+
+        coro = self.splash.get_coroutine_run_func(
+            "element:on" + event_name, handler, return_error=log_error
+        )
+
+        def run_coro(*args, coro=coro):
+            coro(*(self.lua.python2lua(x) for x in (args or [])))
+
+        self.event_handlers[event_name] = run_coro
+
+        self.element.set_event_handler("on" + event_name, run_coro)
 
     @lua_property('inner_id')
     @command()
@@ -1598,27 +1635,6 @@ class _ExposedElement(BaseExposedObject):
     @command(flag=True)
     def send_text(self, text):
         return self.element.send_text(text)
-
-    @lua_property("onclick")
-    @command()
-    def get_onclick(self):
-        pass
-
-    @get_onclick.lua_setter
-    @command(decode_arguments=False)
-    def set_onclick(self, handler):
-        def log_error(error):
-            self.splash.log("[element:onclick] error %s" % error, min_level=3)
-
-        coro = self.splash.get_coroutine_run_func(
-            "element:onclick", handler, return_error=log_error
-        )
-
-        def run_coro(*args):
-            coro(*(self.lua.python2lua(x) for x in (args or [])))
-
-        self.element.set_event_handler('onclick', run_coro)
-
 
 _ExposedElement.init_properties()
 _ExposedElement.init_methods()

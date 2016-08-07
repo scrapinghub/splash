@@ -1165,10 +1165,10 @@ class FunctionsStorage(QObject):
         self.storage = {}
         super(FunctionsStorage, self).__init__(parent)
 
-    def add(self, coro):
-        coro_id = str(uuid.uuid1())
-        self.storage[coro_id] = coro
-        return coro_id
+    def add(self, func):
+        func_id = str(uuid.uuid1())
+        self.storage[func_id] = func
+        return func_id
 
     @pyqtSlot(str, 'QVariantList', name="runFunction")
     def run_function(self, func_id, args):
