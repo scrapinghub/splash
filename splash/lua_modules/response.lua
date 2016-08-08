@@ -7,7 +7,6 @@ local Request = require("request")
 
 local Response = wraputils.create_metatable()
 local Response_private = {}
-wraputils.set_metamethods(Response)
 
 function Response._create(py_response)
   local response = {
