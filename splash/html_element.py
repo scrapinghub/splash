@@ -24,7 +24,7 @@ FETCH_TEXT_JS_FUNC = """
 class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
-    def __init__(self, tab, storage, func_storage, node):
+    def __init__(self, tab, storage, event_handlers_storage, events_storage, node):
         if not node:
             raise DOMError({
                 'message': "Cannot find the requested element"
@@ -32,7 +32,8 @@ class HTMLElement(object):
 
         self.tab = tab
         self.storage = storage
-        self.func_storage = func_storage
+        self.event_handlers_storage = event_handlers_storage
+        self.events_storage = events_storage
         self.id = node["id"]
         self.element_js = self.get_element_js()
         self.tab.logger.log("HTMLElement is created with id = %s in object %s" % (self.id, self.element_js),
@@ -60,7 +61,7 @@ class HTMLElement(object):
     def return_html_element_if_node(self, result):
         """ Returns a new instance of HTMLElement if the `result.type` is "node" """
         if isinstance(result, dict) and result.get("type", None) == 'node':
-            return HTMLElement(self.tab, self.storage, self.func_storage, result)
+            return HTMLElement(self.tab, self.storage, self.event_handlers_storage, result)
 
         return result
 
@@ -123,6 +124,7 @@ class HTMLElement(object):
 
     def node_method(self, method_name):
         """ Return function which will call the specified method of the element """
+
         def call(*args):
             result = self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,
@@ -233,15 +235,22 @@ class HTMLElement(object):
         self.tab.send_text(text)
 
     def set_event_handler(self, event_name, handler):
-        func_id = self.func_storage.add(handler)
+        func_id = self.event_handlers_storage.add(handler)
+
+        event_wrapper = u"window[{storage_name}].add(event)".format(
+            storage_name=escape_js(self.events_storage.name),
+        )
+
+        func = u"window[{storage_name}].run({func_id}, {event}, event)".format(
+            storage_name=escape_js(self.event_handlers_storage.name),
+            func_id=escape_js(func_id),
+            event=event_wrapper
+        )
 
         self.tab.evaljs(u"{element}[{event_name}] = function(event) {{ {func} }}".format(
             element=self.element_js,
             event_name=escape_js(event_name),
-            func=u"window[{storage_name}].runFunction({func_id}, [event])".format(
-                storage_name=escape_js(self.func_storage.name),
-                func_id=escape_js(func_id)
-            )
+            func=func
         ))
 
         return func_id

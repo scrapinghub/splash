@@ -4347,24 +4347,27 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local x, y = 0, 0
+            local prevented = nil
             local run = false
 
-            local button = splash:select('button')\
+            local button = splash:select('button')
             button.onclick = function(event)
+                event:preventDefault()
                 run = true
                 x = event.clientX
                 y = event.clientY
+                prevented = event.defaultPrevented
             end
 
             assert(button:mouse_click())
-            assert(splash:wait(2))
+            assert(splash:wait(0))
 
-            return {run=run, x=x, y=y}
+            return {run=run, x=x, y=y, prevented=prevented}
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"run": True, "x": 10, "y": 10})
+        self.assertEqual(resp.json(), {"run": True, "x": 10, "y": 10, "prevented": True})
 
     def test_element_properties_getters(self):
         resp = self.request_lua("""

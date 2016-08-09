@@ -6,7 +6,7 @@ import os
 import weakref
 import uuid
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF
+from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
@@ -76,6 +76,7 @@ class BrowserTab(QObject):
         self._callback_proxies_to_cancel = weakref.WeakSet()
         self._js_console = None
         self._autoload_scripts = []
+        self._js_storage_initiated = False
 
         self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
@@ -112,10 +113,25 @@ class BrowserTab(QObject):
         self._elements_storage = ElementsStorage(self)
         frame.addToJavaScriptWindowObject(self._elements_storage.name, self._elements_storage)
 
-    def _init_functions_storage(self):
+    def _init_event_handlers_storage(self):
         frame = self.web_page.mainFrame()
-        self._functions_storage = FunctionsStorage(self)
-        frame.addToJavaScriptWindowObject(self._functions_storage.name, self._functions_storage)
+        self._event_handlers_storage = EventHandlersStorage(self, self._events_storage)
+        frame.addToJavaScriptWindowObject(self._event_handlers_storage.name, self._event_handlers_storage)
+
+    def _init_events_storage(self):
+        frame = self.web_page.mainFrame()
+        self._events_storage = EventsStorage(self)
+        frame.addToJavaScriptWindowObject(self._events_storage.name, self._events_storage)
+        self._events_storage.init_storage()
+
+    def _init_js_objects_storage(self):
+        if self._js_storage_initiated:
+            return
+
+        self._init_elements_storage()
+        self._init_events_storage()
+        self._init_event_handlers_storage()
+        self._js_storage_initiated = True
 
     def set_js_enabled(self, val):
         settings = self.web_page.settings()
@@ -580,8 +596,7 @@ class BrowserTab(QObject):
         self._autoload_scripts = []
 
     def _on_javascript_window_object_cleared(self):
-        self._init_elements_storage()
-        self._init_functions_storage()
+        self._js_storage_initiated = False
 
         for script in self._autoload_scripts:
             # XXX: handle_errors=False is used to execute autoload scripts
@@ -934,8 +949,11 @@ class BrowserTab(QObject):
         :param selector valid CSS selector
         :return element
         """
+        self._init_js_objects_storage()
+
         js_query = u"document.querySelector({})".format(escape_js(selector))
-        return HTMLElement(self, self._elements_storage, self._functions_storage,
+        return HTMLElement(self, self._elements_storage, self._event_handlers_storage,
+                           self._events_storage,
                            self.evaljs(js_query, result_protection=False))
 
 
@@ -1159,20 +1177,93 @@ class ElementsStorage(QObject):
         return str(uuid.uuid1())
 
 
-class FunctionsStorage(QObject):
-    def __init__(self, parent):
+class Event(object):
+    def __init__(self, storage, id, event):
+        self.storage = storage
+        self.id = id
+        self.event = event
+
+    def __getitem__(self, item):
+        return self.storage.get_event_property(self.id, item)
+
+    def preventDefault(self):
+        return self.storage.preventDefault.emit(self.id)
+
+    def stopImmediatePropagation(self):
+        return self.storage.stopImmediatePropagation.emit(self.id)
+
+    def stopPropagation(self):
+        return self.storage.stopPropagation.emit(self.id)
+
+
+class EventHandlersStorage(QObject):
+    def __init__(self, parent, events_storage):
         self.name = str(uuid.uuid1())
+        self.events_storage = events_storage
         self.storage = {}
-        super(FunctionsStorage, self).__init__(parent)
+        super(EventHandlersStorage, self).__init__(parent)
 
     def add(self, func):
         func_id = str(uuid.uuid1())
         self.storage[func_id] = func
         return func_id
 
-    @pyqtSlot(str, 'QVariantList', name="runFunction")
-    def run_function(self, func_id, args):
-        self.storage[func_id](*args)
+    @pyqtSlot(str, str, 'QVariantMap', name="run")
+    def run_function(self, func_id, event_id, event):
+        self.storage[func_id](Event(self.events_storage, event_id, event))
+
+
+class EventsStorage(QObject):
+    preventDefault = pyqtSignal(str)
+    stopImmediatePropagation = pyqtSignal(str)
+    stopPropagation = pyqtSignal(str)
+
+    def __init__(self, parent):
+        self.name = str(uuid.uuid1())
+        super(EventsStorage, self).__init__(parent)
+
+    def init_storage(self):
+        frame = self.parent().web_page.mainFrame()
+        eval_expr = u"eval({})".format(escape_js("""
+        window[{storage_name}].events = {{}};
+
+        window[{storage_name}].callMethod = function(methodName) {{
+            return function(eventId) {{
+                var storage = window[{storage_name}].events;
+                storage[eventId][methodName].call(storage[eventId]);
+            }};
+        }}
+
+        window[{storage_name}].preventDefault.connect(window[{storage_name}].callMethod('preventDefault'))
+        window[{storage_name}].stopImmediatePropagation.connect(window[{storage_name}].callMethod('stopImmediatePropagation'))
+        window[{storage_name}].stopPropagation.connect(window[{storage_name}].callMethod('stopPropagation'))
+
+        window[{storage_name}].add = function(event) {{
+            var id = window[{storage_name}].getId()
+            window[{storage_name}].events[id] = event;
+            return id;
+        }}
+        """.format(storage_name=escape_js(self.name))))
+
+        frame.evaluateJavaScript(eval_expr)
+
+    @pyqtSlot(name="getId", result=str)
+    def get_id(self):
+        return str(uuid.uuid1())
+
+    def get_event_property(self, event_id, property_name):
+        frame = self.parent().web_page.mainFrame()
+        eval_expr = u"eval({})".format(escape_js("""
+        window[{storage_name}].events[{event_id}][{property_name}]
+        """.format(
+            storage_name=escape_js(self.name),
+            event_id=escape_js(event_id),
+            property_name=escape_js(property_name)
+        )))
+
+        result = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+
+        return result.get('result', None)
 
 
 class OneShotCallbackProxy(QObject):

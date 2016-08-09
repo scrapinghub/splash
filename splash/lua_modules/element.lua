@@ -6,7 +6,6 @@ local wraputils = require("wraputils")
 
 local Element = wraputils.create_metatable()
 local Element_private = {}
-wraputils.set_metamethods(Element)
 
 function Element._create(py_element)
   local element = {}

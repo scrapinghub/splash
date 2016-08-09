@@ -1414,7 +1414,7 @@ class _ExposedElement(BaseExposedObject):
         'getBoundingClientRect',
         'getClientRects',
         # 'getElementsByClassName',
-        # 'getElementsByTagName()',
+        # 'getElementsByTagName',
         # 'getElementsByTagNameNS',
         'hasAttribute',
         'hasAttributeNS',
@@ -1548,8 +1548,9 @@ class _ExposedElement(BaseExposedObject):
             "element:on" + event_name, handler, return_error=log_error
         )
 
-        def run_coro(*args, coro=coro):
-            coro(*(self.lua.python2lua(x) for x in (args or [])))
+        def run_coro(event, coro=coro):
+            wrapper = self.lua.eval("require('event')")
+            coro(wrapper._create(_ExposedEvent(self.lua, self.exceptions, event)))
 
         self.event_handlers[event_name] = run_coro
 
@@ -1652,6 +1653,28 @@ class _ExposedElementStyle(BaseExposedObject):
     @command()
     def private_set_style(self, name, value):
         return self.element.set_node_style(name, value)
+
+
+class _ExposedEvent(BaseExposedObject):
+    def __init__(self, lua, exceptions, event):
+        self.event = event
+        super(_ExposedEvent, self).__init__(lua, exceptions)
+
+    @command()
+    def private_get_property(self, name):
+        return self.event[name]
+
+    @command()
+    def preventDefault(self):
+        return self.event.preventDefault()
+
+    @command()
+    def stopImmediatePropagation(self):
+        return self.event.stopImmediatePropagation()
+
+    @command()
+    def stopPropagation(self):
+        return self.event.stopPropagation()
 
 
 requires_request = requires_attr(
