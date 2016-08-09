@@ -5,7 +5,7 @@ Contributing
 ------------
 
 Splash is free & open source.
-Development happens at github: https://github.com/scrapinghub/splash
+Development happens at GitHub: https://github.com/scrapinghub/splash
 
 Development Setup
 -----------------

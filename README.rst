@@ -33,7 +33,7 @@ To use Splash with Scrapy, please refer to the `scrapy-splash library`_.
 Support
 -------
 
-Open source support is provided here in Github. Please `create a question
+Open source support is provided here in GitHub. Please `create a question
 issue`_ (ie. issue with "question" label).
 
 Commercial support is also available by `Scrapinghub`_.
