@@ -216,7 +216,7 @@ Please refer to `this great answer from kmike on reddit.
 Why does Splash use Lua for scripting, not Python or JavaScript?
 ----------------------------------------------------------------
 
-Check this `github issue <https://github.com/scrapinghub/splash/issues/117>`__
+Check this `GitHub Issue <https://github.com/scrapinghub/splash/issues/117>`__
 for the motivation.
 
 .. _render-html-doesnt-work:

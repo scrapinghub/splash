@@ -25,9 +25,9 @@ OS X + Docker
 2. Create, run & load the configuration for the docker-machine
 
        $ docker-machine create default
-       
+
        $ docker-machine start default
-       
+
        $ eval "$(docker-machine env default)"
 
 2. Pull the image::
@@ -40,7 +40,7 @@ OS X + Docker
 
 4. Figure out the ip address of the docker-machine::
 
-       $ docker-machine ip default 
+       $ docker-machine ip default
 
        192.168.59.103
 
@@ -59,7 +59,7 @@ Ubuntu 14.04 (manual way)
 1. Install system dependencies (check
 `provision.sh <https://github.com/scrapinghub/splash/blob/master/dockerfiles/splash/provision.sh>`)
 
-2. Clone the repo from Github::
+2. Clone the repo from GitHub::
 
         $ git clone https://github.com/scrapinghub/splash/
 
