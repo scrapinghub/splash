@@ -72,7 +72,9 @@ install_deps () {
         libre2 \
         libicu52 \
         liblua5.2-0 \
-        zlib1g
+        zlib1g \
+        dbus
+
 }
 
 install_builddeps () {
