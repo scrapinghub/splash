@@ -32,6 +32,7 @@ VOLUME [ \
 EXPOSE 8050 8051 5023
 
 ENTRYPOINT [ \
+    "dbus-uuidgen", ">", "/etc/machine-id" \
     "python3", \
     "/app/bin/splash", \
     "--proxy-profiles-path",  "/etc/splash/proxy-profiles", \
