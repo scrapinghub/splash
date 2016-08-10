@@ -31,12 +31,9 @@ VOLUME [ \
 
 EXPOSE 8050 8051 5023
 
-ENTRYPOINT [ \
-    "dbus-uuidgen", ">", "/etc/machine-id" \
-    "python3", \
-    "/app/bin/splash", \
-    "--proxy-profiles-path",  "/etc/splash/proxy-profiles", \
-    "--js-profiles-path", "/etc/splash/js-profiles", \
-    "--filters-path", "/etc/splash/filters", \
-    "--lua-package-path", "/etc/splash/lua_modules/?.lua" \
-]
+# Copy start script
+COPY bin/startup.sh /home/root/startup.sh
+RUN chmod +x /home/root/startup.sh
+
+# Start up script (Generate machine UUID)
+ENTRYPOINT ["/home/root/startup.sh"]
