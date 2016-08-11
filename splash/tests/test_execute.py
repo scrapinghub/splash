@@ -1208,7 +1208,7 @@ class JsfuncTest(BaseLuaRenderTest):
     def test_private_jsfunc_not_available(self):
         resp = self.request_lua("""
         function main(splash)
-            return {ok = splash.private_jsfunc == nil}
+            return {ok = splash._jsfunc == nil}
         end
         """)
         self.assertStatusCode(resp, 200)
@@ -1217,7 +1217,7 @@ class JsfuncTest(BaseLuaRenderTest):
     def test_private_jsfunc_attributes(self):
         resp = self.request_lua("""                                      -- 1
         function main(splash)                                            -- 2
-            local func = splash:private_jsfunc("function(){return 123}") -- 3 <-
+            local func = splash:_jsfunc("function(){return 123}") -- 3 <-
             return func.source                                           -- 4
         end
         """)
