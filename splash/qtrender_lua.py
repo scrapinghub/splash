@@ -1543,16 +1543,21 @@ class _ExposedElement(BaseExposedObject):
 
         def log_error(error, event_name=event_name):
             self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
+            cleanup()
+
+        def cleanup(result):
+            for handler in run_coro.on_finish:
+                handler()
 
         coro = self.splash.get_coroutine_run_func(
-            "element:on" + event_name, handler, return_error=log_error
+            "element:on" + event_name, handler, return_result=cleanup, return_error=log_error
         )
 
         def run_coro(event, coro=coro):
             wrapper = self.lua.eval("require('event')")
             coro(wrapper._create(_ExposedEvent(self.lua, self.exceptions, event)))
 
-        self.event_handlers[event_name] = run_coro
+        run_coro.on_finish = []
 
         self.element.set_event_handler("on" + event_name, run_coro)
 

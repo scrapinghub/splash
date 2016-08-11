@@ -4348,12 +4348,12 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local x, y = 0, 0
             local prevented = nil
-            local run = false
+            local called = 0
 
             local button = splash:select('button')
             button.onclick = function(event)
                 event:preventDefault()
-                run = true
+                called = called + 1
                 x = event.clientX
                 y = event.clientY
                 prevented = event.defaultPrevented
@@ -4361,13 +4361,15 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             assert(button:mouse_click())
             assert(splash:wait(0))
+            assert(button:mouse_click())
+            assert(splash:wait(0))
 
-            return {run=run, x=x, y=y, prevented=prevented}
+            return {called=called, x=x, y=y, prevented=prevented}
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"run": True, "x": 10, "y": 10, "prevented": True})
+        self.assertEqual(resp.json(), {"called": 2, "x": 10, "y": 10, "prevented": True})
 
     def test_element_properties_getters(self):
         resp = self.request_lua("""
@@ -4466,7 +4468,7 @@ class HTMLElementTest(BaseLuaRenderTest):
           """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, '')
+        self.assertEqual(resp.text, '3')
 
     def test_element_style(self):
         resp = self.request_lua("""

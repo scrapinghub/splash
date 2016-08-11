@@ -1195,6 +1195,9 @@ class Event(object):
     def stopPropagation(self):
         return self.storage.stopPropagation.emit(self.id)
 
+    def remove(self):
+        return self.storage.remove_event(self.id)
+
 
 class EventHandlersStorage(QObject):
     def __init__(self, parent, events_storage):
@@ -1208,9 +1211,14 @@ class EventHandlersStorage(QObject):
         self.storage[func_id] = func
         return func_id
 
+    def remove(self, func_id):
+        del self.storage[func_id]
+
     @pyqtSlot(str, str, 'QVariantMap', name="run")
     def run_function(self, func_id, event_id, event):
-        self.storage[func_id](Event(self.events_storage, event_id, event))
+        wrapped_event = Event(self.events_storage, event_id, event)
+        self.storage[func_id].on_finish.append(wrapped_event.remove)
+        self.storage[func_id](wrapped_event)
 
 
 class EventsStorage(QObject):
@@ -1264,6 +1272,17 @@ class EventsStorage(QObject):
         result = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
         return result.get('result', None)
+
+    def remove_event(self, event_id):
+        frame = self.parent().web_page.mainFrame()
+        eval_expr = u"eval({})".format(escape_js("""
+        delete window[{storage_name}].events[{event_id}]
+        """.format(
+            storage_name=escape_js(self.name),
+            event_id=escape_js(event_id),
+        )))
+
+        frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
 
 class OneShotCallbackProxy(QObject):
