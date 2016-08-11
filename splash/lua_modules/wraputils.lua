@@ -84,10 +84,9 @@ local function sets_callback(func, storage)
 end
 
 
-local PRIVATE_PREFIX = "private_"
-
-local function is_private_name(key)
-  return string.find(key, "^" .. PRIVATE_PREFIX) ~= nil
+local function is_private_name(name)
+  -- Method/attribute name is private true if it starts with an underscore.
+  return name:sub(1, 1) == "_"
 end
 
 
@@ -120,8 +119,7 @@ local function setup_commands(py_object, self, private_self)
     command = unwraps_python_result(command, nlevels)
 
     if is_private_name(key) then
-      local short_key = string.sub(key, PRIVATE_PREFIX:len() + 1)
-      private_self[short_key] = command
+      private_self[key] = command
     else
       -- avoid custom setter
       rawset(self, key, command)

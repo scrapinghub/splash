@@ -25,7 +25,7 @@ end
 -- It is required to handle errors properly.
 --
 function Splash:jsfunc(...)
-  local func = Splash_private.jsfunc(self, ...)
+  local func = Splash_private._jsfunc(self, ...)
   return wraputils.unwraps_python_result(func)
 end
 
@@ -36,7 +36,7 @@ function Splash:on_request(cb)
   if type(cb) ~= 'function' then
     error("splash:on_request callback is not a function", 2)
   end
-  Splash_private.on_request(self, function(py_request)
+  Splash_private._on_request(self, function(py_request)
     local req = Request._create(py_request)
     return cb(req)
   end)
@@ -46,7 +46,7 @@ function Splash:on_response_headers(cb)
   if type(cb) ~= 'function' then
     error("splash:on_response_headers callback is not a function", 2)
   end
-  Splash_private.on_response_headers(self, function(response)
+  Splash_private._on_response_headers(self, function(response)
     local res = Response._create(response)
     return cb(res)
   end)
@@ -56,7 +56,7 @@ function Splash:on_response(cb)
   if type(cb) ~= 'function' then
     error("splash:on_response callback is not a function", 2)
   end
-  Splash_private.on_response(self, function(response)
+  Splash_private._on_response(self, function(response)
     local res = Response._create(response)
     return cb(res)
   end)
@@ -76,7 +76,7 @@ function Timer._create(py_timer)
 end
 
 function Splash:call_later(cb, delay)
-  local py_timer = Splash_private.call_later(self, cb, delay)
+  local py_timer = Splash_private._call_later(self, cb, delay)
   return Timer._create(py_timer)
 end
 

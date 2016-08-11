@@ -139,9 +139,6 @@ class SplashLuaRuntime(object):
         except TypeError:
             raise AttributeError("Non-string lookups are not allowed (requested: %r)" % attr_name)
 
-        if attr_name.startswith("_"):
-            raise AttributeError("Access to private attribute %r is not allowed" % attr_name)
-
         if obj not in self._allowed_object_attrs:
             raise AttributeError("Access to object %r is not allowed" % obj)
 
