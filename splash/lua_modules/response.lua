@@ -6,7 +6,6 @@ local treat = require("libs/treat")
 local Request = require("request")
 
 local Response = wraputils.create_metatable()
-local Response_private = {}
 
 function Response._create(py_response)
   local response = {
@@ -14,8 +13,7 @@ function Response._create(py_response)
     request=Request._create(py_response.request),
   }
 
-  wraputils.wrap_exposed_object(py_response, response, Response, Response_private, false)
-  return response
+  return wraputils.wrap_exposed_object(py_response, response, Response)
 end
 
 

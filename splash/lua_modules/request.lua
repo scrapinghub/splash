@@ -5,7 +5,6 @@ local wraputils = require("wraputils")
 local treat = require("libs/treat")
 
 local Request = wraputils.create_metatable()
-local Request_private = {}
 
 function Request._create(py_request)
   local request = {
@@ -15,8 +14,7 @@ function Request._create(py_request)
     method=py_request.method,
   }
 
-  wraputils.wrap_exposed_object(py_request, request, Request, Request_private, false)
-  return request
+  return wraputils.wrap_exposed_object(py_request, request, Request)
 end
 
 return Request
