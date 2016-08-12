@@ -1,3 +1,4 @@
+local repr = require('repr')
 --
 -- This modules provides utilities to access Python
 -- objects from Lua. It should be used together with
@@ -136,6 +137,7 @@ local function setup_commands(py_object, self, cls)
       nlevels = 2
     end
     command = unwraps_python_result(command, nlevels)
+
     if opts.returns_self_type then
       command = create_new_table_if_needed(command, cls)
     end
@@ -179,7 +181,7 @@ local EXPOSED_OBJ_METATABLE_PLACEHOLDER = '<wrapped object>'
 local function wrap_exposed_object(py_object, private_self, cls)
   setmetatable(private_self, cls)
   setup_commands(py_object, private_self, cls)
-  setup_property_access(py_object, private_self)
+  setup_property_access(py_object, private_self, cls)
 
   -- "Public" metatable that prevents access to private elements and to itself.
   local public_mt = {

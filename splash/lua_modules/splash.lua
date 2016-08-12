@@ -79,7 +79,7 @@ end
 
 
 function Splash:select(selector)
-  local py_element = Splash_private.select(self, selector)
+  local py_element = self:_select(selector)
   return Element._create(py_element)
 end
 

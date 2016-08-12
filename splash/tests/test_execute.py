@@ -3952,11 +3952,11 @@ class HTMLElementTest(BaseLuaRenderTest):
             local title = splash:select('.title')
 
             return {
-                p=select(2, assert(p:node_property('nodeName'))):lower(),
-                form=select(2, assert(form:node_property('nodeName'))):lower(),
-                username=select(2, assert(username:node_property('nodeName'))):lower(),
-                password=select(2, assert(password:node_property('nodeName'))):lower(),
-                title=select(2, assert(title:node_property('nodeName'))):lower(),
+                p=p:node_property('nodeName'):lower(),
+                form=form:node_property('nodeName'):lower(),
+                username=username:node_property('nodeName'):lower(),
+                password=password:node_property('nodeName'):lower(),
+                title=title:node_property('nodeName'):lower(),
             }
         end
         """, {"url": self.mockurl("various-elements")})
@@ -3986,6 +3986,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertEqual(err["info"]["splash_method"], "select")
 
+    @unittest.skip('Not Implemented')
     def test_node_property_returns_element(self):
         resp = self.request_lua("""
         function main(splash)
@@ -3993,8 +3994,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local p = splash:select('p')
-            local ok, parent = p:node_property('parentNode')
-            local ok, remove = parent:node_method('remove')
+            local parent = p:node_property('parentNode')
+            local remove = parent:node_method('remove')
 
             remove()
 
@@ -4005,6 +4006,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), False)
 
+    @unittest.skip('Not Implemented')
     def test_flag(self):
         resp = self.request_lua("""
         function main(splash)
@@ -4060,15 +4062,14 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             assert(splash:wait(0))
 
-            local ok, text = assert(clickMe:fetch_text())
-
-            return text
+            return clickMe:fetch_text()
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "3")
 
+    @unittest.skip('Not Implemented')
     def test_mouse_hover(self):
         resp = self.request_lua("""
         function main(splash)
@@ -4083,9 +4084,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             assert(splash:wait(0))
 
-            local ok, text = assert(hoverMe:fetch_text())
-
-            return text
+            return hoverMe:fetch_text()
         end
         """, {"url": self.mockurl("various-elements")})
 
@@ -4100,9 +4099,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local title = splash:select('.title')
 
-            local ok, styles = assert(title:get_styles())
-
-            return styles
+            return title:get_styles()
         end
         """, {"url": self.mockurl("various-elements")})
 
@@ -4118,8 +4115,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             local block = splash:select('#block')
             local nestedBlock = splash:select('#nestedBlock')
 
-            local ok, blockBounds = assert(block:get_bounds())
-            local ok, nestedBlockBounds = assert(nestedBlock:get_bounds())
+            local blockBounds = block:get_bounds()
+            local nestedBlockBounds = nestedBlock:get_bounds()
 
             return {
                 top = nestedBlockBounds.top - blockBounds.top,
@@ -4139,12 +4136,12 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local title = splash:select('.title')
 
-            local ok, visibleBefore = assert(title:visible())
+            local visibleBefore = title:visible()
 
             assert(splash:runjs('document.querySelector(".title").style.display = "block"'))
             assert(splash:wait(0))
 
-            local ok, visibleAfter = assert(title:visible())
+            local visibleAfter = title:visible()
 
             return { before = visibleBefore, after = visibleAfter }
         end
@@ -4163,9 +4160,9 @@ class HTMLElementTest(BaseLuaRenderTest):
             local block = splash:select('#block')
             local h1 = splash:select('h1')
 
-            local ok, inputText = assert(input:fetch_text())
-            local ok, blockText = assert(block:fetch_text())
-            local ok, h1Text = assert(h1:fetch_text())
+            local inputText = input:fetch_text()
+            local blockText = block:fetch_text()
+            local h1Text = h1:fetch_text()
 
             return { input = inputText, block = blockText, h1 = h1Text }
         end
@@ -4181,25 +4178,30 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local h1 = splash:select('h1')
-            local ok, info = assert(h1:info())
 
-            return info
+            return h1:info()
         end
         """, {"url": self.mockurl("various-elements")})
 
+        expected = {
+            'tag': '<h1 id="title" class="title" style="display: none ">Title</h1>',
+            'width': 0,
+            'nodeName': 'h1',
+            'text': 'Title',
+            'attributes': {
+                'id': 'title',
+                'class': 'title',
+                'style': 'display: none '
+            },
+            'html': 'Title',
+            'height': 0,
+            'y': 0,
+            'visible': False,
+            'x': 0
+        }
+
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {
-            "nodeName": "h1",
-            "attributes": {"class": "title", "style": "display: none "},
-            "tag": '<h1 class="title" style="display: none ">Title</h1>',
-            "html": "Title",
-            "text": "Title",
-            "x": 0,
-            "y": 0,
-            "width": 0,
-            "height": 0,
-            "visible": False
-        })
+        self.assertEqual(resp.json(), expected)
 
     def test_form_values(self):
         resp = self.request_lua("""
@@ -4300,7 +4302,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local full = splash:png()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:png())
-            local ok, bounds = assert(left:get_bounds())
+            local bounds = left:get_bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
@@ -4387,7 +4389,6 @@ class HTMLElementTest(BaseLuaRenderTest):
             }
             local lua_properties = {}
 
-            print(properties)
             for i,v in ipairs(properties) do
                 lua_properties[v] = element[v]
             end
@@ -4481,7 +4482,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local title = splash:select('#title')
             title.style.display = 'block';
 
-            local ok, styles = assert(title:get_styles())
+            local styles = title:get_styles()
 
             return styles.display
         end

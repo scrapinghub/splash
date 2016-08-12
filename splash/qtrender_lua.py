@@ -1192,7 +1192,7 @@ class Splash(BaseExposedObject):
         return timer
 
     @command()
-    def private_select(self, selector):
+    def _select(self, selector):
         try:
             return _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
         except (JsError, DOMError):
@@ -1470,7 +1470,7 @@ class _ExposedElement(BaseExposedObject):
             @returns_self_type
             @command()
             def get_property(self, property_name=property_name):
-                return cls.private_node_property(self, property_name)
+                return cls._node_property(self, property_name)
 
             get_property.__name__ = 'get_' + property_name
 
@@ -1478,10 +1478,11 @@ class _ExposedElement(BaseExposedObject):
 
             if not read_only:
                 @get_property.lua_setter
+                @returns_self_type
                 @command()
                 @rename('set_' + property_name)
                 def set_property(self, value, property_name=property_name):
-                    return cls.private_set_node_property(self, property_name, value)
+                    return cls._set_node_property(self, property_name, value)
 
                 set_property.__name__ = 'set_' + property_name
 
@@ -1496,7 +1497,7 @@ class _ExposedElement(BaseExposedObject):
             @create_html_elements_for_nodes
             @command(table_argument=True, decode_arguments=False)
             def call_method(self, *args, method_name=method_name):
-                    return cls.private_node_method(self, method_name, *args)
+                    return cls._node_method(self, method_name, *args)
 
             setattr(cls, method_name, call_method)
 
@@ -1506,28 +1507,28 @@ class _ExposedElement(BaseExposedObject):
 
         return result
 
-    def private_node_method(self, method_name, *args):
+    def _node_method(self, method_name, *args):
         result = self.element.node_method(method_name)(*args)
         return self.return_exposed_element_if_html_element(result)
 
-    def private_node_property(self, property_name):
+    def _node_property(self, property_name):
         result = self.element.node_property(property_name)
         return self.return_exposed_element_if_html_element(result)
 
-    def private_set_node_property(self, property_name, property_value):
+    def _set_node_property(self, property_name, property_value):
         result = self.element.set_node_property(property_name, property_value)
         return self.return_exposed_element_if_html_element(result)
 
     @command()
-    def private_get_style(self):
+    def _get_style(self):
         return _ExposedElementStyle(self.lua, self.exceptions, self.element)
 
     @command()
-    def private_get_event_handler(self, event_name):
+    def _get_event_handler(self, event_name):
         return self.event_handlers[event_name]
 
     @command(decode_arguments=False)
-    def private_set_event_handler(self, event_name, handler):
+    def _set_event_handler(self, event_name, handler):
         if event_name is None:
             raise ScriptError({
                 "argument": "event_name",
@@ -1564,6 +1565,11 @@ class _ExposedElement(BaseExposedObject):
 
         self.element.set_event_handler("on" + event_name, run_coro)
 
+    @returns_self_type
+    @command()
+    def node_property(self, property_name):
+        return self._node_property(property_name)
+
     @lua_property('inner_id')
     @command()
     def get_inner_id(self):
@@ -1581,11 +1587,11 @@ class _ExposedElement(BaseExposedObject):
     def mouse_hover(self):
         self.element.mouse_hover()
 
-    @command(flag=True)
+    @command()
     def get_styles(self):
         return self.element.get_styles()
 
-    @command(flag=True)
+    @command()
     def get_bounds(self):
         return self.element.get_bounds()
 
@@ -1617,15 +1623,15 @@ class _ExposedElement(BaseExposedObject):
             return None
         return BinaryCapsule(result, 'image/jpeg')
 
-    @command(flag=True)
+    @command()
     def visible(self):
         return self.element.visible()
 
-    @command(flag=True)
+    @command()
     def fetch_text(self):
         return self.element.fetch_text()
 
-    @command(flag=True)
+    @command()
     def info(self):
         return self.element.info()
 
@@ -1655,11 +1661,11 @@ class _ExposedElementStyle(BaseExposedObject):
         super(_ExposedElementStyle, self).__init__(lua, exceptions)
 
     @command()
-    def private_get_style(self, name):
+    def _get_style(self, name):
         return self.element.get_node_style(name)
 
     @command()
-    def private_set_style(self, name, value):
+    def _set_style(self, name, value):
         return self.element.set_node_style(name, value)
 
 
@@ -1669,7 +1675,7 @@ class _ExposedEvent(BaseExposedObject):
         super(_ExposedEvent, self).__init__(lua, exceptions)
 
     @command()
-    def private_get_property(self, name):
+    def _get_property(self, name):
         return self.event[name]
 
     @command()
