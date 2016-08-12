@@ -1215,10 +1215,10 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertEqual(resp.json()[u'ok'], True)
 
     def test_private_jsfunc_attributes(self):
-        resp = self.request_lua("""                                      -- 1
-        function main(splash)                                            -- 2
+        resp = self.request_lua("""                               -- 1
+        function main(splash)                                     -- 2
             local func = splash:_jsfunc("function(){return 123}") -- 3 <-
-            return func.source                                           -- 4
+            return func.source                                    -- 4
         end
         """)
         err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
