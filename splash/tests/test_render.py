@@ -199,7 +199,7 @@ class Base(object):
             self.assertNotEqual(r1.content, r3.content)
 
         def test_invalid_wait(self):
-            for wait in ['foo', '65', '65.0']:
+            for wait in ['foo', '11', '11.0']:
                 r = self.request({'url': self.mockurl("jsrender"),
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
