@@ -79,10 +79,6 @@ def querystring2har(url):
     ]
 
 
-def is_binary_string(data):
-    return bool(data.translate(None, bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})))
-
-
 def reply2har(reply, include_content=False):
     """ Serialize QNetworkReply to HAR. """
     res = {
@@ -135,14 +131,10 @@ def reply2har(reply, include_content=False):
     if include_content:
         content = getattr(reply, 'content', None)
         if content is not None:
-            res["content"]["size"] = content.size()
-            bytes_array = bytes(content)
-
-            if not is_binary_string(bytes_array):
-                res["content"]["text"] = bytes_array.decode('utf8', 'replace')
-            else:
-                res["content"]["text"] = base64.b64encode(bytes_array).decode('utf8')
-                res["content"]["encoding"] = 'base64'
+            content = bytes(content)
+            res["content"]["size"] = len(content)
+            res["content"]["text"] = base64.b64encode(content).decode('latin1')
+            res["content"]["encoding"] = 'base64'
                 
     return res
 
