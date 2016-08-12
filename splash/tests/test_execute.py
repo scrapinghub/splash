@@ -3455,6 +3455,18 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertNotIn(u"world of splash", data["html2"])
 
 
+class PluginsEnabledTest(BaseLuaRenderTest):
+    # TODO: test it with a real Flash file
+    def test_default_value(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return {enabled=splash.plugins_enabled}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'enabled': defaults.PLUGINS_ENABLED})
+
+
 class MouseEventsTest(BaseLuaRenderTest):
 
     def _assert_event_property(self, name, value, resp):

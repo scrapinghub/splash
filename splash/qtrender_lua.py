@@ -16,7 +16,7 @@ from PyQt5.QtCore import QTimer
 import lupa
 
 import splash
-from splash.browser_tab import JsError
+from splash.browser_tab import BrowserTab, JsError
 from splash.lua_runner import (
     BaseScriptRunner,
     AsyncCommand,
@@ -422,7 +422,7 @@ class Splash(BaseExposedObject):
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        self.tab = tab
+        self.tab = tab  # type: BrowserTab
         self.log = log or tab.logger.log
         self._result_headers = []
         self._objects_to_clear = weakref.WeakSet()
@@ -1011,6 +1011,17 @@ class Splash(BaseExposedObject):
     def set_images_enabled(self, enabled):
         if enabled is not None:
             self.tab.set_images_enabled(int(enabled))
+
+    @lua_property('plugins_enabled')
+    @command()
+    def get_plugins_enabled(self):
+        return self.tab.get_plugins_enabled()
+
+    @get_plugins_enabled.lua_setter
+    @command()
+    def set_plugins_enabled(self, enabled):
+        if enabled is not None:
+            self.tab.set_plugins_enabled(int(enabled))
 
     @lua_property('resource_timeout')
     @command()

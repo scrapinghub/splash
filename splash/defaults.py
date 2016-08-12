@@ -83,5 +83,5 @@ PRIVATE_MODE = True
 # logging
 VERBOSITY = 1
 
-# plugins
-PLUGINS_ENABLED = True
+# plugins (e.g. flash)
+PLUGINS_ENABLED = False

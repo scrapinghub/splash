@@ -100,6 +100,19 @@ Example:
 .. literalinclude:: ../splash/examples/disable-images.lua
    :language: lua
 
+
+.. _splash-plugins-enabled:
+
+splash.plugins_enabled
+----------------------
+
+Enable or disable browser plugins (e.g. Flash).
+
+**Signature:** ``splash.plugins_enabled = true/false``
+
+Plugins are disabled by default.
+
+
 Methods
 ~~~~~~~
 

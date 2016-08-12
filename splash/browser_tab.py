@@ -128,7 +128,6 @@ class BrowserTab(QObject):
         """
         settings = web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
-        settings.setAttribute(QWebSettings.PluginsEnabled, defaults.PLUGINS_ENABLED)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
@@ -137,6 +136,8 @@ class BrowserTab(QObject):
 
         if self.visible:
             web_page.settings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+
+        self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
 
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
@@ -187,6 +188,14 @@ class BrowserTab(QObject):
     def get_images_enabled(self):
         settings = self.web_page.settings()
         return settings.testAttribute(QWebSettings.AutoLoadImages)
+
+    def set_plugins_enabled(self, enabled):
+        self.web_page.settings().setAttribute(QWebSettings.PluginsEnabled,
+                                              enabled)
+
+    def get_plugins_enabled(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(QWebSettings.PluginsEnabled)
 
     def set_viewport(self, size, raise_if_empty=False):
         """
