@@ -156,7 +156,7 @@ local function wrap_exposed_object(py_object, private_self, cls)
   setup_property_access(py_object, private_self)
 
   -- "Public" metatable that prevents access to private elements and to itself.
-  public_mt = {
+  local public_mt = {
     __index = function(self, key)
       if is_private_name(key) then
         return nil
@@ -202,7 +202,7 @@ local function wrap_exposed_object(py_object, private_self, cls)
 
   -- public_self should only contain a reference to the public metatable
   -- forwarding all actual data to the "real" self object.
-  public_self = {
+  local public_self = {
     -- Add a function to the "public_self" so that it doesn't serialize cleanly
     -- by mistake.
     is_object = function() return true end
