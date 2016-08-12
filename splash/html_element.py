@@ -61,7 +61,7 @@ class HTMLElement(object):
     def return_html_element_if_node(self, result):
         """ Returns a new instance of HTMLElement if the `result.type` is "node" """
         if isinstance(result, dict) and result.get("type", None) == 'node':
-            return HTMLElement(self.tab, self.storage, self.event_handlers_storage, result)
+            return HTMLElement(self.tab, self.storage, self.event_handlers_storage, self.events_storage, result)
 
         return result
 

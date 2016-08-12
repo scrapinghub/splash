@@ -1319,24 +1319,27 @@ class _ExposedTimer(BaseExposedObject):
         super(_ExposedTimer, self).clear()
 
 
-def unpack_elements(meth):
+def create_html_elements_for_nodes(meth):
     @functools.wraps(meth)
-    def unpack_exposed_elements(self, *args, **kwargs):
-        def try_to_serialize(lua_table):
-            serialized = None
+    def create_html_elements(self, *args, **kwargs):
+        def try_to_create(lua_table):
+            retval = None
             try:
-                serialized = self.element.return_html_element_if_node(self.lua.lua2python(lua_table.serialize(lua_table)))
+                retval = self.element.return_html_element_if_node(
+                    self.lua.lua2python(lua_table.to_table(lua_table))
+                )
             except (TypeError, AttributeError):
-                serialized = self.lua.lua2python(lua_table)
+                retval = self.lua.lua2python(lua_table)
             except:
-                serialized = lua_table
+                retval = lua_table
 
-            return serialized
+            return retval
 
-        args = map(try_to_serialize, args)
+        args = map(try_to_create, args)
         return meth(self, *args, **kwargs)
 
-    return unpack_exposed_elements
+    return create_html_elements
+
 
 
 class _ExposedElement(BaseExposedObject):
@@ -1490,7 +1493,7 @@ class _ExposedElement(BaseExposedObject):
                             cls.HTMLELEMENT_METHODS
 
         for method_name in available_methods:
-            @unpack_elements
+            @create_html_elements_for_nodes
             @command(table_argument=True, decode_arguments=False)
             def call_method(self, *args, method_name=method_name):
                     return cls.private_node_method(self, method_name, *args)
