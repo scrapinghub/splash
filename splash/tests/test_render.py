@@ -970,20 +970,21 @@ class RenderJpegTest(Base.RenderTest):
         img = self.assertJpeg(r, width=1500, height=500)
         # There's no way to detect exact quality number from the response, but
         # quality number is reflected in quantization tables, so we can check them
-        self.assertEqual(img.quantization[0], array('b', [
+        self.assertEqual(img.quantization[0].tostring(), array('b', [
             80, 55, 60, 70, 60, 50, 80, 70, 65, 70, 90, 85, 80, 95, 120, -56, -126, 120,
             110, 110, 120, -11, -81, -71, -111, -56, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-        ]))
+        ]).tostring())
+
         # There's no way to detect exact quality number from the response, but
         # quality number is reflected in quantization tables, so we can check them
-        self.assertEqual(img.quantization[1], array('b', [
+        self.assertEqual(img.quantization[1].tostring(), array('b', [
             85, 90, 90, 120, 105, 120, -21, -126, -126, -21, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1
-        ]))
+        ]).tostring())
 
     def test_range_checks(self):
         for arg in ('width', 'height'):
