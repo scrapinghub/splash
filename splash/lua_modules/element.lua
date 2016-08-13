@@ -69,6 +69,10 @@ local element_index = Element.__index
 local element_newindex = Element.__newindex
 
 Element.__index = function(self, index)
+  if index == 'node' then
+    return self
+  end
+
   if index == 'style' then
     local py_element_style = self:_get_style()
     return ElementStyle._create(py_element_style)
@@ -83,6 +87,10 @@ Element.__index = function(self, index)
 end
 
 Element.__newindex = function(self, index, value)
+  if index == 'node' then
+    error("Cannot set node field of the elmeent" )
+  end
+
   if string.sub(index, 1, 2) == 'on' then
     local event_name = get_event_name(index)
     return self:_set_event_handler(event_name, value)

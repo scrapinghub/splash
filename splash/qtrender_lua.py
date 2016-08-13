@@ -1341,7 +1341,6 @@ def create_html_elements_for_nodes(meth):
     return create_html_elements
 
 
-
 class _ExposedElement(BaseExposedObject):
     FLAG_EXCEPTIONS = [DOMError]
     _attribute_whitelist = ['inner_id']
@@ -1469,10 +1468,9 @@ class _ExposedElement(BaseExposedObject):
             @lua_property(property_name)
             @returns_self_type
             @command()
+            @rename('get_' + property_name)
             def get_property(self, property_name=property_name):
                 return cls._node_property(self, property_name)
-
-            get_property.__name__ = 'get_' + property_name
 
             setattr(cls, 'get_' + property_name, get_property)
 
@@ -1483,8 +1481,6 @@ class _ExposedElement(BaseExposedObject):
                 @rename('set_' + property_name)
                 def set_property(self, value, property_name=property_name):
                     return cls._set_node_property(self, property_name, value)
-
-                set_property.__name__ = 'set_' + property_name
 
                 setattr(cls, 'set_' + property_name, set_property)
 

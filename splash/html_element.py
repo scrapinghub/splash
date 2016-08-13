@@ -6,6 +6,7 @@ from splash.casperjs_utils import (
     FIELD_VALUE_JS,
     FORM_VALUES_JS
 )
+from functools import wraps
 
 DIMENSIONS_JS_FUNC = """
 (function(elem) {
@@ -19,6 +20,15 @@ FETCH_TEXT_JS_FUNC = """
     return elem.textContent || elem.innerText || elem.value || '';
 })(%s)
 """
+
+
+def empty_strings_as_none(meth):
+    @wraps(meth)
+    def change_return_value_to_none_for_empty_string(*args, **kwargs):
+        retval = meth(*args, **kwargs)
+        return None if retval == '' else retval
+
+    return change_return_value_to_none_for_empty_string
 
 
 class HTMLElement(object):
@@ -90,6 +100,7 @@ class HTMLElement(object):
         except JsError:
             return False
 
+    @empty_strings_as_none
     def node_property(self, property_name):
         """ Return value of the specified property of the element """
         result = self.tab.evaljs(u"{element}[{property}]".format(
@@ -98,6 +109,7 @@ class HTMLElement(object):
         ))
         return self.return_html_element_if_node(result)
 
+    @empty_strings_as_none
     def set_node_property(self, property_name, property_value):
         """ Set value of the specified property of the element """
         result = self.tab.evaljs(u"{element}[{property}] = {value}".format(
@@ -125,6 +137,7 @@ class HTMLElement(object):
     def node_method(self, method_name):
         """ Return function which will call the specified method of the element """
 
+        @empty_strings_as_none
         def call(*args):
             result = self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,

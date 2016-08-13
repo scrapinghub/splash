@@ -748,7 +748,6 @@ VariousElementsPage = _html_resource("""
 """)
 
 
-
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
         code = request.args[b'code'][0].decode('utf-8')

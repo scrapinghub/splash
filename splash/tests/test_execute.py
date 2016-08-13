@@ -4353,7 +4353,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local called = 0
 
             local button = splash:select('button')
-            button.onclick = function(event)
+            button.node.onclick = function(event)
                 event:preventDefault()
                 called = called + 1
                 x = event.clientX
@@ -4390,7 +4390,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local lua_properties = {}
 
             for i,v in ipairs(properties) do
-                lua_properties[v] = element[v]
+                lua_properties[v] = element.node[v]
             end
 
             return lua_properties
@@ -4416,7 +4416,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local properties = splash.args.properties;
             local element = splash:select('#clickMe')
 
-            element.className = 'my-class'
+            element.node.className = 'my-class'
 
             return splash:evaljs('document.querySelector("#clickMe").className')
         end
@@ -4436,8 +4436,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             local ids = {}
 
             while el do
-                table.insert(ids, el.id)
-                el = el.nextSibling
+                table.insert(ids, el.node.id)
+                el = el.node.nextSibling
             end
 
             return treat.as_array(ids)
@@ -4458,9 +4458,9 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local clickMe = splash:select('#clickMe')
 
-            clickMe:click()
-            clickMe:click()
-            clickMe:click()
+            clickMe.node:click()
+            clickMe.node:click()
+            clickMe.node:click()
 
             assert(splash:wait(0))
 
@@ -4480,7 +4480,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local title = splash:select('#title')
-            title.style.display = 'block';
+            title.node.style.display = 'block';
 
             local styles = title:get_styles()
 
