@@ -3952,11 +3952,11 @@ class HTMLElementTest(BaseLuaRenderTest):
             local title = splash:select('.title')
 
             return {
-                p=p:node_property('nodeName'):lower(),
-                form=form:node_property('nodeName'):lower(),
-                username=username:node_property('nodeName'):lower(),
-                password=password:node_property('nodeName'):lower(),
-                title=title:node_property('nodeName'):lower(),
+                p=p.node.nodeName:lower(),
+                form=form.node.nodeName:lower(),
+                username=username.node.nodeName:lower(),
+                password=password.node.nodeName:lower(),
+                title=title.node.nodeName:lower(),
             }
         end
         """, {"url": self.mockurl("various-elements")})
@@ -3985,48 +3985,6 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 400)
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertEqual(err["info"]["splash_method"], "select")
-
-    @unittest.skip('Not Implemented')
-    def test_node_property_returns_element(self):
-        resp = self.request_lua("""
-        function main(splash)
-            assert(splash:go(splash.args.url))
-            assert(splash:wait(0.1))
-
-            local p = splash:select('p')
-            local parent = p:node_property('parentNode')
-            local remove = parent:node_method('remove')
-
-            remove()
-
-            return p:exists()
-        end
-        """, {"url": self.mockurl("various-elements")})
-
-        self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), False)
-
-    @unittest.skip('Not Implemented')
-    def test_flag(self):
-        resp = self.request_lua("""
-        function main(splash)
-              assert(splash:go(splash.args.url))
-            assert(splash:wait(0.1))
-
-            local p = splash:select('p')
-            local ok, parent = p:node_property('parentNode')
-            local ok, remove = parent:node_method('remove')
-
-            remove()
-
-            local ok, info = p:info()
-
-            return ok, info
-        end
-        """, {"url": self.mockurl("various-elements")})
-
-        self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), [False, "DOMError({'message': 'Element no longer exists in DOM'},)"])
 
     def test_exists(self):
         resp = self.request_lua("""
@@ -4363,6 +4321,25 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "admin")
 
+    def test_fill(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('#login')
+            local values = { username="user1", password="mypass" }
+
+            assert(form:fill(values))
+
+            local ok, values = assert(form:form_values())
+            return values
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'username': 'user1', 'password': 'mypass'})
+
     def test_send_keys(self):
         resp = self.request_lua("""
         function main(splash)
@@ -4450,6 +4427,38 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'None')
+
+    def test_png_with_pad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:png()
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:png{pad={5, 10, 20, 30}})
+            local bounds = left:get_bounds()
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        pad = (5, -10, 20, 30)
+        region_size = 1024 // 2 + (pad[0] + pad[2]), 768 + (pad[1] + pad[3])
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"] - pad[0], bounds["top"] - pad[1], bounds["right"] + pad[2], bounds["bottom"] + pad[3])
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
 
     def test_event_handlers(self):
         resp = self.request_lua("""

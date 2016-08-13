@@ -689,7 +689,7 @@ class Splash(BaseExposedObject):
             width = int(width)
         if height is not None:
             height = int(height)
-        region = self._validate_region(region)
+        region = self.validate_region(region)
         result = self.tab.png(width, height, b64=False, render_all=render_all,
                               scale_method=scale_method, region=region)
         if not result:
@@ -706,7 +706,7 @@ class Splash(BaseExposedObject):
         if quality is not None:
             quality = int(quality)
 
-        region = self._validate_region(region)
+        region = self.validate_region(region)
         result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
                                scale_method=scale_method, quality=quality,
                                region=region)
@@ -714,15 +714,16 @@ class Splash(BaseExposedObject):
             return None
         return BinaryCapsule(result, 'image/jpeg')
 
-    def _validate_region(self, region):
+    @staticmethod
+    def validate_region(region, var_name="region"):
         if region is not None:
             try:
                 if isinstance(region, dict):
                     region = [region[i] for i in range(1, 5)]
                 region = tuple(int(region[i]) for i in range(4))
             except Exception:
-                raise ScriptError("region must be a table containing 4 numbers"
-                                  " {left, top, right, bottom} ")
+                raise ScriptError("%s must be a table containing 4 numbers"
+                                  " {left, top, right, bottom} " % var_name)
         return region
 
     @command()
@@ -1393,8 +1394,9 @@ class _ExposedElement(BaseExposedObject):
         ('firstChild', True),
         ('lastChild', True),
         ('nextSibling', True),
+        ('nodeName', True),
         ('nodeType', True),
-        ('nodeValue', True),
+        ('nodeValue', False),
         ('ownerDocument', True),
         ('parentNode', True),
         ('parentElement', True),
@@ -1491,6 +1493,7 @@ class _ExposedElement(BaseExposedObject):
 
         for method_name in available_methods:
             @create_html_elements_for_nodes
+            @returns_self_type
             @command(table_argument=True, decode_arguments=False)
             def call_method(self, *args, method_name=method_name):
                     return cls._node_method(self, method_name, *args)
@@ -1561,11 +1564,6 @@ class _ExposedElement(BaseExposedObject):
 
         self.element.set_event_handler("on" + event_name, run_coro)
 
-    @returns_self_type
-    @command()
-    def node_property(self, property_name):
-        return self._node_property(property_name)
-
     @lua_property('inner_id')
     @command()
     def get_inner_id(self):
@@ -1620,20 +1618,23 @@ class _ExposedElement(BaseExposedObject):
         return self.element.get_bounds()
 
     @command(errors_as_flags=True)
-    def png(self, width=None, height=None, scale_method=None):
+    def png(self, width=None, height=None, scale_method=None, pad=None):
         if width is not None:
             width = int(width)
         if height is not None:
             height = int(height)
 
-        result = self.element.png(width, height, scale_method=scale_method)
+        if pad is not None and isinstance(pad, (int, float)):
+            pad = (pad, pad, pad, pad)
+        pad = self.splash.validate_region(pad, 'pad')
+        result = self.element.png(width, height, scale_method=scale_method, pad=pad)
 
         if not result:
             return None
         return BinaryCapsule(result, 'image/png')
 
     @command(errors_as_flags=True)
-    def jpeg(self, width=None, height=None, scale_method=None, quality=None):
+    def jpeg(self, width=None, height=None, scale_method=None, quality=None, pad=None):
         if width is not None:
             width = int(width)
         if height is not None:
@@ -1641,7 +1642,10 @@ class _ExposedElement(BaseExposedObject):
         if quality is not None:
             quality = int(quality)
 
-        result = self.element.jpeg(width, height, scale_method=scale_method, quality=quality)
+        if pad is not None and isinstance(pad, (int, float)):
+            pad = (pad, pad, pad, pad)
+        pad = self.splash.validate_region(pad, 'pad')
+        result = self.element.jpeg(width, height, scale_method=scale_method, quality=quality, pad=pad)
 
         if not result:
             return None
@@ -1667,6 +1671,10 @@ class _ExposedElement(BaseExposedObject):
     def form_values(self):
         return self.element.form_values()
 
+    @command(errors_as_flags=True, table_argument=True)
+    def fill(self, values):
+        return self.element.fill(values)
+
     @command(errors_as_flags=True)
     def send_keys(self, text):
         return self.element.send_keys(text)
@@ -1674,6 +1682,7 @@ class _ExposedElement(BaseExposedObject):
     @command(errors_as_flags=True)
     def send_text(self, text):
         return self.element.send_text(text)
+
 
 _ExposedElement.init_properties()
 _ExposedElement.init_methods()

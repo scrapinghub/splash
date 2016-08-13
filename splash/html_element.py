@@ -21,6 +21,18 @@ FETCH_TEXT_JS_FUNC = """
 })(%s)
 """
 
+FILL_FORM_VALUES_JS = """
+function fill(form, values) {
+    Object.keys(values).forEach(function(name) {
+        var input = form.querySelector("input[name='" + name + "']")
+            || form.querySelector("select[name='" + name + "']")
+            || form.querySelector("textarea[name='" + name + "']");
+
+        input && (input.value = values[name]);
+    });
+}
+"""
+
 
 def empty_strings_as_none(meth):
     @wraps(meth)
@@ -74,23 +86,6 @@ class HTMLElement(object):
             return HTMLElement(self.tab, self.storage, self.event_handlers_storage, self.events_storage, result)
 
         return result
-
-    def assert_editable(self):
-        """ Raise exception if the element doesn't accept user input """
-        info = self.info()
-        tag = info["nodeName"].lower()
-        type = info["attributes"].get("type")
-        supported = ["color", "date", "datetime", "datetime-local", "email",
-                     "hidden", "month", "number", "password", "range", "search",
-                     "tel", "text", "time", "url", "week"]
-        is_textarea = tag == "textarea"
-        is_valid_input = tag == "input" and type in supported
-        is_contenteditable = info["attributes"].get("contenteditable") is not None
-
-        if not (is_textarea or is_valid_input or is_contenteditable):
-            raise DOMError({
-                'message': "Node should be editable"
-            })
 
     def exists(self):
         """ Return flag indicating whether element is in DOM """
@@ -188,8 +183,15 @@ class HTMLElement(object):
         """ Return bounding client rectangle of the element"""
         return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js, result_protection=False)
 
-    def png(self, width=None, height=None, scale_method=None):
-        """ Return screenshot of the element in PNG format """
+    def png(self, width=None, height=None, scale_method=None, pad=None):
+        """ Return screenshot of the element in PNG format
+
+            Optional `pad` can be provided which can be in two formats:
+              - integer containing amount of pad for all sides (top, left, bottom, right)
+              - tuple with `left`, `top`, `right`, `bottom` integer values for padding
+
+            Padding value can be negative which means that the image will be cropped.
+        """
         self.assert_element_exists()
 
         if not self.visible():
@@ -197,9 +199,15 @@ class HTMLElement(object):
 
         bounds = self.get_bounds()
         region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
+
+        if pad:
+            if isinstance(pad, float):
+                pad = (pad, pad, pad, pad)
+            region = (region[0] - pad[0], region[1] - pad[0], region[2] + pad[2], region[3] + pad[3])
+
         return self.tab.png(width, height, region=region, scale_method=scale_method)
 
-    def jpeg(self, width=None, height=None, scale_method=None, quality=None):
+    def jpeg(self, width=None, height=None, scale_method=None, quality=None, pad=None):
         """ Return screenshot of the element in JPEG format """
         self.assert_element_exists()
 
@@ -208,6 +216,12 @@ class HTMLElement(object):
 
         bounds = self.get_bounds()
         region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
+
+        if pad:
+            if isinstance(pad, float):
+                pad = (pad, pad, pad, pad)
+            region = (region[0] - pad[0], region[1] - pad[0], region[2] + pad[2], region[3] + pad[3])
+
         return self.tab.jpeg(width, height, region=region, scale_method=scale_method, quality=quality)
 
     def visible(self):
@@ -247,17 +261,24 @@ class HTMLElement(object):
             element=self.element_js
         ))
 
+    def fill(self, values, selector_type="names"):
+        """ Fill the values of the element """
+        if selector_type != "names":
+            raise NotImplemented('Only "names" selector type is supported')
+
+        return self.tab.evaljs(u"({fill_form_values_func})({element}, {values})".format(
+            fill_form_values_func=FILL_FORM_VALUES_JS,
+            element=self.element_js,
+            values=escape_js(values)
+        ))
+
     def send_keys(self, text):
         """ Send key events to the element separated by whitespaces """
-        self.assert_editable()
-
         self.mouse_click()
         self.tab.send_keys(text)
 
     def send_text(self, text):
         """ Send text to the element """
-        self.assert_editable()
-
         self.mouse_click()
         self.tab.send_text(text)
 
