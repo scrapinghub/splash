@@ -11,7 +11,7 @@ from functools import wraps
 DIMENSIONS_JS_FUNC = """
 (function(elem) {
     var rect = elem.getClientRects()[0];
-    return {"x":rect.left, "y": rect.top}
+    return {"x":rect.left, "y": rect.top, "width": rect.width, "height": rect.height}
 })(%s)
 """
 
@@ -148,23 +148,37 @@ class HTMLElement(object):
 
         return call
 
-    def mouse_click(self, button="left"):
+    def mouse_click(self, x=0, y=0, button="left"):
         """ Click on the element """
         self.assert_element_exists()
         dimensions = self.tab.evaljs(
             DIMENSIONS_JS_FUNC % self.element_js,
         )
 
-        self.tab.mouse_click(dimensions["x"], dimensions["y"], button)
+        in_bounds = 0 <= x < dimensions["width"] and 0 <= y < dimensions["height"]
+        if not in_bounds:
+            raise DOMError({
+                'message': "Cannot click outside of the element",
+                'method': "mouse_click",
+            })
 
-    def mouse_hover(self):
+        self.tab.mouse_click(dimensions["x"] + x, dimensions["y"] + y, button)
+
+    def mouse_hover(self, x=0, y=0):
         """ Hover over the element """
         self.assert_element_exists()
         dimensions = self.tab.evaljs(
             DIMENSIONS_JS_FUNC % self.element_js,
         )
 
-        self.tab.mouse_hover(dimensions["x"], dimensions["y"])
+        in_bounds = 0 <= x < dimensions["width"] and 0 <= y < dimensions["height"]
+        if not in_bounds:
+            raise DOMError({
+                'message': "Cannot hover outside of the element",
+                'method': "mouse_hover",
+            })
+
+        self.tab.mouse_hover(dimensions["x"] + x, dimensions["y"] + y)
 
     def get_styles(self):
         """ Return computed styles of the element """

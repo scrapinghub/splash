@@ -89,7 +89,7 @@ def rename(name):
 
 
 def command(table_argument=False, sets_callback=False,
-            decode_arguments=True, flag=False):
+            decode_arguments=True, errors_as_flags=False):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
@@ -115,7 +115,7 @@ def command(table_argument=False, sets_callback=False,
             can_raise(
                 emits_lua_objects(meth)
             ),
-            flag
+            errors_as_flags
         )
         meth._is_command = True
         meth._sets_callback = sets_callback
@@ -239,7 +239,7 @@ def add_flag(tuple, flag):
     return new_tuple
 
 
-def exceptions_as_return_values(meth, flag=False):
+def exceptions_as_return_values(meth, errors_as_flags=False):
     """Decorator for allowing Python exceptions to be caught from Lua.
 
     TODO: this decorator is the last one on the way from Python to Lua and thus
@@ -255,10 +255,10 @@ def exceptions_as_return_values(meth, flag=False):
                 res = res.result
             else:
                 res = (b'return',) + ensure_tuple(res)
-            if flag:
+            if errors_as_flags:
                 res = add_flag(res, True)
         except Exception as e:
-            if flag and self.FLAG_EXCEPTIONS is not None \
+            if errors_as_flags and self.FLAG_EXCEPTIONS is not None \
                     and any(isinstance(e, x) for x in self.FLAG_EXCEPTIONS):
                 res = (b'return', False, repr(e).encode('utf-8'))
             else:
@@ -1575,13 +1575,41 @@ class _ExposedElement(BaseExposedObject):
     def exists(self):
         return self.element.exists()
 
-    @command(flag=True)
-    def mouse_click(self):
-        self.element.mouse_click()
+    @command(errors_as_flags=True)
+    def mouse_click(self, x=0, y=0):
+        if not isinstance(x, (float, int)):
+            raise ScriptError({
+                "argument": "x",
+                "message": "element:mouse_click x coordinate must be a number",
+                "splash_method": "mouse_click",
+            })
 
-    @command(flag=True)
-    def mouse_hover(self):
-        self.element.mouse_hover()
+        if not isinstance(y, (float, int)):
+            raise ScriptError({
+                "argument": "y",
+                "message": "element:mouse_click y coordinate must be a number",
+                "splash_method": "mouse_click",
+            })
+
+        self.element.mouse_click(float(x), float(y))
+
+    @command(errors_as_flags=True)
+    def mouse_hover(self, x=0, y=0):
+        if not isinstance(x, (float, int)):
+            raise ScriptError({
+                "argument": "x",
+                "message": "element:mouse_hover x coordinate must be a number",
+                "splash_method": "mouse_hover",
+            })
+
+        if not isinstance(y, (float, int)):
+            raise ScriptError({
+                "argument": "y",
+                "message": "element:mouse_hover y coordinate must be a number",
+                "splash_method": "mouse_hover",
+            })
+
+        self.element.mouse_hover(float(x), float(y))
 
     @command()
     def get_styles(self):
@@ -1591,7 +1619,7 @@ class _ExposedElement(BaseExposedObject):
     def get_bounds(self):
         return self.element.get_bounds()
 
-    @command(flag=True)
+    @command(errors_as_flags=True)
     def png(self, width=None, height=None, scale_method=None):
         if width is not None:
             width = int(width)
@@ -1604,7 +1632,7 @@ class _ExposedElement(BaseExposedObject):
             return None
         return BinaryCapsule(result, 'image/png')
 
-    @command(flag=True)
+    @command(errors_as_flags=True)
     def jpeg(self, width=None, height=None, scale_method=None, quality=None):
         if width is not None:
             width = int(width)
@@ -1631,19 +1659,19 @@ class _ExposedElement(BaseExposedObject):
     def info(self):
         return self.element.info()
 
-    @command(flag=True)
+    @command(errors_as_flags=True)
     def field_value(self):
         return self.element.field_value()
 
-    @command(flag=True)
+    @command(errors_as_flags=True)
     def form_values(self):
         return self.element.form_values()
 
-    @command(flag=True)
+    @command(errors_as_flags=True)
     def send_keys(self, text):
         return self.element.send_keys(text)
 
-    @command(flag=True)
+    @command(errors_as_flags=True)
     def send_text(self, text):
         return self.element.send_text(text)
 

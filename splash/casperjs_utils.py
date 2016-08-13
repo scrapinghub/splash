@@ -1,3 +1,5 @@
+# Source: https://github.com/casperjs/casperjs/blob/master/modules/clientutils.js
+#
 # Copyright (c) 2011-2015 Nicolas Perriault
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy

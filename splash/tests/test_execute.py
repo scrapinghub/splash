@@ -4050,46 +4050,155 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_mouse_click(self):
         resp = self.request_lua("""
+        local treat = require('treat')
         function main(splash)
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
 
-            local clickMe = splash:select('#clickMe')
+            local body = splash:select('body')
+            local clicked_points = {}
 
-            assert(clickMe:mouse_click())
-            assert(clickMe:mouse_click())
-            assert(clickMe:mouse_click())
+            body.node.onclick = function(event)
+             table.insert(clicked_points, {x=event.clientX, y=event.clientY})
+            end
+
+            assert(body:mouse_click(0, 0))
+            assert(body:mouse_click(5, 10))
+            assert(body:mouse_click(20, 40))
 
             assert(splash:wait(0))
 
-            return clickMe:fetch_text()
+            return treat.as_array(clicked_points)
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "3")
+        self.assertEqual(resp.json(), [
+            {'x': 0, 'y': 0}, {'x': 5, 'y': 10}, {'x': 20, 'y': 40}
+        ])
 
-    @unittest.skip('Not Implemented')
-    def test_mouse_hover(self):
+    def test_mouse_click_bad_x_argument(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
 
-            local hoverMe = splash:select('#hoverMe')
+            local body = splash:select('body')
 
-            assert(hoverMe:mouse_hover())
-            assert(hoverMe:mouse_hover())
-            assert(hoverMe:mouse_hover())
+            assert(body:mouse_click('not a number', 0))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='x coordinate must be a number')
+        self.assertEqual(err['info']['splash_method'], 'mouse_click')
+
+    def test_mouse_click_bad_y_argument(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+
+            assert(body:mouse_click(12, 'not a number'))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='y coordinate must be a number')
+        self.assertEqual(err['info']['splash_method'], 'mouse_click')
+
+    def test_mouse_click_out_of_bounds(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+
+            assert(body:mouse_click(100000000, 100000000))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                                     message='Cannot click outside of the element')
+
+    def test_mouse_hover(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            local hovered_points = {}
+
+            body.node.onmousemove = function(event)
+             table.insert(hovered_points, {x=event.clientX, y=event.clientY})
+            end
+
+            assert(body:mouse_hover(0, 0))
+            assert(body:mouse_hover(5, 10))
+            assert(body:mouse_hover(20, 40))
 
             assert(splash:wait(0))
 
-            return hoverMe:fetch_text()
+            return treat.as_array(hovered_points)
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "3")
+        self.assertEqual(resp.json(), [
+            {'x': 0, 'y': 0}, {'x': 5, 'y': 10}, {'x': 20, 'y': 40}
+        ])
+
+    def test_mouse_hover_bad_x_argument(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+
+            assert(body:mouse_hover('not a number', 0))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='x coordinate must be a number')
+        self.assertEqual(err['info']['splash_method'], 'mouse_hover')
+
+    def test_mouse_hover_bad_y_argument(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+
+            assert(body:mouse_hover(12, 'not a number'))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='y coordinate must be a number')
+        self.assertEqual(err['info']['splash_method'], 'mouse_hover')
+
+    def test_mouse_hover_out_of_bounds(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+
+            assert(body:mouse_hover(100000000, 100000000))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message='Cannot hover outside of the element')
 
     def test_get_styles(self):
         resp = self.request_lua("""
@@ -4371,7 +4480,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {"called": 2, "x": 10, "y": 10, "prevented": True})
+        self.assertEqual(resp.json(), {"called": 2, "x": 2, "y": 2, "prevented": True})
 
     def test_element_properties_getters(self):
         resp = self.request_lua("""

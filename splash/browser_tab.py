@@ -1169,7 +1169,7 @@ class _BrowserTabLogger(object):
 
 class ElementsStorage(QObject):
     def __init__(self, parent):
-        self.name = str(uuid.uuid1())
+        self.name = self.get_id()
         super(ElementsStorage, self).__init__(parent)
 
     @pyqtSlot(name="getId", result=str)

@@ -725,6 +725,11 @@ KeyUpDownEventLoggerPage = _html_resource("""
 
 VariousElementsPage = _html_resource("""
 <html>
+<head>
+<style>
+  html, body { margin: 0; padding: 0; }
+</style>
+</head>
 <body>
 <button id="showTitleBtn" type="button" onclick="document.querySelector('.title').style.display = 'block'">Click me</button>
 <h1 id="title" class="title" style="display: none ">Title</h1>
