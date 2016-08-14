@@ -4067,21 +4067,6 @@ class HTMLElementTest(BaseLuaRenderTest):
                                      message='y coordinate must be a number')
         self.assertEqual(err['info']['splash_method'], 'mouse_click')
 
-    def test_mouse_click_out_of_bounds(self):
-        resp = self.request_lua("""
-        function main(splash)
-            assert(splash:go(splash.args.url))
-            assert(splash:wait(0.1))
-
-            local body = splash:select('body')
-
-            assert(body:mouse_click(100000000, 100000000))
-        end
-        """, {"url": self.mockurl("various-elements")})
-
-        self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                                     message='Cannot click outside of the element')
-
     def test_mouse_hover(self):
         resp = self.request_lua("""
         local treat = require('treat')
@@ -4142,21 +4127,6 @@ class HTMLElementTest(BaseLuaRenderTest):
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                      message='y coordinate must be a number')
         self.assertEqual(err['info']['splash_method'], 'mouse_hover')
-
-    def test_mouse_hover_out_of_bounds(self):
-        resp = self.request_lua("""
-        function main(splash)
-            assert(splash:go(splash.args.url))
-            assert(splash:wait(0.1))
-
-            local body = splash:select('body')
-
-            assert(body:mouse_hover(100000000, 100000000))
-        end
-        """, {"url": self.mockurl("various-elements")})
-
-        self.assertScriptError(resp, ScriptError.LUA_ERROR,
-                               message='Cannot hover outside of the element')
 
     def test_get_styles(self):
         resp = self.request_lua("""
@@ -4439,14 +4409,14 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:png()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:png{pad={5, 10, 20, 30}})
+            local ok, left_shot = assert(left:png{pad={-5, 10, -20, -30}})
             local bounds = left:get_bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
         """, {"url": self.mockurl("red-green")})
 
-        pad = (5, -10, 20, 30)
+        pad = (-5, 10, -20, -30)
         region_size = 1024 // 2 + (pad[0] + pad[2]), 768 + (pad[1] + pad[3])
 
         self.assertStatusCode(resp, 200)

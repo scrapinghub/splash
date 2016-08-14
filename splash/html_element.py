@@ -150,13 +150,6 @@ class HTMLElement(object):
             DIMENSIONS_JS_FUNC % self.element_js,
         )
 
-        in_bounds = 0 <= x < dimensions["width"] and 0 <= y < dimensions["height"]
-        if not in_bounds:
-            raise DOMError({
-                'message': "Cannot click outside of the element",
-                'method': "mouse_click",
-            })
-
         self.tab.mouse_click(dimensions["x"] + x, dimensions["y"] + y, button)
 
     def mouse_hover(self, x=0, y=0):
@@ -165,13 +158,6 @@ class HTMLElement(object):
         dimensions = self.tab.evaljs(
             DIMENSIONS_JS_FUNC % self.element_js,
         )
-
-        in_bounds = 0 <= x < dimensions["width"] and 0 <= y < dimensions["height"]
-        if not in_bounds:
-            raise DOMError({
-                'message': "Cannot hover outside of the element",
-                'method': "mouse_hover",
-            })
 
         self.tab.mouse_hover(dimensions["x"] + x, dimensions["y"] + y)
 
@@ -203,7 +189,7 @@ class HTMLElement(object):
         if pad:
             if isinstance(pad, float):
                 pad = (pad, pad, pad, pad)
-            region = (region[0] - pad[0], region[1] - pad[0], region[2] + pad[2], region[3] + pad[3])
+            region = (region[0] - pad[0], region[1] - pad[1], region[2] + pad[2], region[3] + pad[3])
 
         return self.tab.png(width, height, region=region, scale_method=scale_method)
 
@@ -220,7 +206,7 @@ class HTMLElement(object):
         if pad:
             if isinstance(pad, float):
                 pad = (pad, pad, pad, pad)
-            region = (region[0] - pad[0], region[1] - pad[0], region[2] + pad[2], region[3] + pad[3])
+            region = (region[0] - pad[0], region[1] - pad[1], region[2] + pad[2], region[3] + pad[3])
 
         return self.tab.jpeg(width, height, region=region, scale_method=scale_method, quality=quality)
 
