@@ -25,7 +25,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii, to_qurl, qt_send_key, qt_send_text)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
-from splash.exceptions import JsError, OneShotCallbackError, ScriptError
+from splash.exceptions import JsError, OneShotCallbackError, ScriptError, DOMError
 from splash.utils import to_bytes
 from splash.jsutils import (
     get_sanitized_result_js,
@@ -952,9 +952,29 @@ class BrowserTab(QObject):
         self._init_js_objects_storage()
 
         js_query = u"document.querySelector({})".format(escape_js(selector))
+        result = self.evaljs(js_query, result_protection=False)
+
+        if result is None or result == "":
+            return None
+
         return HTMLElement(self, self._elements_storage, self._event_handlers_storage,
-                           self._events_storage,
-                           self.evaljs(js_query, result_protection=False))
+                           self._events_storage, result)
+
+    def select_all(self, selector):
+        """ Selects DOM elements and returns a list of instances of `HTMLElement`
+
+        :param selector valid CSS selector
+        :return list of elements
+        """
+        self._init_js_objects_storage()
+
+        js_query = u"document.querySelectorAll({})".format(escape_js(selector))
+        result = self.evaljs(js_query, result_protection=False)
+        if result is None or result == "":
+            return None
+
+        return [HTMLElement(self, self._elements_storage, self._event_handlers_storage,
+                            self._events_storage, el) for el in result]
 
 
 class _SplashHttpClient(QObject):

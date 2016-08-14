@@ -100,20 +100,26 @@ STORE_DOM_ELEMENTS_JS = u"""
 function (elements_storage_name, o) {
   var storage = window[elements_storage_name];
 
-  if (o instanceof Node) {
+  function storeNode(node) {
     var id = storage.getId();
 
     Object.defineProperty(storage, id, {
       configurable: false,
       enumerable: false,
       writable: false,
-      value: o,
+      value: node,
     });
 
     return {
       type: 'node',
       id: id
     };
+  }
+
+  if (o instanceof Node) {
+    return storeNode(o);
+  } else if (o instanceof NodeList) {
+    return Array.prototype.slice.call(o).map(storeNode);
   }
 
   return o;

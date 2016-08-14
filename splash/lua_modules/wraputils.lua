@@ -84,27 +84,6 @@ local function sets_callback(func, storage)
   end
 end
 
-local function is_exposed_object(obj)
-  return obj.is_exposed
-end
-
---
--- A decorator that calls `_create` method of the provided `cls` table
--- if the return value of the function is an exposed object
---
-local function create_new_table_if_needed(func, cls)
-  return function(...)
-    local result = func(...)
-    if type(result) == 'userdata' then
-      local ok, is_exposed = pcall(is_exposed_object, result)
-      if ok and is_exposed then
-        return cls._create(result)
-      end
-    end
-    return result
-  end
-end
-
 local function is_private_name(name)
   -- Method/attribute name is private true if it starts with an underscore.
   return name:sub(1, 1) == "_"
@@ -119,7 +98,7 @@ end
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
-local function setup_commands(py_object, self, cls)
+local function setup_commands(py_object, self)
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -138,10 +117,6 @@ local function setup_commands(py_object, self, cls)
     end
     command = unwraps_python_result(command, nlevels)
 
-    if opts.returns_self_type then
-      command = create_new_table_if_needed(command, cls)
-    end
-
     rawset(self, key, command)
   end
 end
@@ -149,16 +124,12 @@ end
 --
 -- Handle @lua_property decorators.
 --
-local function setup_property_access(py_object, self, cls)
+local function setup_property_access(py_object, self)
   rawset(self, '__getters', {})
   rawset(self, '__setters', {})
 
   for name, opts in pairs(py_object.lua_properties) do
     self.__getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
-
-    if opts.returns_self_type then
-      self.__getters[name] = create_new_table_if_needed(self.__getters[name], cls)
-    end
 
     if opts.setter ~= nil then
       self.__setters[name] = unwraps_python_result(drops_self_argument(py_object[opts.setter]))
@@ -180,8 +151,8 @@ local EXPOSED_OBJ_METATABLE_PLACEHOLDER = '<wrapped object>'
 --
 local function wrap_exposed_object(py_object, private_self, cls)
   setmetatable(private_self, cls)
-  setup_commands(py_object, private_self, cls)
-  setup_property_access(py_object, private_self, cls)
+  setup_commands(py_object, private_self)
+  setup_property_access(py_object, private_self)
 
   -- "Public" metatable that prevents access to private elements and to itself.
   local public_mt = {

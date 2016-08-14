@@ -4561,8 +4561,6 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_element_style(self):
         resp = self.request_lua("""
-        local treat = require('treat')
-
         function main(splash)
             splash:go(splash.args.url)
             splash:wait(0.1)
@@ -4579,3 +4577,83 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'block')
 
+    def test_select_empty(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local el = splash:select('h5')
+
+            if not el then
+                return 'ok'
+            else
+                return 'bad'
+            end
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'ok')
+
+    def test_select_all(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local divs = splash:select_all('div')
+
+            local ids = {}
+            for i,el in ipairs(divs) do
+                ids[i] = el.node.id
+            end
+
+            return treat.as_array(ids)
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe'])
+
+    def test_select_all_empty(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local el = splash:select_all('h5')
+
+            local count = 0
+                for _ in pairs(el) do count = count + 1 end
+            return count
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '0')
+
+    def test_select_returns_elements(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local body = splash:select('body')
+            local divs = body.node:querySelectorAll('div')
+
+            local ids = {}
+            for i,el in ipairs(divs) do
+                ids[i] = el.node.id
+            end
+
+            return treat.as_array(ids)
+        end
+          """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe'])

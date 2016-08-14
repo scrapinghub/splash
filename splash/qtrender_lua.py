@@ -139,12 +139,6 @@ def lua_property(name):
     return decorator
 
 
-def returns_self_type(meth):
-    """ Decorator for marking methods that they can return object with the its type """
-    meth._returns_self_type = True
-    return meth
-
-
 def emits_lua_objects(meth):
     """
     This decorator makes method convert results to
@@ -304,7 +298,6 @@ def get_commands(obj):
         if is_command(value):
             commands[name] = {
                 'sets_callback': getattr(value, '_sets_callback', False),
-                'returns_self_type': getattr(value, '_returns_self_type', False),
             }
     return commands
 
@@ -323,7 +316,6 @@ def get_lua_properties(obj):
 
             lua_properties[property_name] = {
                 'getter': attr_name,
-                'returns_self_type': getattr(value, '_returns_self_type', False),
                 'setter': getattr(value, '_setter_method', None),
             }
     return lua_properties
@@ -1195,12 +1187,29 @@ class Splash(BaseExposedObject):
     @command()
     def _select(self, selector):
         try:
+            result = self.tab.select(selector)
+            if result is None:
+                return None
             return _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
         except (JsError, DOMError):
             raise ScriptError({
                 "message": "cannot select the specified element",
                 "type": ScriptError.SPLASH_LUA_ERROR,
                 "splash_method": "select",
+            })
+
+    @command()
+    def _select_all(self, selector):
+        try:
+            result = self.tab.select_all(selector)
+            if result is None:
+                return None
+            return [_ExposedElement(self.lua, self.exceptions, self, el) for el in result]
+        except (JsError, DOMError):
+            raise ScriptError({
+                "message": "cannot select the specified elements",
+                "type": ScriptError.SPLASH_LUA_ERROR,
+                "splash_method": "select_all",
             })
 
     @command()
@@ -1417,14 +1426,14 @@ class _ExposedElement(BaseExposedObject):
         'getAttributeNS',
         'getBoundingClientRect',
         'getClientRects',
-        # 'getElementsByClassName',
-        # 'getElementsByTagName',
-        # 'getElementsByTagNameNS',
+        'getElementsByClassName',
+        'getElementsByTagName',
+        'getElementsByTagNameNS',
         'hasAttribute',
         'hasAttributeNS',
         'hasAttributes',
         'querySelector',
-        # 'querySelectorAll',
+        'querySelectorAll',
         'releasePointerCapture',
         'remove',
         'removeAttribute',
@@ -1459,7 +1468,10 @@ class _ExposedElement(BaseExposedObject):
         self.splash = splash
         self.inner_id = element.id
         self.event_handlers = {}
+
         super(_ExposedElement, self).__init__(lua, exceptions)
+
+        self.wrapper = self.lua.eval("require('element')")
 
     @classmethod
     def init_properties(cls):
@@ -1468,7 +1480,6 @@ class _ExposedElement(BaseExposedObject):
 
         for (property_name, read_only) in available_properties:
             @lua_property(property_name)
-            @returns_self_type
             @command()
             @rename('get_' + property_name)
             def get_property(self, property_name=property_name):
@@ -1478,7 +1489,6 @@ class _ExposedElement(BaseExposedObject):
 
             if not read_only:
                 @get_property.lua_setter
-                @returns_self_type
                 @command()
                 @rename('set_' + property_name)
                 def set_property(self, value, property_name=property_name):
@@ -1493,7 +1503,6 @@ class _ExposedElement(BaseExposedObject):
 
         for method_name in available_methods:
             @create_html_elements_for_nodes
-            @returns_self_type
             @command(table_argument=True, decode_arguments=False)
             def call_method(self, *args, method_name=method_name):
                     return cls._node_method(self, method_name, *args)
@@ -1502,7 +1511,10 @@ class _ExposedElement(BaseExposedObject):
 
     def return_exposed_element_if_html_element(self, result):
         if isinstance(result, HTMLElement):
-            return _ExposedElement(self.lua, self.exceptions, self.splash, result), True
+            return self.wrapper._create(_ExposedElement(self.lua, self.exceptions, self.splash, result))
+
+        if isinstance(result, list):
+            return [self.return_exposed_element_if_html_element(res) for res in result]
 
         return result
 

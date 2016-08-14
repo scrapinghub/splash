@@ -47,11 +47,6 @@ class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
     def __init__(self, tab, storage, event_handlers_storage, events_storage, node):
-        if not node:
-            raise DOMError({
-                'message': "Cannot find the requested element"
-            })
-
         self.tab = tab
         self.storage = storage
         self.event_handlers_storage = event_handlers_storage
@@ -81,9 +76,12 @@ class HTMLElement(object):
             })
 
     def return_html_element_if_node(self, result):
-        """ Returns a new instance of HTMLElement if the `result.type` is "node" """
+        """ Returns a new instance of HTMLElement if the `result.type` is "node" or list of HTMLElements """
         if isinstance(result, dict) and result.get("type", None) == 'node':
             return HTMLElement(self.tab, self.storage, self.event_handlers_storage, self.events_storage, result)
+
+        if isinstance(result, list):
+            return [self.return_html_element_if_node(res) for res in result]
 
         return result
 
