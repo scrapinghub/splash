@@ -4628,6 +4628,25 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertEqual(element_img.size, region_size)
         self.assertImagesEqual(full_img.crop(region), element_img)
 
+    def test_jpeg_with_width(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:jpeg{width=100, quality=100})
+
+            return left_shot
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertJpeg(resp, 100, 150)
+
     def test_event_handlers(self):
         resp = self.request_lua("""
         function main(splash)
