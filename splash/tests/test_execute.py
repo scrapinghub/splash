@@ -3986,6 +3986,22 @@ class HTMLElementTest(BaseLuaRenderTest):
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertEqual(err["info"]["splash_method"], "select")
 
+    def test_bad_selector_select_all(self):
+        resp = self.request_lua("""
+         function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local elements = splash:select_all('!notaselector')
+
+            return elements:exists()
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 400)
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertEqual(err["info"]["splash_method"], "select_all")
+
     def test_exists(self):
         resp = self.request_lua("""
         function main(splash)
@@ -4066,6 +4082,22 @@ class HTMLElementTest(BaseLuaRenderTest):
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                      message='y coordinate must be a number')
         self.assertEqual(err['info']['splash_method'], 'mouse_click')
+
+    def test_mouse_click_non_existing_element(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('div')
+            body.node:remove()
+
+            assert(body:mouse_click())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 400)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR, message="Element no longer exists in DOM")
 
     def test_mouse_hover(self):
         resp = self.request_lua("""
@@ -4351,7 +4383,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         function main(splash)
             local args = splash.args
 
-            splash:set_viewport_size(1024, 768)
+            splash:set_viewport_size(1024.0, 768.0)
             splash:go(args.url)
             splash:wait(0.1)
 
@@ -4409,6 +4441,38 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:png()
             local left = splash:select('#left')
+            local ok, left_shot = assert(left:png{pad=10})
+            local bounds = left:get_bounds()
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        pad = 10
+        region_size = 1024 // 2 + pad * 2, 768 + pad * 2
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"] - pad, bounds["top"] - pad, bounds["right"] + pad, bounds["bottom"] + pad)
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
+
+    def test_png_with_complex_pad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:png()
+            local left = splash:select('#left')
             local ok, left_shot = assert(left:png{pad={-5, 10, -20, -30}})
             local bounds = left:get_bounds()
 
@@ -4443,6 +4507,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             local button = splash:select('button')
             button.node.onclick = function(event)
                 event:preventDefault()
+                event:stopImmediatePropagation()
+                event:stopPropagation()
                 called = called + 1
                 x = event.clientX
                 y = event.clientY
@@ -4460,6 +4526,61 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"called": 2, "x": 2, "y": 2, "prevented": True})
+
+    def test_event_handlers_bad_event_name(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.on = function(event) end
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='event_name must be specified')
+        self.assertEqual(err['info']['splash_method'], 'set_event_handler')
+
+    def test_event_handlers_bad_handler(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.onclick = 123
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='handler is not a function')
+        self.assertEqual(err['info']['splash_method'], 'set_event_handler')
+
+    def test_event_handlers_error_in_handler(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.onclick = function()
+                error('make some noise')
+            end
+
+            assert(body:mouse_click())
+            assert(splash:wait(1))
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'True')
 
     def test_element_properties_getters(self):
         resp = self.request_lua("""
@@ -4566,16 +4687,17 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local title = splash:select('#title')
+            local display = title.node.style.display;
             title.node.style.display = 'block';
 
             local styles = title:get_styles()
 
-            return styles.display
+            return {old=display, new=styles.display}
         end
           """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, 'block')
+        self.assertEqual(resp.json(), {'old': "none", 'new': "block"})
 
     def test_select_empty(self):
         resp = self.request_lua("""
@@ -4657,3 +4779,18 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe'])
+
+    def test_inner_id(self):
+        resp = self.request_lua("""
+        function main(splash)
+          splash:go(splash.args.url)
+          splash:wait(0.1)
+
+          local body = splash:select('body')
+
+          return body.inner_id
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertTrue(len(resp.text) > 0)

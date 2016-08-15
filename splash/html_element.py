@@ -87,11 +87,8 @@ class HTMLElement(object):
 
     def exists(self):
         """ Return flag indicating whether element is in DOM """
-        try:
-            exists = self.tab.evaljs("document.contains(%s)" % self.element_js)
-            return bool(exists)
-        except JsError:
-            return False
+        exists = self.tab.evaljs("document.contains(%s)" % self.element_js)
+        return bool(exists)
 
     @empty_strings_as_none
     def node_property(self, property_name):

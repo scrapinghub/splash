@@ -970,8 +970,6 @@ class BrowserTab(QObject):
 
         js_query = u"document.querySelectorAll({})".format(escape_js(selector))
         result = self.evaljs(js_query, result_protection=False)
-        if result is None or result == "":
-            return None
 
         return [HTMLElement(self, self._elements_storage, self._event_handlers_storage,
                             self._events_storage, el) for el in result]
@@ -1230,9 +1228,6 @@ class EventHandlersStorage(QObject):
         func_id = str(uuid.uuid1())
         self.storage[func_id] = func
         return func_id
-
-    def remove(self, func_id):
-        del self.storage[func_id]
 
     @pyqtSlot(str, str, 'QVariantMap', name="run")
     def run_function(self, func_id, event_id, event):

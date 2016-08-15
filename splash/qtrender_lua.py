@@ -1202,8 +1202,6 @@ class Splash(BaseExposedObject):
     def _select_all(self, selector):
         try:
             result = self.tab.select_all(selector)
-            if result is None:
-                return None
             return [_ExposedElement(self.lua, self.exceptions, self, el) for el in result]
         except (JsError, DOMError):
             raise ScriptError({
@@ -1539,14 +1537,14 @@ class _ExposedElement(BaseExposedObject):
 
     @command(decode_arguments=False)
     def _set_event_handler(self, event_name, handler):
-        if event_name is None:
+        event_name = self.lua.lua2python(event_name)
+
+        if event_name == "":
             raise ScriptError({
                 "argument": "event_name",
                 "message": "element:set_event_handler event_name must be specified",
                 "splash_method": "set_event_handler",
             })
-
-        event_name = self.lua.lua2python(event_name)
 
         if lupa.lua_type(handler) != 'function':
             raise ScriptError({
@@ -1555,13 +1553,13 @@ class _ExposedElement(BaseExposedObject):
                 "splash_method": "set_event_handler",
             })
 
+        def cleanup(result=None):
+            for handler in run_coro.on_finish:
+                handler()
+
         def log_error(error, event_name=event_name):
             self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
             cleanup()
-
-        def cleanup(result):
-            for handler in run_coro.on_finish:
-                handler()
 
         coro = self.splash.get_coroutine_run_func(
             "element:on" + event_name, handler, return_result=cleanup, return_error=log_error
@@ -1574,11 +1572,6 @@ class _ExposedElement(BaseExposedObject):
         run_coro.on_finish = []
 
         self.element.set_event_handler("on" + event_name, run_coro)
-
-    @lua_property('inner_id')
-    @command()
-    def get_inner_id(self):
-        return self.inner_id
 
     @command()
     def exists(self):
