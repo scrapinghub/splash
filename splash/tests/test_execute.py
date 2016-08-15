@@ -4503,27 +4503,14 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:go(args.url)
             splash:wait(0.1)
 
-            local full = splash:jpeg()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:jpeg())
-            local bounds = left:get_bounds()
-
-            return {full = full, shot = left_shot, bounds = bounds}
+            return left_shot
         end
         """, {"url": self.mockurl("red-green")})
 
-        region_size = 1024 / 2, 768
-
         self.assertStatusCode(resp, 200)
-        out = resp.json()
-        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
-
-        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
-        bounds = out["bounds"]
-        region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
-
-        self.assertEqual(element_img.size, region_size)
-        self.assertImagesEqual(full_img.crop(region), element_img)
+        self.assertJpeg(resp, 1024 // 2, 768)
 
     def test_jpeg_invisible_element(self):
         resp = self.request_lua("""
