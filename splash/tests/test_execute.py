@@ -67,7 +67,7 @@ class MainFunctionTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {
             "mystatus": "ok",
             "number": 5,
-            "float": -0.5,
+            "float": -0.1,
             "obj": {"key": "value"},
             "bool": True,
             "bool2": False,

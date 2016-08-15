@@ -737,7 +737,7 @@ class Splash(BaseExposedObject):
     @command()
     def evaljs(self, snippet):
         try:
-            return self.tab.evaljs(snippet)
+            return self.tab.evaljs(snippet, dom_elements=False)
         except JsError as e:
             info = e.args[0]
             info['type'] = ScriptError.JS_ERROR
