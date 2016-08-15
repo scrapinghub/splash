@@ -156,15 +156,15 @@ class HTMLElement(object):
 
         self.tab.mouse_hover(dimensions["x"] + x, dimensions["y"] + y)
 
-    def get_styles(self):
+    def styles(self):
         """ Return computed styles of the element """
         return self.tab.evaljs("getComputedStyle(%s)" % self.element_js, result_protection=False)
 
-    def get_bounds(self):
+    def bounds(self):
         """ Return bounding client rectangle of the element"""
         return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js, result_protection=False)
 
-    def png(self, width=None, height=None, scale_method=None, pad=None):
+    def png(self, width=None, scale_method=None, pad=None):
         """ Return screenshot of the element in PNG format
 
             Optional `pad` can be provided which can be in two formats:
@@ -178,7 +178,7 @@ class HTMLElement(object):
         if not self.visible():
             return None
 
-        bounds = self.get_bounds()
+        bounds = self.bounds()
         region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
 
         if pad:
@@ -186,16 +186,16 @@ class HTMLElement(object):
                 pad = (pad, pad, pad, pad)
             region = (region[0] - pad[0], region[1] - pad[1], region[2] + pad[2], region[3] + pad[3])
 
-        return self.tab.png(width, height, region=region, scale_method=scale_method)
+        return self.tab.png(width, region=region, scale_method=scale_method)
 
-    def jpeg(self, width=None, height=None, scale_method=None, quality=None, pad=None):
+    def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
         """ Return screenshot of the element in JPEG format """
         self.assert_element_exists()
 
         if not self.visible():
             return None
 
-        bounds = self.get_bounds()
+        bounds = self.bounds()
         region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
 
         if pad:
@@ -203,7 +203,7 @@ class HTMLElement(object):
                 pad = (pad, pad, pad, pad)
             region = (region[0] - pad[0], region[1] - pad[1], region[2] + pad[2], region[3] + pad[3])
 
-        return self.tab.jpeg(width, height, region=region, scale_method=scale_method, quality=quality)
+        return self.tab.jpeg(width, region=region, scale_method=scale_method, quality=quality)
 
     def visible(self):
         """ Return flag indicating whether element is visible """
@@ -213,7 +213,7 @@ class HTMLElement(object):
             element=self.element_js
         ))
 
-    def fetch_text(self):
+    def text(self):
         """ Return text of the element """
         return self.tab.evaljs(FETCH_TEXT_JS_FUNC % self.element_js)
 

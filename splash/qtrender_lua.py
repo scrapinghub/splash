@@ -1614,42 +1614,38 @@ class _ExposedElement(BaseExposedObject):
         self.element.mouse_hover(float(x), float(y))
 
     @command()
-    def get_styles(self):
-        return self.element.get_styles()
+    def styles(self):
+        return self.element.styles()
 
     @command()
-    def get_bounds(self):
-        return self.element.get_bounds()
+    def bounds(self):
+        return self.element.bounds()
 
     @command(errors_as_flags=True)
-    def png(self, width=None, height=None, scale_method=None, pad=None):
+    def png(self, width=None, scale_method=None, pad=None):
         if width is not None:
             width = int(width)
-        if height is not None:
-            height = int(height)
 
         if pad is not None and isinstance(pad, (int, float)):
             pad = (pad, pad, pad, pad)
         pad = self.splash.validate_region(pad, 'pad')
-        result = self.element.png(width, height, scale_method=scale_method, pad=pad)
+        result = self.element.png(width, scale_method=scale_method, pad=pad)
 
         if not result:
             return None
         return BinaryCapsule(result, 'image/png')
 
     @command(errors_as_flags=True)
-    def jpeg(self, width=None, height=None, scale_method=None, quality=None, pad=None):
+    def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
         if width is not None:
             width = int(width)
-        if height is not None:
-            height = int(height)
         if quality is not None:
             quality = int(quality)
 
         if pad is not None and isinstance(pad, (int, float)):
             pad = (pad, pad, pad, pad)
         pad = self.splash.validate_region(pad, 'pad')
-        result = self.element.jpeg(width, height, scale_method=scale_method, quality=quality, pad=pad)
+        result = self.element.jpeg(width, scale_method=scale_method, quality=quality, pad=pad)
 
         if not result:
             return None
@@ -1660,8 +1656,8 @@ class _ExposedElement(BaseExposedObject):
         return self.element.visible()
 
     @command()
-    def fetch_text(self):
-        return self.element.fetch_text()
+    def text(self):
+        return self.element.text()
 
     @command()
     def info(self):

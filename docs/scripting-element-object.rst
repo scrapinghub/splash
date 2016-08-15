@@ -195,7 +195,7 @@ element:mouse_click
 
 Trigger mouse click event on the element.
 
-**Signature:** ``ok, reason = element:mouse_click(x, y)``
+**Signature:** ``ok, reason = element:mouse_click{x=0, y=0}``
 
 **Parameters:**
 
@@ -224,7 +224,7 @@ element:mouse_hover
 
 Trigger mouse hover (JavaScript mouseover) event on the element.
 
-**Signature:** ``ok, reason = element:mouse_hover(x, y)``
+**Signature:** ``ok, reason = element:mouse_hover{x=0, y=0}``
 
 **Parameters:**
 
@@ -246,14 +246,14 @@ reflected in page source you must call :ref:`splash-wait`
 See more about mouse events in :ref:`splash-mouse-click`.
 
 
-.. _splash-element-get-styles:
+.. _splash-element-styles:
 
-element:get_styles
-------------------
+element:styles
+--------------
 
 Return the computed styles of the element.
 
-**Signature:** ``styles = element:get_styles()``
+**Signature:** ``styles = element:styles()``
 
 **Returns:** ``styles`` is a table with computed styles of the element.
 
@@ -265,18 +265,18 @@ Example of getting the font size of the element using this method.
 
     function main(splash)
         local element = splash:select('.element')
-        return element:get_styles()['font-size']
+        return element:styles()['font-size']
     end
 
 
-.. _splash-element-get-bounds:
+.. _splash-element-bounds:
 
-element:get_bounds
-------------------
+element:bounds
+--------------
 
 Return the bounding client rectangle of the element
 
-**Signature:** ``bounds = element:get_bounds()``
+**Signature:** ``bounds = element:bounds()``
 
 **Returns:** ``bounds`` is a table with the client bounding rectangle with the ``top``, ``right``,
 ``bottom`` and ``left`` coordinates.
@@ -289,7 +289,7 @@ Example of getting the bounds of the element.
 
     function main(splash)
         local element = splash:select('.element')
-        return element:get_bounds()
+        return element:bounds()
         -- e.g. bounds is { top = 10, right = 20, bottom = 20, left = 10 }
     end
 
@@ -301,12 +301,11 @@ element:png
 
 Return a screenshot of the element in PNG format
 
-**Signature:** ``ok, shot = element:png{width=nil, height=nil, scale_method='raster', pad=0}``
+**Signature:** ``ok, shot = element:png{width=nil, scale_method='raster', pad=0}``
 
 **Parameters:**
 
 * width - optional, width of a screenshot in pixels;
-* height - optional, height of a screenshot in pixels;
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``;
 * pad - optional, integer or ``{left, top, right, bottom}`` values of padding
@@ -333,12 +332,11 @@ element:jpeg
 
 Return a screenshot of the element in JPEG format
 
-**Signature:** ``ok, shot = element:jpeg{width=nil, height=nil, scale_method='raster', quality=75, region=nil, pad=0}``
+**Signature:** ``ok, shot = element:jpeg{width=nil, scale_method='raster', quality=75, region=nil, pad=0}``
 
 **Parameters:**
 
 * width - optional, width of a screenshot in pixels;
-* height - optional, height of a screenshot in pixels;
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``;
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``;
@@ -374,14 +372,14 @@ the element is visible.
 **Async:** no.
 
 
-.. _splash-element-fetch-text:
+.. _splash-element-text:
 
-element:fetch_text
-------------------
+element:text
+------------
 
 Fetch a text information from the element
 
-**Signature:** ``text = element:fetch_text()``
+**Signature:** ``text = element:text()``
 
 **Returns:** ``text`` is a text content
 of the element.

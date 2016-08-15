@@ -4160,7 +4160,7 @@ class HTMLElementTest(BaseLuaRenderTest):
                                      message='y coordinate must be a number')
         self.assertEqual(err['info']['splash_method'], 'mouse_hover')
 
-    def test_get_styles(self):
+    def test_styles(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
@@ -4168,14 +4168,14 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local title = splash:select('.title')
 
-            return title:get_styles()
+            return title:styles()
         end
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json()["display"], "none")
 
-    def test_get_bounds(self):
+    def test_bounds(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
@@ -4184,8 +4184,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             local block = splash:select('#block')
             local nestedBlock = splash:select('#nestedBlock')
 
-            local blockBounds = block:get_bounds()
-            local nestedBlockBounds = nestedBlock:get_bounds()
+            local blockBounds = block:bounds()
+            local nestedBlockBounds = nestedBlock:bounds()
 
             return {
                 top = nestedBlockBounds.top - blockBounds.top,
@@ -4219,7 +4219,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"before": False, "after": True})
 
-    def text_fetch_text(self):
+    def text_text(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
@@ -4229,9 +4229,9 @@ class HTMLElementTest(BaseLuaRenderTest):
             local block = splash:select('#block')
             local h1 = splash:select('h1')
 
-            local inputText = input:fetch_text()
-            local blockText = block:fetch_text()
-            local h1Text = h1:fetch_text()
+            local inputText = input:text()
+            local blockText = block:text()
+            local h1Text = h1:text()
 
             return { input = inputText, block = blockText, h1 = h1Text }
         end
@@ -4383,14 +4383,14 @@ class HTMLElementTest(BaseLuaRenderTest):
         function main(splash)
             local args = splash.args
 
-            splash:set_viewport_size(1024.0, 768.0)
+            splash:set_viewport_size(1024, 768)
             splash:go(args.url)
             splash:wait(0.1)
 
             local full = splash:png()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:png())
-            local bounds = left:get_bounds()
+            local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
@@ -4442,7 +4442,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local full = splash:png()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:png{pad=10})
-            local bounds = left:get_bounds()
+            local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
@@ -4474,7 +4474,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local full = splash:png()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:png{pad={-5, 10, -20, -30}})
-            local bounds = left:get_bounds()
+            local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
@@ -4494,12 +4494,43 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertEqual(element_img.size, region_size)
         self.assertImagesEqual(full_img.crop(region), element_img)
 
+    def test_png_with_width(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:png()
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:png{width=100})
+            local bounds = left:bounds()
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        region_size = 100, 150
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
+
     def test_jpeg(self):
         resp = self.request_lua("""
         function main(splash)
             local args = splash.args
 
-            splash:set_viewport_size(1024.0, 768.0)
+            splash:set_viewport_size(1024, 768)
             splash:go(args.url)
             splash:wait(0.1)
 
@@ -4545,7 +4576,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local full = splash:jpeg()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:jpeg{pad=-10})
-            local bounds = left:get_bounds()
+            local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
@@ -4577,7 +4608,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local full = splash:jpeg()
             local left = splash:select('#left')
             local ok, left_shot = assert(left:jpeg{pad={-5, -10, -20, -30}})
-            local bounds = left:get_bounds()
+            local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
         end
@@ -4793,7 +4824,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local display = title.node.style.display;
             title.node.style.display = 'block';
 
-            local styles = title:get_styles()
+            local styles = title:styles()
 
             return {old=display, new=styles.display}
         end
