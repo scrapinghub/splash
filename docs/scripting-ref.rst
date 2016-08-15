@@ -2485,13 +2485,76 @@ arguments passed to splash, `username` and `password`.
 splash:select
 -------------
 
-Select HTML element from DOM of the current web page
+Select the first HTML element from DOM of the current web page that matches the specified selector.
 
-**Signature:** ``splash:select(selector)``
+**Signature:** ``element = splash:select(selector)``
 
 **Parameters:**
 
 * selector - valid CSS selector
 
 **Returns:** a :ref:`splash-element`.
+
+**Async:** no.
+
+
+Using :ref:`splash-select` you can get the element that matches your specified CSS selector like using
+`document.querySelector`_ in your browser. The returned element is a :ref:`splash-element` which has many useful
+methods and almost all methods and attributes that element has in JavaScript.
+
+In the following example we return the list of class names of all the siblings of the specified element.
+
+.. code-block:: lua
+
+    local treat = require('treat')
+
+    function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.5))
+
+        local el = splash:select('.element')
+        local hash = {}
+        local classNames = {}
+
+        while el do
+          local classList = el.node.classList
+          if classList then
+            for _, v in ipairs(classList) do
+              if (not hash[v]) then
+                classNames[#classNames + 1] = v
+                hash[v] = true
+              end
+            end
+          end
+
+          el = el.node.nextSibling
+        end
+
+        return treat.as_array(classNames)
+    end
+
+
+.. _document.querySelector: https://en.wikipedia.org/wiki/Cooperative_multitasking
+
+
+.. _splash-select-all:
+
+
+splash:select_all
+-----------------
+
+Select the list of HTML elements from DOM of the current web page that match the specified selector.
+
+**Signature:** ``elements = splash:select_all(selector)``
+
+**Parameters:**
+
+* selector - valid CSS selector
+
+**Returns:** a list of :ref:`splash-element`.
+
+**Async:** no.
+
+This method differs from :ref:`splash-select` by returning *all* the elements in a table that matches the specified selector.
+
 

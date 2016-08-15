@@ -3,19 +3,137 @@
 Element Object
 ==============
 
-Element objects are instanced by :ref:`splash-select`;
+Element objects are created by :ref:`splash-select` and :ref:`splash-select-all`.
 
 .. _splash-element-attributes:
 
 Attributes
 ~~~~~~~~~~
 
+.. _splash-element-node:
+
+element.node
+------------
+
+``element.node`` is a object that contains almost all DOM element attributes and methods.
+
+========================= ========== =============================
+Property Name             Read Only  Comments
+------------------------- ---------- -----------------------------
+accessKey                 No
+------------------------- ---------- -----------------------------
+accessKeyLabel            Yes
+------------------------- ---------- -----------------------------
+contentEditable           No
+------------------------- ---------- -----------------------------
+isContentEditable         Yes
+------------------------- ---------- -----------------------------
+dataset                   Yes
+------------------------- ---------- -----------------------------
+dir                       No
+------------------------- ---------- -----------------------------
+draggable                 No
+------------------------- ---------- -----------------------------
+hidden                    No
+------------------------- ---------- -----------------------------
+lang                      No
+------------------------- ---------- -----------------------------
+offsetHeight              Yes
+------------------------- ---------- -----------------------------
+offsetLeft                Yes
+------------------------- ---------- -----------------------------
+offsetParent              Yes
+------------------------- ---------- -----------------------------
+offsetTop                 Yes
+------------------------- ---------- -----------------------------
+spellcheck                No
+------------------------- ---------- -----------------------------
+style                     No
+------------------------- ---------- -----------------------------
+tabIndex                  No
+------------------------- ---------- -----------------------------
+title                     No
+------------------------- ---------- -----------------------------
+translate                 No
+------------------------- ---------- -----------------------------
+attributes                Yes        returns table of attributes
+------------------------- ---------- -----------------------------
+classList                 Yes        returns table of class names
+------------------------- ---------- -----------------------------
+className                 No
+------------------------- ---------- -----------------------------
+clientHeight              Yes
+------------------------- ---------- -----------------------------
+clientLeft                Yes
+------------------------- ---------- -----------------------------
+clientTop                 Yes
+------------------------- ---------- -----------------------------
+clientWidth               Yes
+------------------------- ---------- -----------------------------
+id                        No
+------------------------- ---------- -----------------------------
+innerHTML                 No
+------------------------- ---------- -----------------------------
+localeName                Yes
+------------------------- ---------- -----------------------------
+namespaceURI              Yes
+------------------------- ---------- -----------------------------
+nextElement               Yes
+------------------------- ---------- -----------------------------
+outerHTML                 No
+------------------------- ---------- -----------------------------
+prefix                    Yes
+------------------------- ---------- -----------------------------
+previousElementSibling    Yes
+------------------------- ---------- -----------------------------
+scrollHeight              Yes
+------------------------- ---------- -----------------------------
+scrollLeft                No
+------------------------- ---------- -----------------------------
+scrollTop                 No
+------------------------- ---------- -----------------------------
+scrollWidth               Yes
+------------------------- ---------- -----------------------------
+tabStop                   No
+------------------------- ---------- -----------------------------
+tagName                   Yes
+------------------------- ---------- -----------------------------
+baseURI                   Yes
+------------------------- ---------- -----------------------------
+childNodes                Yes
+------------------------- ---------- -----------------------------
+firstChild                Yes
+------------------------- ---------- -----------------------------
+lastChild                 Yes
+------------------------- ---------- -----------------------------
+nextSibling               Yes
+------------------------- ---------- -----------------------------
+nodeName                  Yes
+------------------------- ---------- -----------------------------
+nodeType                  Yes
+------------------------- ---------- -----------------------------
+nodeValue                 No
+------------------------- ---------- -----------------------------
+ownerDocument             Yes
+------------------------- ---------- -----------------------------
+parentNode                Yes
+------------------------- ---------- -----------------------------
+parentElement             Yes
+------------------------- ---------- -----------------------------
+previousSibling           Yes
+------------------------- ---------- -----------------------------
+rootNode                  Yes
+------------------------- ---------- -----------------------------
+textContent               No
+========================= ========== =============================
+
+
 The following fields are read-only.
 
-.. _splash-element-id:
+.. _splash-element-inner_id:
 
-element.id
-----------
+element.inner_id
+----------------
 
 Id of the inner representation of the element.
 
@@ -34,8 +152,8 @@ otherwise ``ok`` is ``true`` and the returned value is stored in the second vari
 element:exists
 --------------
 
-Check whether the element exists in DOM. If the element doesn't exist almost all other
-methods will fail.
+Check whether the element exists in DOM. If the element doesn't exist some of the methods will fail raising
+the error flag.
 
 **Signature:** ``exists = element:exists()``
 
@@ -44,83 +162,61 @@ methods will fail.
 **Async:** no.
 
 
-.. _splash-node-property:
-
-element:node_property
----------------------
-
-Return the value of the specified property of the element
-
-**Signature:** ``ok, value = element:node_property(property_name)``
-
-**Parameters:**
-
-* property_name - name of the node property
-
-**Returns:** ``ok, value`` pair. If ``ok`` is nil then error happened during the function
-call; ``value`` provides an information about error type; otherwise ``value`` is a value of
-the specified property
-
-**Async:** no.
-
-
-.. _splash-node-method:
-
-element:node_method
--------------------
-
-Return the callable Lua function which call the specified node method.
-
-**Signature:** ``ok, method = element:node_method(method_name)``
-
-**Parameters:**
-
-* method_name - name of the node method
-
-**Returns:** ``ok, method`` pair. If ``ok`` is nil then error happened during the function
-call; ``method`` provides an information about error type; otherwise ``value`` is a function
-that can be called from Lua to execute node method in page context.
-
-**Async:** no.
-
-See more in :ref:`splash-jsfunc`.
-
-.. note::
-
-    If the specified method returns another HTML element it will be represented as a table with
-    ``type`` property which equals to ``'node'``
-
-
 .. _splash-element-mouse-click:
+
 
 element:mouse_click
 -------------------
 
-Trigger mouse click event on the top-left corner of the element.
+Trigger mouse click event on the element.
 
-**Signature:** ``ok, reason = element:mouse_click()``
+**Signature:** ``ok, reason = element:mouse_click(x, y)``
+
+**Parameters:**
+
+* x - optional, x coordinate relative to the left corner of the element
+* y - optional, y coordinate relative to the top corner of the element
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
 function call; ``reason`` provides an information about error type.
 
 **Async:** no.
+
+If x or y coordinate is not provided they will be set to 0 and the click will be triggered
+on the left-top corner of the element. The coordinates can have a negative value which means
+the click will be triggered outside of the element.
+
+Mouse events are not propagated immediately, to see consequences of click
+reflected in page source you must call :ref:`splash-wait`
 
 See more about mouse events in :ref:`splash-mouse-click`.
 
 
 .. _splash-element-mouse-hover:
 
-element:mouse_click
+element:mouse_hover
 -------------------
 
-Trigger mouse hover (JavaScript mouseover) event on the top-left corner of the element.
+Trigger mouse hover (JavaScript mouseover) event on the element.
 
-**Signature:** ``ok, reason = element:mouse_hover()``
+**Signature:** ``ok, reason = element:mouse_hover(x, y)``
+
+**Parameters:**
+
+* x - optional, x coordinate relative to the left corner of the element
+* y - optional, y coordinate relative to the top corner of the element
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
 function call; ``reason`` provides an information about error type.
 
 **Async:** no.
+
+If x or y coordinate is not provided they will be set to 0 and the click will be triggered
+on the left-top corner of the element. The coordinates can have a negative value which means
+the click will be triggered outside of the element.
+
+Mouse events are not propagated immediately, to see consequences of click
+reflected in page source you must call :ref:`splash-wait`
 
 See more about mouse events in :ref:`splash-mouse-click`.
 
@@ -132,23 +228,19 @@ element:get_styles
 
 Return the computed styles of the element.
 
-**Signature:** ``ok, styles = element:get_styles()``
+**Signature:** ``styles = element:get_styles()``
 
-**Returns:** ``ok, styles`` pair. If ``ok`` is nil then error happened during the
-function call; ``styles`` provides an information about error type; otherwise
-``styles`` is a table with computed styles of the element.
+**Returns:** ``styles`` is a table with computed styles of the element.
 
 **Async:** no.
 
-Example of getting the font size of the element.
+Example of getting the font size of the element using this method.
 
 .. code-block:: lua
 
     function main(splash)
         local element = splash:select('.element')
-        local ok, styles = assert(element:get_styles())
-
-        return styles['font-size']
+        return element:get_styles()['font-size']
     end
 
 
@@ -159,11 +251,9 @@ element:get_bounds
 
 Return the bounding client rectangle of the element
 
-**Signature:** ``ok, styles = element:get_bounds()``
+**Signature:** ``bounds = element:get_bounds()``
 
-**Returns:** ``ok, bounds`` pair. If ``ok`` is nil then error happened during the
-function call; ``bounds`` provides an information about error type; otherwise
-``bounds`` is a table with the client bounding rectangle with the ``top``, ``right``,
+**Returns:** ``bounds`` is a table with the client bounding rectangle with the ``top``, ``right``,
 ``bottom`` and ``left`` coordinates.
 
 **Async:** no.
@@ -174,9 +264,8 @@ Example of getting the bounds of the element.
 
     function main(splash)
         local element = splash:select('.element')
-        local ok, bounds = assert(element:get_bounds())
+        return element:get_bounds()
         -- e.g. bounds is { top = 10, right = 20, bottom = 20, left = 10 }
-        return bounds
     end
 
 
@@ -187,7 +276,7 @@ element:png
 
 Return a screenshot of the element in PNG format
 
-**Signature:** ``ok, shot = element:png{width=nil, height=nil, scale_method='raster'}``
+**Signature:** ``ok, shot = element:png{width=nil, height=nil, scale_method='raster', pad=0}``
 
 **Parameters:**
 
@@ -195,6 +284,7 @@ Return a screenshot of the element in PNG format
 * height - optional, height of a screenshot in pixels;
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``;
+* pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
 **Returns:** ``ok, shot`` pair. If ``ok`` is nil then error happened during the
 function call; ``shot`` provides an information about error type; otherwise
@@ -203,8 +293,12 @@ When the result is empty (e.g. if the element is not visible) ``nil`` is returne
 
 **Async:** no.
 
-See more in :ref:`splash-png`.
+*pad* parameter sets the padding of the resulting image. If it is a single integer then the
+padding from all sides will be equal. If the value of the padding is positive the resulting screenshot
+will be expanded by the specified amount of pixes. And if the value of padding is negative the resulting
+screenshot will be shrunk by the specified amount of pixes.
 
+See more in :ref:`splash-png`.
 
 
 .. _splash-element-jpeg:
@@ -214,7 +308,7 @@ element:jpeg
 
 Return a screenshot of the element in JPEG format
 
-**Signature:** ``ok, shot = element:jpeg{width=nil, height=nil, scale_method='raster', quality=75, region=nil}``
+**Signature:** ``ok, shot = element:jpeg{width=nil, height=nil, scale_method='raster', quality=75, region=nil, pad=0}``
 
 **Parameters:**
 
@@ -223,6 +317,7 @@ Return a screenshot of the element in JPEG format
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``;
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``;
+* pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
 **Returns:** ``ok, shot`` pair. If ``ok`` is nil then error happened during the
 function call; ``shot`` provides an information about error type; otherwise
@@ -230,6 +325,11 @@ function call; ``shot`` provides an information about error type; otherwise
 When the result is empty (e.g. if the element is not visible) ``nil`` is returned.
 
 **Async:** no.
+
+*pad* parameter sets the padding of the resulting image. If it is a single integer then the
+padding from all sides will be equal. If the value of the padding is positive the resulting screenshot
+will be expanded by the specified amount of pixes. And if the value of padding is negative the resulting
+screenshot will be shrunk by the specified amount of pixes.
 
 See more in :ref:`splash-jpeg`.
 
@@ -241,10 +341,9 @@ element:visible
 
 Check whether the element is visible.
 
-**Signature:** ``ok, visible = element:visible()``
+**Signature:** ``visible = element:visible()``
 
-**Returns:** ``ok, visible`` pair. If ``ok`` is nil then error happened during the function
-call; ``visible`` provides an information about error type; otherwise ``visible`` indicated whether
+**Returns:** ``visible`` indicated whether
 the element is visible.
 
 **Async:** no.
@@ -257,10 +356,9 @@ element:fetch_text
 
 Fetch a text information from the element
 
-**Signature:** ``ok, visible = element:fetch_text()``
+**Signature:** ``text = element:fetch_text()``
 
-**Returns:** ``ok, text`` pair. If ``ok`` is nil then error happened during the function call;
-``text`` provides an information about error type; otherwise ``text`` is a text content
+**Returns:** ``text`` is a text content
 of the element.
 
 **Async:** no.
@@ -281,10 +379,9 @@ element:info
 
 Get useful information about the element.
 
-**Signature:** ``ok, info = element:info()``
+**Signature:** ``info = element:info()``
 
-**Returns:** ``ok, info`` pair. If ``ok`` is nil then error happened during the function call;
-``info`` provides an information about error type; otherwise ``info`` is a table with info.
+**Returns:** ``info`` is a table with element info.
 
 **Async:** no.
 
@@ -302,7 +399,7 @@ Info is a table with the following fields:
 * visible - flag representing if the element is visible
 
 
-.. _splash-field-value:
+.. _splash-element-field-value:
 
 element:field_value
 -------------------
@@ -323,7 +420,7 @@ The value can be a
 * boolean - for checkbox input
 
 
-.. _splash-form-values:
+.. _splash-element-form-values:
 
 element:form_values
 -------------------
@@ -339,7 +436,44 @@ or node type is not *form*; ``values`` provides an information about error type;
 **Async:** no.
 
 
-.. _splash-send-keys:
+.. _splash-element-fill:
+
+element:fill
+------------
+
+Fill the form with the provided values
+
+**Signature:** ``ok, reason = element:fill(values)``
+
+**Parameters:**
+
+* values - table with input names as keys and values as input values
+
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
+function call; ``reason`` provides an information about error type.
+
+**Async:** no.
+
+In order to fill your form your inputs must have ``name`` property and this method will
+select those input using that property.
+
+Example of filling the following form:
+
+.. code-block:: html
+
+    <form id="login">
+        <input type="text" name="username" />
+        <input type="password" name="password" />
+    </form>
+
+.. code-block:: lua
+
+    function main(splash)
+        assert(splash:select('.login'):fill({ username="admin", password="pass" }))
+    end
+
+
+.. _splash-element-send-keys:
 
 element:send_keys
 -----------------
@@ -358,14 +492,13 @@ Send keyboard events to the element.
 
 This methods do the following:
 
-* checks whether the selected element is editable
 * clicks on the element
 * send the specified keyboard events
 
 See more about keyboard events in in :ref:`splash-send-keys`.
 
 
-.. _splash-send-text:
+.. _splash-element-send-text:
 
 element:send_text
 -----------------
@@ -384,7 +517,6 @@ Send keyboard events to the element.
 
 This methods do the following:
 
-* checks whether the selected element is editable
 * clicks on the element
 * send the specified text to the element
 
