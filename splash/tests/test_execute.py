@@ -4494,6 +4494,122 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertEqual(element_img.size, region_size)
         self.assertImagesEqual(full_img.crop(region), element_img)
 
+    def test_jpeg(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024.0, 768.0)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:jpeg()
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:jpeg())
+            local bounds = left:get_bounds()
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        region_size = 1024 / 2, 768
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
+
+    def test_jpeg_invisible_element(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local left = splash:select('#left')
+            assert(splash:runjs('document.querySelector("#left").style.visibility = "hidden"'))
+            assert(splash:wait(0))
+            local ok, left_shot = assert(left:jpeg())
+
+            return left_shot
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'None')
+
+    def test_jpeg_with_pad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:jpeg()
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:jpeg{pad=-10})
+            local bounds = left:get_bounds()
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        pad = -10
+        region_size = 1024 // 2 + pad * 2, 768 + pad * 2
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"] - pad, bounds["top"] - pad, bounds["right"] + pad, bounds["bottom"] + pad)
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
+
+    def test_jpeg_with_complex_pad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local full = splash:jpeg()
+            local left = splash:select('#left')
+            local ok, left_shot = assert(left:jpeg{pad={-5, -10, -20, -30}})
+            local bounds = left:get_bounds()
+
+            return {full = full, shot = left_shot, bounds = bounds}
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        pad = (-5, -10, -20, -30)
+        region_size = 1024 // 2 + (pad[0] + pad[2]), 768 + (pad[1] + pad[3])
+
+        self.assertStatusCode(resp, 200)
+        out = resp.json()
+        full_img = Image.open(BytesIO(base64.b64decode(out["full"])))
+
+        element_img = Image.open(BytesIO(base64.b64decode(out["shot"])))
+        bounds = out["bounds"]
+        region = (bounds["left"] - pad[0], bounds["top"] - pad[1], bounds["right"] + pad[2], bounds["bottom"] + pad[3])
+
+        self.assertEqual(element_img.size, region_size)
+        self.assertImagesEqual(full_img.crop(region), element_img)
+
     def test_event_handlers(self):
         resp = self.request_lua("""
         function main(splash)
