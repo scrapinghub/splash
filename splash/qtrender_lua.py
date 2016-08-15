@@ -1419,6 +1419,9 @@ class _ExposedResponse(BaseExposedObject):
         self.request = None
         self._info = None
         self._info_lua = None
+        self._body_binary = None
+        self._content = None
+        self.headers = None
 
     def _on_response_required(self, meth, attr_name):
         raise ScriptError({
