@@ -742,12 +742,11 @@ class Splash(BaseExposedObject):
     def private_jsfunc(self, func):
         return _WrappedJavascriptFunction(self, func)
 
-    def _http_request(self, url, headers, follow_redirects=True, body=None, browser_command="http_get"):
+    def _http_request(self, url, headers, follow_redirects=True, body=None,
+                      browser_command="http_get"):
         if url is None:
-            raise ScriptError({
-                "argument": "url",
-                "message": "'url' is required for splash:{}".format(browser_command)
-            })
+            msg = "'url' is required for splash:{}".format(browser_command)
+            raise ScriptError({"argument": "url", "message": msg})
 
         def callback(reply):
             req = _ExposedRequest.from_reply(self.lua, self.exceptions, reply)
@@ -1065,7 +1064,8 @@ class Splash(BaseExposedObject):
         """
         def _callback(request, operation, outgoing_data):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            req = _ExposedBoundRequest(self.lua, exceptions, request, operation, outgoing_data)
+            req = _ExposedBoundRequest(self.lua, exceptions, request, operation,
+                                       outgoing_data)
             with req.allowed():
                 callback(req)
 
@@ -1088,7 +1088,8 @@ class Splash(BaseExposedObject):
     def private_on_response(self, callback):
         def _callback(reply, har_entry):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            req = _ExposedRequest.from_har(self.lua, exceptions, har_entry['request'])
+            req = _ExposedRequest.from_har(self.lua, exceptions,
+                                           har_entry['request'])
             resp = _ExposedResponse(self.lua, exceptions, reply, req, har_entry,
                                     read_body=False)
             self._objects_to_clear.add(req)
@@ -1188,7 +1189,7 @@ class Splash(BaseExposedObject):
         return self._wrapped
 
     def run_async_command(self, cmd):
-        """ Execute _AsyncBrowserCommand or _AsyncCallbackCommand"""
+        """ Execute _AsyncBrowserCommand or _AsyncCallbackCommand """
         if isinstance(cmd, AsyncBrowserCommand):
             meth = getattr(self.tab, cmd.name)
             return meth(**cmd.kwargs)
@@ -1219,7 +1220,6 @@ class _ExposedTimer(BaseExposedObject):
     """
     Timer object returned by splash:call_later().
     """
-
     def __init__(self, lua, exceptions, timer):
         self.timer = timer
         self.callback_exceptions = []

@@ -95,8 +95,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._default_proxy = self.proxy()
         self.cookiejar = SplashCookieJar(self)
         self.setCookieJar(self.cookiejar)
-
-        self._response_content = {}
+        self._response_content = {}  # requestId => response content
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -151,9 +150,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         reply.error.connect(self._on_reply_error)
         reply.finished.connect(self._on_reply_finished)
-        # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
         reply.readyRead.connect(self._on_reply_ready_read)
-
         reply.metaDataChanged.connect(self._on_reply_headers)
         reply.downloadProgress.connect(self._on_reply_download_progress)
         return reply

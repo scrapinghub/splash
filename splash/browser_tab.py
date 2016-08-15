@@ -19,6 +19,7 @@ import six
 
 from splash import defaults
 from splash.har.qt import cookies2har
+from splash.network_manager import SplashQNetworkAccessManager
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii, to_qurl, qt_send_key, qt_send_text)
@@ -903,8 +904,8 @@ class _SplashHttpClient(QObject):
     def __init__(self, web_page):
         super(_SplashHttpClient, self).__init__()
         self._replies = set()
-        self.web_page = web_page
-        self.network_manager = web_page.networkAccessManager()
+        self.web_page = web_page  # type: SplashQWebPage
+        self.network_manager = web_page.networkAccessManager()  # type: SplashQNetworkAccessManager
 
     def set_user_agent(self, value):
         """ Set User-Agent header for future requests """
@@ -921,9 +922,10 @@ class _SplashHttpClient(QObject):
             self._set_request_headers(request, headers)
 
         if body and not request.hasRawHeader(b"content-type"):
-            # there is POST body but no content-type
-            # QT will set this header, but it will complain so better to do this here
-            request.setRawHeader(b"content-type", b"application/x-www-form-urlencoded")
+            # There is POST body but no content-type. QT will set this
+            # header, but it will complain so better to do this here.
+            request.setRawHeader(b"content-type",
+                                 b"application/x-www-form-urlencoded")
 
         return request
 
@@ -942,7 +944,8 @@ class _SplashHttpClient(QObject):
             follow_redirects=follow_redirects,
             redirects_remaining=max_redirects,
         )
-        return self._send_request(url, cb, method=method, body=body, headers=headers)
+        return self._send_request(url, cb, method=method, body=body,
+                                  headers=headers)
 
     def get(self, url, callback, headers=None, follow_redirects=True):
         """ Send a GET HTTP request; call the callback with the reply. """
@@ -963,7 +966,8 @@ class _SplashHttpClient(QObject):
     def _send_request(self, url, callback, method='GET', body=None,
                       headers=None):
         # this is called when request is NOT downloaded via webpage.mainFrame()
-        # XXX: The caller must ensure self._delete_reply is called in a callback.
+        # XXX: The caller must ensure self._delete_reply is called in
+        # a callback.
         if method.upper() not in ["POST", "GET"]:
             raise NotImplementedError()
 
@@ -972,7 +976,8 @@ class _SplashHttpClient(QObject):
 
         request = self.request_obj(url, headers=headers, body=body)
 
-        # setting UA for request that is not downloaded via webpage.mainFrame().load_to_mainframe()
+        # setting UA for request that is not downloaded via
+        # webpage.mainFrame().load_to_mainframe()
         ua_from_headers = _get_header_value(headers, b'user-agent')
         web_page_ua = self.web_page.userAgentForUrl(to_qurl(url))
         user_agent = ua_from_headers or web_page_ua

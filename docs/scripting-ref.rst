@@ -1951,7 +1951,7 @@ argument (a :ref:`splash-response`).
 
 :ref:`splash-response-body` is not available in
 a :ref:`splash-on-response-headers` callback because response body is not
-read yet. Thats the point of :ref:`splash-on-response-headers` method: you can
+read yet. That's the point of :ref:`splash-on-response-headers` method: you can
 abort reading of the response body using :ref:`splash-response-abort` method.
 
 
