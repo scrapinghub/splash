@@ -1,1 +1,1 @@
-# no extra packages are required
+sphinx-rtd-theme
