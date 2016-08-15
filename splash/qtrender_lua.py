@@ -376,6 +376,7 @@ class BaseExposedObject(object):
 
         self.exceptions = exceptions
         self.tmp_storage = lua.table_from({})  # a workaround for callbacks
+        self.destroyed = False
 
     def clear(self):
         self.lua.remove_allowed_object(self)
@@ -384,6 +385,7 @@ class BaseExposedObject(object):
         self.lua_properties = None
         self.commands = None
         self.exceptions = None
+        self.destroyed = True
 
     @contextlib.contextmanager
     def allowed(self):
@@ -1064,6 +1066,8 @@ class Splash(BaseExposedObject):
         Register a Lua callback to be called when a resource is requested.
         """
         def _callback(request, operation, outgoing_data):
+            if self.destroyed:
+                return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             req = _ExposedBoundRequest(self.lua, exceptions, request, operation,
                                        outgoing_data)
@@ -1076,6 +1080,8 @@ class Splash(BaseExposedObject):
     @command(sets_callback=True, decode_arguments=False)
     def private_on_response_headers(self, callback):
         def _callback(reply):
+            if self.destroyed:
+                return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             req = _ExposedRequest.from_reply(self.lua, exceptions, reply)
             resp = _ExposedBoundResponse(self.lua, exceptions, reply, req)
@@ -1088,6 +1094,8 @@ class Splash(BaseExposedObject):
     @command(sets_callback=True, decode_arguments=False)
     def private_on_response(self, callback):
         def _callback(reply, har_entry, content):
+            if self.destroyed:
+                return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             req = _ExposedRequest.from_har(self.lua, exceptions,
                                            har_entry['request'])
