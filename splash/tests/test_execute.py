@@ -4219,7 +4219,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"before": False, "after": True})
 
-    def text_text(self):
+    def test_text(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))

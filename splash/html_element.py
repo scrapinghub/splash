@@ -17,7 +17,7 @@ DIMENSIONS_JS_FUNC = """
 
 FETCH_TEXT_JS_FUNC = """
 (function(elem) {
-    return elem.textContent || elem.innerText || elem.value || '';
+    return (elem.textContent || elem.innerText || elem.value || '').trim();
 })(%s)
 """
 

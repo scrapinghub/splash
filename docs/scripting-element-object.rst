@@ -386,7 +386,7 @@ of the element.
 
 **Async:** no.
 
-It tries to return the value of the following JavaScript ``Node`` properties:
+It tries to return the trimmed value of the following JavaScript ``Node`` properties:
 
 * textContent
 * innerText
