@@ -17,118 +17,143 @@ element.node
 
 ``element.node`` is a object that contains almost all DOM element attributes and methods.
 
-========================= ========== =============================
-Property Name             Read Only  Comments
-------------------------- ---------- -----------------------------
-accessKey                 No
-------------------------- ---------- -----------------------------
-accessKeyLabel            Yes
-------------------------- ---------- -----------------------------
-contentEditable           No
-------------------------- ---------- -----------------------------
-isContentEditable         Yes
-------------------------- ---------- -----------------------------
-dataset                   Yes
-------------------------- ---------- -----------------------------
-dir                       No
-------------------------- ---------- -----------------------------
-draggable                 No
-------------------------- ---------- -----------------------------
-hidden                    No
-------------------------- ---------- -----------------------------
-lang                      No
-------------------------- ---------- -----------------------------
-offsetHeight              Yes
-------------------------- ---------- -----------------------------
-offsetLeft                Yes
-------------------------- ---------- -----------------------------
-offsetParent              Yes
-------------------------- ---------- -----------------------------
-offsetTop                 Yes
-------------------------- ---------- -----------------------------
-spellcheck                No
-------------------------- ---------- -----------------------------
-style                     No
-------------------------- ---------- -----------------------------
-tabIndex                  No
-------------------------- ---------- -----------------------------
-title                     No
-------------------------- ---------- -----------------------------
-translate                 No
-------------------------- ---------- -----------------------------
-attributes                Yes        returns table of attributes
-------------------------- ---------- -----------------------------
-classList                 Yes        returns table of class names
-------------------------- ---------- -----------------------------
-className                 No
-------------------------- ---------- -----------------------------
-clientHeight              Yes
-------------------------- ---------- -----------------------------
-clientLeft                Yes
-------------------------- ---------- -----------------------------
-clientTop                 Yes
-------------------------- ---------- -----------------------------
-clientWidth               Yes
-------------------------- ---------- -----------------------------
-id                        No
-------------------------- ---------- -----------------------------
-innerHTML                 No
-------------------------- ---------- -----------------------------
-localeName                Yes
-------------------------- ---------- -----------------------------
-namespaceURI              Yes
-------------------------- ---------- -----------------------------
-nextElement               Yes
-------------------------- ---------- -----------------------------
-outerHTML                 No
-------------------------- ---------- -----------------------------
-prefix                    Yes
-------------------------- ---------- -----------------------------
-previousElementSibling    Yes
-------------------------- ---------- -----------------------------
-scrollHeight              Yes
-------------------------- ---------- -----------------------------
-scrollLeft                No
-------------------------- ---------- -----------------------------
-scrollTop                 No
-------------------------- ---------- -----------------------------
-scrollWidth               Yes
-------------------------- ---------- -----------------------------
-tabStop                   No
-------------------------- ---------- -----------------------------
-tagName                   Yes
-------------------------- ---------- -----------------------------
-baseURI                   Yes
-------------------------- ---------- -----------------------------
-childNodes                Yes
-------------------------- ---------- -----------------------------
-firstChild                Yes
-------------------------- ---------- -----------------------------
-lastChild                 Yes
-------------------------- ---------- -----------------------------
-nextSibling               Yes
-------------------------- ---------- -----------------------------
-nodeName                  Yes
-------------------------- ---------- -----------------------------
-nodeType                  Yes
-------------------------- ---------- -----------------------------
-nodeValue                 No
-------------------------- ---------- -----------------------------
-ownerDocument             Yes
-------------------------- ---------- -----------------------------
-parentNode                Yes
-------------------------- ---------- -----------------------------
-parentElement             Yes
-------------------------- ---------- -----------------------------
-previousSibling           Yes
-------------------------- ---------- -----------------------------
-rootNode                  Yes
-------------------------- ---------- -----------------------------
-textContent               No
-========================= ========== =============================
+The list of supported properties (in brackets is specified whether the property is read-only):
+
+Properties inherited from HTMLElement_:
+    - accessKey (No)
+    - accessKeyLabel (Yes)
+    - contentEditable (No)
+    - isContentEditable (Yes)
+    - dataset (Yes)
+    - dir (No)
+    - draggable (No)
+    - hidden (No)
+    - lang (No)
+    - offsetHeight (Yes)
+    - offsetLeft (Yes)
+    - offsetParent (Yes)
+    - offsetTop (Yes)
+    - spellcheck (No)
+    - style (No) - returns the table with styles which can be modified
+    - tabIndex (No)
+    - title (No)
+    - translate (No)
+
+Properties inherited from Element_:
+    - attributes (Yes) - returns the table of attributes of the element
+    - classList (Yes) - returns the table of class names of the element
+    - className (No)
+    - clientHeight (Yes)
+    - clientLeft (Yes)
+    - clientTop (Yes)
+    - clientWidth (Yes)
+    - id (No)
+    - innerHTML (No)
+    - localeName (Yes)
+    - namespaceURI (Yes)
+    - nextElementSibling (Yes)
+    - outerHTML (No)
+    - prefix (Yes)
+    - previousElementSibling (Yes)
+    - scrollHeight (Yes)
+    - scrollLeft (No)
+    - scrollTop (No)
+    - scrollWidth (Yes)
+    - tabStop (No)
+    - tagName (Yes)
+
+Properties inherited from Node_:
+    - baseURI (Yes)
+    - childNodes (Yes)
+    - firstChild (Yes)
+    - lastChild (Yes)
+    - nextSibling (Yes)
+    - nodeName (Yes)
+    - nodeType (Yes)
+    - nodeValue (No)
+    - ownerDocument (Yes)
+    - parentNode (Yes)
+    - parentElement (Yes)
+    - previousSibling (Yes)
+    - rootNode (Yes)
+    - textContent (No)
+
+The list of supported methods:
+
+Methods inherited from HTMLElement_:
+    - blur
+    - click
+    - focus
+
+Methods inherited from Element_:
+    - getAttribute
+    - getAttributeNS
+    - getBoundingClientRect
+    - getClientRects
+    - getElementsByClassName
+    - getElementsByTagName
+    - getElementsByTagNameNS
+    - hasAttribute
+    - hasAttributeNS
+    - hasAttributes
+    - querySelector
+    - querySelectorAll
+    - releasePointerCapture
+    - remove
+    - removeAttribute
+    - removeAttributeNS
+    - requestFullscreen
+    - requestPointerLock
+    - scrollIntoView
+    - setAttribute
+    - setAttributeNS
+    - setPointerCapture
+
+Methods inherited from Node_:
+    - appendChild
+    - cloneNode
+    - compareDocumentPosition
+    - contains
+    - hasChildNodes
+    - insertBefore
+    - isDefaultNamespace
+    - isEqualNode
+    - isSameNode
+    - lookupPrefix
+    - lookupNamespaceURI
+    - normalize
+    - removeChild
+    - replaceChild
+
+Also, you can attach event handlers to the specified event. When the handler is called it will
+receive ``event`` table with the almost all available methods and properties.
+
+.. code-block:: lua
+
+    function main(splash)
+        local element = splash:select('.element')
+
+        local x, y = 0, 0
+
+        element.onclick = function(event)
+            event:preventDefault()
+            x = event.clientX
+            y = event.clientY
+        end
+
+        assert(splash:wait(10))
+
+        return x, y
+    end
 
 
 The following fields are read-only.
+
+.. _HTMLElement: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
+.. _Element: https://developer.mozilla.org/en-US/docs/Web/API/Element
+.. _Node: https://developer.mozilla.org/en-US/docs/Web/API/Node
+.. _Event: https://developer.mozilla.org/en-US/docs/Web/API/Event
+
 
 .. _splash-element-inner_id:
 
