@@ -367,9 +367,8 @@ class BrowserTab(QObject):
         """ Register a callback for an event """
         self.web_page.callbacks[event].append(callback)
 
-    def clear_callbacks(self, event):
-        """ Unregister all callbacks for an event """
-        del self.web_page.callbacks[event][:]
+    def clear_callbacks(self, event=None):
+        self.web_page.clear_callbacks(event)
 
     # def remove_callback(self, event, callback):
     #     """ Unregister a callback for an event """
@@ -387,6 +386,7 @@ class BrowserTab(QObject):
         self.web_page.deleteLater()
         self.web_view.deleteLater()
         self.network_manager.deleteLater()
+        self.clear_callbacks()
         self._cancel_all_timers()
 
     def _on_before_close(self):

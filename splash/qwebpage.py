@@ -65,6 +65,18 @@ class SplashQWebPage(QWebPage):
     def reset_har(self):
         self.har.reset()
 
+    def clear_callbacks(self, event=None):
+        """
+        Unregister all callbacks for an event. If event is None
+        then all callbacks are removed.
+        """
+        if event is None:
+            for ev in self.callbacks:
+                assert ev is not None
+                self.clear_callbacks(ev)
+            return
+        del self.callbacks[event][:]
+
     def on_title_changed(self, title):
         self.har.store_title(title)
 
