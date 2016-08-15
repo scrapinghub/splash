@@ -402,7 +402,7 @@ class PingResource(Resource):
 
 
 
-HARVIEWER_PATH = 'harviewer-2.0.17' # Change to invalidate cache when updating harviewer
+HARVIEWER_PATH = 'harviewer-2.0.17a' # Change to invalidate cache when updating harviewer
 BOOTSTRAP_THEME = 'simplex'
 
 CODEMIRROR_RESOURCES = """
