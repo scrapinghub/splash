@@ -79,7 +79,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     * Sets up extra logging.
     * Provides a way to get the "source" request (that was made to Splash
       itself).
-    * Tracks information about requests/responses and stores it in HAR format.
+    * Tracks information about requests/responses and stores it in HAR format,
+      including response content.
     * Allows to set per-request timeouts.
 
     """
@@ -269,23 +270,35 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _on_reply_ready_read(self):
         reply = self.sender()
         req_id = self._get_request_id()
-        self._response_content.setdefault(req_id, QByteArray()).append(reply.peek(reply.bytesAvailable()))
+        chunk = reply.peek(reply.bytesAvailable())
+        if req_id not in self._response_content:
+            self._response_content[req_id] = QByteArray()
+        self._response_content[req_id].append(chunk)
 
     def _on_reply_finished(self):
         reply = self.sender()
         request = reply.request()
         self._cancel_reply_timer(reply)
         har = self._get_har()
-        har_entry = None
+        har_entry, content = None, None
         if har is not None:
             req_id = self._get_request_id()
-            reply.content = self._response_content.pop(req_id, None)
-            har.store_reply_finished(req_id, reply)
-            # We're passing HAR entry because reply object itself doesn't
-            # have all information.
+            # FIXME: what if har is None? When can it be None?
+            # Who removes the content from self._response_content dict?
+            content = self._response_content.pop(req_id, None)
+            if content is not None:
+                content = bytes(content)
+
+            # FIXME: content is kept in memory at least twice,
+            # as raw data and as a base64-encoded copy.
+            har.store_reply_finished(req_id, reply, content)
             har_entry = har.get_entry(req_id)
 
-        self._run_webpage_callbacks(request, "on_response", reply, har_entry)
+        # We're passing HAR entry to the callbacks because reply object
+        # itself doesn't have all information.
+        # Content is passed in order to avoid decoding it from base64.
+        self._run_webpage_callbacks(request, "on_response", reply, har_entry,
+                                    content)
         self.log("Finished downloading {url}", reply)
 
     def _on_reply_headers(self):

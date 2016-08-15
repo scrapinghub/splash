@@ -749,9 +749,10 @@ class Splash(BaseExposedObject):
             raise ScriptError({"argument": "url", "message": msg})
 
         def callback(reply):
+            content = bytes(reply.readAll())
             req = _ExposedRequest.from_reply(self.lua, self.exceptions, reply)
             resp = _ExposedResponse(self.lua, self.exceptions, reply, req,
-                                    read_body=True)
+                                    content=content)
             self._objects_to_clear.add(req)
             self._objects_to_clear.add(resp)
             resp_wrapped = self.response_wrapper._create(resp)
@@ -1086,12 +1087,12 @@ class Splash(BaseExposedObject):
 
     @command(sets_callback=True, decode_arguments=False)
     def private_on_response(self, callback):
-        def _callback(reply, har_entry):
+        def _callback(reply, har_entry, content):
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             req = _ExposedRequest.from_har(self.lua, exceptions,
                                            har_entry['request'])
             resp = _ExposedResponse(self.lua, exceptions, reply, req, har_entry,
-                                    read_body=False)
+                                    content=content)
             self._objects_to_clear.add(req)
             self._objects_to_clear.add(resp)
             run_coro = self.get_coroutine_run_func(
@@ -1366,19 +1367,17 @@ class _ExposedResponse(BaseExposedObject):
     _attribute_whitelist = ["headers", "request"]
 
     def __init__(self, lua, exceptions, reply, exposed_request,
-                 har_entry=None, read_body=False):
+                 har_entry=None, content=None):
         super(_ExposedResponse, self).__init__(lua, exceptions)
         self.headers = self.lua.python2lua(get_headers_dict(reply))
 
         if har_entry is None:
-            if read_body:
-                resp_info = reply2har(reply, include_content=True)
-            else:
-                resp_info = reply2har(reply)
+            resp_info = reply2har(reply, content=content)
         else:
             resp_info = har_entry['response']
 
         self.request = exposed_request
+        self._content = content
         self._info = resp_info
         self._info_lua = None
         self._body_binary = None
@@ -1387,9 +1386,10 @@ class _ExposedResponse(BaseExposedObject):
     @command()
     def get_body(self):
         if self._body_binary is None:
-            body = get_response_body_bytes(self._info)
+            body = self._content or get_response_body_bytes(self._info)
             content_type = self._info['content']['mimeType']
             self._body_binary = BinaryCapsule(body, content_type)
+            self._content = None
         return self._body_binary
 
     @lua_property("info")
@@ -1436,9 +1436,9 @@ class _ExposedBoundResponse(_ExposedResponse):
     abort downloading).
     """
     def __init__(self, lua, exceptions, reply, exposed_request,
-                 har_entry=None):
+                 har_entry=None, content=None):
         super(_ExposedBoundResponse, self).__init__(
-            lua, exceptions, reply, exposed_request, har_entry
+            lua, exceptions, reply, exposed_request, har_entry, content,
         )
         self.response = reply
 
