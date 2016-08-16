@@ -6,7 +6,7 @@ import functools
 from datetime import datetime
 import traceback
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QByteArray, QTimer 
 from PyQt5.QtNetwork import (
     QNetworkAccessManager,
     QNetworkProxyQuery,
@@ -22,7 +22,9 @@ from splash.request_middleware import (
     AllowedSchemesMiddleware,
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
-    ResourceTimeoutMiddleware)
+    ResourceTimeoutMiddleware,
+    ResponseBodyTrackingMiddleware,
+)
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 from splash.utils import to_bytes
@@ -50,6 +52,7 @@ class NetworkManagerFactory(object):
 
         self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
         self.request_middlewares.append(ResourceTimeoutMiddleware())
+        self.request_middlewares.append(ResponseBodyTrackingMiddleware())
 
         if filters_path is not None:
             self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
@@ -79,12 +82,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     * Sets up extra logging.
     * Provides a way to get the "source" request (that was made to Splash
       itself).
-    * Tracks information about requests/responses and stores it in HAR format.
+    * Tracks information about requests/responses and stores it in HAR format,
+      including response content.
     * Allows to set per-request timeouts.
-
     """
-
     _REQUEST_ID = QNetworkRequest.User + 1
+    _SHOULD_TRACK = QNetworkRequest.User + 2
 
     def __init__(self, verbosity):
         super(ProxiedQNetworkAccessManager, self).__init__()
@@ -95,7 +98,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._default_proxy = self.proxy()
         self.cookiejar = SplashCookieJar(self)
         self.setCookieJar(self.cookiejar)
-
+        self._response_bodies = {}  # requestId => response content
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -125,6 +128,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                                     request, operation, outgoingData)
 
         self._handle_custom_proxies(request)
+        self._handle_request_response_tracking(request)
 
         har = self._get_har(request)
         if har is not None:
@@ -150,7 +154,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         reply.error.connect(self._on_reply_error)
         reply.finished.connect(self._on_reply_finished)
-        # http://doc.qt.io/qt-5/qnetworkreply.html#metaDataChanged
+
+        if self._should_track_content(request):
+            self._response_bodies[req_id] = QByteArray()
+            reply.readyRead.connect(self._on_reply_ready_read)
+
         reply.metaDataChanged.connect(self._on_reply_headers)
         reply.downloadProgress.connect(self._on_reply_download_progress)
         return reply
@@ -189,8 +197,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         req = QNetworkRequest(request)
         req_id = next(self._request_ids)
         req.setAttribute(self._REQUEST_ID, req_id)
-        if hasattr(request, 'timeout'):
-            req.timeout = request.timeout
+        for attr in ['timeout', 'track_response_body']:
+            if hasattr(request, attr):
+                setattr(req, attr, getattr(request, attr))
         return req, req_id
 
     def _handle_custom_proxies(self, request):
@@ -234,6 +243,13 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _handle_reply_cookies(self, reply):
         self.cookiejar.fill_from_reply(reply)
 
+    def _handle_request_response_tracking(self, request):
+        track = getattr(request, 'track_response_body', False)
+        request.setAttribute(self._SHOULD_TRACK, track)
+
+    def _should_track_content(self, request):
+        return request.attribute(self._SHOULD_TRACK)
+
     def _get_request_id(self, request=None):
         if request is None:
             request = self.sender().request()
@@ -259,25 +275,50 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             return setattr(web_frame.page(), attribute, value)
 
     def _on_reply_error(self, error_id):
+        self._response_bodies.pop(self._get_request_id(), None)
+        
         if error_id != QNetworkReply.OperationCanceledError:
             error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
             self.log('Download error %d: %s ({url})' % (error_id, error_msg),
                      self.sender(), min_level=2)
+
+    def _on_reply_ready_read(self):
+        reply = self.sender()
+        self._store_response_chunk(reply)
+
+    def _store_response_chunk(self, reply):
+        req_id = self._get_request_id(reply.request())
+        if req_id not in self._response_bodies:
+            self.log("Internal problem in _store_response_chunk: "
+                     "request %s is not tracked" % req_id, reply, min_level=1)
+            return
+        chunk = reply.peek(reply.bytesAvailable())
+        self._response_bodies[req_id].append(chunk)
 
     def _on_reply_finished(self):
         reply = self.sender()
         request = reply.request()
         self._cancel_reply_timer(reply)
         har = self._get_har()
-        har_entry = None
+        har_entry, content = None, None
         if har is not None:
             req_id = self._get_request_id()
-            har.store_reply_finished(req_id, reply)
-            # We're passing HAR entry because reply object itself doesn't
-            # have all information.
+            # FIXME: what if har is None? When can it be None?
+            # Who removes the content from self._response_bodies dict?
+            content = self._response_bodies.pop(req_id, None)
+            if content is not None:
+                content = bytes(content)
+
+            # FIXME: content is kept in memory at least twice,
+            # as raw data and as a base64-encoded copy.
+            har.store_reply_finished(req_id, reply, content)
             har_entry = har.get_entry(req_id)
 
-        self._run_webpage_callbacks(request, "on_response", reply, har_entry)
+        # We're passing HAR entry to the callbacks because reply object
+        # itself doesn't have all information.
+        # Content is passed in order to avoid decoding it from base64.
+        self._run_webpage_callbacks(request, "on_response", reply, har_entry,
+                                    content)
         self.log("Finished downloading {url}", reply)
 
     def _on_reply_headers(self):

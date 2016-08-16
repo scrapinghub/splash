@@ -847,6 +847,7 @@ class Subresources(Resource):
             request.setHeader(b"Content-Type", b"text/css; charset=utf-8")
             print("Request Style!")
             return b"body { background-color: red; }"
+
     class Image(Resource):
 
         @use_chunked_encoding
@@ -963,6 +964,8 @@ class Root(Resource):
         self.putChild(b"key-press-event-logger-page", KeyPressEventLoggerPage())
         self.putChild(b"key-up-down-event-logger-page", KeyUpDownEventLoggerPage())
 
+        # self.putChild(b"flashpage", FlashPage())
+
         self.putChild(b"jsredirect", JsRedirect())
         self.putChild(b"jsredirect-to", JsRedirectTo())
         self.putChild(b"jsredirect-slowimage", JsRedirectSlowImage())
@@ -988,6 +991,7 @@ class Root(Resource):
 
 def cert_path():
     return os.path.join(os.path.dirname(__file__), "server.pem")
+
 
 def ssl_factory():
     pem = cert_path()

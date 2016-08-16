@@ -51,7 +51,7 @@ class HarBuilder(object):
         if not self.log.has_entry(req_id):
             return
         entry = self.log.get_mutable_entry(req_id)
-        return copy.deepcopy(entry)
+        return entry
 
     def _initial_entry_data(self, start_time, operation, request, outgoingData):
         """
@@ -120,7 +120,7 @@ class HarBuilder(object):
         entry = self.log.get_mutable_entry(req_id)
         entry["response"].update(reply2har(reply))
 
-    def store_reply_finished(self, req_id, reply):
+    def store_reply_finished(self, req_id, reply, content):
         """
         Store information about a finished reply.
         """
@@ -147,7 +147,7 @@ class HarBuilder(object):
                 entry["timings"]["send"] = 0
 
         # update other reply information
-        entry["response"].update(reply2har(reply))
+        entry["response"].update(reply2har(reply, content=content))
 
     def store_reply_headers_received(self, req_id, reply):
         """

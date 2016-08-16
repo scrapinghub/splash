@@ -16,7 +16,7 @@ from PyQt5.QtCore import QTimer
 import lupa
 
 import splash
-from splash.browser_tab import JsError
+from splash.browser_tab import BrowserTab, JsError
 from splash.lua_runner import (
     BaseScriptRunner,
     AsyncCommand,
@@ -376,6 +376,7 @@ class BaseExposedObject(object):
 
         self.exceptions = exceptions
         self.tmp_storage = lua.table_from({})  # a workaround for callbacks
+        self.destroyed = False
 
     def clear(self):
         self.lua.remove_allowed_object(self)
@@ -384,6 +385,7 @@ class BaseExposedObject(object):
         self.lua_properties = None
         self.commands = None
         self.exceptions = None
+        self.destroyed = True
 
     @contextlib.contextmanager
     def allowed(self):
@@ -422,7 +424,7 @@ class Splash(BaseExposedObject):
         else:
             raise ValueError("Invalid render_options type: %s" % render_options.__class__)
 
-        self.tab = tab
+        self.tab = tab  # type: BrowserTab
         self.log = log or tab.logger.log
         self._result_headers = []
         self._objects_to_clear = weakref.WeakSet()
@@ -462,6 +464,16 @@ class Splash(BaseExposedObject):
     @command()
     def set_private_mode_enabled(self, value):
         self.tab.set_private_mode_enabled(bool(value))
+
+    @lua_property('response_body_enabled')
+    @command()
+    def get_response_body_enabled(self):
+        return self.tab.get_response_body_enabled()
+
+    @get_response_body_enabled.lua_setter
+    @command()
+    def set_response_body_enabled(self, value):
+        self.tab.set_response_body_enabled(bool(value))
 
     @command()
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
@@ -742,17 +754,17 @@ class Splash(BaseExposedObject):
     def private_jsfunc(self, func):
         return _WrappedJavascriptFunction(self, func)
 
-    def _http_request(self, url, headers, follow_redirects=True, body=None, browser_command="http_get"):
+    def _http_request(self, url, headers, follow_redirects=True, body=None,
+                      browser_command="http_get"):
         if url is None:
-            raise ScriptError({
-                "argument": "url",
-                "message": "'url' is required for splash:{}".format(browser_command)
-            })
+            msg = "'url' is required for splash:{}".format(browser_command)
+            raise ScriptError({"argument": "url", "message": msg})
 
         def callback(reply):
+            content = bytes(reply.readAll())
             req = _ExposedRequest.from_reply(self.lua, self.exceptions, reply)
             resp = _ExposedResponse(self.lua, self.exceptions, reply, req,
-                                    read_body=True)
+                                    content=content)
             self._objects_to_clear.add(req)
             self._objects_to_clear.add(resp)
             resp_wrapped = self.response_wrapper._create(resp)
@@ -1012,6 +1024,16 @@ class Splash(BaseExposedObject):
         if enabled is not None:
             self.tab.set_images_enabled(int(enabled))
 
+    @lua_property('plugins_enabled')
+    @command()
+    def get_plugins_enabled(self):
+        return self.tab.get_plugins_enabled()
+
+    @get_plugins_enabled.lua_setter
+    @command()
+    def set_plugins_enabled(self, enabled):
+        self.tab.set_plugins_enabled(bool(enabled))
+
     @lua_property('resource_timeout')
     @command()
     def get_resource_timeout(self):
@@ -1053,8 +1075,11 @@ class Splash(BaseExposedObject):
         Register a Lua callback to be called when a resource is requested.
         """
         def _callback(request, operation, outgoing_data):
+            if self.destroyed:
+                return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            req = _ExposedBoundRequest(self.lua, exceptions, request, operation, outgoing_data)
+            req = _ExposedBoundRequest(self.lua, exceptions, request, operation,
+                                       outgoing_data)
             with req.allowed():
                 callback(req)
 
@@ -1064,6 +1089,8 @@ class Splash(BaseExposedObject):
     @command(sets_callback=True, decode_arguments=False)
     def private_on_response_headers(self, callback):
         def _callback(reply):
+            if self.destroyed:
+                return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             req = _ExposedRequest.from_reply(self.lua, exceptions, reply)
             resp = _ExposedBoundResponse(self.lua, exceptions, reply, req)
@@ -1075,15 +1102,18 @@ class Splash(BaseExposedObject):
 
     @command(sets_callback=True, decode_arguments=False)
     def private_on_response(self, callback):
-        def _callback(reply, har_entry):
+        def _callback(reply, har_entry, content):
+            if self.destroyed:
+                return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
-            req = _ExposedRequest.from_har(self.lua, exceptions, har_entry['request'])
+            req = _ExposedRequest.from_har(self.lua, exceptions,
+                                           har_entry['request'])
             resp = _ExposedResponse(self.lua, exceptions, reply, req, har_entry,
-                                    read_body=False)
+                                    content=content)
             self._objects_to_clear.add(req)
             self._objects_to_clear.add(resp)
             run_coro = self.get_coroutine_run_func(
-                "splash:on_response", callback, [resp]
+                "splash:on_response", callback,
             )
             return run_coro(resp)
 
@@ -1177,7 +1207,7 @@ class Splash(BaseExposedObject):
         return self._wrapped
 
     def run_async_command(self, cmd):
-        """ Execute _AsyncBrowserCommand or _AsyncCallbackCommand"""
+        """ Execute _AsyncBrowserCommand or _AsyncCallbackCommand """
         if isinstance(cmd, AsyncBrowserCommand):
             meth = getattr(self.tab, cmd.name)
             return meth(**cmd.kwargs)
@@ -1208,7 +1238,6 @@ class _ExposedTimer(BaseExposedObject):
     """
     Timer object returned by splash:call_later().
     """
-
     def __init__(self, lua, exceptions, timer):
         self.timer = timer
         self.callback_exceptions = []
@@ -1319,6 +1348,11 @@ class _ExposedBoundRequest(BaseExposedObject):
 
     @command()
     @requires_request
+    def enable_response_body(self):
+        self.request.track_response_body = True
+
+    @command()
+    @requires_request
     def set_url(self, url):
         set_request_url(self.request, url)
 
@@ -1355,31 +1389,34 @@ class _ExposedResponse(BaseExposedObject):
     _attribute_whitelist = ["headers", "request"]
 
     def __init__(self, lua, exceptions, reply, exposed_request,
-                 har_entry=None, read_body=False):
+                 har_entry=None, content=None):
         super(_ExposedResponse, self).__init__(lua, exceptions)
         self.headers = self.lua.python2lua(get_headers_dict(reply))
 
         if har_entry is None:
-            if read_body:
-                resp_info = reply2har(reply, include_content=True, binary_content=False)
-            else:
-                resp_info = reply2har(reply)
+            resp_info = reply2har(reply, content=content)
         else:
             resp_info = har_entry['response']
 
         self.request = exposed_request
+        self._content = content
         self._info = resp_info
         self._info_lua = None
-        self._body_binary = None
 
     @lua_property("body")
     @command()
     def get_body(self):
-        if self._body_binary is None:
-            body = get_response_body_bytes(self._info)
-            content_type = self._info['content']['mimeType']
-            self._body_binary = BinaryCapsule(body, content_type)
+        if not hasattr(self, '_body_binary'):
+            self._body_binary = self._get_body_object()
+            self._content = None
         return self._body_binary
+
+    def _get_body_object(self):
+        body = self._content or get_response_body_bytes(self._info)
+        if body is None:
+            return None
+        content_type = self._info['content']['mimeType']
+        return BinaryCapsule(body, content_type)
 
     @lua_property("info")
     @command()
@@ -1408,6 +1445,9 @@ class _ExposedResponse(BaseExposedObject):
         self.request = None
         self._info = None
         self._info_lua = None
+        self._body_binary = None
+        self._content = None
+        self.headers = None
 
     def _on_response_required(self, meth, attr_name):
         raise ScriptError({
@@ -1425,9 +1465,9 @@ class _ExposedBoundResponse(_ExposedResponse):
     abort downloading).
     """
     def __init__(self, lua, exceptions, reply, exposed_request,
-                 har_entry=None):
+                 har_entry=None, content=None):
         super(_ExposedBoundResponse, self).__init__(
-            lua, exceptions, reply, exposed_request, har_entry
+            lua, exceptions, reply, exposed_request, har_entry, content,
         )
         self.response = reply
 

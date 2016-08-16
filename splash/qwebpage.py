@@ -47,6 +47,7 @@ class SplashQWebPage(QWebPage):
     skip_custom_headers = False
     navigation_locked = False
     resource_timeout = 0
+    response_body_enabled = False
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
@@ -64,6 +65,18 @@ class SplashQWebPage(QWebPage):
 
     def reset_har(self):
         self.har.reset()
+
+    def clear_callbacks(self, event=None):
+        """
+        Unregister all callbacks for an event. If event is None
+        then all callbacks are removed.
+        """
+        if event is None:
+            for ev in self.callbacks:
+                assert ev is not None
+                self.clear_callbacks(ev)
+            return
+        del self.callbacks[event][:]
 
     def on_title_changed(self, title):
         self.har.store_title(title)

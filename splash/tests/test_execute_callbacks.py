@@ -215,7 +215,6 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-
         if six.PY3:
             self.assertIn("b'custom-header': b'some-val'", resp.text)
             self.assertIn("b'user-agent': b'Fooozilla'", resp.text)

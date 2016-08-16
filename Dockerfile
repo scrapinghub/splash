@@ -14,8 +14,8 @@ RUN /tmp/provision.sh \
     install_extra_fonts \
     install_pyqt5 \
     install_python_deps \
-    remove_builddeps \
-    remove_extra && \
+    install_flash \
+    remove_builddeps && \
     rm /tmp/provision.sh
 
 ADD . /app
@@ -34,7 +34,7 @@ EXPOSE 8050 8051 5023
 ENTRYPOINT [ \
     "python3", \
     "/app/bin/splash", \
-    "--proxy-profiles-path",  "/etc/splash/proxy-profiles", \
+    "--proxy-profiles-path", "/etc/splash/proxy-profiles", \
     "--js-profiles-path", "/etc/splash/js-profiles", \
     "--filters-path", "/etc/splash/filters", \
     "--lua-package-path", "/etc/splash/lua_modules/?.lua" \

@@ -35,6 +35,9 @@ before_install:
     # install Python packages
     - sudo chmod -R 777 $VIRTUAL_ENV
     - bash -x dockerfiles/splash/provision.sh install_python_deps
+    
+    # instal Flash
+    - sudo -E bash -x dockerfiles/splash/provision.sh install_flash
 
     # install Python packages required for tests
     - pip install -r requirements-dev.txt

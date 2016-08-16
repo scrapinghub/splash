@@ -340,10 +340,20 @@ You can use online `HAR viewer`_ to visualize information returned from
 this endpoint; it will be very similar to "Network" tabs in Firefox and Chrome
 developer tools.
 
-Currently this endpoint doesn't expose raw request and response contents;
+Currently this endpoint doesn't expose raw request contents;
 only meta-information like headers and timings is available.
+Response contents is included when
+:ref:`'response_body' <arg-response-body-0>` option is set to 1.
 
-Arguments for this endpoint are the same as for `render.html`_.
+Arguments for this endpoint are the same as for `render.html`_, plus the
+following:
+
+.. _arg-response-body-0:
+
+response_body : int : optional
+  Possible values are ``1`` and ``0``.  When ``response_body=1``,
+  response content is included in HAR records. Default is ``render_all=0``.
+
 
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 .. _HAR viewer: http://www.softwareishard.com/har/viewer/
@@ -420,6 +430,18 @@ har : integer : optional
     ``1`` (include) and ``0`` (exclude). Default is 0.
     If this option is ON the result will contain the same data
     as `render.har`_ provides under 'har' key.
+
+    By default, response content is not included. To enable it use
+    :ref:`'response_body' <arg-response-body>` option.
+
+.. _arg-response-body:
+
+response_body : int : optional
+    Possible values are ``1`` and ``0``.  When ``response_body=1``,
+    response content is included in HAR records. Default is
+    ``response_body=0``. This option has no effect when
+    both :ref:`'har' <arg-har>` and :ref:`'history' <arg-history>` are 0.
+
 
 Examples
 ~~~~~~~~

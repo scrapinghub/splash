@@ -79,8 +79,13 @@ def querystring2har(url):
     ]
 
 
-def reply2har(reply, include_content=False, binary_content=False):
-    """ Serialize QNetworkReply to HAR. """
+def reply2har(reply, content=None):
+    """
+    Serialize QNetworkReply to HAR.
+    If ``content`` (a bytes object) is not None, 'content' field is filled.
+    This function doesn't read reply to get the content because
+    QNetworkReply content can be read only once.
+    """
     res = {
         "httpVersion": "HTTP/1.1",  # XXX: how to get HTTP version?
         "cookies": reply_cookies2har(reply),
@@ -128,17 +133,11 @@ def reply2har(reply, include_content=False, binary_content=False):
     else:
         res["redirectURL"] = ""
 
-    if include_content:
-        data = bytes(reply.readAll())
-        if binary_content:
-            res["content"]["encoding"] = "binary"
-            res["content"]["text"] = data
-            res["content"]["size"] = len(data)
-        else:
-            res["content"]["encoding"] = "base64"
-            res["content"]["text"] = base64.b64encode(data)
-            res["content"]["size"] = len(data)
-
+    if content is not None:
+        res["content"]["size"] = len(content)
+        res["content"]["text"] = base64.b64encode(content).decode('latin1')
+        res["content"]["encoding"] = 'base64'
+                
     return res
 
 

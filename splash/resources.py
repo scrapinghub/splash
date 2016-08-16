@@ -53,7 +53,8 @@ class _ValidatingResource(Resource):
             self._log_stats(request, {}, error=self._format_error(400, e))
             return b"\n"
 
-    def _write_error_content(self, request, code, err, content_type=b'text/plain'):
+    def _write_error_content(self, request, code, err,
+                             content_type=b'text/plain'):
         request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
         content = json.dumps(err).encode('utf8')
@@ -199,18 +200,6 @@ class BaseRenderResource(_ValidatingResource):
         return self._write_error(request, 498, ex)
 
     def _log_stats(self, request, options, error=None):
-
-        # def args_to_unicode(args):
-        #     unicode_args = {}
-        #     for key, val in args.items():
-        #         key = to_unicode(key)
-        #         if isinstance(val, list):
-        #             val = [args_to_unicode(item)item.decode('utf-8') for item in val]
-        #         else:
-        #             val = val.decode('utf-8')
-        #         unicode_args[key] = val
-        #         return unicode_args
-
         msg = {
             # Anything we retrieve from Twisted request object contains bytes.
             # We have to convert it to unicode first for json.dump to succeed.
@@ -247,6 +236,7 @@ class BaseRenderResource(_ValidatingResource):
 
     def _on_internal_error(self, failure, request):
         log.err()
+        # failure.printTraceback()
         sentry.capture(failure)
         # only propagate str value to avoid exposing internal details
         ex = InternalError(str(failure.value))
@@ -327,6 +317,7 @@ class RenderJsonResource(BaseRenderResource):
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_jpeg_params())
         params.update(options.get_include_params())
+        params['response_body'] = options.get_response_body()
         return self.pool.render(JsonRender, options, **params)
 
 
@@ -335,6 +326,7 @@ class RenderHarResource(BaseRenderResource):
 
     def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
+        params['response_body'] = options.get_response_body()
         return self.pool.render(HarRender, options, **params)
 
 
@@ -360,7 +352,6 @@ class DebugResource(Resource):
         if self.warn:
             info['WARNING'] = "/debug endpoint is deprecated. " \
                               "Please use /_debug instead."
-            # info['leaks'] = get_leaks()
 
         return (json.dumps(info, sort_keys=True)).encode('utf-8')
 
@@ -402,7 +393,7 @@ class PingResource(Resource):
 
 
 
-HARVIEWER_PATH = 'harviewer-2.0.17' # Change to invalidate cache when updating harviewer
+HARVIEWER_PATH = 'harviewer-2.0.17a' # Change to invalidate cache when updating harviewer
 BOOTSTRAP_THEME = 'simplex'
 
 CODEMIRROR_RESOURCES = """
@@ -444,6 +435,7 @@ class DemoUI(_ValidatingResource):
             'save_args': options.get_save_args(),
             'load_args': options.get_load_args(),
             'timeout': options.get_timeout(),
+            'response_body': options.get_response_body(),
             'har': 1,
             'png': 1,
             'html': 1,

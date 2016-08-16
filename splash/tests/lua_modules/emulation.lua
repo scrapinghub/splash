@@ -39,6 +39,7 @@ function Splash:go_and_wait(args)
 
   -- set a resource timeout
   self.resource_timeout = args.resource_timeout
+  self.response_body_enabled = args.response_body
 
   local ok, reason = self:go{url=url, baseurl=args.baseurl}
   if not ok then

@@ -5,6 +5,22 @@ import hashlib
 from collections import OrderedDict
 
 
+# Add move_to_end method for python 2.7
+# See https://github.com/twitter/commons/blob/master/src/python/twitter/common/collections/ordereddict.py#L284
+if not hasattr(OrderedDict, 'move_to_end'):
+    def move_to_end(self, key, last=True):
+        link_prev, link_next, key = link = self._OrderedDict__map[key]
+        link_prev[1] = link_next
+        link_next[0] = link_prev
+        root = self._OrderedDict__root
+        if last:
+            last = root[0]
+            link[0] = last
+            link[1] = root
+            last[1] = root[0] = link
+    OrderedDict.move_to_end = move_to_end
+
+
 class ArgumentCache(object):
     """
     >>> cache = ArgumentCache()

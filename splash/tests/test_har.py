@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import unittest
+import base64
+import requests
 import warnings
+import unittest
 
 import pytest
 
@@ -178,6 +180,22 @@ class HarRenderTest(BaseHarRenderTest):
         self.assertRequestedUrlsStatuses(data, [
             (self.mockurl('jsredirect-chain'), 200),
         ])
+
+    def test_response_body(self):
+        url = self.mockurl('show-image')
+        data = self.assertValidHar(url)
+        for entry in data['log']['entries']:
+            assert 'text' not in entry['response']['content']
+
+        data = self.assertValidHar(url, response_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        for entry in entries:
+            assert 'text' in entry['response']['content']
+
+        img_gif = requests.get(self.mockurl('slow.gif?n=0')).content
+        b64_data = entries[1]['response']['content']['text']
+        assert base64.b64decode(b64_data) == img_gif
 
     def test_redirect_chain_wait(self):
         data = self.assertValidHar(self.mockurl('jsredirect-chain'), wait=0.2)

@@ -15,6 +15,7 @@ install_pyqt5 -- install PyQT5 from sources
 install_python_deps -- install python-level dependencies
 install_msfonts -- agree with EULA and install Microsoft fonts
 install_extra_fonts -- install extra fonts
+install_flash -- install flash plugin
 remove_builddeps -- remove build-dependencies
 remove_extra -- remove files that are unnecessary to run Splash
 
@@ -144,7 +145,7 @@ install_python_deps () {
         adblockparser==0.5 \
         xvfbwrapper==0.2.8 \
         funcparserlib==0.3.6 \
-        Pillow==3.2.0 \
+        Pillow==3.3.0 \
         lupa==1.3 && \
     ${_PYTHON} -m pip install https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=re2
 }
@@ -166,6 +167,12 @@ install_extra_fonts() {
         fonts-arphic-bsmi00lp \
         fonts-arphic-gkai00mp \
         fonts-arphic-bkai00mp
+}
+
+install_flash () {
+    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu trusty multiverse" && \
+    apt-get update && \
+    apt-get install -y flashplugin-installer
 }
 
 remove_builddeps () {

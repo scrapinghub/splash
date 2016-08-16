@@ -74,6 +74,24 @@ Drop the request.
 
 **Async:** no.
 
+.. _splash-request-enable-response-body:
+
+request:enable_response_body
+----------------------------
+
+Enable tracking of response content (i.e. :ref:`splash-response-body`
+attribute).
+
+**Signature:** ``request:enable_response_body()``
+
+**Returns:** nil.
+
+**Async:** no.
+
+This function allows to enable response content tracking per-request
+when :ref:`splash-response-body-enabled` is set to false.
+Call it in a :ref:`splash-on-request` callback.
+
 .. _splash-request-set-url:
 
 request:set_url

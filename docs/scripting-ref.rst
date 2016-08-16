@@ -100,6 +100,42 @@ Example:
 .. literalinclude:: ../splash/examples/disable-images.lua
    :language: lua
 
+
+.. _splash-plugins-enabled:
+
+splash.plugins_enabled
+----------------------
+
+Enable or disable browser plugins (e.g. Flash).
+
+**Signature:** ``splash.plugins_enabled = true/false``
+
+Plugins are disabled by default.
+
+
+.. _splash-response-body-enabled:
+
+splash.response_body_enabled
+----------------------------
+
+Enable or disable response content tracking.
+
+**Signature:** ``splash.response_body_enabled = true/false``
+
+By default Splash doesn't keep bodies of each response in memory,
+for efficiency reasons. It means that in :ref:`splash-on-response`
+callbacks :ref:`splash-response-body` attribute is not available, and that
+response content is not available in HAR_ exports. To make response content
+available to a Lua script set ``splash.response_body_enabled = true``.
+
+Note that :ref:`splash-response-body` is always available
+in :ref:`splash-http-get` and :ref:`splash-http-post` results, regardless
+of :ref:`splash-response-body-enabled` option.
+
+To enable response content tracking per-request call
+:ref:`splash-request-enable-response-body` in a :ref:`splash-on-request`
+callback.
+
 Methods
 ~~~~~~~
 
@@ -1252,7 +1288,12 @@ all existing logs and start recording from scratch:
          return {har1=har1, har2=har2}
      end
 
-See also: :ref:`splash-har-reset`, :ref:`splash-on-response`.
+By default, response content is not returned in HAR data. To enable it, use
+:ref:`splash-response-body-enabled` option or
+:ref:`splash-request-enable-response-body` method.
+
+See also: :ref:`splash-har-reset`, :ref:`splash-on-response`,
+:ref:`splash-response-body-enabled`, :ref:`splash-request-enable-response-body`.
 
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 
@@ -1938,7 +1979,7 @@ argument (a :ref:`splash-response`).
 
 :ref:`splash-response-body` is not available in
 a :ref:`splash-on-response-headers` callback because response body is not
-read yet. Thats the point of :ref:`splash-on-response-headers` method: you can
+read yet. That's the point of :ref:`splash-on-response-headers` method: you can
 abort reading of the response body using :ref:`splash-response-abort` method.
 
 
@@ -2012,17 +2053,17 @@ Register a function to be called after response is downloaded.
 :ref:`splash-on-response` callback receives a single ``response`` argument
 (a :ref:`splash-response`).
 
-.. note::
-
-    Currently you can't access :ref:`splash-response-body`
-    in a :ref:`splash-on-response` callback.
+By default, this ``response`` object doesn't have :ref:`splash-response-body`
+attribute. To enable it, use :ref:`splash-response-body-enabled` option
+or :ref:`splash-request-enable-response-body` method.
 
 .. note::
 
     :ref:`splash-on-response` doesn't support named arguments.
 
 See also: :ref:`splash-on-request`, :ref:`splash-on-response-headers`,
-:ref:`splash-on-response-reset`, :ref:`splash-response`.
+:ref:`splash-on-response-reset`, :ref:`splash-response`,
+:ref:`splash-response-body-enabled`, :ref:`splash-request-enable-response-body`.
 
 
 .. _splash-on-request-reset:

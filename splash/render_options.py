@@ -136,6 +136,9 @@ class RenderOptions(object):
         return self.get("resource_timeout", defaults.RESOURCE_TIMEOUT,
                         type=float, range=(0, 1e6))
 
+    def get_response_body(self):
+        return self._get_bool("response_body", defaults.RESPONSE_BODY_ENABLED)
+
     def get_images(self):
         return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
 
