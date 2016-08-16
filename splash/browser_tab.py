@@ -199,11 +199,11 @@ class BrowserTab(QObject):
 
     def set_plugins_enabled(self, enabled):
         self.web_page.settings().setAttribute(QWebSettings.PluginsEnabled,
-                                              enabled)
+                                              bool(enabled))
 
     def get_plugins_enabled(self):
         settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.PluginsEnabled)
+        return bool(settings.testAttribute(QWebSettings.PluginsEnabled))
 
     def set_viewport(self, size, raise_if_empty=False):
         """
