@@ -247,6 +247,7 @@ class BaseRenderResource(_ValidatingResource):
 
     def _on_internal_error(self, failure, request):
         log.err()
+        # failure.printTraceback()
         sentry.capture(failure)
         # only propagate str value to avoid exposing internal details
         ex = InternalError(str(failure.value))

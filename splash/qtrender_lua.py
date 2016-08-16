@@ -1339,6 +1339,11 @@ class _ExposedBoundRequest(BaseExposedObject):
 
     @command()
     @requires_request
+    def enable_response_body(self):
+        self.request.track = True
+
+    @command()
+    @requires_request
     def set_url(self, url):
         set_request_url(self.request, url)
 
@@ -1388,17 +1393,21 @@ class _ExposedResponse(BaseExposedObject):
         self._content = content
         self._info = resp_info
         self._info_lua = None
-        self._body_binary = None
 
     @lua_property("body")
     @command()
     def get_body(self):
-        if self._body_binary is None:
-            body = self._content or get_response_body_bytes(self._info)
-            content_type = self._info['content']['mimeType']
-            self._body_binary = BinaryCapsule(body, content_type)
+        if not hasattr(self, '_body_binary'):
+            self._body_binary = self._get_body_object()
             self._content = None
         return self._body_binary
+
+    def _get_body_object(self):
+        body = self._content or get_response_body_bytes(self._info)
+        if body is None:
+            return None
+        content_type = self._info['content']['mimeType']
+        return BinaryCapsule(body, content_type)
 
     @lua_property("info")
     @command()

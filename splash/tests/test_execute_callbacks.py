@@ -6,6 +6,7 @@ from io import BytesIO
 from PIL import Image
 import six
 from six.moves.urllib.parse import urlencode
+import requests
 import pytest
 
 from splash.exceptions import ScriptError
@@ -215,7 +216,6 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-
         if six.PY3:
             self.assertIn("b'custom-header': b'some-val'", resp.text)
             self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
@@ -283,6 +283,42 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         self.assertEqual(req['info']['url'], url)
         self.assertEqual(req['method'], 'GET')
         self.assertIn('Accept', req['headers'])
+
+    def test_enable_response_body(self):
+        url = self.mockurl('show-image')
+        resp = self.request_lua("""
+        function main(splash)
+            splash:on_request(function(req)
+                if req.url:find(".gif") ~= nil then
+                    req:enable_response_body()
+                end
+            end)
+
+            local bodies = {}
+            splash:on_response(function(resp, req)
+                bodies[resp.url] = resp.body
+            end)
+
+            assert(splash:go(splash.args.url))
+            return {har=splash:har(), bodies=bodies}
+        end
+        """, {'url': url})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+
+        bodies = data['bodies']
+        assert len(bodies) == 1
+        url = list(bodies.keys())[0]
+        assert "slow.gif" in url
+        img_gif = requests.get(self.mockurl("slow.gif?n=0")).content
+        body = base64.b64decode(bodies[url])
+        assert body == img_gif
+
+        entries = data['har']['log']['entries']
+        assert len(entries) == 2
+        assert 'text' not in entries[0]['response']['content']
+        assert entries[1]['response']['content']['encoding'] == 'base64'
+        assert entries[1]['response']['content']['text'] == bodies[url]
 
 
 class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):

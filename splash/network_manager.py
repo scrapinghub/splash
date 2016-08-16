@@ -82,10 +82,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     * Tracks information about requests/responses and stores it in HAR format,
       including response content.
     * Allows to set per-request timeouts.
-
     """
-
     _REQUEST_ID = QNetworkRequest.User + 1
+    _SHOULD_TRACK = QNetworkRequest.User + 2
 
     def __init__(self, verbosity):
         super(ProxiedQNetworkAccessManager, self).__init__()
@@ -96,7 +95,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._default_proxy = self.proxy()
         self.cookiejar = SplashCookieJar(self)
         self.setCookieJar(self.cookiejar)
-        self._response_content = {}  # requestId => response content
+        self._response_bodies = {}  # requestId => response content
         self._request_ids = itertools.count()
         assert self.proxyFactory() is None, "Standard QNetworkProxyFactory is not supported"
 
@@ -126,6 +125,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                                     request, operation, outgoingData)
 
         self._handle_custom_proxies(request)
+        self._handle_request_response_tracking(request)
 
         har = self._get_har(request)
         if har is not None:
@@ -151,7 +151,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         reply.error.connect(self._on_reply_error)
         reply.finished.connect(self._on_reply_finished)
-        reply.readyRead.connect(self._on_reply_ready_read)
+
+        if self._should_track_content(request):
+            self._response_bodies[req_id] = QByteArray()
+            reply.readyRead.connect(self._on_reply_ready_read)
+
         reply.metaDataChanged.connect(self._on_reply_headers)
         reply.downloadProgress.connect(self._on_reply_download_progress)
         return reply
@@ -190,8 +194,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         req = QNetworkRequest(request)
         req_id = next(self._request_ids)
         req.setAttribute(self._REQUEST_ID, req_id)
-        if hasattr(request, 'timeout'):
-            req.timeout = request.timeout
+        for attr in ['timeout', 'track']:
+            if hasattr(request, attr):
+                setattr(req, attr, getattr(request, attr))
         return req, req_id
 
     def _handle_custom_proxies(self, request):
@@ -232,6 +237,13 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _handle_request_cookies(self, request):
         self.cookiejar.update_cookie_header(request)
 
+    def _handle_request_response_tracking(self, request):
+        if hasattr(request, 'track'):
+            request.setAttribute(self._SHOULD_TRACK, request.track)
+        else:
+            # FIXME
+            request.setAttribute(self._SHOULD_TRACK, False)
+
     def _handle_reply_cookies(self, reply):
         self.cookiejar.fill_from_reply(reply)
 
@@ -239,6 +251,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if request is None:
             request = self.sender().request()
         return request.attribute(self._REQUEST_ID)
+
+    def _should_track_content(self, request):
+        return request.attribute(self._SHOULD_TRACK)
 
     def _get_har(self, request=None):
         """
@@ -260,7 +275,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             return setattr(web_frame.page(), attribute, value)
 
     def _on_reply_error(self, error_id):
-        self._response_content.pop(self._get_request_id(), None)
+        self._response_bodies.pop(self._get_request_id(), None)
         
         if error_id != QNetworkReply.OperationCanceledError:
             error_msg = REQUEST_ERRORS.get(error_id, 'unknown error')
@@ -269,11 +284,16 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _on_reply_ready_read(self):
         reply = self.sender()
-        req_id = self._get_request_id()
+        self._store_response_chunk(reply)
+
+    def _store_response_chunk(self, reply):
+        req_id = self._get_request_id(reply.request())
+        if req_id not in self._response_bodies:
+            self.log("Internal problem in _store_response_chunk: "
+                     "request %s is not tracked" % req_id, reply, min_level=1)
+            return
         chunk = reply.peek(reply.bytesAvailable())
-        if req_id not in self._response_content:
-            self._response_content[req_id] = QByteArray()
-        self._response_content[req_id].append(chunk)
+        self._response_bodies[req_id].append(chunk)
 
     def _on_reply_finished(self):
         reply = self.sender()
@@ -284,8 +304,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         if har is not None:
             req_id = self._get_request_id()
             # FIXME: what if har is None? When can it be None?
-            # Who removes the content from self._response_content dict?
-            content = self._response_content.pop(req_id, None)
+            # Who removes the content from self._response_bodies dict?
+            content = self._response_bodies.pop(req_id, None)
             if content is not None:
                 content = bytes(content)
 
