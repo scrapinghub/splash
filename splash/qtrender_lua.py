@@ -1032,7 +1032,7 @@ class Splash(BaseExposedObject):
     @get_plugins_enabled.lua_setter
     @command()
     def set_plugins_enabled(self, enabled):
-        self.tab.set_plugin_enabled(bool(enabled))
+        self.tab.set_plugins_enabled(bool(enabled))
 
     @lua_property('resource_timeout')
     @command()
