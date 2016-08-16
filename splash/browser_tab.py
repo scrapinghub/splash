@@ -1226,13 +1226,32 @@ class EventHandlersStorage(QObject):
 
     def add(self, func):
         func_id = str(uuid.uuid1())
+
+        event_wrapper = u"window[{storage_name}].add(event)".format(
+            storage_name=escape_js(self.events_storage.name),
+        )
+        js_func = u"window[{storage_name}][{func_id}] = " \
+                  u"function(event) {{ window[{storage_name}].run({func_id}, {event}, event) }}"\
+            .format(
+                storage_name=escape_js(self.name),
+                func_id=escape_js(func_id),
+                event=event_wrapper
+            )
+
+        frame = self.parent().web_page.mainFrame()
+        eval_expr = u"eval({})".format(escape_js(js_func))
+        frame.evaluateJavaScript(get_process_errors_js(eval_expr))
         self.storage[func_id] = func
         return func_id
+
+    def remove(self, func_id):
+        if self.storage.get(func_id, None) is not None:
+            del self.storage[func_id]
 
     @pyqtSlot(str, str, 'QVariantMap', name="run")
     def run_function(self, func_id, event_id, event):
         wrapped_event = Event(self.events_storage, event_id, event)
-        self.storage[func_id].on_finish.append(wrapped_event.remove)
+        self.storage[func_id].on_call_after.append(wrapped_event.remove)
         self.storage[func_id](wrapped_event)
 
 

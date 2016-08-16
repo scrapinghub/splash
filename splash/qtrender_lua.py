@@ -1531,9 +1531,22 @@ class _ExposedElement(BaseExposedObject):
     def _get_style(self):
         return _ExposedElementStyle(self.lua, self.exceptions, self.element)
 
-    @command()
-    def _get_event_handler(self, event_name):
-        return self.event_handlers[event_name]
+    def _save_event_handler_id(self, event_name, handler, handler_id, is_on_event=False):
+        if self.event_handlers.get(event_name, None) is None:
+            self.event_handlers[event_name] = {}
+
+        handler_key = "on" if is_on_event else str(handler)
+        self.event_handlers[event_name][handler_key] = handler_id
+
+    def _remove_event_handler_id(self, event_name, handler, is_on_event=False):
+        if self.event_handlers.get(event_name, None) is None:
+            return None
+
+        handler_key = "on" if is_on_event else str(handler)
+        handler_id = self.event_handlers[event_name].get(handler_key, None)
+        if handler_id is not None:
+            del self.event_handlers[event_name][handler_key]
+        return handler_id
 
     @command(decode_arguments=False)
     def _set_event_handler(self, event_name, handler):
@@ -1546,6 +1559,12 @@ class _ExposedElement(BaseExposedObject):
                 "splash_method": "set_event_handler",
             })
 
+        if handler is None:
+            handler_id = self._remove_event_handler_id(event_name, handler, True)
+            if handler_id is not None:
+                self.element.unset_event_handler(event_name, handler_id)
+            return
+
         if lupa.lua_type(handler) != 'function':
             raise ScriptError({
                 "argument": "handler",
@@ -1553,25 +1572,92 @@ class _ExposedElement(BaseExposedObject):
                 "splash_method": "set_event_handler",
             })
 
-        def cleanup(result=None):
-            for handler in run_coro.on_finish:
+        def cleanup():
+            for handler in run_coro.on_call_after:
                 handler()
 
         def log_error(error, event_name=event_name):
             self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
             cleanup()
 
+        def on_handler_call(result=None):
+            cleanup()
+
+        def on_handler_call_error(error):
+            log_error(error)
+
         coro = self.splash.get_coroutine_run_func(
-            "element:on" + event_name, handler, return_result=cleanup, return_error=log_error
+            "element:on" + event_name, handler, return_result=on_handler_call, return_error=on_handler_call_error
         )
 
         def run_coro(event, coro=coro):
             wrapper = self.lua.eval("require('event')")
             coro(wrapper._create(_ExposedEvent(self.lua, self.exceptions, event)))
 
-        run_coro.on_finish = []
+        run_coro.on_call_after = []
 
-        self.element.set_event_handler("on" + event_name, run_coro)
+        handler_id = self.element.set_event_handler(event_name, run_coro)
+        self._save_event_handler_id(event_name, handler, handler_id, True)
+
+    @command(decode_arguments=False)
+    def addEventListener(self, event_name, handler):
+        event_name = self.lua.lua2python(event_name)
+
+        if event_name == "":
+            raise ScriptError({
+                "argument": "event_name",
+                "message": "element:addEventListener event_name must be specified",
+                "splash_method": "addEventListener",
+            })
+
+        if lupa.lua_type(handler) != 'function':
+            raise ScriptError({
+                "argument": "handler",
+                "message": "element:addEventListener handler is not a function",
+                "splash_method": "addEventListener",
+            })
+
+        def cleanup():
+            for handler in run_coro.on_call_after:
+                handler()
+
+        def log_error(error, event_name=event_name):
+            self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
+            cleanup()
+
+        def on_handler_call(result=None):
+            cleanup()
+
+        def on_handler_call_error(error):
+            log_error(error)
+
+        coro = self.splash.get_coroutine_run_func(
+            "element:on" + event_name, handler, return_result=on_handler_call, return_error=on_handler_call_error
+        )
+
+        def run_coro(event, coro=coro):
+            wrapper = self.lua.eval("require('event')")
+            coro(wrapper._create(_ExposedEvent(self.lua, self.exceptions, event)))
+
+        run_coro.on_call_after = []
+
+        handler_id = self.element.add_event_handler(event_name, run_coro)
+        self._save_event_handler_id(event_name, handler, handler_id)
+
+    @command(decode_arguments=False)
+    def removeEventListener(self, event_name, handler):
+        event_name = self.lua.lua2python(event_name)
+
+        if event_name == "":
+            raise ScriptError({
+                "argument": "event_name",
+                "message": "element:removeEventListener event_name must be specified",
+                "splash_method": "removeEventListener",
+            })
+
+        handler_id = self._remove_event_handler_id(event_name, handler)
+        if handler_id is not None:
+            self.element.remove_event_handler(event_name, handler_id)
 
     @command()
     def exists(self):

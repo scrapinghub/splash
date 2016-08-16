@@ -264,22 +264,53 @@ class HTMLElement(object):
         self.tab.send_text(text)
 
     def set_event_handler(self, event_name, handler):
-        func_id = self.event_handlers_storage.add(handler)
+        handler_id = self.event_handlers_storage.add(handler)
 
-        event_wrapper = u"window[{storage_name}].add(event)".format(
-            storage_name=escape_js(self.events_storage.name),
-        )
-
-        func = u"window[{storage_name}].run({func_id}, {event}, event)".format(
+        func = u"window[{storage_name}][{func_id}]".format(
             storage_name=escape_js(self.event_handlers_storage.name),
-            func_id=escape_js(func_id),
-            event=event_wrapper
+            func_id=escape_js(handler_id),
         )
 
-        self.tab.evaljs(u"{element}[{event_name}] = function(event) {{ {func} }}".format(
+        self.tab.evaljs(u"{element}['on' + {event_name}] = {func}".format(
             element=self.element_js,
             event_name=escape_js(event_name),
             func=func
         ))
 
-        return func_id
+        return handler_id
+
+    def unset_event_handler(self, event_name, handler_id):
+        self.tab.evaljs(u"{element}['on' + {event_name}] = null".format(
+            element=self.element_js,
+            event_name=escape_js(event_name),
+        ))
+        self.event_handlers_storage.remove(handler_id)
+
+    def add_event_handler(self, event_name, handler):
+        handler_id = self.event_handlers_storage.add(handler)
+
+        func = u"window[{storage_name}][{func_id}]".format(
+            storage_name=escape_js(self.event_handlers_storage.name),
+            func_id=escape_js(handler_id),
+        )
+
+        self.tab.evaljs(u"{element}.addEventListener({event_name}, {func})".format(
+            element=self.element_js,
+            event_name=escape_js(event_name),
+            func=func
+        ))
+
+        return handler_id
+
+    def remove_event_handler(self, event_name, handler_id):
+        func = u"window[{storage_name}][{func_id}]".format(
+            storage_name=escape_js(self.event_handlers_storage.name),
+            func_id=escape_js(handler_id),
+        )
+        self.tab.evaljs(u"{element}.removeEventListener({event_name}, {func})".format(
+            element=self.element_js,
+            event_name=escape_js(event_name),
+            func=func
+        ))
+        self.event_handlers_storage.remove(handler_id)
+

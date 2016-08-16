@@ -80,6 +80,10 @@ Properties inherited from Node_:
 
 The list of supported methods:
 
+Methods inherited from EventTarget_:
+    - addEventListener
+    - removeEventListener
+
 Methods inherited from HTMLElement_:
     - blur
     - click
@@ -153,6 +157,7 @@ The following fields are read-only.
 .. _Element: https://developer.mozilla.org/en-US/docs/Web/API/Element
 .. _Node: https://developer.mozilla.org/en-US/docs/Web/API/Node
 .. _Event: https://developer.mozilla.org/en-US/docs/Web/API/Event
+.. _EventTarget: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
 
 
 .. _splash-element-inner_id:

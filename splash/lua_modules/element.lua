@@ -80,7 +80,7 @@ Element.__index = function(self, index)
 
   if is_event_name(index) then
     local event_name = get_event_name(index)
-    return self:_get_event_handler(event_name)
+    error("Cannot get " .. event_name .. " event handler")
   end
 
   return element_index(self, index)

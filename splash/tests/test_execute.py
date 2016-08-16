@@ -4735,6 +4735,36 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'True')
 
+    def test_unset_event_handlers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local called = 0
+
+            local button = splash:select('button')
+            button.node.onclick = function(event)
+                called = called + 1
+            end
+
+            assert(button:mouse_click())
+            assert(splash:wait(0))
+            assert(button:mouse_click())
+            assert(splash:wait(0))
+
+            button.node.onclick = nil
+
+            assert(button:mouse_click())
+            assert(splash:wait(0))
+
+            return {called=called}
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"called": 2})
+
     def test_element_properties_getters(self):
         resp = self.request_lua("""
         function main(splash)
@@ -4947,3 +4977,99 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertTrue(len(resp.text) > 0)
+
+    def test_event_listener(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local x, y = 0, 0
+            local prevented = nil
+            local called = 0
+
+            local button = splash:select('button')
+
+            local handler = function(event)
+                event:preventDefault()
+                event:stopImmediatePropagation()
+                event:stopPropagation()
+                called = called + 1
+                x = event.clientX
+                y = event.clientY
+                prevented = event.defaultPrevented
+            end
+
+            button.node:addEventListener('click', handler)
+
+            assert(button:mouse_click())
+            assert(splash:wait(0))
+            assert(button:mouse_click())
+            assert(splash:wait(0))
+
+            button.node:removeEventListener('click', handler)
+
+            assert(button:mouse_click())
+            assert(splash:wait(0))
+
+            return {called=called, x=x, y=y, prevented=prevented}
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"called": 2, "x": 2, "y": 2, "prevented": True})
+
+    def test_event_listeners_bad_event_name(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.node:addEventListener('', function(event) end)
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='event_name must be specified')
+        self.assertEqual(err['info']['splash_method'], 'addEventListener')
+
+    def test_event_listeners_bad_handler(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.node:addEventListener('click', 123)
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='handler is not a function')
+        self.assertEqual(err['info']['splash_method'], 'addEventListener')
+
+    def test_event_listeners_error_in_handler(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.node:addEventListener('click', function()
+                error('make some noise')
+            end)
+
+            assert(body:mouse_click())
+            assert(splash:wait(1))
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'True')
