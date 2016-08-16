@@ -317,6 +317,7 @@ class RenderJsonResource(BaseRenderResource):
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_jpeg_params())
         params.update(options.get_include_params())
+        params['response_body'] = options.get_response_body()
         return self.pool.render(JsonRender, options, **params)
 
 
@@ -325,6 +326,7 @@ class RenderHarResource(BaseRenderResource):
 
     def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
+        params['response_body'] = options.get_response_body()
         return self.pool.render(HarRender, options, **params)
 
 
@@ -433,6 +435,7 @@ class DemoUI(_ValidatingResource):
             'save_args': options.get_save_args(),
             'load_args': options.get_load_args(),
             'timeout': options.get_timeout(),
+            'response_body': options.get_response_body(),
             'har': 1,
             'png': 1,
             'html': 1,
