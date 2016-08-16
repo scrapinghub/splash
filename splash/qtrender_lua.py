@@ -465,6 +465,16 @@ class Splash(BaseExposedObject):
     def set_private_mode_enabled(self, value):
         self.tab.set_private_mode_enabled(bool(value))
 
+    @lua_property('response_body_enabled')
+    @command()
+    def get_response_body_enabled(self):
+        return self.tab.get_response_body_enabled()
+
+    @get_response_body_enabled.lua_setter
+    @command()
+    def set_response_body_enabled(self, value):
+        self.tab.set_response_body_enabled(bool(value))
+
     @command()
     def wait(self, time, cancel_on_redirect=False, cancel_on_error=True):
         time = float(time)
@@ -1340,7 +1350,7 @@ class _ExposedBoundRequest(BaseExposedObject):
     @command()
     @requires_request
     def enable_response_body(self):
-        self.request.track = True
+        self.request.track_response_body = True
 
     @command()
     @requires_request

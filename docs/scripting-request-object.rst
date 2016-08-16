@@ -88,6 +88,10 @@ attribute).
 
 **Async:** no.
 
+This function allows to enable response content tracking per-request
+when :ref:`splash-response-body-enabled` is set to false.
+Call it in a :ref:`splash-on-request` callback.
+
 .. _splash-request-set-url:
 
 request:set_url

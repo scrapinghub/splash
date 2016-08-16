@@ -85,3 +85,6 @@ VERBOSITY = 1
 
 # plugins (e.g. flash)
 PLUGINS_ENABLED = False
+
+# response content
+RESPONSE_BODY_ENABLED = False

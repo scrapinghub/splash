@@ -22,7 +22,9 @@ from splash.request_middleware import (
     AllowedSchemesMiddleware,
     RequestLoggingMiddleware,
     AdblockRulesRegistry,
-    ResourceTimeoutMiddleware)
+    ResourceTimeoutMiddleware,
+    ResponseBodyTrackingMiddleware,
+)
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
 from splash.utils import to_bytes
@@ -50,6 +52,7 @@ class NetworkManagerFactory(object):
 
         self.request_middlewares.append(AllowedDomainsMiddleware(verbosity=verbosity))
         self.request_middlewares.append(ResourceTimeoutMiddleware())
+        self.request_middlewares.append(ResponseBodyTrackingMiddleware())
 
         if filters_path is not None:
             self.adblock_rules = AdblockRulesRegistry(filters_path, verbosity=verbosity)
@@ -194,7 +197,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         req = QNetworkRequest(request)
         req_id = next(self._request_ids)
         req.setAttribute(self._REQUEST_ID, req_id)
-        for attr in ['timeout', 'track']:
+        for attr in ['timeout', 'track_response_body']:
             if hasattr(request, attr):
                 setattr(req, attr, getattr(request, attr))
         return req, req_id
@@ -237,23 +240,20 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _handle_request_cookies(self, request):
         self.cookiejar.update_cookie_header(request)
 
-    def _handle_request_response_tracking(self, request):
-        if hasattr(request, 'track'):
-            request.setAttribute(self._SHOULD_TRACK, request.track)
-        else:
-            # FIXME
-            request.setAttribute(self._SHOULD_TRACK, False)
-
     def _handle_reply_cookies(self, reply):
         self.cookiejar.fill_from_reply(reply)
+
+    def _handle_request_response_tracking(self, request):
+        track = getattr(request, 'track_response_body', False)
+        request.setAttribute(self._SHOULD_TRACK, track)
+
+    def _should_track_content(self, request):
+        return request.attribute(self._SHOULD_TRACK)
 
     def _get_request_id(self, request=None):
         if request is None:
             request = self.sender().request()
         return request.attribute(self._REQUEST_ID)
-
-    def _should_track_content(self, request):
-        return request.attribute(self._SHOULD_TRACK)
 
     def _get_har(self, request=None):
         """

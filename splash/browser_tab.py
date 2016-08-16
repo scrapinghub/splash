@@ -122,6 +122,12 @@ class BrowserTab(QObject):
         settings = self.web_page.settings()
         return settings.testAttribute(QWebSettings.PrivateBrowsingEnabled)
 
+    def get_response_body_enabled(self):
+        return self.web_page.response_body_enabled
+
+    def set_response_body_enabled(self, val):
+        self.web_page.response_body_enabled = val
+
     def _set_default_webpage_options(self, web_page):
         """
         Set QWebPage options.
@@ -139,6 +145,7 @@ class BrowserTab(QObject):
             web_page.settings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 
         self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
+        self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
 
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)

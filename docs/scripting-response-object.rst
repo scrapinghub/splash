@@ -78,6 +78,9 @@ Raw response body (a :ref:`binary object <binary-objects>`).
 If you want to process response body from Lua use :ref:`treat-as-string`
 to convert it to a Lua string first.
 
+:ref:`splash-response-body` attribute is not available by default
+in :ref:`splash-on-response` callbacks; use :ref:`splash-response-body-enabled`
+or :ref:`splash-request-enable-response-body` to enable it.
 
 .. _splash-response-request:
 
