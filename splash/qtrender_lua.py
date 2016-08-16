@@ -1104,7 +1104,7 @@ class Splash(BaseExposedObject):
             self._objects_to_clear.add(req)
             self._objects_to_clear.add(resp)
             run_coro = self.get_coroutine_run_func(
-                "splash:on_response", callback, [resp]
+                "splash:on_response", callback,
             )
             return run_coro(resp)
 
