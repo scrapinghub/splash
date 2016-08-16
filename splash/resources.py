@@ -53,7 +53,8 @@ class _ValidatingResource(Resource):
             self._log_stats(request, {}, error=self._format_error(400, e))
             return b"\n"
 
-    def _write_error_content(self, request, code, err, content_type=b'text/plain'):
+    def _write_error_content(self, request, code, err,
+                             content_type=b'text/plain'):
         request.setHeader(b"content-type", content_type)
         request.setResponseCode(code)
         content = json.dumps(err).encode('utf8')
@@ -199,18 +200,6 @@ class BaseRenderResource(_ValidatingResource):
         return self._write_error(request, 498, ex)
 
     def _log_stats(self, request, options, error=None):
-
-        # def args_to_unicode(args):
-        #     unicode_args = {}
-        #     for key, val in args.items():
-        #         key = to_unicode(key)
-        #         if isinstance(val, list):
-        #             val = [args_to_unicode(item)item.decode('utf-8') for item in val]
-        #         else:
-        #             val = val.decode('utf-8')
-        #         unicode_args[key] = val
-        #         return unicode_args
-
         msg = {
             # Anything we retrieve from Twisted request object contains bytes.
             # We have to convert it to unicode first for json.dump to succeed.
@@ -361,7 +350,6 @@ class DebugResource(Resource):
         if self.warn:
             info['WARNING'] = "/debug endpoint is deprecated. " \
                               "Please use /_debug instead."
-            # info['leaks'] = get_leaks()
 
         return (json.dumps(info, sort_keys=True)).encode('utf-8')
 
