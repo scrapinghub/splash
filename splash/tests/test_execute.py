@@ -5053,19 +5053,32 @@ class HTMLElementTest(BaseLuaRenderTest):
                                      message='handler is not a function')
         self.assertEqual(err['info']['splash_method'], 'addEventListener')
 
-    def test_event_listeners_error_in_handler(self):
+    def test_remove_event_listeners_bad_event_name(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
 
             local body = splash:select('body')
-            body.node:addEventListener('click', function()
-                error('make some noise')
-            end)
+            body.node:addEventListener('click', function(event) end)
+            body.node:removeEventListener('', function(event) end)
 
-            assert(body:mouse_click())
-            assert(splash:wait(1))
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='event_name must be specified')
+        self.assertEqual(err['info']['splash_method'], 'removeEventListener')
+
+    def test_remove_not_added_event_listeners(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.node:removeEventListener('click', function(event) end)
 
             return true
         end
