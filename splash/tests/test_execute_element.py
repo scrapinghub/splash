@@ -1160,3 +1160,39 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'True')
+
+    def test_submit(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local submitted = false
+
+            local form = splash:select('form')
+
+            assert(form:submit())
+            assert(splash:wait(0.5))
+
+            return splash:url()
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertRegexpMatches(resp.text, '/submitted\?username=admin&password=pass123')
+
+    def test_submit_not_form(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local submitted = false
+
+            local input = splash:select('input')
+
+            assert(input:submit())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertScriptError(resp, ScriptError.LUA_ERROR, "Node should be 'form'")

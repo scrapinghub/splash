@@ -734,7 +734,7 @@ VariousElementsPage = _html_resource("""
 <button id="showTitleBtn" type="button" onclick="document.querySelector('.title').style.display = 'block'">Click me</button>
 <h1 id="title" class="title" style="display: none ">Title</h1>
 
-<form id="login">
+<form id="login" action="/submitted">
    <input type="text" name="username" value="admin" />
    <input type="password" name="password" value="pass123" />
 </form>

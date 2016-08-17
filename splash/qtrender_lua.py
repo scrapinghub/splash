@@ -1769,6 +1769,9 @@ class _ExposedElement(BaseExposedObject):
     def send_text(self, text):
         return self.element.send_text(text)
 
+    @command(errors_as_flags=True)
+    def submit(self):
+        return self.element.submit()
 
 _ExposedElement.init_properties()
 _ExposedElement.init_methods()

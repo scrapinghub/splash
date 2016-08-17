@@ -264,6 +264,7 @@ class HTMLElement(object):
         self.tab.send_text(text)
 
     def set_event_handler(self, event_name, handler):
+        """ Set on-event type event listeners to the element """
         handler_id = self.event_handlers_storage.add(handler)
 
         func = u"window[{storage_name}][{func_id}]".format(
@@ -280,6 +281,7 @@ class HTMLElement(object):
         return handler_id
 
     def unset_event_handler(self, event_name, handler_id):
+        """ Remove on-event type event listeners from the element """
         self.tab.evaljs(u"{element}['on' + {event_name}] = null".format(
             element=self.element_js,
             event_name=escape_js(event_name),
@@ -287,6 +289,7 @@ class HTMLElement(object):
         self.event_handlers_storage.remove(handler_id)
 
     def add_event_handler(self, event_name, handler):
+        """ Add event listeners to the element for the specified event """
         handler_id = self.event_handlers_storage.add(handler)
 
         func = u"window[{storage_name}][{func_id}]".format(
@@ -303,6 +306,7 @@ class HTMLElement(object):
         return handler_id
 
     def remove_event_handler(self, event_name, handler_id):
+        """ Remove event listeners from the element for the specified event and handler """
         func = u"window[{storage_name}][{func_id}]".format(
             storage_name=escape_js(self.event_handlers_storage.name),
             func_id=escape_js(handler_id),
@@ -314,3 +318,7 @@ class HTMLElement(object):
         ))
         self.event_handlers_storage.remove(handler_id)
 
+    def submit(self):
+        """ Submit form element """
+        self.assert_node_type('form')
+        self.node_method('submit')()

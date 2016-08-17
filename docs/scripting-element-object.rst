@@ -551,3 +551,16 @@ This methods do the following:
 See more about it in :ref:`splash-send-text`.
 
 
+
+.. _splash-element-submit:
+
+element:submit
+--------------
+
+Submit the form element.
+
+**Signature:** ``ok = element:submit()``
+
+**Returns:** ``ok`` pair. If ``ok`` is nil then error happened during the function call.
+
+**Async:** no.
