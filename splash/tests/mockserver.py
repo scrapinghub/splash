@@ -748,6 +748,7 @@ VariousElementsPage = _html_resource("""
 </div>
 <div class="test" id="clickMe" onclick="this.innerText = (+this.innerText) + 1">0</div>
 <div id="hoverMe" onmousemove="this.innerText = (+this.innerText) + 1">0</div>
+<div id="parent"><div id="child">click</div></div>
 </body>
 </html>
 """)

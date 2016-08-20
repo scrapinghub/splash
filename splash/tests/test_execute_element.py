@@ -933,7 +933,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), ['showTitleBtn', 'title', 'login', 'editable',
-                                       'multiline-inline', 'block', 'clickMe', 'hoverMe'])
+                                       'multiline-inline', 'block', 'clickMe', 'hoverMe', 'parent'])
 
     def test_element_methods(self):
         resp = self.request_lua("""
@@ -1016,7 +1016,7 @@ class HTMLElementTest(BaseLuaRenderTest):
           """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe'])
+        self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe', 'parent', 'child'])
 
     def test_select_all_empty(self):
         resp = self.request_lua("""
@@ -1056,7 +1056,7 @@ class HTMLElementTest(BaseLuaRenderTest):
           """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe'])
+        self.assertEqual(resp.json(), ['editable', 'block', 'nestedBlock', 'clickMe', 'hoverMe', 'parent', 'child'])
 
     def test_inner_id(self):
         resp = self.request_lua("""
@@ -1114,6 +1114,39 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"called": 2, "x": 2, "y": 2, "prevented": True})
 
+    def test_event_listener_options(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            splash:go(splash.args.url)
+            splash:wait(0.1)
+
+            local orders = {}
+
+            local parent = splash:select('#parent')
+            local child = splash:select('#child')
+
+            local get_handler = function(i)
+                return function()
+                    orders[#orders + 1] = i
+                end
+            end
+
+            child.node:addEventListener('click', get_handler(1), true) -- children capture
+            child.node:addEventListener('click', get_handler(2), false) -- children bubble
+            parent.node:addEventListener('click', get_handler(3), true) -- parent capture
+            parent.node:addEventListener('click', get_handler(4), false) -- parent bubble
+
+            assert(child:mouse_click())
+            assert(splash:wait(0))
+
+            return treat.as_array(orders)
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), [3, 1, 2, 4])
+
     def test_event_listeners_bad_event_name(self):
         resp = self.request_lua("""
         function main(splash)
@@ -1129,6 +1162,23 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                      message='event_name must be specified')
+        self.assertEqual(err['info']['splash_method'], 'addEventListener')
+
+    def test_event_listeners_bad_options(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            body.node:addEventListener('click', function(event) end, 1)
+
+            return true
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='options must be a boolean or a table')
         self.assertEqual(err['info']['splash_method'], 'addEventListener')
 
     def test_event_listeners_bad_handler(self):

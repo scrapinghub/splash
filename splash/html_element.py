@@ -280,7 +280,7 @@ class HTMLElement(object):
         ))
         self.event_handlers_storage.remove(handler_id)
 
-    def add_event_handler(self, event_name, handler):
+    def add_event_handler(self, event_name, handler, options=None):
         """ Add event listeners to the element for the specified event """
         handler_id = self.event_handlers_storage.add(handler)
 
@@ -289,10 +289,11 @@ class HTMLElement(object):
             func_id=escape_js(handler_id),
         )
 
-        self.tab.evaljs(u"{element}.addEventListener({event_name}, {func})".format(
+        self.tab.evaljs(u"{element}.addEventListener({event_name}, {func}, {options})".format(
             element=self.element_js,
             event_name=escape_js(event_name),
-            func=func
+            func=func,
+            options=escape_js(options)
         ))
 
         return handler_id

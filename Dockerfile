@@ -39,3 +39,5 @@ ENTRYPOINT [ \
     "--filters-path", "/etc/splash/filters", \
     "--lua-package-path", "/etc/splash/lua_modules/?.lua" \
 ]
+
+CMD pip3 install -r /app/requirements-dev.txt /app

@@ -77,26 +77,4 @@ function Splash:call_later(cb, delay)
   return Timer._create(py_timer)
 end
 
-function Splash:select(selector)
-  local py_element = self:_select(selector)
-  if not py_element then
-    return nil
-  end
-  return Element._create(py_element)
-end
-
-function Splash:select_all(selector)
-  local py_elements = self:_select_all(selector)
-  if not py_elements then
-    return nil
-  end
-
-  local elements = {}
-  for i,py_element in ipairs(py_elements) do
-    elements[i] = Element._create(py_element)
-  end
-
-  return elements
-end
-
 return Splash

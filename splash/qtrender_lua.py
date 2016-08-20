@@ -1205,12 +1205,15 @@ class Splash(BaseExposedObject):
         return timer
 
     @command()
-    def _select(self, selector):
+    def select(self, selector):
         try:
             result = self.tab.select(selector)
             if result is None:
                 return None
-            return _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
+
+            return self.element_wrapper._create(
+                _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
+            )
         except (JsError, DOMError):
             raise ScriptError({
                 "message": "cannot select the specified element",
@@ -1219,10 +1222,13 @@ class Splash(BaseExposedObject):
             })
 
     @command()
-    def _select_all(self, selector):
+    def select_all(self, selector):
         try:
             result = self.tab.select_all(selector)
-            return [_ExposedElement(self.lua, self.exceptions, self, el) for el in result]
+            return [
+                self.element_wrapper._create(_ExposedElement(self.lua, self.exceptions, self, el))
+                for el in result
+            ]
         except (JsError, DOMError):
             raise ScriptError({
                 "message": "cannot select the specified elements",
@@ -1595,7 +1601,7 @@ class _ExposedElement(BaseExposedObject):
         self._save_event_handler_id(event_name, handler, handler_id, True)
 
     @command(decode_arguments=False)
-    def addEventListener(self, event_name, handler):
+    def addEventListener(self, event_name, handler, options=None):
         event_name = self.lua.lua2python(event_name)
 
         if event_name == "":
@@ -1611,6 +1617,15 @@ class _ExposedElement(BaseExposedObject):
                 "message": "element:addEventListener handler is not a function",
                 "splash_method": "addEventListener",
             })
+
+        if options is not None and not isinstance(options, bool) and lupa.lua_type(options) != 'table':
+            raise ScriptError({
+                "argument": "options",
+                "message": "element:addEventListener options must be a boolean or a table",
+                "splash_method": "addEventListener",
+            })
+
+        options = self.lua.lua2python(options)
 
         def cleanup():
             for handler in run_coro.on_call_after:
@@ -1636,7 +1651,7 @@ class _ExposedElement(BaseExposedObject):
 
         run_coro.on_call_after = []
 
-        handler_id = self.element.add_event_handler(event_name, run_coro)
+        handler_id = self.element.add_event_handler(event_name, run_coro, options)
         self._save_event_handler_id(event_name, handler, handler_id)
 
     @command(decode_arguments=False)
