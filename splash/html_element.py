@@ -77,16 +77,6 @@ class HTMLElement(object):
                 'message': "Node should be {!r}, but got {!r}".format(node_type, actual_type)
             })
 
-    def return_html_element_if_node(self, result):
-        """ Returns a new instance of HTMLElement if the `result.type` is "node" or list of HTMLElements """
-        if isinstance(result, dict) and result.get("type", None) == 'node':
-            return HTMLElement(self.tab, self.storage, self.event_handlers_storage, self.events_storage, result)
-
-        if isinstance(result, list):
-            return [self.return_html_element_if_node(res) for res in result]
-
-        return result
-
     def exists(self):
         """ Return flag indicating whether element is in DOM """
         exists = self.tab.evaljs("document.contains(%s)" % self.element_js)
@@ -95,21 +85,19 @@ class HTMLElement(object):
     @empty_strings_as_none
     def node_property(self, property_name):
         """ Return value of the specified property of the element """
-        result = self.tab.evaljs(u"{element}[{property}]".format(
+        return self.tab.evaljs(u"{element}[{property}]".format(
             element=self.element_js,
             property=escape_js(property_name)
         ))
-        return self.return_html_element_if_node(result)
 
     @empty_strings_as_none
     def set_node_property(self, property_name, property_value):
         """ Set value of the specified property of the element """
-        result = self.tab.evaljs(u"{element}[{property}] = {value}".format(
+        return self.tab.evaljs(u"{element}[{property}] = {value}".format(
             element=self.element_js,
             property=escape_js(property_name),
             value=escape_js(property_value)
         ))
-        return self.return_html_element_if_node(result)
 
     def get_node_style(self, property_name):
         """ Get value of the style property of the element """
@@ -131,12 +119,11 @@ class HTMLElement(object):
 
         @empty_strings_as_none
         def call(*args):
-            result = self.tab.evaljs(u"{element}[{method}]({args})".format(
+            return self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,
                 method=escape_js(method_name),
                 args=','.join([arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg) for arg in args])
             ))
-            return self.return_html_element_if_node(result)
 
         return call
 

@@ -607,8 +607,16 @@ class EvaljsTest(BaseLuaRenderTest):
         # XXX: functions are not returned by QT
         self.assertEvaljsResult("x = function(){return 5}; x", None, "nil")
 
-    def test_host_object_document(self):
-        self.assertEvaljsResult("document", None, "nil")
+    def test_html_element(self):
+        resp = self.request_lua("""
+        function main(splash)
+           local div = splash:evaljs("document.createElement('div')")
+           return div.node.nodeName:lower()
+        end
+        """)
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'div')
 
     def test_host_object_xhr(self):
         self.assertEvaljsResult("(new XMLHttpRequest())", None, "nil")
@@ -1224,6 +1232,29 @@ class JsfuncTest(BaseLuaRenderTest):
         """)
         err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
         self.assertEqual(err['info']['line_number'], 3)
+
+    def test_html_element(self):
+        resp = self.request_lua("""
+        treat = require("treat")
+        function main(splash)
+            local create_el = splash:jsfunc("function(type){return document.createElement(type)}")
+            return create_el('div').node.nodeName:lower();
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'div')
+
+    def test_element_as_argument(self):
+        resp = self.request_lua("""
+        treat = require("treat")
+        function main(splash)
+            local div = splash:evaljs('document.createElement("div")')
+            local get_node_name = splash:jsfunc("function(node){return node.nodeName.toLowerCase(); }")
+            return get_node_name(div)
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'div')
 
 
 class WaitTest(BaseLuaRenderTest):

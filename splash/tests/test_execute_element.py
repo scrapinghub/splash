@@ -1217,3 +1217,23 @@ class HTMLElementTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("various-elements")})
 
         self.assertScriptError(resp, ScriptError.LUA_ERROR, "Node should be 'form'")
+
+    def test_element_arg(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+            local div = splash:evaljs('document.createElement("div")')
+
+            div.node.id = 'mydiv';
+            body.node:appendChild(div);
+
+            return body.node.lastChild.node.id
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'mydiv')
+

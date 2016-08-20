@@ -204,3 +204,31 @@ def ensure_tuple(val):
 
 def get_id():
     return str(uuid1())
+
+
+def traverse_obj(obj, predicate, convert, max_depth=100):
+    if max_depth <= 0:
+        raise ValueError("Can't traverse through object: depth limit is reached")
+
+    if obj is None:
+        return None
+
+    if predicate(obj):
+        return convert(obj)
+
+    if isinstance(obj, dict):
+        return {
+            key: traverse_obj(value, predicate, convert, max_depth=max_depth - 1)
+            for key, value in obj.items()
+        }
+
+    if isinstance(obj, list):
+        return [traverse_obj(v, predicate, convert, max_depth=max_depth - 1) for v in obj]
+
+    if isinstance(obj, tuple):
+        return tuple([traverse_obj(v, predicate, convert, max_depth=max_depth - 1) for v in obj])
+
+    if isinstance(obj, set):
+        return {traverse_obj(v, predicate, convert, max_depth=max_depth - 1) for v in obj}
+
+    return obj

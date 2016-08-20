@@ -25,7 +25,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError, DOMError
-from splash.utils import to_bytes, get_id
+from splash.utils import to_bytes, get_id, traverse_obj
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -568,6 +568,18 @@ class BrowserTab(QObject):
         self.web_page.har.store_redirect(six.text_type(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
+    def _is_node(self, obj):
+        return isinstance(obj, dict) and obj.get("type", None) == "node" and obj.get("id", None) is not None
+
+    def _populate_html_elements(self, obj, max_depth=100):
+        return traverse_obj(
+            obj,
+            lambda o: self._is_node(o),
+            lambda o: HTMLElement(self, self._elements_storage, self._event_handlers_storage,
+                                  self._events_storage, o),
+            max_depth=max_depth
+        )
+
     def run_js_file(self, filename, handle_errors=True):
         """
         Load JS library from file ``filename`` to the current frame.
@@ -644,6 +656,7 @@ class BrowserTab(QObject):
         eval_expr = u"eval({})".format(escape_js(js_source))
 
         if dom_elements:
+            self._init_js_objects_storage()
             eval_expr = store_dom_elements(eval_expr, self._elements_storage.name)
 
         if result_protection:
@@ -675,7 +688,12 @@ class BrowserTab(QObject):
                 'message': "JS error: {!r}".format(err_repr)
             })
 
-        return res.get("result", None)
+        result = res.get("result", None)
+
+        if dom_elements:
+            return self._populate_html_elements(result)
+
+        return result
 
     def runjs(self, js_source, handle_errors=True):
         """ Run JS code in page context and discard the result. """
@@ -947,16 +965,13 @@ class BrowserTab(QObject):
         :param selector valid CSS selector
         :return element
         """
-        self._init_js_objects_storage()
-
         js_query = u"document.querySelector({})".format(escape_js(selector))
         result = self.evaljs(js_query, result_protection=False)
 
-        if result is None or result == "":
+        if result == "":
             return None
 
-        return HTMLElement(self, self._elements_storage, self._event_handlers_storage,
-                           self._events_storage, result)
+        return result
 
     def select_all(self, selector):
         """ Selects DOM elements and returns a list of instances of `HTMLElement`
@@ -964,13 +979,8 @@ class BrowserTab(QObject):
         :param selector valid CSS selector
         :return list of elements
         """
-        self._init_js_objects_storage()
-
         js_query = u"document.querySelectorAll({})".format(escape_js(selector))
-        result = self.evaljs(js_query, result_protection=False)
-
-        return [HTMLElement(self, self._elements_storage, self._event_handlers_storage,
-                            self._events_storage, el) for el in result]
+        return self.evaljs(js_query, result_protection=False)
 
 
 class _SplashHttpClient(QObject):
