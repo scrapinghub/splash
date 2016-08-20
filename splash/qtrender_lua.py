@@ -1707,7 +1707,7 @@ class _ExposedElement(BaseExposedObject):
     def bounds(self):
         return self.element.bounds()
 
-    @command(errors_as_flags=True)
+    @command()
     def png(self, width=None, scale_method=None, pad=None):
         if width is not None:
             width = int(width)
@@ -1721,7 +1721,7 @@ class _ExposedElement(BaseExposedObject):
             return None
         return BinaryCapsule(result, 'image/png')
 
-    @command(errors_as_flags=True)
+    @command()
     def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
         if width is not None:
             width = int(width)

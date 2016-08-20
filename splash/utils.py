@@ -10,6 +10,7 @@ import resource
 from collections import defaultdict
 import functools
 import psutil
+from uuid import uuid1
 
 import six
 
@@ -199,3 +200,7 @@ def ensure_tuple(val):
     if not isinstance(val, tuple):
         return (val,)
     return val
+
+
+def get_id():
+    return str(uuid1())

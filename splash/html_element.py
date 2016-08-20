@@ -64,6 +64,7 @@ class HTMLElement(object):
         """ Raise exception if the element no longer exists in DOM """
         if not self.exists():
             raise DOMError({
+                'type': DOMError.NOT_IN_DOM_ERROR,
                 'message': "Element no longer exists in DOM"
             })
 
@@ -72,6 +73,7 @@ class HTMLElement(object):
         """ Raise exception if the type of the element doesn't match with the provided one """
         if actual_type != node_type.lower():
             raise DOMError({
+                'type': DOMError.NOT_COMPATIBLE_NODE_ERROR,
                 'message': "Node should be {!r}, but got {!r}".format(node_type, actual_type)
             })
 
@@ -173,9 +175,7 @@ class HTMLElement(object):
 
             Padding value can be negative which means that the image will be cropped.
         """
-        self.assert_element_exists()
-
-        if not self.visible():
+        if not self.exists() or not self.visible():
             return None
 
         bounds = self.bounds()
@@ -189,10 +189,15 @@ class HTMLElement(object):
         return self.tab.png(width, region=region, scale_method=scale_method)
 
     def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
-        """ Return screenshot of the element in JPEG format """
-        self.assert_element_exists()
+        """ Return screenshot of the element in JPEG format
 
-        if not self.visible():
+            Optional `pad` can be provided which can be in two formats:
+              - integer containing amount of pad for all sides (top, left, bottom, right)
+              - tuple with `left`, `top`, `right`, `bottom` integer values for padding
+
+            Padding value can be negative which means that the image will be cropped.
+        """
+        if not self.exists() or not self.visible():
             return None
 
         bounds = self.bounds()

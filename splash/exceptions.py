@@ -57,4 +57,5 @@ class OneShotCallbackError(Exception):
 
 class DOMError(Exception):
     """ Error occurred during DOM operations"""
-    pass
+    NOT_IN_DOM_ERROR = 'NOT_IN_DOM_ERROR'
+    NOT_COMPATIBLE_NODE_ERROR = 'NOT_COMPATIBLE_NODE_ERROR'

@@ -135,6 +135,7 @@ receive ``event`` table with the almost all available methods and properties.
 .. code-block:: lua
 
     function main(splash)
+        -- ...
         local element = splash:select('.element')
 
         local x, y = 0, 0
@@ -150,8 +151,30 @@ receive ``event`` table with the almost all available methods and properties.
         return x, y
     end
 
+The another way to attach event handlers is to use ``element.node:addEventListener(event, listener)``.
+It allows you to add more than a single event handler for an event.
 
-The following fields are read-only.
+Example of using ``element.node:addEventListener(event, listener)``
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+
+        local x, y = 0, 0
+
+        local store_coordinates = function(event)
+            x = event.clientX
+            y = event.clientY
+        end
+
+        element.node:addEventListener('click', store_coordinates)
+
+        assert(splash:wait(10))
+
+        return x, y
+    end
 
 .. _HTMLElement: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
 .. _Element: https://developer.mozilla.org/en-US/docs/Web/API/Element
@@ -162,20 +185,30 @@ The following fields are read-only.
 
 .. _splash-element-inner_id:
 
+The following fields are read-only.
+
 element.inner_id
 ----------------
 
-Id of the inner representation of the element.
+Id of the inner representation of the element. It may be useful for comparing the elements
+for the equality.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+
+        local same = element2.inner_id == element2.inner_id
+
+        -- ...
+    end
 
 Methods
 ~~~~~~~
 
 To modify or retrieve some information about the element you can use the following methods.
-Note that all of the following methods return flag indicating whether the operation was
-successful or not. The methods returns ``ok, reason_or_value`` pair. If ``ok`` is nil
-then error happened during the operation; ``reason`` provides an information about error type;
-otherwise ``ok`` is ``true`` and the returned value is stored in the second variable.
-
 
 .. _splash-element-exists:
 
@@ -191,6 +224,36 @@ the error flag.
 
 **Async:** no.
 
+There are several reasons why the element can be absent from DOM. One of the reasons is that
+the element was removed by some JavaScript code.
+
+
+Example 1: the element was removed by JS code
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        assert(splash:runjs('document.write("<body></body>")'))
+        assert(splash:wait(0.1))
+        local exists = element:exists() -- exists will be `false`
+        -- ...
+    end
+
+Another reason is that the element was created by script and not inserted into DOM.
+
+Example 2: the element is not inserted into DOM
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        local cloned = element.node:cloneNode() -- the cloned element isn't in DOM
+        local exists = cloned:exists() -- exists will be `false`
+        -- ...
+    end
 
 .. _splash-element-mouse-click:
 
@@ -219,6 +282,30 @@ the click will be triggered outside of the element.
 Mouse events are not propagated immediately, to see consequences of click
 reflected in page source you must call :ref:`splash-wait`
 
+Example 1: get width and height of the element, calculate its center and click on it
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        local bounds = element:bounds()
+        assert(element:mouse_click{x=bounds.width/2, y=bounds.height/2})
+        -- ...
+    end
+
+
+Example 2: click on the area above the element by 10 pixels
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        assert(element:mouse_click{x=-10})
+        -- ...
+    end
+
 See more about mouse events in :ref:`splash-mouse-click`.
 
 
@@ -241,14 +328,38 @@ function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-If x or y coordinate is not provided they will be set to 0 and the click will be triggered
+If x or y coordinate is not provided they will be set to 0 and the hover will be triggered
 on the left-top corner of the element. The coordinates can have a negative value which means
-the click will be triggered outside of the element.
+the hover will be triggered outside of the element.
 
-Mouse events are not propagated immediately, to see consequences of click
+Mouse events are not propagated immediately, to see consequences of hover
 reflected in page source you must call :ref:`splash-wait`
 
-See more about mouse events in :ref:`splash-mouse-click`.
+Example 1: get width and height of the element, calculate its center and hover over it
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        local bounds = element:bounds()
+        assert(element:mouse_hover{x=bounds.width/2, y=bounds.height/2})
+        -- ...
+    end
+
+
+Example 2: hover over the area above the element by 10 pixels
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        assert(element:mouse_hover{x=-10})
+        -- ...
+    end
+
+See more about mouse events in :ref:`splash-mouse-hover`.
 
 
 .. _splash-element-styles:
@@ -264,15 +375,20 @@ Return the computed styles of the element.
 
 **Async:** no.
 
-Example of getting the font size of the element using this method.
+This method returns the result of JavaScript `Window.getComputedStyle()`_ applied on the element.
+
+Example: get all computed styles and return the ``font-size`` property.
 
 .. code-block:: lua
 
     function main(splash)
+        -- ...
         local element = splash:select('.element')
         return element:styles()['font-size']
     end
 
+
+.. _Window.getComputedStyle(): https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle
 
 .. _splash-element-bounds:
 
@@ -284,18 +400,19 @@ Return the bounding client rectangle of the element
 **Signature:** ``bounds = element:bounds()``
 
 **Returns:** ``bounds`` is a table with the client bounding rectangle with the ``top``, ``right``,
-``bottom`` and ``left`` coordinates.
+``bottom`` and ``left`` coordinates and also with ``width`` and ``height`` values.
 
 **Async:** no.
 
-Example of getting the bounds of the element.
+Example: get the bounds of the element.
 
 .. code-block:: lua
 
     function main(splash)
+        -- ..
         local element = splash:select('.element')
         return element:bounds()
-        -- e.g. bounds is { top = 10, right = 20, bottom = 20, left = 10 }
+        -- e.g. bounds is { top = 10, right = 20, bottom = 20, left = 10, height = 10, width = 10 }
     end
 
 
@@ -306,7 +423,7 @@ element:png
 
 Return a screenshot of the element in PNG format
 
-**Signature:** ``ok, shot = element:png{width=nil, scale_method='raster', pad=0}``
+**Signature:** ``shot = element:png{width=nil, scale_method='raster', pad=0}``
 
 **Parameters:**
 
@@ -315,10 +432,8 @@ Return a screenshot of the element in PNG format
   or ``'vector'``;
 * pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
-**Returns:** ``ok, shot`` pair. If ``ok`` is nil then error happened during the
-function call; ``shot`` provides an information about error type; otherwise
-``shot`` is a PNG screenshot data, as a :ref:`binary object <binary-objects>`.
-When the result is empty (e.g. if the element is not visible) ``nil`` is returned.
+**Returns:** ``shot`` is a PNG screenshot data, as a :ref:`binary object <binary-objects>`.
+When the result is empty (e.g. if the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
 
 **Async:** no.
 
@@ -326,6 +441,16 @@ When the result is empty (e.g. if the element is not visible) ``nil`` is returne
 padding from all sides will be equal. If the value of the padding is positive the resulting screenshot
 will be expanded by the specified amount of pixes. And if the value of padding is negative the resulting
 screenshot will be shrunk by the specified amount of pixes.
+
+Example: return a padded screenshot of the element
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ..
+        local element = splash:select('.element')
+        return element:png{pad=10}
+    end
 
 See more in :ref:`splash-png`.
 
@@ -337,7 +462,7 @@ element:jpeg
 
 Return a screenshot of the element in JPEG format
 
-**Signature:** ``ok, shot = element:jpeg{width=nil, scale_method='raster', quality=75, region=nil, pad=0}``
+**Signature:** ``shot = element:jpeg{width=nil, scale_method='raster', quality=75, region=nil, pad=0}``
 
 **Parameters:**
 
@@ -347,10 +472,8 @@ Return a screenshot of the element in JPEG format
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``;
 * pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
-**Returns:** ``ok, shot`` pair. If ``ok`` is nil then error happened during the
-function call; ``shot`` provides an information about error type; otherwise
-``shot`` is a JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
-When the result is empty (e.g. if the element is not visible) ``nil`` is returned.
+**Returns:** ``shot`` is a JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
+When the result is empty (e.g. if the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
 
 **Async:** no.
 
@@ -432,20 +555,26 @@ Info is a table with the following fields:
 element:field_value
 -------------------
 
-Get value of the field element (input, select).
+Get value of the field element (input, select, textarea, button).
 
 **Signature:** ``ok, info = element:field_value()``
 
-**Returns:** ``ok, value`` pair. If ``ok`` is nil then error happened during the function call;
-``value`` provides an information about error type; otherwise ``value`` is a value of the
+**Returns:** ``ok, info`` pair. If ``ok`` is nil then error happened during the function call;
+``value`` provides an information about error type; otherwise ``info`` is a value of the
 element.
 
 **Async:** no.
 
-The value can be a
-* string - for text/radio input and select and other element types
-* array of strings - for multi select
-* boolean - for checkbox input
+This methods in the following way:
+
+    - if the element type is ``select``:
+        - if the ``multiple`` attribute is ``true`` it returns a *table* with the selected values;
+        - otherwise it returns the value of the select;
+    - if the element has attribute ``type="radio"``:
+        - if it's checked returns its value;
+        - other it returns ``nil``
+    - if the element has attribute ``type="checkbox"`` it returns *bool* value
+    - otherwise it returns the value of the ``value`` attribute or *empty string* if it doesn't exist
 
 
 .. _splash-element-form-values:
@@ -459,9 +588,27 @@ Return a table with form values if the element type is *form*
 
 **Returns:** ``ok, values`` pair. If ``ok`` is nil then error happened during the function call
 or node type is not *form*; ``values`` provides an information about error type; otherwise
-``values`` is a table of values.
+``values`` is a table with element names as keys and values as values.
 
 **Async:** no.
+
+Example: return the values of the following login form
+
+.. code-block:: html
+
+    <form id="login">
+        <input type="text" name="username" value="admin" />
+        <input type="password" name="password" value="pass" />
+    </form>
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local form = splash:select('#login')
+        local ok, values = assert(form:form_values())
+        return values
+    end
 
 
 .. _splash-element-fill:
@@ -485,19 +632,23 @@ function call; ``reason`` provides an information about error type.
 In order to fill your form your inputs must have ``name`` property and this method will
 select those input using that property.
 
-Example of filling the following form:
+Example: get the current values, change password and fill the form
 
 .. code-block:: html
 
     <form id="login">
-        <input type="text" name="username" />
-        <input type="password" name="password" />
+        <input type="text" name="username" value="admin" />
+        <input type="password" name="password" value="pass" />
     </form>
 
 .. code-block:: lua
 
     function main(splash)
-        assert(splash:select('.login'):fill({ username="admin", password="pass" }))
+        -- ...
+        local form = splash:select('#login')
+        local ok, values = assert(form:form_values())
+        values.password = "l33t"
+        assert(form:fill(values))
     end
 
 
@@ -514,11 +665,12 @@ Send keyboard events to the element.
 
 * keys - string representing the keys to be sent as keyboard events.
 
-**Returns:** ``ok`` pair. If ``ok`` is nil then error happened during the function call.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
+function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-This methods do the following:
+This method does the following:
 
 * clicks on the element
 * send the specified keyboard events
@@ -539,7 +691,8 @@ Send keyboard events to the element.
 
 * text - string to be sent as input.
 
-**Returns:** ``ok`` pair. If ``ok`` is nil then error happened during the function call.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
+function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
@@ -561,6 +714,29 @@ Submit the form element.
 
 **Signature:** ``ok = element:submit()``
 
-**Returns:** ``ok`` pair. If ``ok`` is nil then error happened during the function call.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
+function call (e.g. you are trying to submit on element which is not a form);
+``reason`` provides an information about error type.
 
 **Async:** no.
+
+Example 1: get the form, fill with values and submit it
+
+.. code-block:: html
+
+    <form id="login" action="/login">
+        <input type="text" name="username" />
+        <input type="password" name="password" />
+        <input type="checkbox" name="remember" />
+        <button type="submit">Submit</button>
+    </form>
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local form = splash:select('#login')
+        assert(form:fill({ username='admin', password='pass', remember=true }))
+        assert(form:submit())
+        -- ...
+    end

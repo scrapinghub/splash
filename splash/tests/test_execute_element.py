@@ -463,7 +463,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:png()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:png())
+            local left_shot = left:png()
             local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
@@ -495,7 +495,28 @@ class HTMLElementTest(BaseLuaRenderTest):
             local left = splash:select('#left')
             assert(splash:runjs('document.querySelector("#left").style.visibility = "hidden"'))
             assert(splash:wait(0))
-            local ok, left_shot = assert(left:png())
+            local left_shot = left:png()
+
+            return left_shot
+        end
+        """, {"url": self.mockurl("red-green")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'None')
+
+    def test_png_non_existing_element(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local args = splash.args
+
+            splash:set_viewport_size(1024, 768)
+            splash:go(args.url)
+            splash:wait(0.1)
+
+            local left = splash:select('#left')
+            assert(splash:runjs('document.write("")'))
+            assert(splash:wait(0))
+            local left_shot = left:png()
 
             return left_shot
         end
@@ -515,7 +536,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:png()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:png{pad=10})
+            local left_shot = left:png{pad=10}
             local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
@@ -547,7 +568,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:png()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:png{pad={-5, 10, -20, -30}})
+            local left_shot = left:png{pad={-5, 10, -20, -30}}
             local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
@@ -579,7 +600,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:png()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:png{width=100})
+            local left_shot = left:png{width=100}
             local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
@@ -609,7 +630,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:jpeg())
+            local left_shot = left:jpeg()
             return left_shot
         end
         """, {"url": self.mockurl("red-green")})
@@ -617,7 +638,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertJpeg(resp, 1024 // 2, 768)
 
-    def test_jpeg_invisible_element(self):
+    def test_jpeg_non_existing_element(self):
         resp = self.request_lua("""
         function main(splash)
             local args = splash.args
@@ -627,9 +648,9 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local left = splash:select('#left')
-            assert(splash:runjs('document.querySelector("#left").style.visibility = "hidden"'))
+            assert(splash:runjs('document.write("")'))
             assert(splash:wait(0))
-            local ok, left_shot = assert(left:jpeg())
+            local left_shot = left:jpeg()
 
             return left_shot
         end
@@ -649,7 +670,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:jpeg()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:jpeg{pad=-10})
+            local left_shot = left:jpeg{pad=-10}
             local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
@@ -681,7 +702,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local full = splash:jpeg()
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:jpeg{pad={-5, -10, -20, -30}})
+            local left_shot = left:jpeg{pad={-5, -10, -20, -30}}
             local bounds = left:bounds()
 
             return {full = full, shot = left_shot, bounds = bounds}
@@ -712,7 +733,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local left = splash:select('#left')
-            local ok, left_shot = assert(left:jpeg{width=100, quality=100})
+            local left_shot = left:jpeg{width=100, quality=100}
 
             return left_shot
         end

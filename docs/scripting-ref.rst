@@ -2485,7 +2485,7 @@ arguments passed to splash, `username` and `password`.
 splash:select
 -------------
 
-Select the first HTML element from DOM of the current web page that matches the specified selector.
+Select the first HTML element from DOM of the current web page that matches the specified CSS selector.
 
 **Signature:** ``element = splash:select(selector)``
 
@@ -2497,12 +2497,12 @@ Select the first HTML element from DOM of the current web page that matches the 
 
 **Async:** no.
 
-
 Using :ref:`splash-select` you can get the element that matches your specified CSS selector like using
 `document.querySelector`_ in your browser. The returned element is a :ref:`splash-element` which has many useful
 methods and almost all methods and attributes that element has in JavaScript.
 
-In the following example we return the list of class names of all the siblings of the specified element.
+Example: select an element which has ``element` class and return class
+names off all the siblings of the specified element.
 
 .. code-block:: lua
 
@@ -2513,16 +2513,16 @@ In the following example we return the list of class names of all the siblings o
         assert(splash:wait(0.5))
 
         local el = splash:select('.element')
-        local hash = {}
+        local seen = {}
         local classNames = {}
 
         while el do
           local classList = el.node.classList
           if classList then
             for _, v in ipairs(classList) do
-              if (not hash[v]) then
+              if (not seen[v]) then
                 classNames[#classNames + 1] = v
-                hash[v] = true
+                seen[v] = true
               end
             end
           end
@@ -2543,7 +2543,7 @@ In the following example we return the list of class names of all the siblings o
 splash:select_all
 -----------------
 
-Select the list of HTML elements from DOM of the current web page that match the specified selector.
+Select the list of HTML elements from DOM of the current web page that match the specified CSS selector.
 
 **Signature:** ``elements = splash:select_all(selector)``
 
@@ -2555,6 +2555,26 @@ Select the list of HTML elements from DOM of the current web page that match the
 
 **Async:** no.
 
-This method differs from :ref:`splash-select` by returning *all* the elements in a table that matches the specified selector.
+This method differs from :ref:`splash-select` by returning the *all* elements in a table that
+match the specified selector.
 
+Example: select all ``<img />`` elements and get their ``src`` attributes
+
+.. code-block:: lua
+
+    local treat = require('treat')
+
+    function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.5))
+
+        local imgs = splash:select_all('img')
+        local srcs = {}
+
+        for _, img in ipairs(imgs) do
+          srcs[#srcs+1] = img.node.attributes.src
+        end
+
+        return treat.as_array(srcs)
+    end
 

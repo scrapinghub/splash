@@ -4,7 +4,6 @@ import base64
 import functools
 import os
 import weakref
-import uuid
 
 from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
 from PyQt5.QtGui import QMouseEvent
@@ -26,7 +25,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError, DOMError
-from splash.utils import to_bytes
+from splash.utils import to_bytes, get_id
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -92,7 +91,6 @@ class BrowserTab(QObject):
 
         self._set_default_webpage_options(self.web_page)
         self._setup_webpage_events()
-        self._init_elements_storage()
 
         self.web_view = SplashQWebView()
         self.web_view.setPage(self.web_page)
@@ -1186,16 +1184,33 @@ class _BrowserTabLogger(object):
 
 
 class ElementsStorage(QObject):
+    """
+    Object that allows to store JavaScript Node objects.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has `get_id()` function which can be called from JavaScript for
+    retrieving a unique id for each Node object
+    """
     def __init__(self, parent):
         self.name = self.get_id()
         super(ElementsStorage, self).__init__(parent)
 
     @pyqtSlot(name="getId", result=str)
     def get_id(self):
-        return str(uuid.uuid1())
+        return get_id()
 
 
 class Event(object):
+    """
+    Proxy object that allows to access JavaScript Event objects properties
+    and methods.
+
+    Properties are defined using `__getitem__` method and can be accessed using
+    `self[key]` operation.
+
+    To create the objects of this type you should pass an instance of `EventsStorage`
+    and an id of the event by which it can be accessed in the events storage
+    """
     def __init__(self, storage, id, event):
         self.storage = storage
         self.id = id
@@ -1218,14 +1233,21 @@ class Event(object):
 
 
 class EventHandlersStorage(QObject):
+    """
+    Object that allows to store JavaScript event listeners.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has `run_function()` function which is called from JS when the event
+    is triggered and the event listener is called.
+    """
     def __init__(self, parent, events_storage):
-        self.name = str(uuid.uuid1())
+        self.name = get_id()
         self.events_storage = events_storage
         self.storage = {}
         super(EventHandlersStorage, self).__init__(parent)
 
     def add(self, func):
-        func_id = str(uuid.uuid1())
+        func_id = get_id()
 
         event_wrapper = u"window[{storage_name}].add(event)".format(
             storage_name=escape_js(self.events_storage.name),
@@ -1256,12 +1278,24 @@ class EventHandlersStorage(QObject):
 
 
 class EventsStorage(QObject):
+    """
+    Object that allows to store JavaScript Event objects and access them.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has `get_id()` function which can be called from JavaScript for
+    retrieving a unique id for each event object.
+
+    After adding to the JS window object the `init_storage(self)` method
+    should be called to initialize the storage. During the initialization
+    the storage object is connected to the QT signals which allows to call
+    appropriate methods of the specified event.
+    """
     preventDefault = pyqtSignal(str)
     stopImmediatePropagation = pyqtSignal(str)
     stopPropagation = pyqtSignal(str)
 
     def __init__(self, parent):
-        self.name = str(uuid.uuid1())
+        self.name = get_id()
         super(EventsStorage, self).__init__(parent)
 
     def init_storage(self):
@@ -1291,7 +1325,7 @@ class EventsStorage(QObject):
 
     @pyqtSlot(name="getId", result=str)
     def get_id(self):
-        return str(uuid.uuid1())
+        return get_id()
 
     def get_event_property(self, event_id, property_name):
         frame = self.parent().web_page.mainFrame()
@@ -1335,7 +1369,7 @@ class OneShotCallbackProxy(QObject):
     """
 
     def __init__(self, parent, callback, errback, timeout=0):
-        self.name = str(uuid.uuid1())
+        self.name = get_id()
         self._used_up = False
         self._callback = callback
         self._errback = errback
