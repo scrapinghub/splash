@@ -352,7 +352,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
 
-            local form = splash:select('form')
+            local form = splash:select('#login')
             return assert(form:form_values())
         end
         """, {"url": self.mockurl("various-elements")})
@@ -369,7 +369,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
 
-            local form = splash:select('form')
+            local form = splash:select('#login')
             form.node.innerHTML = ''
 
             return assert(form:form_values())
@@ -378,6 +378,24 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {})
+
+    def test_form_values_multi(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            return assert(splash:select('#form'):form_values())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'choice': 'no',
+            'check': True,
+            'foo[]': ['coffee', 'milk', 'eggs'],
+            'baz': 'foo',
+            'selection': ['1', '3']
+        })
 
     def test_form_values_of_not_form(self):
         resp = self.request_lua("""
@@ -958,7 +976,7 @@ class HTMLElementTest(BaseLuaRenderTest):
           """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), ['showTitleBtn', 'title', 'login', 'editable',
+        self.assertEqual(resp.json(), ['showTitleBtn', 'title', 'login', 'form', 'editable',
                                        'multiline-inline', 'block', 'clickMe', 'hoverMe', 'parent'])
 
     def test_element_methods(self):

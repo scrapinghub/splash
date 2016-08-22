@@ -740,6 +740,22 @@ VariousElementsPage = _html_resource("""
    <input type="checkbox" name="remember" />
 </form>
 
+<form id="form">
+    <input type="text" name="foo[]" value="coffee" />
+    <input type="text" name="foo[]" value="milk" />
+    <input type="text" name="foo[]" value="eggs" />
+    <input type="text" name="baz" value="foo" />
+    <input type="radio" name="choice" value="yes" />
+    <input type="radio" name="choice" value="no" checked />
+    <input type="checkbox" name="check" checked />
+
+    <select multiple name="selection">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3" selected>2</option>
+    </select>
+</form>
+
 <div id="editable" contenteditable style="width: 100px; height: 100px;"></div>
 
 <p class="p" id="multiline-inline" style="width: 5px"><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</span></p>
