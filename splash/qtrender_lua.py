@@ -90,7 +90,7 @@ def rename(name):
 
 
 def command(table_argument=False, sets_callback=False,
-            decode_arguments=True, errors_as_flags=False):
+            decode_arguments=True, error_as_flag=False, result_as_flag=False):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
@@ -116,7 +116,8 @@ def command(table_argument=False, sets_callback=False,
             can_raise(
                 emits_lua_objects(meth)
             ),
-            errors_as_flags
+            error_as_flag,
+            result_as_flag
         )
         meth._is_command = True
         meth._sets_callback = sets_callback
@@ -234,7 +235,7 @@ def add_flag(tuple, flag):
     return new_tuple
 
 
-def exceptions_as_return_values(meth, errors_as_flags=False):
+def exceptions_as_return_values(meth, error_as_flag=False, result_as_flag=False):
     """Decorator for allowing Python exceptions to be caught from Lua.
 
     TODO: this decorator is the last one on the way from Python to Lua and thus
@@ -250,10 +251,10 @@ def exceptions_as_return_values(meth, errors_as_flags=False):
                 res = res.result
             else:
                 res = (b'return',) + ensure_tuple(res)
-            if errors_as_flags:
+            if error_as_flag and (result_as_flag or res[1] is None or res[1] is False):
                 res = add_flag(res, True)
         except Exception as e:
-            if errors_as_flags and self.FLAG_EXCEPTIONS is not None \
+            if error_as_flag and self.FLAG_EXCEPTIONS is not None \
                     and any(isinstance(e, x) for x in self.FLAG_EXCEPTIONS):
                 res = (b'return', False, repr(e).encode('utf-8'))
             else:
@@ -1673,7 +1674,7 @@ class _ExposedElement(BaseExposedObject):
     def exists(self):
         return self.element.exists()
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True)
     def mouse_click(self, x=0, y=0):
         if not isinstance(x, (float, int)):
             raise ScriptError({
@@ -1691,7 +1692,7 @@ class _ExposedElement(BaseExposedObject):
 
         self.element.mouse_click(float(x), float(y))
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True)
     def mouse_hover(self, x=0, y=0):
         if not isinstance(x, (float, int)):
             raise ScriptError({
@@ -1759,27 +1760,27 @@ class _ExposedElement(BaseExposedObject):
     def info(self):
         return self.element.info()
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True, result_as_flag=True)
     def field_value(self):
         return self.element.field_value()
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True)
     def form_values(self):
         return self.element.form_values()
 
-    @command(errors_as_flags=True, table_argument=True)
+    @command(error_as_flag=True, table_argument=True)
     def fill(self, values):
         return self.element.fill(values)
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True)
     def send_keys(self, text):
         return self.element.send_keys(text)
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True)
     def send_text(self, text):
         return self.element.send_text(text)
 
-    @command(errors_as_flags=True)
+    @command(error_as_flag=True)
     def submit(self):
         return self.element.submit()
 

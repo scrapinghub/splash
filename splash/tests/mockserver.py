@@ -737,6 +737,7 @@ VariousElementsPage = _html_resource("""
 <form id="login" action="/submitted">
    <input type="text" name="username" value="admin" />
    <input type="password" name="password" value="pass123" />
+   <input type="checkbox" name="remember" />
 </form>
 
 <div id="editable" contenteditable style="width: 100px; height: 100px;"></div>

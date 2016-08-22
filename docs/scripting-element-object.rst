@@ -559,9 +559,9 @@ element:field_value
 
 Get value of the field element (input, select, textarea, button).
 
-**Signature:** ``ok, info = element:field_value()``
+**Signature:** ``ok, value = element:field_value()``
 
-**Returns:** ``ok, info`` pair. If ``ok`` is nil then error happened during the function call;
+**Returns:** ``ok, value`` pair. If ``ok`` is nil then error happened during the function call;
 ``value`` provides an information about error type; otherwise ``info`` is a value of the
 element.
 
@@ -586,10 +586,10 @@ element:form_values
 
 Return a table with form values if the element type is *form*
 
-**Signature:** ``ok, values = element:form_values()``
+**Signature:** ``values, reason = element:form_values()``
 
-**Returns:** ``ok, values`` pair. If ``ok`` is nil then error happened during the function call
-or node type is not *form*; ``values`` provides an information about error type; otherwise
+**Returns:** ``values, reason`` pair. If ``values`` is nil then error happened during the function call
+or node type is not *form*; ``reason`` provides an information about error type; otherwise
 ``values`` is a table with element names as keys and values as values.
 
 **Async:** no.
@@ -608,8 +608,7 @@ Example: return the values of the following login form
     function main(splash)
         -- ...
         local form = splash:select('#login')
-        local ok, values = assert(form:form_values())
-        return values
+        return assert(form:form_values())
     end
 
 
@@ -648,7 +647,7 @@ Example: get the current values, change password and fill the form
     function main(splash)
         -- ...
         local form = splash:select('#login')
-        local ok, values = assert(form:form_values())
+        local values = assert(form:form_values())
         values.password = "l33t"
         assert(form:fill(values))
     end

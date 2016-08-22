@@ -353,9 +353,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local form = splash:select('form')
-            local ok, values = assert(form:form_values())
-
-            return values
+            return assert(form:form_values())
         end
         """, {"url": self.mockurl("various-elements")})
 
@@ -365,6 +363,22 @@ class HTMLElementTest(BaseLuaRenderTest):
             "password": "pass123"
         })
 
+    def test_form_values_empty(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('form')
+            form.node.innerHTML = ''
+
+            return assert(form:form_values())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {})
+
     def test_form_values_of_not_form(self):
         resp = self.request_lua("""
         function main(splash)
@@ -372,9 +386,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local input = splash:select('input')
-
-            local ok, values = assert(input:form_values())
-            return values
+            return assert(input:form_values())
         end
         """, {"url": self.mockurl("various-elements")})
 
@@ -397,6 +409,22 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "admin")
 
+    def test_field_value_empty_value(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local remember = splash:select('input[name="remember"]')
+            local ok, value = assert(remember:field_value())
+
+            return {value=value}
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'value': False})
+
     def test_fill(self):
         resp = self.request_lua("""
         function main(splash)
@@ -407,9 +435,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local values = { username="user1", password="mypass" }
 
             assert(form:fill(values))
-
-            local ok, values = assert(form:form_values())
-            return values
+            return assert(form:form_values())
         end
         """, {"url": self.mockurl("various-elements")})
 
@@ -1287,3 +1313,5 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'mydiv')
 
+    def test_field_value_emtpy(self):
+        pass
