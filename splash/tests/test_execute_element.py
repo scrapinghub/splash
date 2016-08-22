@@ -460,6 +460,36 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'username': 'user1', 'password': 'mypass'})
 
+    def test_fill_complex(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('#form')
+            local values = {
+              ['foo[]'] = treat.as_array({ 'a', 'b', 'c' }),
+              baz = 'abc',
+              choice = 'yes',
+              check = false,
+              selection = treat.as_array({'2', '3'})
+            }
+
+            assert(form:fill(values))
+            return assert(form:form_values())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'selection': ['2', '3'],
+            'choice': 'yes',
+            'baz': 'abc',
+            # 'check': False, lua -> py conversation removes negative values
+            'foo[]': ['a', 'b', 'c']
+        })
+
     def test_send_keys(self):
         resp = self.request_lua("""
         function main(splash)

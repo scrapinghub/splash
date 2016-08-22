@@ -633,7 +633,7 @@ function call; ``reason`` provides an information about error type.
 In order to fill your form your inputs must have ``name`` property and this method will
 select those input using that property.
 
-Example: get the current values, change password and fill the form
+Example 1: get the current values, change password and fill the form
 
 .. code-block:: html
 
@@ -650,6 +650,50 @@ Example: get the current values, change password and fill the form
         local values = assert(form:form_values())
         values.password = "l33t"
         assert(form:fill(values))
+    end
+
+Example 2: fill more complex form
+
+.. code-block:: html
+
+    <form id="signup" action="/signup">
+        <input type="text" name="name"/>
+        <input type="radio" name="gender" value="male"/>
+        <input type="radio" name="gender" value="female"/>
+
+        <select multiple name="hobbies">
+            <option value="sport">Sport</option>
+            <option value="cars">Cars</option>
+            <option value="games">Video Games</option>
+        </select>
+
+        <input type="hidden" name="token[]" value="1"/>
+        <input type="hidden" name="token[]" value="2"/>
+        <input type="hidden" name="token[]" value="3"/>
+
+        <button type="submit">Sign Up</button>
+    </form>
+
+
+.. code-block:: lua
+
+    local treat = require('treat')
+
+    function main(splash)
+      assert(splash:go(splash.args.url))
+      assert(splash:wait(0.1))
+
+      local form = splash:select('#signup')
+      local values = {
+        name = 'user',
+        gender = 'female',
+        hobbies = treat.as_array({'sport', 'games'}),
+        token = treat.as_array({'a', 'b', 'c'})
+      }
+
+      assert(form:fill(values))
+      assert(form:submit())
+      -- ...
     end
 
 
@@ -721,7 +765,7 @@ function call (e.g. you are trying to submit on element which is not a form);
 
 **Async:** no.
 
-Example 1: get the form, fill with values and submit it
+Example: get the form, fill with values and submit it
 
 .. code-block:: html
 

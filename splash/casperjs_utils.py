@@ -114,3 +114,105 @@ function(form, getField) {
     return values;
 }
 """
+
+# a little bit modified version to support filling text inputs with several values
+SET_FIELD_VALUE_JS = """
+(function () {
+  function setFieldValue(selector, value, scope) {
+    var fields = (document || scope).querySelectorAll(selector);
+    var values = value;
+
+    if (!Array.isArray(value)) {
+      values = [value];
+    }
+
+    if (fields && fields.length > 1) {
+      fields = [].filter.call(fields, function (elm) {
+        if (elm.nodeName.toLowerCase() === 'input' &&
+          ['checkbox', 'radio'].indexOf(elm.getAttribute('type')) !== -1) {
+          return values.indexOf(elm.getAttribute('value')) !== -1;
+        }
+        return true;
+      });
+      [].forEach.call(fields, function (elm, index) {
+        setField(elm, value, index);
+      });
+    } else {
+      setField(fields[0], value);
+    }
+    return true;
+  }
+
+  function setField(field, value, index) {
+    var filter;
+    value = value || "";
+
+    if (!(field instanceof HTMLElement)) {
+      throw new Error('Invalid field ; only HTMLElement is supported');
+    }
+
+    try {
+      field.focus();
+    } catch (e) {
+    }
+
+    filter = String(field.getAttribute('type') ? field.getAttribute('type') : field.nodeName).toLowerCase();
+    switch (filter) {
+      case "checkbox":
+      case "radio":
+        field.checked = value ? true : false;
+        break;
+      case "file":
+        throw new Error("File field is not supported");
+        break;
+      case "select":
+        if (field.multiple) {
+          [].forEach.call(field.options, function (option) {
+            option.selected = value.indexOf(option.value) !== -1;
+          });
+          // If the values can't be found, try search options text
+          if (field.value === "") {
+            [].forEach.call(field.options, function (option) {
+              option.selected = value.indexOf(option.text) !== -1;
+            });
+          }
+        } else {
+          if (value === "") {
+            field.selectedIndex = -1;
+          } else {
+            field.value = value;
+          }
+
+          // If the value can't be found, try search options text
+          if (field.value !== value) {
+            [].some.call(field.options, function (option) {
+              option.selected = value === option.text;
+              return value === option.text;
+            });
+          }
+        }
+        break;
+      default:
+        if (Array.isArray(value)) {
+          field.value = value[index];
+        } else {
+          field.value = value;
+        }
+    }
+
+    ['change', 'input'].forEach(function (name) {
+      var event = document.createEvent("HTMLEvents");
+      event.initEvent(name, true, true);
+      field.dispatchEvent(event);
+    });
+
+    // blur the field
+    try {
+      field.blur();
+    } catch (err) {
+    }
+  }
+
+  return setFieldValue;
+})()
+"""

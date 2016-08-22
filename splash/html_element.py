@@ -4,7 +4,8 @@ from splash.casperjs_utils import (
     VISIBLE_JS_FUNC,
     ELEMENT_INFO_JS,
     FIELD_VALUE_JS,
-    FORM_VALUES_JS
+    FORM_VALUES_JS,
+    SET_FIELD_VALUE_JS
 )
 from functools import wraps
 
@@ -22,14 +23,11 @@ FETCH_TEXT_JS_FUNC = """
 """
 
 FILL_FORM_VALUES_JS = """
-function fill(form, values) {
-    Object.keys(values).forEach(function(name) {
-        var input = form.querySelector("input[name='" + name + "']")
-            || form.querySelector("select[name='" + name + "']")
-            || form.querySelector("textarea[name='" + name + "']");
-
-        input && (input.value = values[name]);
-    });
+function fill(form, values, setFieldValue) {
+  Object.keys(values).forEach(function (name) {
+    var selector = "[name='" + name + "']";
+    setFieldValue(selector, values[name], form);
+  });
 }
 """
 
@@ -244,10 +242,11 @@ class HTMLElement(object):
         if selector_type != "names":
             raise NotImplemented('Only "names" selector type is supported')
 
-        return self.tab.evaljs(u"({fill_form_values_func})({element}, {values})".format(
+        return self.tab.evaljs(u"({fill_form_values_func})({element}, {values}, {set_field_value})".format(
             fill_form_values_func=FILL_FORM_VALUES_JS,
             element=self.element_js,
-            values=escape_js(values)
+            values=escape_js(values),
+            set_field_value=SET_FIELD_VALUE_JS
         ))
 
     def send_keys(self, text):
