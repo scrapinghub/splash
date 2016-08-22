@@ -25,7 +25,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError, DOMError
-from splash.utils import to_bytes, get_id, traverse_obj
+from splash.utils import to_bytes, get_id, traverse_dict
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -572,7 +572,7 @@ class BrowserTab(QObject):
         return isinstance(obj, dict) and obj.get("type", None) == "node" and obj.get("id", None) is not None
 
     def _populate_html_elements(self, obj, max_depth=100):
-        return traverse_obj(
+        return traverse_dict(
             obj,
             lambda o: self._is_node(o),
             lambda o: HTMLElement(self, self._elements_storage, self._event_handlers_storage,

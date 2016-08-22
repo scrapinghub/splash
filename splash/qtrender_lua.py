@@ -35,7 +35,7 @@ from splash.utils import (
     SplashJSONEncoder,
     to_unicode,
     ensure_tuple,
-    traverse_obj)
+    traverse_dict)
 from splash.jsutils import escape_js, get_process_errors_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
@@ -748,7 +748,7 @@ class Splash(BaseExposedObject):
         self.tab.stop_loading()
 
     def populate_exposed_elements(self, obj):
-        return traverse_obj(
+        return traverse_dict(
             obj,
             lambda o: isinstance(o, HTMLElement),
             lambda o: self.element_wrapper._create(_ExposedElement(self.lua, self.exceptions, self, o)),

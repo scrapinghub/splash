@@ -442,7 +442,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local username = splash:select('input[name="username"]')
             assert(username:send_text('super '))
-            assert(splash:wait(0))
+            assert(splash:wait(1))
             local ok, value = assert(username.field_value())
 
             return value
