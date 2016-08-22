@@ -586,7 +586,7 @@ element:form_values
 
 Return a table with form values if the element type is *form*
 
-**Signature:** ``ok, info = element:form_values()``
+**Signature:** ``ok, values = element:form_values()``
 
 **Returns:** ``ok, values`` pair. If ``ok`` is nil then error happened during the function call
 or node type is not *form*; ``values`` provides an information about error type; otherwise
@@ -661,7 +661,7 @@ element:send_keys
 
 Send keyboard events to the element.
 
-**Signature:** ``ok = element:send_keys(keys)``
+**Signature:** ``ok, reason = element:send_keys(keys)``
 
 **Parameters**
 
@@ -687,7 +687,7 @@ element:send_text
 
 Send keyboard events to the element.
 
-**Signature:** ``ok = element:send_text(text)``
+**Signature:** ``ok, reason = element:send_text(text)``
 
 **Parameters**
 
@@ -698,7 +698,7 @@ function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-This methods do the following:
+This method does the following:
 
 * clicks on the element
 * send the specified text to the element
@@ -714,7 +714,7 @@ element:submit
 
 Submit the form element.
 
-**Signature:** ``ok = element:submit()``
+**Signature:** ``ok, reason = element:submit()``
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
 function call (e.g. you are trying to submit on element which is not a form);

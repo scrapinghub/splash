@@ -960,7 +960,7 @@ class BrowserTab(QObject):
             qt_send_key(key, self.web_page)
 
     def select(self, selector):
-        """ Selects DOM element and returns an instance of `HTMLElement`
+        """ Select DOM element and return an instance of `HTMLElement`
 
         :param selector valid CSS selector
         :return element
@@ -974,7 +974,7 @@ class BrowserTab(QObject):
         return result
 
     def select_all(self, selector):
-        """ Selects DOM elements and returns a list of instances of `HTMLElement`
+        """ Select DOM elements and return a list of instances of `HTMLElement`
 
         :param selector valid CSS selector
         :return list of elements

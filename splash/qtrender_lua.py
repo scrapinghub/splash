@@ -36,7 +36,7 @@ from splash.utils import (
     to_unicode,
     ensure_tuple,
     traverse_dict)
-from splash.jsutils import escape_js, get_process_errors_js
+from splash.jsutils import escape_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,

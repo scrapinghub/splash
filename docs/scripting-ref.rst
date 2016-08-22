@@ -2501,7 +2501,10 @@ Using :ref:`splash-select` you can get the element that matches your specified C
 `document.querySelector`_ in your browser. The returned element is a :ref:`splash-element` which has many useful
 methods and almost all methods and attributes that element has in JavaScript.
 
-Example: select an element which has ``element` class and return class
+If the element cannot be found using the specified selector ``nil`` will be returned. If your selector
+is not a valid CSS selector an error will be raised.
+
+Example 1: select an element which has ``element`` class and return class
 names off all the siblings of the specified element.
 
 .. code-block:: lua
@@ -2534,6 +2537,17 @@ names off all the siblings of the specified element.
     end
 
 
+Example 2: assert that the returned element exists
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local el = assert(splash:select('.element'))
+        -- ...
+    end
+
+
 .. _document.querySelector: https://en.wikipedia.org/wiki/Cooperative_multitasking
 
 
@@ -2557,6 +2571,9 @@ Select the list of HTML elements from DOM of the current web page that match the
 
 This method differs from :ref:`splash-select` by returning the *all* elements in a table that
 match the specified selector.
+
+If the element cannot be found using the specified selector ``{}`` will be returned. If your selector
+is not a valid CSS selector an error will be raised.
 
 Example: select all ``<img />`` elements and get their ``src`` attributes
 
