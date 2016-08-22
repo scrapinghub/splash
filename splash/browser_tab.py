@@ -46,6 +46,11 @@ def skip_if_closing(meth):
     return wrapped
 
 
+def escape_and_evaljs(frame, js_func):
+    eval_expr = u"eval({})".format(escape_js(js_func))
+    return frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+
+
 class BrowserTab(QObject):
     """
     An object for controlling a single browser tab (QWebView).
@@ -1202,7 +1207,7 @@ class ElementsStorage(QObject):
     retrieving a unique id for each Node object
     """
     def __init__(self, parent):
-        self.name = self.get_id()
+        self.name = get_id()
         super(ElementsStorage, self).__init__(parent)
 
     @pyqtSlot(name="getId", result=str)
@@ -1270,9 +1275,8 @@ class EventHandlersStorage(QObject):
                 event=event_wrapper
             )
 
-        frame = self.parent().web_page.mainFrame()
-        eval_expr = u"eval({})".format(escape_js(js_func))
-        frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+        escape_and_evaljs(self.parent().web_page.mainFrame(), js_func)
+
         self.storage[func_id] = func
         return func_id
 
@@ -1311,24 +1315,28 @@ class EventsStorage(QObject):
     def init_storage(self):
         frame = self.parent().web_page.mainFrame()
         eval_expr = u"eval({})".format(escape_js("""
-        window[{storage_name}].events = {{}};
+        (function() {{
+            var storage = window[{storage_name}];
 
-        window[{storage_name}].callMethod = function(methodName) {{
-            return function(eventId) {{
-                var storage = window[{storage_name}].events;
-                storage[eventId][methodName].call(storage[eventId]);
-            }};
-        }}
+            storage.events = {{}};
 
-        window[{storage_name}].preventDefault.connect(window[{storage_name}].callMethod('preventDefault'))
-        window[{storage_name}].stopImmediatePropagation.connect(window[{storage_name}].callMethod('stopImmediatePropagation'))
-        window[{storage_name}].stopPropagation.connect(window[{storage_name}].callMethod('stopPropagation'))
+            storage.callMethod = function(methodName) {{
+                return function(eventId) {{
+                    var storage = window[{storage_name}].events;
+                    storage[eventId][methodName].call(storage[eventId]);
+                }};
+            }}
 
-        window[{storage_name}].add = function(event) {{
-            var id = window[{storage_name}].getId()
-            window[{storage_name}].events[id] = event;
-            return id;
-        }}
+            storage.preventDefault.connect(storage.callMethod('preventDefault'))
+            storage.stopImmediatePropagation.connect(storage.callMethod('stopImmediatePropagation'))
+            storage.stopPropagation.connect(storage.callMethod('stopPropagation'))
+
+            storage.add = function(event) {{
+                var id = storage.getId()
+                storage.events[id] = event;
+                return id;
+            }}
+        }})()
         """.format(storage_name=escape_js(self.name))))
 
         frame.evaluateJavaScript(eval_expr)
@@ -1338,29 +1346,26 @@ class EventsStorage(QObject):
         return get_id()
 
     def get_event_property(self, event_id, property_name):
-        frame = self.parent().web_page.mainFrame()
-        eval_expr = u"eval({})".format(escape_js("""
+        js_func = """
         window[{storage_name}].events[{event_id}][{property_name}]
         """.format(
             storage_name=escape_js(self.name),
             event_id=escape_js(event_id),
             property_name=escape_js(property_name)
-        )))
+        )
 
-        result = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+        result = escape_and_evaljs(self.parent().web_page.mainFrame(), js_func)
 
         return result.get('result', None)
 
     def remove_event(self, event_id):
-        frame = self.parent().web_page.mainFrame()
-        eval_expr = u"eval({})".format(escape_js("""
+        js_func = """
         delete window[{storage_name}].events[{event_id}]
         """.format(
             storage_name=escape_js(self.name),
             event_id=escape_js(event_id),
-        )))
-
-        frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+        )
+        escape_and_evaljs(self.parent().web_page.mainFrame(), js_func)
 
 
 class OneShotCallbackProxy(QObject):

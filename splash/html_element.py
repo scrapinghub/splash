@@ -43,6 +43,11 @@ def empty_strings_as_none(meth):
     return change_return_value_to_none_for_empty_string
 
 
+def escape_js_args(*args):
+    return ','.join([arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg)
+                     for arg in args])
+
+
 class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
@@ -122,7 +127,7 @@ class HTMLElement(object):
             return self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,
                 method=escape_js(method_name),
-                args=','.join([arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg) for arg in args])
+                args=escape_js_args(*args)
             ))
 
         return call

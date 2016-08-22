@@ -46,7 +46,7 @@ from splash.qtutils import (
     get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
 from splash.exceptions import ScriptError, DOMError
-from splash.html_element import HTMLElement
+from splash.html_element import HTMLElement, escape_js_args
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -258,7 +258,7 @@ def exceptions_as_return_values(meth, error_as_flag=False, result_as_flag=False)
                     and any(isinstance(e, x) for x in self.FLAG_EXCEPTIONS):
                 res = (b'return', False, repr(e).encode('utf-8'))
             else:
-                res = (b'raise', repr(e))
+                res = (b'raise', repr(e).encode('utf-8'))
 
         return res
 
@@ -370,7 +370,7 @@ class _WrappedJavascriptFunction(object):
     def __call__(self, *args):
         expr = "eval('('+{func_text}+')')({args})".format(
             func_text=self.source,
-            args=','.join([arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg) for arg in args])
+            args=escape_js_args(*args)
         )
 
         try:
