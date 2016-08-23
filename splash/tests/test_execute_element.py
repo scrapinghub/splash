@@ -509,6 +509,38 @@ class HTMLElementTest(BaseLuaRenderTest):
         res = resp.json()
         self.assertEqual(res['foo[]'], ['a', 'b', 'c'])
 
+    def test_fill_bad_values(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('#form')
+            assert(form:fill(1123))
+            return assert(form:form_values())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='values is not a table')
+        self.assertEqual(err['info']['splash_method'], 'fill')
+
+    def test_fill_bad_multi(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('#form')
+            assert(form:fill({baz='abc'}, 1))
+            return assert(form:form_values())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message='multi is not a bool')
+        self.assertEqual(err['info']['splash_method'], 'fill')
+
     def test_send_keys(self):
         resp = self.request_lua("""
         function main(splash)
