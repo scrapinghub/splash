@@ -469,7 +469,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local form = splash:select('#form')
             local values = {
-              ['foo[]'] = treat.as_array({ 'a', 'b', 'c' }),
+              ['foo[]'] = 'foo',
               baz = 'abc',
               choice = 'yes',
               check = false,
@@ -487,8 +487,29 @@ class HTMLElementTest(BaseLuaRenderTest):
             'choice': 'yes',
             'baz': 'abc',
             # 'check': False, lua -> py conversation removes negative values
-            'foo[]': ['a', 'b', 'c']
+            'foo[]': ['foo', 'foo', 'foo']
         })
+
+    def test_fill_multi(self):
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local form = splash:select('#form')
+            local values = {
+              ['foo[]'] = treat.as_array({'a', 'b', 'c'})
+            }
+
+            assert(form:fill(values, true))
+            return assert(form:form_values())
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        res = resp.json()
+        self.assertEqual(res['foo[]'], ['a', 'b', 'c'])
 
     def test_send_keys(self):
         resp = self.request_lua("""

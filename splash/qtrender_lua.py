@@ -1769,8 +1769,8 @@ class _ExposedElement(BaseExposedObject):
         return self.element.form_values()
 
     @command(error_as_flag=True, table_argument=True)
-    def fill(self, values):
-        return self.element.fill(values)
+    def fill(self, values, multi=False):
+        return self.element.fill(values, multi)
 
     @command(error_as_flag=True)
     def send_keys(self, text):

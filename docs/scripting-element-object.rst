@@ -619,11 +619,13 @@ element:fill
 
 Fill the form with the provided values
 
-**Signature:** ``ok, reason = element:fill(values)``
+**Signature:** ``ok, reason = element:fill(values, multi=false)``
 
 **Parameters:**
 
 * values - table with input names as keys and values as input values
+* multi - bool which indicates that the form has input with the same name and its values are
+stored in a table
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
 function call; ``reason`` provides an information about error type.
@@ -667,10 +669,6 @@ Example 2: fill more complex form
             <option value="games">Video Games</option>
         </select>
 
-        <input type="hidden" name="token[]" value="1"/>
-        <input type="hidden" name="token[]" value="2"/>
-        <input type="hidden" name="token[]" value="3"/>
-
         <button type="submit">Sign Up</button>
     </form>
 
@@ -688,7 +686,6 @@ Example 2: fill more complex form
         name = 'user',
         gender = 'female',
         hobbies = treat.as_array({'sport', 'games'}),
-        token = treat.as_array({'a', 'b', 'c'})
       }
 
       assert(form:fill(values))
@@ -696,6 +693,46 @@ Example 2: fill more complex form
       -- ...
     end
 
+
+The parameter ``mutli`` is used when you want your form has input with the same name and you
+want to fill each that input separately. In that case your values should be an array where each
+element is corresponded to the input with the element index.
+
+Example 3: using ``mutli`` parameter
+
+.. code-block:: html
+
+    <form>
+        <input type="hidden" name="token[]" value="1"/>
+        <input type="hidden" name="token[]" value="2"/>
+        <input type="hidden" name="token[]" value="3"/>
+    </form>
+
+
+.. code-block:: lua
+
+    -- ...
+    local form = splash:select('form')
+    local values = {
+        ['tokens[]'] = treat.as_array({'a', 'b', 'c'})
+    }
+
+    assert(form:fill(values, true)) -- now each input has value of 'a', 'b', 'c' respectably
+    assert(form:submit())
+
+
+Example 4: filling the same form without ``multi`` parameter
+
+.. code-block:: lua
+
+    -- ...
+    local form = splash:select('form')
+    local values = {
+        ['tokens[]'] = treat.as_array({'a', 'b', 'c'})
+    }
+
+    assert(form:fill(values)) -- now each input has value "a,b,c" because array is considered as one value
+    assert(form:submit())
 
 .. _splash-element-send-keys:
 

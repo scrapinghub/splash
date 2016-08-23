@@ -118,7 +118,7 @@ function(form, getField) {
 # a little bit modified version to support filling text inputs with several values
 SET_FIELD_VALUE_JS = """
 (function () {
-  function setFieldValue(selector, value, scope) {
+  function setFieldValue(selector, value, multi, scope) {
     var fields = (document || scope).querySelectorAll(selector);
     var values = value;
 
@@ -135,7 +135,7 @@ SET_FIELD_VALUE_JS = """
         return true;
       });
       [].forEach.call(fields, function (elm, index) {
-        setField(elm, value, index);
+        setField(elm, value, multi, index);
       });
     } else {
       setField(fields[0], value);
@@ -143,7 +143,7 @@ SET_FIELD_VALUE_JS = """
     return true;
   }
 
-  function setField(field, value, index) {
+  function setField(field, value, multi, index) {
     var filter;
     value = value || "";
 
@@ -193,7 +193,7 @@ SET_FIELD_VALUE_JS = """
         }
         break;
       default:
-        if (Array.isArray(value)) {
+        if (multi) {
           field.value = value[index];
         } else {
           field.value = value;
