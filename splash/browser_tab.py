@@ -1322,8 +1322,8 @@ class EventsStorage(QObject):
 
             storage.callMethod = function(methodName) {{
                 return function(eventId) {{
-                    var storage = window[{storage_name}].events;
-                    storage[eventId][methodName].call(storage[eventId]);
+                    var eventsStorage = window[{storage_name}].events;
+                    eventsStorage[eventId][methodName].call(eventsStorage[eventId]);
                 }};
             }}
 

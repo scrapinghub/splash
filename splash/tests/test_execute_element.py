@@ -1444,6 +1444,3 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'mydiv')
-
-    def test_field_value_emtpy(self):
-        pass
