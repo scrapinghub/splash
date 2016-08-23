@@ -1444,3 +1444,43 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'mydiv')
+
+    def test_elements_after_go(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local body = splash:select('body')
+
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            return body.id
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertScriptError(resp, ScriptError.LUA_ERROR, 'TypeError: undefined is not an object')
+
+    def test_elements_jsredirect(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+
+            local body = splash:select('body')
+
+            function get_text()
+                return body.node.childNodes[1].node:text()
+            end
+
+            local text = get_text()
+
+            assert(splash:wait(0.1))
+
+            local ok = pcall(get_text)
+            return {text=text, ok=ok}
+        end
+        """, {"url": self.mockurl("jsredirect")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'text': 'Redirecting now..', 'ok': False})
