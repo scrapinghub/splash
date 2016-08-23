@@ -462,7 +462,6 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_fill_complex(self):
         resp = self.request_lua("""
-        local treat = require('treat')
         function main(splash)
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
@@ -473,7 +472,7 @@ class HTMLElementTest(BaseLuaRenderTest):
               baz = 'abc',
               choice = 'yes',
               check = false,
-              selection = treat.as_array({'2', '3'})
+              selection = {'2', '3'}
             }
 
             assert(form:fill(values))
@@ -492,14 +491,13 @@ class HTMLElementTest(BaseLuaRenderTest):
 
     def test_fill_multi(self):
         resp = self.request_lua("""
-        local treat = require('treat')
         function main(splash)
             assert(splash:go(splash.args.url))
             assert(splash:wait(0.1))
 
             local form = splash:select('#form')
             local values = {
-              ['foo[]'] = treat.as_array({'a', 'b', 'c'})
+              ['foo[]'] = {'a', 'b', 'c'}
             }
 
             assert(form:fill(values, true))

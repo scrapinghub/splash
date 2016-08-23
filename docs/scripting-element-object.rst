@@ -685,7 +685,7 @@ Example 2: fill more complex form
       local values = {
         name = 'user',
         gender = 'female',
-        hobbies = treat.as_array({'sport', 'games'}),
+        hobbies = {'sport', 'games'},
       }
 
       assert(form:fill(values))
@@ -714,7 +714,7 @@ Example 3: using ``mutli`` parameter
     -- ...
     local form = splash:select('form')
     local values = {
-        ['tokens[]'] = treat.as_array({'a', 'b', 'c'})
+        ['tokens[]'] = {'a', 'b', 'c'}
     }
 
     assert(form:fill(values, true)) -- now each input has value of 'a', 'b', 'c' respectably
@@ -728,7 +728,7 @@ Example 4: filling the same form without ``multi`` parameter
     -- ...
     local form = splash:select('form')
     local values = {
-        ['tokens[]'] = treat.as_array({'a', 'b', 'c'})
+        ['tokens[]'] = {'a', 'b', 'c'}
     }
 
     assert(form:fill(values)) -- now each input has value "a,b,c" because array is considered as one value

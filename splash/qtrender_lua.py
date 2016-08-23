@@ -23,7 +23,7 @@ from splash.lua_runner import (
 )
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
-                        PyResult)
+                        PyResult, _mark_table_as_array)
 from splash.har.qt import reply2har, request2har
 from splash.har.utils import get_response_body_bytes
 from splash.render_options import RenderOptions
@@ -1768,8 +1768,29 @@ class _ExposedElement(BaseExposedObject):
     def form_values(self):
         return self.element.form_values()
 
-    @command(error_as_flag=True, table_argument=True)
+    @command(error_as_flag=True, table_argument=True, decode_arguments=False)
     def fill(self, values, multi=False):
+        if lupa.lua_type(values) != 'table':
+            raise ScriptError({
+                "argument": "values",
+                "message": "element:fill values is not a table",
+                "splash_method": "fill",
+            })
+
+        if not isinstance(multi, bool):
+            raise ScriptError({
+                "argument": "multi",
+                "message": "element:fill multi is not a bool",
+                "splash_method": "fill",
+            })
+
+        # marking all tables as arrays by default
+        for key, value in values.items():
+            if lupa.lua_type(value) == 'table':
+                _mark_table_as_array(self.lua, value)
+
+        values = self.lua.lua2python(values)
+
         return self.element.fill(values, multi)
 
     @command(error_as_flag=True)
