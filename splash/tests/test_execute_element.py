@@ -379,7 +379,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {})
 
-    def test_form_values_multi(self):
+    def test_form_values_values_auto(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
@@ -396,6 +396,55 @@ class HTMLElementTest(BaseLuaRenderTest):
             'baz': 'foo',
             'selection': ['1', '3']
         })
+
+    def test_form_values_values_list(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            return assert(splash:select('#form'):form_values('list'))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'choice': ['no'],
+            'check': ['checked'],
+            'foo[]': ['coffee', 'milk', 'eggs'],
+            'baz': ['foo'],
+            'selection': ['1', '3']
+        })
+
+    def test_form_values_values_first(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            return assert(splash:select('#form'):form_values('first'))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'choice': 'no',
+            'check': True,
+            'foo[]': 'coffee',
+            'baz': 'foo',
+            'selection': '1',
+        })
+
+    def test_form_values_bad_values(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            return assert(splash:select('#form'):form_values(1))
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
+                                     message="element:form_values values can only be 'auto', 'first' or 'list'")
+        self.assertEqual(err['info']['splash_method'], 'form_values')
 
     def test_form_values_of_not_form(self):
         resp = self.request_lua("""
@@ -500,7 +549,7 @@ class HTMLElementTest(BaseLuaRenderTest):
               ['foo[]'] = {'a', 'b', 'c'}
             }
 
-            assert(form:fill(values, true))
+            assert(form:fill(values))
             return assert(form:form_values())
         end
         """, {"url": self.mockurl("various-elements")})
@@ -523,22 +572,6 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                      message='values is not a table')
-        self.assertEqual(err['info']['splash_method'], 'fill')
-
-    def test_fill_bad_multi(self):
-        resp = self.request_lua("""
-        function main(splash)
-            assert(splash:go(splash.args.url))
-            assert(splash:wait(0.1))
-
-            local form = splash:select('#form')
-            assert(form:fill({baz='abc'}, 1))
-            return assert(form:form_values())
-        end
-        """, {"url": self.mockurl("various-elements")})
-
-        err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
-                                     message='multi is not a bool')
         self.assertEqual(err['info']['splash_method'], 'fill')
 
     def test_send_keys(self):

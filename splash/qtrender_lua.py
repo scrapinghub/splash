@@ -1765,22 +1765,22 @@ class _ExposedElement(BaseExposedObject):
         return self.element.field_value()
 
     @command(error_as_flag=True)
-    def form_values(self):
-        return self.element.form_values()
+    def form_values(self, values='auto'):
+        if values not in ['auto', 'first', 'list']:
+            raise ScriptError({
+                "argument": "multi",
+                "message": "element:form_values values can only be 'auto', 'first' or 'list'",
+                "splash_method": "form_values",
+            })
+
+        return self.element.form_values(values)
 
     @command(error_as_flag=True, table_argument=True, decode_arguments=False)
-    def fill(self, values, multi=False):
+    def fill(self, values):
         if lupa.lua_type(values) != 'table':
             raise ScriptError({
                 "argument": "values",
                 "message": "element:fill values is not a table",
-                "splash_method": "fill",
-            })
-
-        if not isinstance(multi, bool):
-            raise ScriptError({
-                "argument": "multi",
-                "message": "element:fill multi is not a bool",
                 "splash_method": "fill",
             })
 
@@ -1791,7 +1791,7 @@ class _ExposedElement(BaseExposedObject):
 
         values = self.lua.lua2python(values)
 
-        return self.element.fill(values, multi)
+        return self.element.fill(values)
 
     @command(error_as_flag=True)
     def send_keys(self, text):

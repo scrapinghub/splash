@@ -747,7 +747,7 @@ VariousElementsPage = _html_resource("""
     <input type="text" name="baz" value="foo" />
     <input type="radio" name="choice" value="yes" />
     <input type="radio" name="choice" value="no" checked />
-    <input type="checkbox" name="check" checked />
+    <input type="checkbox" name="check" value="checked" checked />
 
     <select multiple name="selection">
         <option value="1" selected>1</option>

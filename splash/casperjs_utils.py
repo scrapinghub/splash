@@ -62,63 +62,82 @@ function(element, visible) {
 """
 
 FIELD_VALUE_JS = """
-function(field) {
-    var nodeName, type;
+function(field, multi) {
+  var nodeName, type;
 
-    if (!(field instanceof HTMLElement)) {
-        var error = new Error('getFieldValue: Invalid field ; only HTMLElement is supported');
-        error.name = 'FieldNotFound';
-        throw error;
-    }
+  if (!(field instanceof HTMLElement)) {
+    throw new Error('getFieldValue: Invalid field ; only HTMLElement is supported');
+  }
 
-    nodeName = field.nodeName.toLowerCase();
-    type = field.hasAttribute('type') ? field.getAttribute('type').toLowerCase() : 'text';
-    if (nodeName === "select" && field.multiple) {
-        return [].filter.call(field.options, function(option){
-            return !!option.selected;
-        }).map(function(option){
-            return option.value || option.text;
-        });
-    }
-    if (type === 'radio') {
-        return field.checked ? field.value : null;
-    }
-    if (type === 'checkbox') {
-        return field.checked;
-    }
-    return field.value || '';
+  nodeName = field.nodeName.toLowerCase();
+  type = field.hasAttribute('type') ? field.getAttribute('type').toLowerCase() : 'text';
+
+  if (nodeName === 'select' && field.multiple) {
+    return [].filter.call(field.options, function (option) {
+      return !!option.selected;
+    }).map(function (option) {
+      return option.value || option.text;
+    });
+  }
+  if (type === 'radio') {
+    return field.checked ? field.value : null;
+  }
+  if (type === 'checkbox') {
+    return field.checked;
+  }
+  return field.value || '';
 }
 """
 
 FORM_VALUES_JS = """
-function(form, getField) {
-    var values = {}, checked = {};
+function(form, returnValuesType, getField) {
+  var values = {}, checked = {};
 
-    [].forEach.call(form.elements, function(elm) {
-        var name = elm.getAttribute('name');
-        var value = getField(elm);
-        var multi = !!value && elm.hasAttribute('type') &&
-                    elm.type === 'checkbox' ? elm.value : value;
-        if (!!name && value !== null && !(elm.type === 'checkbox' && value === false)) {
-            if (typeof values[name] === "undefined") {
-                values[name] = value;
-                checked[name] = multi;
-            } else {
-                if (!Array.isArray(values[name])) {
-                    values[name] = [checked[name]];
-                }
-                values[name].push(multi);
+  [].forEach.call(form.elements, function (elm) {
+    var name = elm.getAttribute('name');
+    var value = getField(elm);
+
+    var multi = !!value && elm.hasAttribute('type') && elm.type === 'checkbox' ? elm.value : value;
+
+    if (!!name && value !== null && !(elm.type === 'checkbox' && value === false)) {
+      switch (returnValuesType) {
+        case 'list':
+          values[name] = values[name] || [];
+          if (Array.isArray(multi)) {
+            values[name] = values[name].concat(multi);
+          } else {
+            values[name].push(multi);
+          }
+          break;
+        case 'first':
+          if (typeof values[name] === 'undefined') {
+            values[name] = Array.isArray(multi) ? multi[0] : value;
+          }
+          break;
+        case 'auto':
+        case null:
+        case undefined:
+          if (typeof values[name] === 'undefined') {
+            values[name] = value;
+            checked[name] = multi;
+          } else {
+            if (!Array.isArray(values[name])) {
+              values[name] = [checked[name]];
             }
-        }
-    });
-    return values;
+            values[name].push(multi);
+          }
+
+      }
+    }
+  });
+  return values;
 }
 """
 
 # a little bit modified version to support filling text inputs with several values
 SET_FIELD_VALUE_JS = """
 (function () {
-  function setFieldValue(selector, value, multi, scope) {
+  function setFieldValue(selector, value, scope) {
     var fields = (document || scope).querySelectorAll(selector);
     var values = value;
 
@@ -135,7 +154,7 @@ SET_FIELD_VALUE_JS = """
         return true;
       });
       [].forEach.call(fields, function (elm, index) {
-        setField(elm, value, multi, index);
+        setField(elm, value, index);
       });
     } else {
       setField(fields[0], value);
@@ -143,7 +162,7 @@ SET_FIELD_VALUE_JS = """
     return true;
   }
 
-  function setField(field, value, multi, index) {
+  function setField(field, value, index) {
     var filter;
     value = value || "";
 
@@ -193,7 +212,7 @@ SET_FIELD_VALUE_JS = """
         }
         break;
       default:
-        if (multi) {
+        if (Array.isArray(value)) {
           field.value = value[index];
         } else {
           field.value = value;

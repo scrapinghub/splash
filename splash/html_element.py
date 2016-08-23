@@ -23,10 +23,10 @@ FETCH_TEXT_JS_FUNC = """
 """
 
 FILL_FORM_VALUES_JS = """
-function fill(form, values, multi, setFieldValue) {
+function fill(form, values, setFieldValue) {
   Object.keys(values).forEach(function (name) {
     var selector = "[name='" + name + "']";
-    setFieldValue(selector, values[name], multi, form);
+    setFieldValue(selector, values[name], form);
   });
 }
 """
@@ -227,26 +227,26 @@ class HTMLElement(object):
             element=self.element_js
         ))
 
-    def form_values(self):
+    def form_values(self, values='auto'):
         """ Return all values of the element if it is a form"""
         self.assert_node_type('form')
 
-        return self.tab.evaljs(u"({form_values_func})({element}, {field_value_func})".format(
+        return self.tab.evaljs(u"({form_values_func})({element}, {values}, {field_value_func})".format(
             form_values_func=FORM_VALUES_JS,
             field_value_func=FIELD_VALUE_JS,
+            values=escape_js(values),
             element=self.element_js
         ))
 
-    def fill(self, values, multi=False, selector_type="names"):
+    def fill(self, values, selector_type="names"):
         """ Fill the values of the element """
         if selector_type != "names":
             raise NotImplemented('Only "names" selector type is supported')
 
-        return self.tab.evaljs(u"({fill_form_values_func})({element}, {values}, {multi}, {set_field_value})".format(
+        return self.tab.evaljs(u"({fill_form_values_func})({element}, {values}, {set_field_value})".format(
             fill_form_values_func=FILL_FORM_VALUES_JS,
             element=self.element_js,
             values=escape_js(values),
-            multi=escape_js(multi),
             set_field_value=SET_FIELD_VALUE_JS
         ))
 

@@ -586,21 +586,43 @@ element:form_values
 
 Return a table with form values if the element type is *form*
 
-**Signature:** ``values, reason = element:form_values()``
+**Signature:** ``form_values, reason = element:form_values{values='auto'}``
 
-**Returns:** ``values, reason`` pair. If ``values`` is nil then error happened during the function call
+**Parameters:**
+
+* values - type of the return value, can be one of ``'auto'``, ``'list'`` or ``'first'``
+
+
+**Returns:** ``form_values, reason`` pair. If ``form_values`` is nil then error happened during the function call
 or node type is not *form*; ``reason`` provides an information about error type; otherwise
-``values`` is a table with element names as keys and values as values.
+``form_values`` is a table with element names as keys and values as values.
 
 **Async:** no.
 
-Example: return the values of the following login form
+The returned values depend on ``values`` parameter. It can be in 3 states:
+
+``'auto'``
+    Returned values are tables or singular values depending on the form element type:
+
+    - if the element is ``<select multiple>`` the returned value is a table with the selected option values or text contents if the value attribute is missing
+    - if the form has several elements with the same ``name`` attribute the returned value is a table with all values of that elements
+    - otherwise it's a string (for text and radio inputs), bool (for checkbox inputs) or ``nill`` the value of ``value`` attribute
+``'list'``
+    Returned values always are tables (lists), even if the form element can be a singular value, useful for forms with unknown structure. Few notes:
+
+    - if the element is a checkbox input and a ``value`` attribute then the table will contain that value
+    - if the element is ``<select multiple>`` and they are several of them with the same names then their values will be concatenated with the previous ones
+``'first'``
+    Returned values always are singular values, even if the form element can multiple value. If the element has multiple values only the *first* one will be selected.
+
+Example 1: return the values of the following login form
 
 .. code-block:: html
 
     <form id="login">
         <input type="text" name="username" value="admin" />
         <input type="password" name="password" value="pass" />
+        <input type="checkbox" name="remember" value="yes" checked />
     </form>
 
 .. code-block:: lua
@@ -611,6 +633,60 @@ Example: return the values of the following login form
         return assert(form:form_values())
     end
 
+    -- returned values are
+    { username = 'admin', password = 'pass', remember = true }
+
+
+Example 2: when ``values`` is equal to ``'list'``
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local form = splash:select('#login')
+        return assert(form:form_values{values='list'}))
+    end
+
+    -- returned values are
+    { username = ['admin'], password = ['pass'], remember = ['checked'] }
+
+Example 3: return the values of the following form when ``values`` is equal to ``'first'``
+
+.. code-block:: html
+
+    <form>
+        <input type="text" name="foo[]" value="coffee"/>
+        <input type="text" name="foo[]" value="milk"/>
+        <input type="text" name="foo[]" value="eggs"/>
+        <input type="text" name="baz" value="foo"/>
+        <input type="radio" name="choice" value="yes"/>
+        <input type="radio" name="choice" value="no" checked/>
+        <input type="checkbox" name="check" checked/>
+
+        <select multiple name="selection">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3" selected>2</option>
+        </select>
+    </form>
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local form = splash:select('form')
+        return assert(form:form_values(false))
+    end
+
+    -- returned values are
+    {
+        ['foo[]'] = 'coffee',
+        baz = 'foo',
+        choice = 'no',
+        check = false,
+        selection = '1'
+    }
+
 
 .. _splash-element-fill:
 
@@ -619,13 +695,11 @@ element:fill
 
 Fill the form with the provided values
 
-**Signature:** ``ok, reason = element:fill(values, multi=false)``
+**Signature:** ``ok, reason = element:fill(values)``
 
 **Parameters:**
 
 * values - table with input names as keys and values as input values
-* multi - bool which indicates that the form has input with the same name and its values are
-stored in a table
 
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
 function call; ``reason`` provides an information about error type.
@@ -693,46 +767,6 @@ Example 2: fill more complex form
       -- ...
     end
 
-
-The parameter ``mutli`` is used when you want your form has input with the same name and you
-want to fill each that input separately. In that case your values should be an array where each
-element is corresponded to the input with the element index.
-
-Example 3: using ``mutli`` parameter
-
-.. code-block:: html
-
-    <form>
-        <input type="hidden" name="token[]" value="1"/>
-        <input type="hidden" name="token[]" value="2"/>
-        <input type="hidden" name="token[]" value="3"/>
-    </form>
-
-
-.. code-block:: lua
-
-    -- ...
-    local form = splash:select('form')
-    local values = {
-        ['tokens[]'] = {'a', 'b', 'c'}
-    }
-
-    assert(form:fill(values, true)) -- now each input has value of 'a', 'b', 'c' respectably
-    assert(form:submit())
-
-
-Example 4: filling the same form without ``multi`` parameter
-
-.. code-block:: lua
-
-    -- ...
-    local form = splash:select('form')
-    local values = {
-        ['tokens[]'] = {'a', 'b', 'c'}
-    }
-
-    assert(form:fill(values)) -- now each input has value "a,b,c" because array is considered as one value
-    assert(form:submit())
 
 .. _splash-element-send-keys:
 
