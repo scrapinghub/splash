@@ -6,12 +6,10 @@
 local wraputils = require("wraputils")
 
 local Extras = wraputils.create_metatable()
-local Extras_private = {}
 
 function Extras._create(py_extras)
   local extras = {}
-  wraputils.wrap_exposed_object(py_extras, extras, Extras, Extras_private, false)
-  return extras
+  return wraputils.wrap_exposed_object(py_extras, extras, Extras)
 end
 
 return Extras
