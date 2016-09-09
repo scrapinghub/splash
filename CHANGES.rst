@@ -31,7 +31,7 @@ Other changes:
 * Pillow library is updated in Docker image;
 * HarViewer is upgraded to a recent version;
 
-2.1 (20-04-2016)
+2.1 (2016-04-20)
 ----------------
 
 New features:
@@ -51,7 +51,7 @@ Bug fixes:
 * "download" links in Splash UI are fixed;
 * an issue with ad blockers preventing Splash UI to work is fixed.
 
-2.0.3 (04-03-2016)
+2.0.3 (2016-03-04)
 ------------------
 
 This is a bugfix release:
@@ -62,14 +62,14 @@ This is a bugfix release:
 * fixed handling of adblock rules with 'domain' option: domain is now
   extracted from the page URL, not necessarily from 'url' Splash argument.
 
-2.0.2 (26-02-2016)
+2.0.2 (2016-02-26)
 ------------------
 
 This is a bugfix release:
 
 * an issue which may cause segfaults is fixed.
 
-2.0.1 (25-02-2016)
+2.0.1 (2016-02-25)
 ------------------
 
 This is a bugfix release:
@@ -77,7 +77,7 @@ This is a bugfix release:
 * XSS in HTTP UI is fixed;
 * Splash-Jupyter docker image is fixed.
 
-2.0 (21-02-2016)
+2.0 (2016-02-21)
 ----------------
 
 Splash 2.0 uses Qt 5.5.1 instead of Qt 4; it means the rendering
