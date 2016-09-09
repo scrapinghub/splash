@@ -1,8 +1,8 @@
 Changes
 =======
 
-dev (TBA)
----------
+2.2 (2016-09-10)
+----------------
 
 New features:
 
@@ -29,7 +29,7 @@ Other changes:
 
 * internal cleanup of Lua <-> Python interaction;
 * Pillow library is updated in Docker image;
-* HarViewer is upgraded to a recent version;
+* HarViewer is upgraded to a recent version.
 
 2.1 (2016-04-20)
 ----------------
