@@ -1,6 +1,36 @@
 Changes
 =======
 
+dev (TBA)
+---------
+
+New features:
+
+* new :ref:`splash-send-keys` and :ref:`splash-send-text` methods allow to
+  send native keyboard events to browser;
+* new :ref:`splash-with-timeout` method allows to limit execution time of
+  blocks of code;
+* new :ref:`splash-plugins-enabled` attribute which allows to enable Flash;
+  Flash is now available in Docker image, but it is still disabled by default.
+* new :ref:`splash-response-body-enabled` attribute,
+  :ref:`splash-request-enable-response-body` method and
+  :ref:`response_body <arg-response-body>` argument allows to access
+  and export response bodies.
+
+Bug fixes:
+
+* fixed handling of :ref:`splash-call-later`, :ref:`splash-on-request`,
+  :ref:`splash-on-response` and :ref:`splash-on-response-headers`
+  callback arguments;
+* fixed cleanup of various callbacks;
+* fixed :ref:`save_args <arg-save-args>` in Python 2.x;
+
+Other changes:
+
+* internal cleanup of Lua <-> Python interaction;
+* Pillow library is updated in Docker image;
+* HarViewer is upgraded to a recent version;
+
 2.1 (20-04-2016)
 ----------------
 
