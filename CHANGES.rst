@@ -1,6 +1,15 @@
 Changes
 =======
 
+2.2.1 (2016-10-17)
+------------------
+
+This is a bug fix release:
+
+* fix Splash UI in Chrome when serving from localhost;
+* upgrade adblockparser to 0.7 to support recent easylist filters;
+* upgrade Pillow to 3.3.3.
+
 2.2 (2016-09-10)
 ----------------
 

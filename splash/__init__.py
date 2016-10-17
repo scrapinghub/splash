@@ -1,4 +1,4 @@
-__version__ = '2.2'
+__version__ = '2.2.1'
 
 from distutils.version import LooseVersion
 version_info = tuple(LooseVersion(__version__).version)
