@@ -24,7 +24,7 @@ from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii, to_qurl, qt_send_key, qt_send_text)
 from splash.render_options import validate_size_str
-from splash.qwebpage import SplashQWebPage, SplashQWebView
+from splash.qwebpage import SplashQWebPage, SplashQWebView, RenderErrorInfo
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
 from splash.utils import to_bytes
 from splash.jsutils import (
@@ -75,6 +75,9 @@ class BrowserTab(QObject):
         self._callback_proxies_to_cancel = weakref.WeakSet()
         self._js_console = None
         self._autoload_scripts = []
+        self._is_unsupported_content = False
+        self._unsupported_content_reply = None
+        self._load_finished_after_unsupported_content_ready = False
 
         self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
@@ -152,6 +155,8 @@ class BrowserTab(QObject):
         self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
         self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
         self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._on_javascript_window_object_cleared)
+        self.web_page.setForwardUnsupportedContent(True)
+        self.web_page.unsupportedContent.connect(self._on_unsupported_content)
         self.logger.add_web_page(self.web_page)
 
     def return_result(self, result):
@@ -409,6 +414,15 @@ class BrowserTab(QObject):
         This callback is called for all web_page.mainFrame()
         loadFinished events.
         """
+        if self._is_unsupported_content:
+            if self._unsupported_content_reply.isRunning():
+                # XXX: We'll come back later when download finishes
+                self.logger.log(
+                    'Still receving unsupported content', min_level=3)
+                return
+            else:
+                self._load_finished_after_unsupported_content_ready = True
+                self.logger.log('Unsupported content received', min_level=3)
         if self.web_page.maybe_redirect(ok):
             self.logger.log("Redirect or other non-fatal error detected", min_level=2)
             return
@@ -456,7 +470,11 @@ class BrowserTab(QObject):
         """
         This method is called when a QWebPage finishes loading its contents.
         """
-        if self.web_page.maybe_redirect(ok):
+        if self._is_unsupported_content:
+            if self._unsupported_content_reply.isRunning():
+                # XXX: We'll come back later when download finishes
+                return
+        elif self.web_page.maybe_redirect(ok):
             # XXX: It assumes loadFinished will be called again because
             # redirect happens. If redirect is detected improperly,
             # loadFinished won't be called again, and Splash will return
@@ -468,6 +486,16 @@ class BrowserTab(QObject):
 
         if self.web_page.is_ok(ok):
             callback()
+        elif self._is_unsupported_content:
+            # XXX: Error downloading unsupported content.
+            # `self.web_page.error_info` shall be `None` now
+            error_info = RenderErrorInfo(
+                'Network',
+                int(self._unsupported_content_reply.error()),
+                six.text_type(self._unsupported_content_reply.errorString()),
+                six.text_type(self._unsupported_content_reply.url().url())
+            )
+            errback(error_info)
         elif self.web_page.error_loading(ok):
             # XXX: maybe return a meaningful error page instead of generic
             # error message?
@@ -541,6 +569,28 @@ class BrowserTab(QObject):
     def _on_url_changed(self, url):
         self.web_page.har.store_redirect(six.text_type(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
+
+    def _on_unsupported_content_finished(self):
+        self.logger.log('Unsupported content finished', min_level=3)
+        if not self._load_finished_after_unsupported_content_ready:
+            # XXX: The unsupported content reply might have finished before the
+            # original loadFinished signal emits. In such cases we do not want
+            # the same signal twice.
+            if not self._unsupported_content_reply.error():
+                self.web_page.mainFrame().loadFinished.emit(True)
+            else:
+                self.web_page.mainFrame().loadFinished.emit(False)
+
+    def _on_unsupported_content(self, reply):
+        self.logger.log('Unsupported content detected', min_level=3)
+        self._is_unsupported_content = True
+        self._unsupported_content_reply = reply
+        if reply.isFinished():
+            # Already finished. The content might be very short.
+            self.logger.log('Unsupported content already finished', min_level=3)
+            self._on_unsupported_content_finished()
+        else:
+            reply.finished.connect(self._on_unsupported_content_finished)
 
     def run_js_file(self, filename, handle_errors=True):
         """
