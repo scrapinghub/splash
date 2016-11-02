@@ -122,7 +122,10 @@ def reply2har(reply, content=None):
         try:
             res["statusText"] = bytes(status_text, 'latin1').decode('latin1')
         except TypeError:
-            res["statusText"] = bytes(status_text).decode('latin1')
+            try:
+                res["statusText"] = bytes(status_text).decode('latin1')
+            except ValueError:
+                res["statusText"] = ""
 
     else:
         res["statusText"] = REQUEST_ERRORS_SHORT.get(reply.error(), "?")
