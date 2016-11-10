@@ -10,7 +10,7 @@ import sys
 import time
 
 from PyQt5.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
-                          QUrl, QVariant, QEvent, Qt)
+                          QUrl, QVariant, QEvent, Qt, QByteArray)
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
@@ -157,6 +157,17 @@ def to_qurl(s):
     if isinstance(s, QUrl):
         return s
     return QUrl.fromEncoded(to_bytes(s, encoding='utf8'))
+
+
+def qt_to_bytes(value):
+    """ Convert QByteArray to bytes; if object is already a bytes object then
+    pass it as-is. """
+    if isinstance(value, QByteArray):
+        value = bytes(value)
+    if not isinstance(value, bytes):
+        raise ValueError("Value must be bytes, got %s object instead",
+                         value.__class__.__name__)
+    return value
 
 
 def set_request_url(request, url):
