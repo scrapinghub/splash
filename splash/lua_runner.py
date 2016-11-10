@@ -67,6 +67,8 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         self.coro = coro_func(*(coro_args or []))
         self.result = ''
         self._waiting_for_result_id = self._START_CMD
+        self._is_first_iter = True
+        self._is_stopped = False
         self.dispatch(self._waiting_for_result_id)
 
     def stop(self):
