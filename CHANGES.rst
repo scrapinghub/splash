@@ -1,6 +1,16 @@
 Changes
 =======
 
+2.2.2 (2016-11-10)
+------------------
+
+This is a bug fix release:
+
+* Splash-Jupyter is fixed;
+* fix an issue with non-ascii HTTP status messages;
+* upgrade Pillow to 3.4.2.
+
+
 2.2.1 (2016-10-17)
 ------------------
 
