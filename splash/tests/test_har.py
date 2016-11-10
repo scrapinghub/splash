@@ -256,6 +256,16 @@ class HarRenderTest(BaseHarRenderTest):
              }
         ])
 
+    def test_invalid_status_code_message(self):
+        data = self.assertValidHar(self.mockurl("bad-status-code-message"),
+                                   timeout=3)
+        pages = data['log']['entries']
+        self.assertEqual(len(pages), 1)
+        resp = pages[0]['response']
+        self.assertEqual(resp['status'], 200)
+        self.assertEqual(resp['statusText'],
+                         u'успех'.encode('cp1251').decode('latin1'))
+
 
 class HarHttpRedirectTest(test_redirects.HttpRedirectTest, BaseHarRenderTest):
 
