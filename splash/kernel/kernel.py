@@ -141,7 +141,8 @@ class SplashKernel(Kernel):
         super(SplashKernel, self).__init__(**kwargs)
         self.tab = init_browser(SplashKernel.network_manager_factory)
 
-        self.lua = SplashLuaRuntime(self.sandboxed, "", ())
+        self.lua = SplashLuaRuntime(self.sandboxed, lua_package_path="",
+                                    lua_sandbox_allowed_modules=())
         self.exceptions = StoredExceptions()
         self.splash = Splash(
             lua=self.lua,
