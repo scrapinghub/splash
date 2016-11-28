@@ -153,7 +153,8 @@ receive ``event`` table with the almost all available methods and properties.
         return x, y
     end
 
-The another way to attach event handlers is to use ``element.node:addEventListener(event, listener)``.
+The another way to attach event handlers is to use
+``element.node:addEventListener(event, listener)``.
 It allows you to add more than a single event handler for an event.
 
 Example of using ``element.node:addEventListener(event, listener)``
@@ -192,8 +193,8 @@ The following fields are read-only.
 element.inner_id
 ----------------
 
-Id of the inner representation of the element. It may be useful for comparing the elements
-for the equality.
+Id of the inner representation of the element. It may be useful for comparing
+the elements for the equality.
 
 Example:
 
@@ -210,15 +211,16 @@ Example:
 Methods
 ~~~~~~~
 
-To modify or retrieve some information about the element you can use the following methods.
+To modify or retrieve some information about the element you can use the
+following methods.
 
 .. _splash-element-exists:
 
 element:exists
 --------------
 
-Check whether the element exists in DOM. If the element doesn't exist some of the methods will fail raising
-the error flag.
+Check whether the element exists in DOM. If the element doesn't exist
+some of the methods will fail, returning the error flag.
 
 **Signature:** ``exists = element:exists()``
 
@@ -226,8 +228,8 @@ the error flag.
 
 **Async:** no.
 
-There are several reasons why the element can be absent from DOM. One of the reasons is that
-the element was removed by some JavaScript code.
+There are several reasons why the element can be absent from DOM.
+One of the reasons is that the element was removed by some JavaScript code.
 
 
 Example 1: the element was removed by JS code
@@ -304,7 +306,7 @@ Example 2: click on the area above the element by 10 pixels
     function main(splash)
         -- ...
         local element = splash:select('.element')
-        assert(element:mouse_click{x=-10})
+        assert(element:mouse_click{y=-10})
         -- ...
     end
 
@@ -325,19 +327,21 @@ Trigger mouse hover (JavaScript mouseover) event on the element.
 * x - optional, x coordinate relative to the left corner of the element
 * y - optional, y coordinate relative to the top corner of the element
 
-**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
-function call; ``reason`` provides an information about error type.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened
+during the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-If x or y coordinate is not provided they will be set to 0 and the hover will be triggered
-on the left-top corner of the element. The coordinates can have a negative value which means
-the hover will be triggered outside of the element.
+If x or y coordinate is not provided they will be set to 0 and the hover
+will be triggered on the left-top corner of the element. The coordinates
+can have a negative value which means the hover will be triggered outside
+of the element.
 
 Mouse events are not propagated immediately, to see consequences of hover
 reflected in page source you must call :ref:`splash-wait`
 
-Example 1: get width and height of the element, calculate its center and hover over it
+Example 1: get width and height of the element, calculate its center and
+hover over it
 
 .. code-block:: lua
 
@@ -357,7 +361,7 @@ Example 2: hover over the area above the element by 10 pixels
     function main(splash)
         -- ...
         local element = splash:select('.element')
-        assert(element:mouse_hover{x=-10})
+        assert(element:mouse_hover{y=-10})
         -- ...
     end
 
@@ -377,7 +381,8 @@ Return the computed styles of the element.
 
 **Async:** no.
 
-This method returns the result of JavaScript `Window.getComputedStyle()`_ applied on the element.
+This method returns the result of JavaScript `Window.getComputedStyle()`_
+applied on the element.
 
 Example: get all computed styles and return the ``font-size`` property.
 
@@ -401,8 +406,9 @@ Return the bounding client rectangle of the element
 
 **Signature:** ``bounds = element:bounds()``
 
-**Returns:** ``bounds`` is a table with the client bounding rectangle with the ``top``, ``right``,
-``bottom`` and ``left`` coordinates and also with ``width`` and ``height`` values.
+**Returns:** ``bounds`` is a table with the client bounding rectangle
+with the ``top``, ``right``, ``bottom`` and ``left`` coordinates and
+also with ``width`` and ``height`` values.
 
 **Async:** no.
 
@@ -434,15 +440,19 @@ Return a screenshot of the element in PNG format
   or ``'vector'``;
 * pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
-**Returns:** ``shot`` is a PNG screenshot data, as a :ref:`binary object <binary-objects>`.
-When the result is empty (e.g. if the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
+**Returns:** ``shot`` is a PNG screenshot data, as
+a :ref:`binary object <binary-objects>`. When the result is empty
+(e.g. if the element doesn't exist in DOM or it isn't visible) ``nil``
+is returned.
 
 **Async:** no.
 
-*pad* parameter sets the padding of the resulting image. If it is a single integer then the
-padding from all sides will be equal. If the value of the padding is positive the resulting screenshot
-will be expanded by the specified amount of pixes. And if the value of padding is negative the resulting
-screenshot will be shrunk by the specified amount of pixes.
+*pad* parameter sets the padding of the resulting image. If it is
+a single integer then the padding from all sides will be equal.
+If the value of the padding is positive the resulting screenshot
+will be expanded by the specified amount of pixes. And if the value
+of padding is negative the resulting screenshot will be shrunk by the
+specified amount of pixels.
 
 Example: return a padded screenshot of the element
 
@@ -474,14 +484,16 @@ Return a screenshot of the element in JPEG format
 * quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``;
 * pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
-**Returns:** ``shot`` is a JPEG screenshot data, as a :ref:`binary object <binary-objects>`.
-When the result is empty (e.g. if the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
+**Returns:** ``shot`` is a JPEG screenshot data, as
+a :ref:`binary object <binary-objects>`. When the result is empty
+(e.g. if the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
 
 **Async:** no.
 
-*pad* parameter sets the padding of the resulting image. If it is a single integer then the
-padding from all sides will be equal. If the value of the padding is positive the resulting screenshot
-will be expanded by the specified amount of pixes. And if the value of padding is negative the resulting
+*pad* parameter sets the padding of the resulting image. If it is a single
+integer then the padding from all sides will be equal. If the value of the
+padding is positive the resulting screenshot will be expanded by the
+specified amount of pixes. And if the value of padding is negative the resulting
 screenshot will be shrunk by the specified amount of pixes.
 
 See more in :ref:`splash-jpeg`.
@@ -516,7 +528,8 @@ of the element.
 
 **Async:** no.
 
-It tries to return the trimmed value of the following JavaScript ``Node`` properties:
+It tries to return the trimmed value of the following JavaScript
+``Node`` properties:
 
 * textContent
 * innerText
@@ -561,22 +574,24 @@ Get value of the field element (input, select, textarea, button).
 
 **Signature:** ``ok, value = element:field_value()``
 
-**Returns:** ``ok, value`` pair. If ``ok`` is nil then error happened during the function call;
-``value`` provides an information about error type; otherwise ``info`` is a value of the
-element.
+**Returns:** ``ok, value`` pair. If ``ok`` is nil then error happened
+during the function call; ``value`` provides an information about error type;
+otherwise ``info`` is a value of the element.
 
 **Async:** no.
 
-This methods in the following way:
+This method works in the following way:
 
     - if the element type is ``select``:
-        - if the ``multiple`` attribute is ``true`` it returns a *table* with the selected values;
+        - if the ``multiple`` attribute is ``true`` it returns a *table*
+          with the selected values;
         - otherwise it returns the value of the select;
     - if the element has attribute ``type="radio"``:
         - if it's checked returns its value;
         - other it returns ``nil``
     - if the element has attribute ``type="checkbox"`` it returns *bool* value
-    - otherwise it returns the value of the ``value`` attribute or *empty string* if it doesn't exist
+    - otherwise it returns the value of the ``value`` attribute or
+      *empty string* if it doesn't exist
 
 
 .. _splash-element-form-values:
@@ -592,9 +607,9 @@ Return a table with form values if the element type is *form*
 
 * values - type of the return value, can be one of ``'auto'``, ``'list'`` or ``'first'``
 
-
-**Returns:** ``form_values, reason`` pair. If ``form_values`` is nil then error happened during the function call
-or node type is not *form*; ``reason`` provides an information about error type; otherwise
+**Returns:** ``form_values, reason`` pair. If ``form_values`` is nil then
+error happened during the function call or node type is not *form*;
+``reason`` provides an information about error type; otherwise
 ``form_values`` is a table with element names as keys and values as values.
 
 **Async:** no.
@@ -602,18 +617,37 @@ or node type is not *form*; ``reason`` provides an information about error type;
 The returned values depend on ``values`` parameter. It can be in 3 states:
 
 ``'auto'``
-    Returned values are tables or singular values depending on the form element type:
+    Returned values are tables or singular values depending on the
+    form element type:
 
-    - if the element is ``<select multiple>`` the returned value is a table with the selected option values or text contents if the value attribute is missing
-    - if the form has several elements with the same ``name`` attribute the returned value is a table with all values of that elements
-    - otherwise it's a string (for text and radio inputs), bool (for checkbox inputs) or ``nill`` the value of ``value`` attribute
+    - if the element is ``<select multiple>`` the returned value is
+      a table with the selected option values or text contents if the value
+      attribute is missing;
+    - if the form has several elements with the same ``name`` attribute the
+      returned value is a table with all values of that elements;
+    - otherwise it is a string (for text and radio inputs), bool (for checkbox
+      inputs) or ``nil`` the value of ``value`` attribute.
+
+    This result type is convenient if you're working with the result in a Lua
+    script.
+
 ``'list'``
-    Returned values always are tables (lists), even if the form element can be a singular value, useful for forms with unknown structure. Few notes:
+    Returned values always are tables (lists), even if the form element
+    can be a singular value, useful for forms with unknown structure. Few notes:
 
-    - if the element is a checkbox input and a ``value`` attribute then the table will contain that value
-    - if the element is ``<select multiple>`` and they are several of them with the same names then their values will be concatenated with the previous ones
+    - if the element is a checkbox input and a ``value`` attribute then
+      the table will contain that value;
+    - if the element is ``<select multiple>`` and they are several of them
+      with the same names then their values will be concatenated with the
+      previous ones
+
+    This result type is convenient if you're writing generic form-handling
+    code - unlike ``auto`` there is no need to support multiple data types.
+
 ``'first'``
-    Returned values always are singular values, even if the form element can multiple value. If the element has multiple values only the *first* one will be selected.
+    Returned values always are singular values, even if the form element
+    can multiple value. If the element has multiple values only the *first*
+    one will be selected.
 
 Example 1: return the values of the following login form
 
@@ -650,7 +684,8 @@ Example 2: when ``values`` is equal to ``'list'``
     -- returned values are
     { username = ['admin'], password = ['pass'], remember = ['checked'] }
 
-Example 3: return the values of the following form when ``values`` is equal to ``'first'``
+Example 3: return the values of the following form when ``values``
+is equal to ``'first'``
 
 .. code-block:: html
 
@@ -701,13 +736,13 @@ Fill the form with the provided values
 
 * values - table with input names as keys and values as input values
 
-**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
-function call; ``reason`` provides an information about error type.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-In order to fill your form your inputs must have ``name`` property and this method will
-select those input using that property.
+In order to fill your form your inputs must have ``name`` property and
+this method will select those input using that property.
 
 Example 1: get the current values, change password and fill the form
 
@@ -749,8 +784,6 @@ Example 2: fill more complex form
 
 .. code-block:: lua
 
-    local treat = require('treat')
-
     function main(splash)
       assert(splash:go(splash.args.url))
       assert(splash:wait(0.1))
@@ -781,8 +814,8 @@ Send keyboard events to the element.
 
 * keys - string representing the keys to be sent as keyboard events.
 
-**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
-function call; ``reason`` provides an information about error type.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
@@ -807,8 +840,8 @@ Send keyboard events to the element.
 
 * text - string to be sent as input.
 
-**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
-function call; ``reason`` provides an information about error type.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
@@ -820,7 +853,6 @@ This method does the following:
 See more about it in :ref:`splash-send-text`.
 
 
-
 .. _splash-element-submit:
 
 element:submit
@@ -830,9 +862,9 @@ Submit the form element.
 
 **Signature:** ``ok, reason = element:submit()``
 
-**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
-function call (e.g. you are trying to submit on element which is not a form);
-``reason`` provides an information about error type.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+the function call (e.g. you are trying to submit on element which is not
+a form); ``reason`` provides an information about error type.
 
 **Async:** no.
 
