@@ -19,66 +19,67 @@ element.node
 
 ``element.node`` is a object that contains almost all DOM element attributes and methods.
 
-The list of supported properties (in brackets is specified whether the property is read-only):
+The list of supported properties (some of them are mutable, other
+are read-only):
 
 Properties inherited from HTMLElement_:
-    - accessKey (No)
-    - accessKeyLabel (Yes)
-    - contentEditable (No)
-    - isContentEditable (Yes)
-    - dataset (Yes)
-    - dir (No)
-    - draggable (No)
-    - hidden (No)
-    - lang (No)
-    - offsetHeight (Yes)
-    - offsetLeft (Yes)
-    - offsetParent (Yes)
-    - offsetTop (Yes)
-    - spellcheck (No)
-    - style (No) - returns the table with styles which can be modified
-    - tabIndex (No)
-    - title (No)
-    - translate (No)
+    - accessKey
+    - accessKeyLabel *(read-only)*
+    - contentEditable
+    - isContentEditable *(read-only)*
+    - dataset *(read-only)*
+    - dir
+    - draggable
+    - hidden
+    - lang
+    - offsetHeight *(read-only)*
+    - offsetLeft *(read-only)*
+    - offsetParent *(read-only)*
+    - offsetTop *(read-only)*
+    - spellcheck
+    - style - a table with styles which can be modified
+    - tabIndex
+    - title
+    - translate
 
 Properties inherited from Element_:
-    - attributes (Yes) - returns the table of attributes of the element
-    - classList (Yes) - returns the table of class names of the element
-    - className (No)
-    - clientHeight (Yes)
-    - clientLeft (Yes)
-    - clientTop (Yes)
-    - clientWidth (Yes)
-    - id (No)
-    - innerHTML (No)
-    - localeName (Yes)
-    - namespaceURI (Yes)
-    - nextElementSibling (Yes)
-    - outerHTML (No)
-    - prefix (Yes)
-    - previousElementSibling (Yes)
-    - scrollHeight (Yes)
-    - scrollLeft (No)
-    - scrollTop (No)
-    - scrollWidth (Yes)
-    - tabStop (No)
-    - tagName (Yes)
+    - attributes *(read-only)* - a table with attributes of the element
+    - classList *(read-only)* - a table with class names of the element
+    - className
+    - clientHeight *(read-only)*
+    - clientLeft *(read-only)*
+    - clientTop *(read-only)*
+    - clientWidth *(read-only)*
+    - id
+    - innerHTML
+    - localeName *(read-only)*
+    - namespaceURI *(read-only)*
+    - nextElementSibling *(read-only)*
+    - outerHTML
+    - prefix *(read-only)*
+    - previousElementSibling *(read-only)*
+    - scrollHeight *(read-only)*
+    - scrollLeft
+    - scrollTop
+    - scrollWidth *(read-only)*
+    - tabStop
+    - tagName *(read-only)*
 
 Properties inherited from Node_:
-    - baseURI (Yes)
-    - childNodes (Yes)
-    - firstChild (Yes)
-    - lastChild (Yes)
-    - nextSibling (Yes)
-    - nodeName (Yes)
-    - nodeType (Yes)
-    - nodeValue (No)
-    - ownerDocument (Yes)
-    - parentNode (Yes)
-    - parentElement (Yes)
-    - previousSibling (Yes)
-    - rootNode (Yes)
-    - textContent (No)
+    - baseURI *(read-only)*
+    - childNodes *(read-only)*
+    - firstChild *(read-only)*
+    - lastChild *(read-only)*
+    - nextSibling *(read-only)*
+    - nodeName *(read-only)*
+    - nodeType *(read-only)*
+    - nodeValue
+    - ownerDocument *(read-only)*
+    - parentNode *(read-only)*
+    - parentElement *(read-only)*
+    - previousSibling *(read-only)*
+    - rootNode *(read-only)*
+    - textContent
 
 The list of supported methods:
 
@@ -131,8 +132,9 @@ Methods inherited from Node_:
     - removeChild
     - replaceChild
 
-Also, you can attach event handlers to the specified event. When the handler is called it will
-receive ``event`` table with the almost all available methods and properties.
+Also, you can attach event handlers to the specified event. When the handler
+is called it will receive ``event`` table with the almost all available
+methods and properties.
 
 .. code-block:: lua
 
@@ -245,7 +247,8 @@ Example 1: the element was removed by JS code
         -- ...
     end
 
-Another reason is that the element was created by script and not inserted into DOM.
+Another reason is that the element was created by script and not inserted
+into DOM.
 
 Example 2: the element is not inserted into DOM
 
@@ -274,19 +277,21 @@ Trigger mouse click event on the element.
 * x - optional, x coordinate relative to the left corner of the element
 * y - optional, y coordinate relative to the top corner of the element
 
-**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during the
-function call; ``reason`` provides an information about error type.
+**Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
+the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-If x or y coordinate is not provided they will be set to 0 and the click will be triggered
-on the left-top corner of the element. The coordinates can have a negative value which means
-the click will be triggered outside of the element.
+If x or y coordinate is not provided they will be set to 0 and the click
+will be triggered on the left-top corner of the element. The coordinates
+can have a negative value which means the click will be triggered outside
+of the element.
 
 Mouse events are not propagated immediately, to see consequences of click
 reflected in page source you must call :ref:`splash-wait`
 
-Example 1: get width and height of the element, calculate its center and click on it
+Example 1: get width and height of the element, calculate its center and
+click on it
 
 .. code-block:: lua
 

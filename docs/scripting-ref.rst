@@ -2485,7 +2485,8 @@ arguments passed to splash, `username` and `password`.
 splash:select
 -------------
 
-Select the first HTML element from DOM of the current web page that matches the specified CSS selector.
+Select the first HTML element from DOM of the current web page that
+matches the specified CSS selector.
 
 **Signature:** ``element = splash:select(selector)``
 
@@ -2493,16 +2494,17 @@ Select the first HTML element from DOM of the current web page that matches the 
 
 * selector - valid CSS selector
 
-**Returns:** a :ref:`splash-element`.
+**Returns:** an :ref:`Element <splash-element>` object.
 
 **Async:** no.
 
-Using :ref:`splash-select` you can get the element that matches your specified CSS selector like using
-`document.querySelector`_ in your browser. The returned element is a :ref:`splash-element` which has many useful
+Using :ref:`splash-select` you can get the element that matches your
+specified CSS selector like using `document.querySelector`_ in the browser.
+The returned element is an :ref:`splash-element` which has many useful
 methods and almost all methods and attributes that element has in JavaScript.
 
-If the element cannot be found using the specified selector ``nil`` will be returned. If your selector
-is not a valid CSS selector an error will be raised.
+If the element cannot be found using the specified selector ``nil`` will
+be returned. If your selector is not a valid CSS selector an error will be raised.
 
 Example 1: select an element which has ``element`` class and return class
 names off all the siblings of the specified element.
@@ -2557,7 +2559,8 @@ Example 2: assert that the returned element exists
 splash:select_all
 -----------------
 
-Select the list of HTML elements from DOM of the current web page that match the specified CSS selector.
+Select the list of HTML elements from DOM of the current web page
+that match the specified CSS selector.
 
 **Signature:** ``elements = splash:select_all(selector)``
 
@@ -2565,15 +2568,15 @@ Select the list of HTML elements from DOM of the current web page that match the
 
 * selector - valid CSS selector
 
-**Returns:** a list of :ref:`splash-element`.
+**Returns:** a list of :ref:`Element <splash-element>` objects.
 
 **Async:** no.
 
-This method differs from :ref:`splash-select` by returning the *all* elements in a table that
-match the specified selector.
+This method differs from :ref:`splash-select` by returning the *all*
+elements in a table that match the specified selector.
 
-If the element cannot be found using the specified selector ``{}`` will be returned. If your selector
-is not a valid CSS selector an error will be raised.
+If no elements can be found using the specified selector ``{}`` is
+returned. If the selector is not a valid CSS selector an error is raised.
 
 Example: select all ``<img />`` elements and get their ``src`` attributes
 
@@ -2594,4 +2597,3 @@ Example: select all ``<img />`` elements and get their ``src`` attributes
 
         return treat.as_array(srcs)
     end
-
