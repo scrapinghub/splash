@@ -1,4 +1,7 @@
-from splash.exceptions import DOMError, JsError
+from __future__ import absolute_import
+from functools import wraps
+
+from splash.exceptions import DOMError
 from splash.jsutils import escape_js
 from splash.casperjs_utils import (
     VISIBLE_JS_FUNC,
@@ -7,7 +10,7 @@ from splash.casperjs_utils import (
     FORM_VALUES_JS,
     SET_FIELD_VALUE_JS
 )
-from functools import wraps
+
 
 DIMENSIONS_JS_FUNC = """
 (function(elem) {
@@ -42,22 +45,27 @@ def empty_strings_as_none(meth):
 
 
 def escape_js_args(*args):
-    return ','.join([arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg)
-                     for arg in args])
+    return ','.join([
+        arg.element_js if isinstance(arg, HTMLElement) else escape_js(arg)
+        for arg in args
+    ])
 
 
 class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
-    def __init__(self, tab, storage, event_handlers_storage, events_storage, node):
+    def __init__(self, tab, storage, event_handlers_storage, events_storage,
+                 node):
         self.tab = tab
         self.storage = storage
         self.event_handlers_storage = event_handlers_storage
         self.events_storage = events_storage
         self.id = node["id"]
         self.element_js = self.get_element_js()
-        self.tab.logger.log("HTMLElement is created with id = %s in object %s" % (self.id, self.element_js),
-                            min_level=4)
+        msg = "HTMLElement is created with id=%s in object %s" % (
+            self.id, self.element_js
+        )
+        self.tab.logger.log(msg, min_level=4)
 
     def get_element_js(self):
         """ Return JS object to which the element is assigned. """
@@ -79,7 +87,8 @@ class HTMLElement(object):
         if actual_type != node_type.lower():
             raise DOMError({
                 'type': DOMError.NOT_COMPATIBLE_NODE_ERROR,
-                'message': "Node should be {!r}, but got {!r}".format(node_type, actual_type)
+                'message': "Node should be {!r}, but got {!r}".format(
+                    node_type, actual_type)
             })
 
     def exists(self):
@@ -135,20 +144,17 @@ class HTMLElement(object):
     def mouse_click(self, x=0, y=0, button="left"):
         """ Click on the element """
         self.assert_element_exists()
-        dimensions = self.tab.evaljs(
-            DIMENSIONS_JS_FUNC % self.element_js,
-        )
-
+        dimensions = self._get_dimensions()
         self.tab.mouse_click(dimensions["x"] + x, dimensions["y"] + y, button)
 
     def mouse_hover(self, x=0, y=0):
         """ Hover over the element """
         self.assert_element_exists()
-        dimensions = self.tab.evaljs(
-            DIMENSIONS_JS_FUNC % self.element_js,
-        )
-
+        dimensions = self._get_dimensions()
         self.tab.mouse_hover(dimensions["x"] + x, dimensions["y"] + y)
+
+    def _get_dimensions(self):
+        return self.tab.evaljs(DIMENSIONS_JS_FUNC % self.element_js)
 
     def styles(self):
         """ Return computed styles of the element """
@@ -161,48 +167,38 @@ class HTMLElement(object):
                                result_protection=False)
 
     def png(self, width=None, scale_method=None, pad=None):
-        """ Return screenshot of the element in PNG format
+        """ Return screenshot of the element in PNG format.
 
-            Optional `pad` can be provided which can be in two formats:
-              - integer containing amount of pad for all sides (top, left, bottom, right)
-              - tuple with `left`, `top`, `right`, `bottom` integer values for padding
+        Optional `pad` can be provided which can be in two formats:
+          - integer containing amount of pad for all sides
+            (top, left, bottom, right)
+          - tuple with `left`, `top`, `right`, `bottom` integer
+            values for padding
 
-            Padding value can be negative which means that the image will be cropped.
+        Padding value can be negative which means that the image will be cropped.
         """
         if not self.exists() or not self.visible():
             return None
 
-        bounds = self.bounds()
-        region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
-
-        if pad:
-            if isinstance(pad, float):
-                pad = (pad, pad, pad, pad)
-            region = (region[0] - pad[0], region[1] - pad[1], region[2] + pad[2], region[3] + pad[3])
-
+        region = _bounds_to_region(self.bounds(), pad)
         return self.tab.png(width, region=region, scale_method=scale_method)
 
     def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
-        """ Return screenshot of the element in JPEG format
+        """ Return screenshot of the element in JPEG format.
 
-            Optional `pad` can be provided which can be in two formats:
-              - integer containing amount of pad for all sides (top, left, bottom, right)
-              - tuple with `left`, `top`, `right`, `bottom` integer values for padding
+        Optional `pad` can be provided which can be in two formats:
+          - integer containing amount of pad for all sides
+            (top, left, bottom, right)
+          - tuple with `left`, `top`, `right`, `bottom` integer
+            values for padding
 
-            Padding value can be negative which means that the image will be cropped.
+        Padding value can be negative which means that the image will be cropped.
         """
         if not self.exists() or not self.visible():
             return None
-
-        bounds = self.bounds()
-        region = (bounds["left"], bounds["top"], bounds["right"], bounds["bottom"])
-
-        if pad:
-            if isinstance(pad, float):
-                pad = (pad, pad, pad, pad)
-            region = (region[0] - pad[0], region[1] - pad[1], region[2] + pad[2], region[3] + pad[3])
-
-        return self.tab.jpeg(width, region=region, scale_method=scale_method, quality=quality)
+        region = _bounds_to_region(self.bounds(), pad)
+        return self.tab.jpeg(width, region=region, scale_method=scale_method,
+                             quality=quality)
 
     def visible(self):
         """ Return flag indicating whether element is visible """
@@ -308,7 +304,10 @@ class HTMLElement(object):
         return handler_id
 
     def remove_event_handler(self, event_name, handler_id):
-        """ Remove event listeners from the element for the specified event and handler """
+        """
+        Remove event listeners from the element for the specified event
+        and handler.
+        """
         func = u"window[{storage_name}][{func_id}]".format(
             storage_name=escape_js(self.event_handlers_storage.name),
             func_id=escape_js(handler_id),
@@ -324,3 +323,27 @@ class HTMLElement(object):
         """ Submit form element """
         self.assert_node_type('form')
         self.node_method('submit')()
+
+
+def _padded(region, pad):
+    """
+    >>> _padded([1, 1, 4, 4], [0, 1, 2 ,3])
+    (1, 0, 6, 7)
+    >>> _padded([1, 1, 4, 4], 2)
+    (-1, -1, 6, 6)
+    """
+    if not pad:
+        return region
+    if isinstance(pad, (int, float)):
+        pad = (pad, pad, pad, pad)
+    return (
+        region[0] - pad[0],
+        region[1] - pad[1],
+        region[2] + pad[2],
+        region[3] + pad[3]
+    )
+
+
+def _bounds_to_region(bounds, pad):
+    region = bounds["left"], bounds["top"], bounds["right"], bounds["bottom"]
+    return _padded(region, pad)
