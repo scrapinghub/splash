@@ -23,7 +23,7 @@ FETCH_TEXT_JS_FUNC = """
 """
 
 FILL_FORM_VALUES_JS = """
-function fill(form, values, setFieldValue) {
+function (form, values, setFieldValue) {
   Object.keys(values).forEach(function (name) {
     var selector = "[name='" + name + "']";
     setFieldValue(selector, values[name], form);
