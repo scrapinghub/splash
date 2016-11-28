@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 
+
 def escape_js(*args):
     return json.dumps(args, ensure_ascii=False)[1:-1]
 
@@ -39,6 +40,15 @@ function (obj, max_depth){
             else if (o instanceof Date) {
                 return o.toJSON();
             }
+            else if (o instanceof ClientRect) {
+                return {
+                    top: o.top, left: o.left, bottom: o.bottom, right: o.right,
+                    width: o.width, height: o.height,
+                };
+            }
+            else if (o instanceof ClientRectList) {
+                return _s(Array.prototype.slice.call(o))
+            }
             else {
                 // likely host object
                 return undefined;
@@ -76,6 +86,39 @@ def get_sanitized_result_js(expression, max_depth=0):
     )
 
 
+STORE_DOM_ELEMENTS_JS = u"""
+function (elements_storage_name, o) {
+  var storage = window[elements_storage_name];
+
+  if (o instanceof Node) {
+    var id = storage.getId();
+
+    Object.defineProperty(storage, id, {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: o,
+    });
+
+    return {
+      type: 'node',
+      id: id
+    };
+  }
+
+  return o;
+}
+"""
+
+
+def store_dom_elements(expression, elements_storage_name):
+    return u"({store_func})('{elements_storage_name}', {expression})".format(
+        store_func=STORE_DOM_ELEMENTS_JS,
+        elements_storage_name=elements_storage_name,
+        expression=expression
+    )
+
+
 def get_process_errors_js(expression):
     """
     Return JS code which evaluates an ``expression`` and
@@ -84,22 +127,20 @@ def get_process_errors_js(expression):
     if expression raised an error when evaluating.
     """
     return u"""
-    (function() {
-        try{
-            return {
-                error: false,
-                result: %(expression)s,
-            }
+    (function () {
+      try {
+        return {
+          error: false,
+          result: %(expression)s,
         }
-        catch(e){
-            return {
-                error: true,
-                errorType: e.name,
-                errorMessage: e.message,
-                errorRepr: e.toString(),
-            };
-        }
+      }
+      catch (e) {
+        return {
+          error: true,
+          errorType: e.name,
+          errorMessage: e.message,
+          errorRepr: e.toString(),
+        };
+      }
     })()
     """ % dict(expression=expression)
-
-
