@@ -198,6 +198,11 @@ class Base(object):
             self.assertEqual(r1.content, r2.content)
             self.assertNotEqual(r1.content, r3.content)
 
+        def test_invalid_status_code_message(self):
+            r = self.request({'url': self.mockurl("bad-status-code-message"),
+                              'timeout': "3"})
+            self.assertStatusCode(r, 200)
+
         def test_invalid_wait(self):
             for wait in ['foo', '11', '11.0']:
                 r = self.request({'url': self.mockurl("jsrender"),

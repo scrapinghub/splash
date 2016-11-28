@@ -4,10 +4,8 @@ import os
 import weakref
 import contextlib
 
-import six
-
 from splash.lua import lua2python, python2lua, get_new_runtime
-from splash.utils import to_bytes, to_unicode
+from splash.utils import to_unicode
 
 
 class SplashLuaRuntime(object):

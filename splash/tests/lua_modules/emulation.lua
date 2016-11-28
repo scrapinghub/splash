@@ -53,11 +53,11 @@ function Splash:go_and_wait(args)
     end
   end
 
-  assert(self:_wait_restart_on_redirects(wait, 10))
+  assert(self:wait_restart_on_redirects(wait, 10))
 end
 
 
-function Splash:_wait_restart_on_redirects(time, max_redirects)
+function Splash:wait_restart_on_redirects(time, max_redirects)
   if not time then
     return true
   end

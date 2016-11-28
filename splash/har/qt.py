@@ -13,7 +13,8 @@ import six
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     OPERATION_NAMES,
-    qt_header_items
+    qt_header_items,
+    qt_to_bytes,
 )
 
 
@@ -21,8 +22,8 @@ def headers2har(request_or_reply):
     """ Return HAR-encoded request or reply headers """
     return [
         {
-            "name": bytes(name).decode('latin1'),
-            "value": bytes(value).decode('latin1'),
+            "name": qt_to_bytes(name).decode('latin1'),
+            "value": qt_to_bytes(value).decode('latin1'),
         }
         for name, value in qt_header_items(request_or_reply)
     ]
@@ -59,8 +60,8 @@ def cookies2har(cookies):
 def cookie2har(cookie):
     """ Convert QNetworkCookie to a Python dict (in HAR format) """
     cookie = {
-        "name": bytes(cookie.name()).decode('utf8', 'replace'),
-        "value": bytes(cookie.value()).decode('utf8', 'replace'),
+        "name": qt_to_bytes(cookie.name()).decode('utf8', 'replace'),
+        "value": qt_to_bytes(cookie.value()).decode('utf8', 'replace'),
         "path": six.text_type(cookie.path()),
         "domain": six.text_type(cookie.domain()),
         "expires": six.text_type(cookie.expirationDate().toString(Qt.ISODate)),
@@ -119,11 +120,9 @@ def reply2har(reply, content=None):
 
     status_text = reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
     if status_text is not None:
-        try:
-            res["statusText"] = bytes(status_text, 'latin1').decode('latin1')
-        except TypeError:
-            res["statusText"] = bytes(status_text).decode('latin1')
-
+        if not isinstance(status_text, six.text_type):
+            status_text = qt_to_bytes(status_text).decode('latin1')
+        res['statusText'] = status_text
     else:
         res["statusText"] = REQUEST_ERRORS_SHORT.get(reply.error(), "?")
 

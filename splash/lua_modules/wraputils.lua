@@ -1,4 +1,3 @@
-local repr = require('repr')
 --
 -- This modules provides utilities to access Python
 -- objects from Lua. It should be used together with
@@ -84,10 +83,12 @@ local function sets_callback(func, storage)
   end
 end
 
+
 local function is_private_name(name)
   -- Method/attribute name is private true if it starts with an underscore.
   return name:sub(1, 1) == "_"
 end
+
 
 --
 -- Create a Lua wrapper for a Python object.
@@ -98,7 +99,7 @@ end
 -- * Private methods are stored in `private_self`, public methods are
 --   stored in `self`.
 --
-local function setup_commands(py_object, self)
+local function setup_methods(py_object, self, cls)
   -- Create lua_object:<...> methods from py_object methods:
   for key, opts in pairs(py_object.commands) do
     local command = py_object[key]
@@ -119,18 +120,26 @@ local function setup_commands(py_object, self)
 
     rawset(self, key, command)
   end
+
+  for key, value in pairs(cls) do
+    if type(value) == "function" then
+      rawset(self, key, drops_self_argument(function(...)
+        return value(self, ...)
+      end))
+    end
+  end
 end
+
 
 --
 -- Handle @lua_property decorators.
 --
-local function setup_property_access(py_object, self)
+local function setup_property_access(py_object, self, cls)
   rawset(self, '__getters', {})
   rawset(self, '__setters', {})
 
   for name, opts in pairs(py_object.lua_properties) do
     self.__getters[name] = unwraps_python_result(drops_self_argument(py_object[opts.getter]))
-
     if opts.setter ~= nil then
       self.__setters[name] = unwraps_python_result(drops_self_argument(py_object[opts.setter]))
     else
@@ -151,7 +160,7 @@ local EXPOSED_OBJ_METATABLE_PLACEHOLDER = '<wrapped object>'
 --
 local function wrap_exposed_object(py_object, private_self, cls)
   setmetatable(private_self, cls)
-  setup_commands(py_object, private_self)
+  setup_methods(py_object, private_self, cls)
   setup_property_access(py_object, private_self)
 
   -- "Public" metatable that prevents access to private elements and to itself.
@@ -160,16 +169,7 @@ local function wrap_exposed_object(py_object, private_self, cls)
       if is_private_name(key) then
         return nil
       end
-      local retval = private_self[key]
-      if type(retval) ~= "function" then
-        return retval
-      end
-      return function(maybe_self, ...)
-        if maybe_self == self then
-          maybe_self = private_self
-        end
-        return retval(maybe_self, ...)
-      end
+      return private_self[key]
     end,
 
     __newindex = function(self, key, value)
@@ -177,7 +177,7 @@ local function wrap_exposed_object(py_object, private_self, cls)
         error("Cannot set private field: " .. tostring(key), 2)
       end
       assertx(2, pcall(function()
-          private_self[key] = value
+        private_self[key] = value
       end))
     end,
 
@@ -258,7 +258,6 @@ return {
   raises_async = raises_async,
   yields_result = yields_result,
   sets_callback = sets_callback,
-  setup_commands = setup_commands,
   setup_property_access = setup_property_access,
   wrap_exposed_object = wrap_exposed_object,
   create_metatable = create_metatable,

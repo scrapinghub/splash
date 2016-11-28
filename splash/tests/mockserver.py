@@ -928,6 +928,12 @@ class InvalidContentTypeResource2(Resource):
         return b"ok"
 
 
+class InvalidStatusMessageResource(Resource):
+    def render_GET(self, request):
+        request.setResponseCode(200, u"успех".encode('cp1251'))
+        return b'ok'
+
+
 class Index(Resource):
     isLeaf = True
 
@@ -993,6 +999,7 @@ class Root(Resource):
         self.putChild(b"external", ExternalResource())
         self.putChild(b"cp1251", CP1251Resource())
         self.putChild(b"cp1251-invalid", InvalidContentTypeResource())
+        self.putChild(b"bad-status-code-message", InvalidStatusMessageResource())
         self.putChild(b"bad-related", BadRelatedResource())
         self.putChild(b"set-cookie", SetCookie()),
         self.putChild(b"get-cookie", GetCookie()),
