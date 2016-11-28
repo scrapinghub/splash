@@ -60,11 +60,11 @@ class HTMLElement(object):
                             min_level=4)
 
     def get_element_js(self):
-        """ Return JS object to which the element is assigned """
+        """ Return JS object to which the element is assigned. """
         return 'window["%s"]["%s"]' % (self.storage.name, self.id)
 
     def assert_element_exists(self):
-        """ Raise exception if the element no longer exists in DOM """
+        """ Raise exception if the element no longer exists in DOM. """
         if not self.exists():
             raise DOMError({
                 'type': DOMError.NOT_IN_DOM_ERROR,
@@ -72,8 +72,10 @@ class HTMLElement(object):
             })
 
     def assert_node_type(self, node_type):
+        """
+        Raise an exception if the type of the element doesn't match node_type.
+        """
         actual_type = self.node_property('nodeName').lower()
-        """ Raise exception if the type of the element doesn't match with the provided one """
         if actual_type != node_type.lower():
             raise DOMError({
                 'type': DOMError.NOT_COMPATIBLE_NODE_ERROR,
@@ -118,7 +120,7 @@ class HTMLElement(object):
         ))
 
     def node_method(self, method_name):
-        """ Return function which will call the specified method of the element """
+        """ Return function which calls the specified method of the element """
 
         @empty_strings_as_none
         def call(*args):
@@ -150,11 +152,13 @@ class HTMLElement(object):
 
     def styles(self):
         """ Return computed styles of the element """
-        return self.tab.evaljs("getComputedStyle(%s)" % self.element_js, result_protection=False)
+        return self.tab.evaljs("getComputedStyle(%s)" % self.element_js,
+                               result_protection=False)
 
     def bounds(self):
         """ Return bounding client rectangle of the element"""
-        return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js, result_protection=False)
+        return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js,
+                               result_protection=False)
 
     def png(self, width=None, scale_method=None, pad=None):
         """ Return screenshot of the element in PNG format

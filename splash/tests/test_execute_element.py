@@ -171,7 +171,8 @@ class HTMLElementTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 400)
-        self.assertScriptError(resp, ScriptError.LUA_ERROR, message="Element no longer exists in DOM")
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               message="Element no longer exists in DOM")
 
     def test_mouse_hover(self):
         resp = self.request_lua("""
@@ -1424,7 +1425,8 @@ class HTMLElementTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl("various-elements")})
 
-        self.assertScriptError(resp, ScriptError.LUA_ERROR, "Node should be 'form'")
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               "Node should be 'form'")
 
     def test_element_arg(self):
         resp = self.request_lua("""
@@ -1460,7 +1462,8 @@ class HTMLElementTest(BaseLuaRenderTest):
         end
         """, {"url": self.mockurl("various-elements")})
 
-        self.assertScriptError(resp, ScriptError.LUA_ERROR, 'TypeError: undefined is not an object')
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               'TypeError: undefined is not an object')
 
     def test_elements_jsredirect(self):
         resp = self.request_lua("""

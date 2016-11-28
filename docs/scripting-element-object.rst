@@ -386,7 +386,7 @@ Return the computed styles of the element.
 
 **Async:** no.
 
-This method returns the result of JavaScript `Window.getComputedStyle()`_
+This method returns the result of JavaScript `window.getComputedStyle()`_
 applied on the element.
 
 Example: get all computed styles and return the ``font-size`` property.
@@ -400,7 +400,7 @@ Example: get all computed styles and return the ``font-size`` property.
     end
 
 
-.. _Window.getComputedStyle(): https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle
+.. _window.getComputedStyle(): https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle
 
 .. _splash-element-bounds:
 
@@ -580,8 +580,8 @@ Get value of the field element (input, select, textarea, button).
 **Signature:** ``ok, value = element:field_value()``
 
 **Returns:** ``ok, value`` pair. If ``ok`` is nil then error happened
-during the function call; ``value`` provides an information about error type;
-otherwise ``info`` is a value of the element.
+during the function call; ``value`` provides an information about error type.
+When there is no error ``ok`` is true and ``value`` is a value of the element.
 
 **Async:** no.
 
