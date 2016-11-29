@@ -208,10 +208,9 @@ def get_id():
 
 def traverse_dict(obj, predicate, convert, max_depth=100):
     """
-    Travers dictionary and if the `predicate` returns positive value on a traversed object
-    call `convert` passing that object
+    Traverse dictionary and if the `predicate` returns True value on
+    a traversed object call `convert` passing that object.
     """
-
     if max_depth <= 0:
         raise ValueError("Can't traverse through object: depth limit is reached")
 
@@ -225,7 +224,7 @@ def traverse_dict(obj, predicate, convert, max_depth=100):
         return {
             traverse_dict(key, predicate, convert, max_depth=max_depth - 1): traverse_dict(value, predicate, convert, max_depth=max_depth - 1)
             for key, value in obj.items()
-            }
+        }
 
     if isinstance(obj, list):
         return [traverse_dict(v, predicate, convert, max_depth=max_depth - 1) for v in obj]

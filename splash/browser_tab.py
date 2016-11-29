@@ -11,7 +11,6 @@ from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWidgets import QApplication
-
 from twisted.internet import defer
 from twisted.python import log
 import six
@@ -24,7 +23,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
                             qurl2ascii, to_qurl, qt_send_key, qt_send_text)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
-from splash.exceptions import JsError, OneShotCallbackError, ScriptError, DOMError
+from splash.exceptions import JsError, OneShotCallbackError, ScriptError
 from splash.utils import to_bytes, get_id, traverse_dict
 from splash.jsutils import (
     get_sanitized_result_js,
@@ -35,11 +34,13 @@ from splash.jsutils import (
 )
 from splash.html_element import HTMLElement
 
+
 def skip_if_closing(meth):
     @functools.wraps(meth)
     def wrapped(self, *args, **kwargs):
         if self._closing:
-            self.logger.log("%s is not called because BrowserTab is closing" % meth.__name__, min_level=2)
+            self.logger.log("%s is not called because BrowserTab "
+                            "is closing" % meth.__name__, min_level=2)
             return
         return meth(self, *args, **kwargs)
 
@@ -87,7 +88,8 @@ class BrowserTab(QObject):
                            render_options)
         self.http_client = _SplashHttpClient(self.web_page)
 
-    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
+    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory,
+                      render_options):
         """ Create and initialize QWebPage and QWebView """
         self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(network_manager)
@@ -114,17 +116,21 @@ class BrowserTab(QObject):
     def _init_elements_storage(self):
         frame = self.web_page.mainFrame()
         self._elements_storage = ElementsStorage(self)
-        frame.addToJavaScriptWindowObject(self._elements_storage.name, self._elements_storage)
+        frame.addToJavaScriptWindowObject(self._elements_storage.name,
+                                          self._elements_storage)
 
     def _init_event_handlers_storage(self):
         frame = self.web_page.mainFrame()
-        self._event_handlers_storage = EventHandlersStorage(self, self._events_storage)
-        frame.addToJavaScriptWindowObject(self._event_handlers_storage.name, self._event_handlers_storage)
+        self._event_handlers_storage = EventHandlersStorage(self,
+                                                            self._events_storage)
+        frame.addToJavaScriptWindowObject(self._event_handlers_storage.name,
+                                          self._event_handlers_storage)
 
     def _init_events_storage(self):
         frame = self.web_page.mainFrame()
         self._events_storage = EventsStorage(self)
-        frame.addToJavaScriptWindowObject(self._events_storage.name, self._events_storage)
+        frame.addToJavaScriptWindowObject(self._events_storage.name,
+                                          self._events_storage)
         self._events_storage.init_storage()
 
     def _init_js_objects_storage(self):
@@ -173,16 +179,18 @@ class BrowserTab(QObject):
         web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, scroll_bars)
 
         if self.visible:
-            web_page.settings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+            settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 
         self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
         self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
 
     def _setup_webpage_events(self):
-        self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
-        self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
-        self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
-        self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._on_javascript_window_object_cleared)
+        main_frame = self.web_page.mainFrame()
+        self._load_finished = WrappedSignal(main_frame.loadFinished)
+        main_frame.loadFinished.connect(self._on_load_finished)
+        main_frame.urlChanged.connect(self._on_url_changed)
+        main_frame.javaScriptWindowObjectCleared.connect(
+            self._on_javascript_window_object_cleared)
         self.logger.add_web_page(self.web_page)
 
     def return_result(self, result):
@@ -301,7 +309,8 @@ class BrowserTab(QObject):
             callback=callback,
             errback=errback,
         )
-        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
+        self.logger.log("callback %s is connected to loadFinished" % callback_id,
+                        min_level=3)
         self.web_page.mainFrame().setContent(data, mime_type, to_qurl(baseurl))
 
     def set_user_agent(self, value):
@@ -356,7 +365,8 @@ class BrowserTab(QObject):
         if headers_user_agent:
             # User passed User-Agent header to go() so we need to set
             # consistent UA for all rendering requests.
-            # Passing UA header to go() will have same effect as splash:set_user_agent().
+            # Passing UA header to go() will have same effect as
+            # splash:set_user_agent().
             self.set_user_agent(headers_user_agent)
 
         if baseurl:
@@ -441,7 +451,8 @@ class BrowserTab(QObject):
         loadFinished events.
         """
         if self.web_page.maybe_redirect(ok):
-            self.logger.log("Redirect or other non-fatal error detected", min_level=2)
+            self.logger.log("Redirect or other non-fatal error detected",
+                            min_level=2)
             return
 
         if self.web_page.is_ok(ok):  # or maybe_redirect:
@@ -450,7 +461,8 @@ class BrowserTab(QObject):
             self._cancel_timers(self._timers_to_cancel_on_error)
 
             if self.web_page.error_loading(ok):
-                self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)), min_level=1)
+                self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)),
+                                min_level=1)
             else:
                 self.logger.log("loadFinished: unknown error", min_level=1)
 
@@ -471,7 +483,8 @@ class BrowserTab(QObject):
             baseurl=baseurl,
         )
         if reply.error():
-            self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
+            self.logger.log("Error loading %s: %s" % (url, reply.errorString()),
+                            min_level=1)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
         request = self.http_client.request_obj(url, headers=headers, body=body)
@@ -494,7 +507,8 @@ class BrowserTab(QObject):
             # the result only after a timeout.
             return
 
-        self.logger.log("loadFinished: disconnecting callback %s" % callback_id, min_level=3)
+        self.logger.log("loadFinished: disconnecting callback %s" % callback_id,
+                        min_level=3)
         self._load_finished.disconnect(callback_id)
 
         if self.web_page.is_ok(ok):
@@ -527,7 +541,8 @@ class BrowserTab(QObject):
         )
         timer.timeout.connect(timer_callback)
 
-        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)), min_level=2)
+        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)),
+                        min_level=2)
 
         timer.start(time_ms)
         self._active_timers.add(timer)
@@ -563,7 +578,8 @@ class BrowserTab(QObject):
 
     def _cancel_all_timers(self):
         total_len = len(self._active_timers) + len(self._callback_proxies_to_cancel)
-        self.logger.log("cancelling %d remaining timers" % total_len, min_level=2)
+        self.logger.log("cancelling %d remaining timers" % total_len,
+                        min_level=2)
         for timer in list(self._active_timers):
             self._cancel_timer(timer)
         for callback_proxy in self._callback_proxies_to_cancel:
@@ -574,14 +590,21 @@ class BrowserTab(QObject):
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def _is_node(self, obj):
-        return isinstance(obj, dict) and obj.get("type", None) == "node" and obj.get("id", None) is not None
+        if not isinstance(obj, dict):
+            return False
+        if obj.get("type", None) != "node":
+            return False
+        return obj.get("id", None) is not None
 
     def _populate_html_elements(self, obj, max_depth=100):
         return traverse_dict(
             obj,
-            lambda o: self._is_node(o),
-            lambda o: HTMLElement(self, self._elements_storage, self._event_handlers_storage,
-                                  self._events_storage, o),
+            predicate=lambda o: self._is_node(o),
+            convert=lambda o: HTMLElement(tab=self,
+                                          storage=self._elements_storage,
+                                          event_handlers_storage=self._event_handlers_storage,
+                                          events_storage=self._events_storage,
+                                          node=o),
             max_depth=max_depth
         )
 
@@ -622,14 +645,17 @@ class BrowserTab(QObject):
             self.runjs(script, handle_errors=False)
 
     def http_get(self, url, callback, headers=None, follow_redirects=True):
-        """ Send a GET request; call a callback with the reply as an argument. """
+        """
+        Send a GET request; call a callback with the reply as an argument.
+        """
         self.http_client.get(url,
             callback=callback,
             headers=headers,
             follow_redirects=follow_redirects
         )
 
-    def http_post(self, url, callback, headers=None, follow_redirects=True, body=None):
+    def http_post(self, url, callback, headers=None, follow_redirects=True,
+                  body=None):
         if body is not None:
             body = to_bytes(body)
 
@@ -924,8 +950,8 @@ class BrowserTab(QObject):
         :param button string specifying button type
         :return: None
         """
-        # XXX only left click supported for now, we can add support and tests for right click
-        # in the future if there is need for that
+        # XXX only left click supported for now, we can add support and
+        # tests for right click in the future if there is need for that.
         self.mouse_press(x, y, button)
         self.mouse_release(x, y, button)
 
@@ -1053,7 +1079,8 @@ class _SplashHttpClient(QObject):
         """ Send HTTP POST request;
         """
         cb = functools.partial(self._return_reply, callback=callback, url=url)
-        self.request(url, cb, headers=headers, follow_redirects=follow_redirects, body=body,
+        self.request(url, cb, headers=headers,
+                     follow_redirects=follow_redirects, body=body,
                      method="POST")
 
     def _send_request(self, url, callback, method='GET', body=None,
@@ -1227,8 +1254,9 @@ class Event(object):
     Properties are defined using `__getitem__` method and can be accessed using
     `self[key]` operation.
 
-    To create the objects of this type you should pass an instance of `EventsStorage`
-    and an id of the event by which it can be accessed in the events storage
+    To create the objects of this type you should pass an instance
+    of `EventsStorage` and an id of the event by which it can be accessed
+    in the events storage
     """
     def __init__(self, storage, id, event):
         self.storage = storage
