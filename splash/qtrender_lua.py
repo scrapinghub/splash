@@ -395,6 +395,7 @@ class BaseExposedObject(object):
     is_exposed = True
 
     def __init__(self, lua, exceptions):
+        # type: (SplashLuaRuntime, StoredExceptions) -> None
         self.lua = lua
         commands = get_commands(self)
         self.commands = lua.python2lua(commands)
@@ -1466,6 +1467,7 @@ class _ExposedElement(BaseExposedObject):
     ]
 
     def __init__(self, lua, exceptions, splash, element):
+        # type: (SplashLuaRuntime, StoredExceptions, Splash, HTMLElement) -> None
         self.element = element
         self.splash = splash
         self.tab = splash.tab
@@ -1533,7 +1535,8 @@ class _ExposedElement(BaseExposedObject):
     def _get_style(self):
         return _ExposedElementStyle(self.lua, self.exceptions, self.element)
 
-    def _save_event_handler_id(self, event_name, handler, handler_id, is_on_event=False):
+    def _save_event_handler_id(self, event_name, handler, handler_id,
+                               is_on_event=False):
         if self.event_handlers.get(event_name, None) is None:
             self.event_handlers[event_name] = {}
 
@@ -1742,7 +1745,8 @@ class _ExposedElement(BaseExposedObject):
         if pad is not None and isinstance(pad, (int, float)):
             pad = (pad, pad, pad, pad)
         pad = self.splash.validate_region(pad, 'pad')
-        result = self.element.jpeg(width, scale_method=scale_method, quality=quality, pad=pad)
+        result = self.element.jpeg(width, scale_method=scale_method,
+                                   quality=quality, pad=pad)
 
         if not result:
             return None
@@ -1769,7 +1773,8 @@ class _ExposedElement(BaseExposedObject):
         if values not in ['auto', 'first', 'list']:
             raise ScriptError({
                 "argument": "multi",
-                "message": "element:form_values values can only be 'auto', 'first' or 'list'",
+                "message": "element:form_values values can only be "
+                           "'auto', 'first' or 'list'",
                 "splash_method": "form_values",
             })
 
@@ -1804,6 +1809,7 @@ class _ExposedElement(BaseExposedObject):
     @command(error_as_flag=True)
     def submit(self):
         return self.element.submit()
+
 
 _ExposedElement.init_properties()
 _ExposedElement.init_methods()
