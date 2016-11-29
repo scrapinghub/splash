@@ -28,7 +28,9 @@ function (obj, max_depth){
                 }
                 return res;
             }
-            else if (Object.getPrototypeOf(o) == Object.prototype) {
+            else if (
+                    (Object.getPrototypeOf(o) == Object.prototype) ||
+                    (o instanceof CSSStyleDeclaration)) {
                 var res = {};
                 for (var key in o) {
                     if (o.hasOwnProperty(key)) {

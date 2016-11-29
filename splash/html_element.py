@@ -158,13 +158,11 @@ class HTMLElement(object):
 
     def styles(self):
         """ Return computed styles of the element """
-        return self.tab.evaljs("getComputedStyle(%s)" % self.element_js,
-                               result_protection=False)
+        return self.tab.evaljs("getComputedStyle(%s)" % self.element_js)
 
     def bounds(self):
         """ Return bounding client rectangle of the element"""
-        return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js,
-                               result_protection=False)
+        return self.tab.evaljs("%s.getBoundingClientRect()" % self.element_js)
 
     def png(self, width=None, scale_method=None, pad=None):
         """ Return screenshot of the element in PNG format.
