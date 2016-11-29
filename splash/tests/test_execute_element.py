@@ -294,6 +294,21 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"before": False, "after": True})
 
+    def test_focused(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local input = splash:select('input')
+            assert(not input:focused())
+            input:focus()
+            assert(input:focused())
+            return "ok"
+        end
+        """, {"url": self.mockurl("various-elements")})
+        self.assertStatusCode(resp, 200)
+
     def test_text(self):
         resp = self.request_lua("""
         function main(splash)

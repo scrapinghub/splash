@@ -513,8 +513,21 @@ Check whether the element is visible.
 
 **Signature:** ``visible = element:visible()``
 
-**Returns:** ``visible`` indicated whether
-the element is visible.
+**Returns:** ``visible`` indicates whether the element is visible.
+
+**Async:** no.
+
+
+.. _splash-element-focused:
+
+element:focused
+---------------
+
+Check whether the element has focus.
+
+**Signature:** ``focused = element:focused()``
+
+**Returns:** ``focused`` indicates whether the element is focused.
 
 **Async:** no.
 

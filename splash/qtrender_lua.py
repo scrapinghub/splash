@@ -1757,6 +1757,10 @@ class _ExposedElement(BaseExposedObject):
         return self.element.visible()
 
     @command()
+    def focused(self):
+        return self.element.focused()
+
+    @command()
     def text(self):
         return self.element.text()
 

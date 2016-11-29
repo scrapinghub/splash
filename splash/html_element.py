@@ -255,6 +255,12 @@ class HTMLElement(object):
         self.mouse_click()
         self.tab.send_text(text)
 
+    def focused(self):
+        """ Return True if the current element is focused """
+        return self.tab.evaljs(
+            "{} === document.activeElement".format(self.element_js)
+        )
+
     def set_event_handler(self, event_name, handler):
         """ Set on-event type event listeners to the element """
         handler_id = self.event_handlers_storage.add(handler)
