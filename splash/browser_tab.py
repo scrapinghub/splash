@@ -639,7 +639,8 @@ class BrowserTab(QObject):
                               follow_redirects=follow_redirects,
                               body=body)
 
-    def evaljs(self, js_source, handle_errors=True, result_protection=True, dom_elements=True):
+    def evaljs(self, js_source, handle_errors=True, result_protection=True,
+               dom_elements=True):
         """
         Run JS code in page context and return the result.
 
@@ -653,16 +654,18 @@ class BrowserTab(QObject):
         contains objects/arrays/primitives without circular references.
 
         When `dom_elements` is True (default) DOM elements will be
-        saved in JS field of window object under `self._elements_storage.name` key.
-        The result of evaluation will be object with `type` property and `id` property.
-        In JS the original DOM element can accessed through window[self._elements_storage.name][id].
+        saved in JS field of window object under `self._elements_storage.name`
+        key. The result of evaluation will be object with `type` property and
+        `id` property. In JS the original DOM element can accessed through
+        ``window[self._elements_storage.name][id]``.
         """
         frame = self.web_page.mainFrame()
         eval_expr = u"eval({})".format(escape_js(js_source))
 
         if dom_elements:
             self._init_js_objects_storage()
-            eval_expr = store_dom_elements(eval_expr, self._elements_storage.name)
+            eval_expr = store_dom_elements(eval_expr,
+                                           self._elements_storage.name)
 
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
@@ -710,7 +713,8 @@ class BrowserTab(QObject):
         self.evaljs(
             js_source="%s;undefined" % js_source,
             handle_errors=handle_errors,
-            result_protection=False
+            result_protection=False,
+            dom_elements=False,
         )
 
     def wait_for_resume(self, js_source, callback, errback, timeout):
