@@ -134,7 +134,7 @@ end
 --
 -- Handle @lua_property decorators.
 --
-local function setup_property_access(py_object, self, cls)
+local function setup_property_access(py_object, self)
   rawset(self, '__getters', {})
   rawset(self, '__setters', {})
 
