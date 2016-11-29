@@ -626,6 +626,30 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "super admin")
 
+    def test_send_text_keys_multiple(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+
+            local username = splash:select('input[name="username"]')
+            username:mouse_click()   -- fixme
+            splash:wait(0)
+
+            assert(username:send_text('super '))
+            assert(username:focused())
+            assert(username:send_text('duper'))
+            assert(username:send_keys('<Left> <Left> <Delete>'))
+            assert(splash:wait(1))
+            local ok, value = assert(username.field_value())
+
+            return value
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "super dupradmin")
+
     def test_png(self):
         resp = self.request_lua("""
         function main(splash)
