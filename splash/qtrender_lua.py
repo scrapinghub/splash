@@ -324,7 +324,9 @@ def get_lua_properties(obj):
 
 
 def create_html_elements_for_nodes(meth):
-    """ Decorator for creating HTMLElements from tables with Element metatable """
+    """
+    Decorator for creating HTMLElements from tables with Element metatable.
+    """
     @functools.wraps(meth)
     def create_html_elements(self, *args, **kwargs):
         def try_to_create(lua_table):
@@ -1216,9 +1218,9 @@ class Splash(BaseExposedObject):
             return self.element_wrapper._create(
                 _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
             )
-        except (JsError, DOMError):
+        except (JsError, DOMError) as e:
             raise ScriptError({
-                "message": "cannot select the specified element",
+                "message": "cannot select the specified element " + str(e),
                 "type": ScriptError.SPLASH_LUA_ERROR,
                 "splash_method": "select",
             })
@@ -1515,7 +1517,7 @@ class _ExposedElement(BaseExposedObject):
             @create_html_elements_for_nodes
             @command(table_argument=True, decode_arguments=False)
             def call_method(self, *args, method_name=method_name):
-                    return cls._node_method(self, method_name, *args)
+                return cls._node_method(self, method_name, *args)
 
             setattr(cls, method_name, call_method)
 
@@ -1582,7 +1584,8 @@ class _ExposedElement(BaseExposedObject):
                 handler()
 
         def log_error(error, event_name=event_name):
-            self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
+            self.splash.log("[element:on%s] error %s" % (event_name, error),
+                            min_level=3)
             cleanup()
 
         def on_handler_call(result=None):
@@ -1592,7 +1595,10 @@ class _ExposedElement(BaseExposedObject):
             log_error(error)
 
         coro = self.splash.get_coroutine_run_func(
-            "element:on" + event_name, handler, return_result=on_handler_call, return_error=on_handler_call_error
+            name="element:on" + event_name,
+            callback=handler,
+            return_result=on_handler_call,
+            return_error=on_handler_call_error
         )
 
         def run_coro(event, coro=coro):
@@ -1636,7 +1642,8 @@ class _ExposedElement(BaseExposedObject):
                 handler()
 
         def log_error(error, event_name=event_name):
-            self.splash.log("[element:on%s] error %s" % (event_name, error), min_level=3)
+            self.splash.log("[element:on%s] error %s" % (event_name, error),
+                            min_level=3)
             cleanup()
 
         def on_handler_call(result=None):
@@ -1646,12 +1653,16 @@ class _ExposedElement(BaseExposedObject):
             log_error(error)
 
         coro = self.splash.get_coroutine_run_func(
-            "element:on" + event_name, handler, return_result=on_handler_call, return_error=on_handler_call_error
+            name="element:on" + event_name,
+            callback=handler,
+            return_result=on_handler_call,
+            return_error=on_handler_call_error
         )
 
         def run_coro(event, coro=coro):
             wrapper = self.lua.eval("require('event')")
-            coro(wrapper._create(_ExposedEvent(self.lua, self.exceptions, event)))
+            exposed_event = _ExposedEvent(self.lua, self.exceptions, event)
+            coro(wrapper._create(exposed_event))
 
         run_coro.on_call_after = []
 

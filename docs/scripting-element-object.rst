@@ -17,7 +17,8 @@ Attributes
 element.node
 ------------
 
-``element.node`` is a object that contains almost all DOM element attributes and methods.
+``element.node`` is a object that contains almost all DOM element attributes
+and methods.
 
 The list of supported properties (some of them are mutable, other
 are read-only):
@@ -486,12 +487,13 @@ Return a screenshot of the element in JPEG format
 * width - optional, width of a screenshot in pixels;
 * scale_method - optional, method to use when resizing the image, ``'raster'``
   or ``'vector'``;
-* quality - optional, quality of JPEG image, integer in range from ``0`` to ``100``;
+* quality - optional, quality of JPEG image, integer in range from
+  ``0`` to ``100``;
 * pad - optional, integer or ``{left, top, right, bottom}`` values of padding
 
 **Returns:** ``shot`` is a JPEG screenshot data, as
-a :ref:`binary object <binary-objects>`. When the result is empty
-(e.g. if the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
+a :ref:`binary object <binary-objects>`. When the result is empty (e.g. if
+the element doesn't exist in DOM or it isn't visible) ``nil`` is returned.
 
 **Async:** no.
 
@@ -623,7 +625,8 @@ Return a table with form values if the element type is *form*
 
 **Parameters:**
 
-* values - type of the return value, can be one of ``'auto'``, ``'list'`` or ``'first'``
+* values - type of the return value, can be one of
+  ``'auto'``, ``'list'`` or ``'first'``
 
 **Returns:** ``form_values, reason`` pair. If ``form_values`` is nil then
 error happened during the function call or node type is not *form*;

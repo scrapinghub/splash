@@ -692,7 +692,6 @@ class BrowserTab(QObject):
             self._init_js_objects_storage()
             eval_expr = store_dom_elements(eval_expr,
                                            self._elements_storage.name)
-
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
 
