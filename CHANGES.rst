@@ -12,7 +12,7 @@ New features:
 
 * :ref:`splash-select` and :ref:`splash-select-all` methods which allow
   to execute CSS selectors;
-* new :ref:`splash-element <Element>` object which wraps JavaScript DOM
+* new :ref:`Element <splash-element>` object which wraps JavaScript DOM
   node and allows to interact with it.
 
 
