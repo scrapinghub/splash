@@ -589,12 +589,17 @@ class BrowserTab(QObject):
         self.web_page.har.store_redirect(six.text_type(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
-    def _populate_html_elements(self, obj):
-        if not isinstance(obj, dict):
-            raise ValueError("Invalid input object")
+    def _process_js_result(self, obj, allow_dom):
+        if obj is None:
+            return None
 
+        if not isinstance(obj, dict):
+            raise ValueError("Invalid input object: %r" % obj)
+
+        allowed_types = {'Node', 'NodeList', 'other'} if allow_dom else {'other'}
         result_type = obj.get('type')
-        if result_type not in {'Node', 'NodeList', 'other'}:
+
+        if result_type not in allowed_types:
             raise ValueError("Invalid result type: %r" % result_type)
 
         if result_type == 'Node':
@@ -700,38 +705,35 @@ class BrowserTab(QObject):
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
 
-        if not handle_errors:
-            return qt2py(frame.evaluateJavaScript(eval_expr))
+        if handle_errors:
+            res = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
-        res = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+            if not isinstance(res, dict):
+                raise JsError({
+                    'type': ScriptError.UNKNOWN_ERROR,
+                    'js_error_message': res,
+                    'message': "unknown JS error: {!r}".format(res)
+                })
 
-        if not isinstance(res, dict):
-            raise JsError({
-                'type': ScriptError.UNKNOWN_ERROR,
-                'js_error_message': res,
-                'message': "unknown JS error: {!r}".format(res)
-            })
+            if res.get("error", False):
+                err_message = res.get('errorMessage')
+                err_type = res.get('errorType', '<custom JS error>')
+                err_repr = res.get('errorRepr', '<unknown JS error>')
+                if err_message is None:
+                    err_message = err_repr
+                raise JsError({
+                    'type': ScriptError.JS_ERROR,
+                    'js_error_type': err_type,
+                    'js_error_message': err_message,
+                    'js_error': err_repr,
+                    'message': "JS error: {!r}".format(err_repr)
+                })
 
-        if res.get("error", False):
-            err_message = res.get('errorMessage')
-            err_type = res.get('errorType', '<custom JS error>')
-            err_repr = res.get('errorRepr', '<unknown JS error>')
-            if err_message is None:
-                err_message = err_repr
-            raise JsError({
-                'type': ScriptError.JS_ERROR,
-                'js_error_type': err_type,
-                'js_error_message': err_message,
-                'js_error': err_repr,
-                'message': "JS error: {!r}".format(err_repr)
-            })
+            result = res.get("result", None)
+        else:
+            result = qt2py(frame.evaluateJavaScript(eval_expr))
 
-        result = res.get("result", None)
-
-        if dom_elements:
-            return self._populate_html_elements(result)
-
-        return result
+        return self._process_js_result(result, allow_dom=dom_elements)
 
     def runjs(self, js_source, handle_errors=True):
         """ Run JS code in page context and discard the result. """
