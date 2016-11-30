@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division
-import os
 import re
-import functools
 import datetime
 
 from splash.utils import to_bytes, to_unicode

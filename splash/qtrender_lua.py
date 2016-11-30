@@ -374,7 +374,6 @@ class _WrappedJavascriptFunction(object):
             func_text=self.source,
             args=escape_js_args(*args)
         )
-
         try:
             res = self.tab.evaljs(expr)
         except JsError as e:
@@ -462,7 +461,8 @@ class Splash(BaseExposedObject):
         elif render_options is None:
             self.args = lua.python2lua({})
         else:
-            raise ValueError("Invalid render_options type: %s" % render_options.__class__)
+            raise TypeError("Invalid render_options type: %s" %
+                            render_options.__class__)
 
         self.tab = tab  # type: BrowserTab
         self.log = log or tab.logger.log
@@ -478,7 +478,8 @@ class Splash(BaseExposedObject):
         self.element_wrapper = self.lua.eval("require('element')")
 
     def clear(self):
-        self.log("[splash] clearing %d objects" % len(self._objects_to_clear), min_level=2)
+        self.log("[splash] clearing %d objects" % len(self._objects_to_clear),
+                 min_level=2)
         for obj in self._objects_to_clear:
             try:
                 obj.clear()
@@ -612,7 +613,8 @@ class Splash(BaseExposedObject):
         return PyResult.yield_(cmd)
 
     @command(decode_arguments=False)
-    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
+    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None,
+           formdata=None):
         url = self.lua.lua2python(url, max_depth=1)
         baseurl = self.lua.lua2python(baseurl, max_depth=1)
         headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
