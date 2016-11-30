@@ -443,7 +443,7 @@ information about the error can be lost in JavaScript → Lua conversion.
 
 See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-wait-for-resume`,
 :ref:`splash-autoload`, :ref:`treat-as-array`, :ref:`splash-element`,
-ref:`splash-select`, :ref:`splash-select-all`.
+:ref:`splash-select`, :ref:`splash-select-all`.
 
 .. _splash-evaljs:
 
@@ -517,7 +517,7 @@ Compare:
 
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
 :ref:`splash-wait-for-resume`, :ref:`splash-autoload`,
-:ref:`splash-element`, ref:`splash-select`, :ref:`splash-select-all`.
+:ref:`splash-element`, :ref:`splash-select`, :ref:`splash-select-all`.
 
 .. _splash-runjs:
 
