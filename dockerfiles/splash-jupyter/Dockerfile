@@ -16,7 +16,7 @@ RUN apt-get update -q && \
         libzmq3-dev \
         libsqlite3-dev && \
     pip3 install \
-        ipython[notebook]==4.2.0 && \
+        ipython[notebook]==5.1.0 && \
     apt-get remove -y --purge \
         python3-dev \
         build-essential \
