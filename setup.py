@@ -58,7 +58,7 @@ setup_args = {
     ]},
     'zip_safe': False,
     'install_requires': [
-        'Twisted < 16.3.0',
+        'Twisted >= 16.6.0',
         'qt5reactor',
         'psutil',
         'adblockparser',
