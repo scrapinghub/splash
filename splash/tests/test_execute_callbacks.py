@@ -437,10 +437,12 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         resp = self.request_lua("""
         function main(splash)
             splash:on_response_headers(function(response)
-                req_info = {}
-                for key, value in pairs(response.request) do
-                    req_info[key] = response.request[key]
-                end
+                req_info = {
+                    info=response.request.info,
+                    url=response.request.url,
+                    method=response.request.method,
+                    headers=response.request.headers,
+                }
             end)
             splash:on_request(function(request)
                 request:set_header("hello", "world")
