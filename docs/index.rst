@@ -35,6 +35,6 @@ Documentation
    scripting-libs
    kernel
    faq
-   development
+   contributing
    changes
 
