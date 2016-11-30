@@ -341,12 +341,6 @@ Global JavaScript functions can be wrapped directly:
     local twenty_five = pow(5, 2)  -- 5^2 is 25
     local thousand = pow(10, 3)    -- 10^3 is 1000
 
-Lua strings, numbers, booleans and tables can be passed as arguments;
-they are converted to JS strings/numbers/booleans/objects.
-Currently it is not possible to pass other Lua objects. For example, it
-is not possible to pass a wrapped JavaScript function or a regular Lua function
-as an argument to another wrapped JavaScript function.
-
 .. _lua-js-conversion-rules:
 
 Lua → JavaScript conversion rules:
@@ -359,11 +353,17 @@ number          number
 boolean         boolean
 table           Object or Array, see below
 nil             undefined
+Element         DOM node
 ==============  ==========================
 
-Function result is converted from JavaScript to Lua data type. Only simple
-JS objects are supported. For example, returning a function or a
-JQuery selector from a wrapped function won't work.
+Lua strings, numbers, booleans and tables can be passed as arguments;
+they are converted to JS strings/numbers/booleans/objects.
+:ref:`Element <splash-element>` instances are supported, but they can't
+be inside a Lua table.
+
+Currently it is not possible to pass other Lua objects. For example, it
+is not possible to pass a wrapped JavaScript function or a regular Lua function
+as an argument to another wrapped JavaScript function.
 
 By default Lua tables are converted to JavaScript Objects. To convert
 a table to an Array use :ref:`treat-as-array`.
@@ -384,17 +384,29 @@ Array             table, marked as array (see :ref:`treat-as-array`)
 ``null``          ``""`` (an empty string)
 Date              string: date's ISO8601 representation, e.g.
                   ``1958-05-21T10:12:00.000Z``
+Node              :ref:`Element <splash-element>` instance
+NodeList          a tabl with :ref:`Element <splash-element>` instances
 function          ``nil``
 circular object   ``nil``
 host object       ``nil``
 ================  =================
 
+Function result is converted from JavaScript to Lua data type. Only simple
+JS objects are supported. For example, returning a function or a
+JQuery selector from a wrapped function won't work.
+
+Returning a Node (a reference to a DOM element) or NodeList instance
+(result of document.querySelectorAll) works though, but only if Node
+or NodeList is the only result - Nodes and NodeLists can't be inside
+other objects or arrays.
+
 .. note::
 
     The rule of thumb: if an argument or a return value can be serialized
-    via JSON, then it is fine.
+    via JSON, then it is fine. You can also return DOM Element or a NodeList,
+    but they can't be inside other data structures.
 
-Note that currently you can't return DOM Elements, JQuery $ results and
+Note that currently you can't return JQuery $ results and
 similar structures from JavaScript to Lua; to pass data you have to
 extract their attributes of interest as plain strings/numbers/objects/arrays:
 
@@ -408,17 +420,30 @@ extract their attributes of interest as plain strings/numbers/objects/arrays:
     ]])
     local hrefs = get_hrefs("a.story-title")
 
+However, you can also write the code above using
+:ref:`Element <splash-element>` objects and :ref:`splash-select-all`:
+
+.. code-block:: lua
+
+    local elems = splash:select_all("a.story-title")
+    local hrefs = {}
+    for i, elem in ipairs(elems) do
+        hrefs[i] = elem.node:getAttribute("href")
+    end
+
 Function arguments and return values are passed by value. For example,
 if you modify an argument from inside a JavaScript function then the caller
 Lua code won't see the changes, and if you return a global JS object and modify
-it in Lua then object won't be changed in webpage context.
+it in Lua then object won't be changed in webpage context. The exception is
+:ref:`Element <splash-element>` which has some mutable fields.
 
 If a JavaScript function throws an error, it is re-throwed as a Lua error.
 To handle errors it is better to use JavaScript try/catch because some of the
 information about the error can be lost in JavaScript → Lua conversion.
 
 See also: :ref:`splash-runjs`, :ref:`splash-evaljs`, :ref:`splash-wait-for-resume`,
-:ref:`splash-autoload`, :ref:`treat-as-array`.
+:ref:`splash-autoload`, :ref:`treat-as-array`, :ref:`splash-element`,
+ref:`splash-select`, :ref:`splash-select-all`.
 
 .. _splash-evaljs:
 
@@ -491,7 +516,8 @@ Compare:
     end
 
 See also: :ref:`splash-runjs`, :ref:`splash-jsfunc`,
-:ref:`splash-wait-for-resume`, :ref:`splash-autoload`.
+:ref:`splash-wait-for-resume`, :ref:`splash-autoload`,
+:ref:`splash-element`, ref:`splash-select`, :ref:`splash-select-all`.
 
 .. _splash-runjs:
 
@@ -1103,6 +1129,12 @@ HTML element. Example:
 .. literalinclude:: ../splash/examples/element-screenshot.lua
    :language: lua
 
+An easier way is to use :ref:`splash-element-png` instead:
+
+.. code-block:: lua
+
+    splash:select('#my-element'):png()
+
 *scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
 ``scale_method='raster'``, the image is resized per-pixel.  When
 ``scale_method='vector'``, the image is resized per-element during rendering.
@@ -1139,7 +1171,8 @@ raise an error in these cases use ``assert``:
      end
 
 See also: :ref:`splash-jpeg`, :ref:`binary-objects`,
-:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
+:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`,
+:ref:`splash-element-jpeg`, :ref:`splash-element-png`.
 
 
 .. _splash-jpeg:
@@ -1193,8 +1226,8 @@ which is not in a viewport; to make sure part of a page can be rendered call
 This may be fixed in future Splash versions.
 
 With some JavaScript it is possible to render only a single HTML element
-using ``region`` parameter. See an
-:ref:`example <example-render-element>` in :ref:`splash-png` docs.
+using ``region`` parameter. See an :ref:`example <example-render-element>`
+in :ref:`splash-png` docs. An alternative is to use :ref:`splash-element-jpeg`.
 
 *scale_method* parameter must be either ``'raster'`` or ``'vector'``.  When
 ``scale_method='raster'``, the image is resized per-pixel.  When
@@ -1245,7 +1278,8 @@ raise an error in these cases use `assert`:
      end
 
 See also: :ref:`splash-png`, :ref:`binary-objects`,
-:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`.
+:ref:`splash-set-viewport-size`, :ref:`splash-set-viewport-full`,
+:ref:`splash-element-jpeg`, :ref:`splash-element-png`.
 
 Note that ``splash:jpeg()`` is often 1.5..2x faster than ``splash:png()``.
 
@@ -2181,10 +2215,18 @@ with JavaScript or set viewport to full with
 :ref:`splash-set-viewport-full`.
 
 Mouse events are not propagated immediately, to see consequences of click
-reflected in page source you must call :ref:`splash-wait`
+reflected in page source you must call :ref:`splash-wait`.
 
-If you want to get coordinates of html element use JavaScript
-getClientRects_:
+If you want to click on element an easy way is to use :ref:`splash-select`
+with :ref:`splash-element-mouse-click`:
+
+.. code-block:: lua
+
+    local button = splash:select('button')
+    button:mouse_click()
+
+You also can implement it using :ref:`splash-mouse-click`;
+use JavaScript getClientRects_ to get coordinates of html element:
 
 .. code-block:: lua
 
@@ -2214,6 +2256,9 @@ followed by :ref:`splash-mouse-release`.
 
 At the moment only left click is supported.
 
+See also: :ref:`splash-element-mouse-click`, :ref:`splash-mouse-press`,
+:ref:`splash-mouse-release`, :ref:`splash-mouse-hover`, .
+
 
 .. _splash-mouse-hover:
 
@@ -2236,6 +2281,8 @@ Trigger mouse hover (JavaScript mouseover) event in web page.
 **Async:** no.
 
 See notes about mouse events in :ref:`splash-mouse-click`.
+
+See also: :ref:`splash-element-mouse-hover`.
 
 
 .. _splash-mouse-press:
@@ -2298,11 +2345,13 @@ Run the function with the allowed timeout
 * func - the function to run
 * timeout - timeout, in seconds
 
-**Returns:** ``ok, result`` pair. If ``ok`` is not ``true`` then error happened during
-the function call or the timeout expired; ``result`` provides an information
-about error type. If ``result`` is equal to ``timeout_over`` then the specified timeout period elapsed.
-Otherwise, if ``ok`` is ``true`` then ``result`` contains the result of the executed function.
-If your function returns several values, they will be assigned to the next variables to ``result``.
+**Returns:** ``ok, result`` pair. If ``ok`` is not ``true`` then error
+happened during the function call or the timeout expired; ``result``
+provides an information about error type. If ``result`` is equal to
+``timeout`` then the specified timeout period elapsed.
+Otherwise, if ``ok`` is ``true`` then ``result`` contains the result of
+the executed function. If your function returns several values, they
+will be assigned to the next variables to ``result``.
 
 **Async:** yes.
 
@@ -2324,17 +2373,20 @@ Example 2 - the function returns several values
         return result1, result2, result3
     end
 
-Note that if the specified timeout period elapsed Splash will try to interrupt the running function.
-However, Splash scripts are executed in `cooperative multitasking`_ manner and because of that sometimes
-Splash won't be able to stop your running function upon timeout expiration. In two words, cooperative multitasking
-means that the managing program (in our example, it is Splash scripting engine) won't stop the running function if it doesn't
-*ask* for that. In Splash scripting the running function can be interrupted only if some *async* operation was called.
+Note that if the specified timeout period elapsed Splash will try to
+interrupt the running function. However, Splash scripts are executed
+in `cooperative multitasking`_ manner and because of that sometimes
+Splash won't be able to stop your running function upon timeout expiration.
+In two words, cooperative multitasking means that the managing program
+(in our example, it is Splash scripting engine) won't stop the running
+function if it doesn't *ask* for that. In Splash scripting the running
+function can be interrupted only if some *async* operation was called.
 On the contrary, non of the *sync* operations can be interrupted.
 
 .. note::
 
-    Splash scripts are executing in `cooperative multitasking`_ manner. You should be careful while running sync
-    functions.
+    Splash scripts are executing in `cooperative multitasking`_ manner.
+    You should be careful while running sync functions.
 
 Let's see the difference in examples.
 
@@ -2398,6 +2450,8 @@ Macro                           Result
 Key events are not propagated immediately until event loop regains control,
 thus :ref:`splash-wait` must be called to reflect the events.
 
+See also: :ref:`splash-element-send-keys`, :ref:`splash-send-text`.
+
 .. _Qt key-enum: http://doc.qt.io/qt-5/qt.html#Key-enum
 
 .. _splash-send-text:
@@ -2420,7 +2474,6 @@ Send text as input to page context, literally, character by character.
 
 Key events are not propagated immediately until event loop regains control,
 thus :ref:`splash-wait` must be called to reflect the events.
-
 
 This function in conjuction with :ref:`splash-send-keys` covers most needs on
 keyboard input, such as filling in forms and submitting them.
@@ -2457,20 +2510,9 @@ arguments passed to splash, `username` and `password`.
 .. code-block:: lua
 
     function main(splash)
-        local get_elem_pos = splash:jsfunc([[
-            function (selector) {
-                var elem = document.querySelector(selector);
-                var rect = elem.getClientRects()[0];
-                return {"x": rect.left, "y": rect.top}
-            }
-        ]])
-
-        local focus = splash:jsfunc([[
-            function (selector) {
-                var elem = document.querySelector(selector);
-                return elem.focus();
-            }
-        ]])
+        function focus(sel)
+            splash:select(sel).node:focus()
+        end
 
         assert(splash:go(splash.args.url))
         assert(splash:wait(0.5))
@@ -2479,12 +2521,13 @@ arguments passed to splash, `username` and `password`.
         assert(splash:wait(0))
         focus('input[name=password]')
         splash:send_text(splash.args.password)
-        local submit = get_elem_pos('input[type=submit]')
-        splash:mouse_click(submit.x, submit.y)
+        splash:select('input[type=submit]'):mouse_click()
         assert(splash:wait(0))
         -- Usually, wait for the submit request to finish
         -- ...
     end
+
+See also: :ref:`splash-element-send-text`, :ref:`splash-send-keys`.
 
 
 .. _splash-select:
@@ -2512,7 +2555,8 @@ The returned element is an :ref:`splash-element` which has many useful
 methods and almost all methods and attributes that element has in JavaScript.
 
 If the element cannot be found using the specified selector ``nil`` will
-be returned. If your selector is not a valid CSS selector an error will be raised.
+be returned. If your selector is not a valid CSS selector an error will
+be raised.
 
 Example 1: select an element which has ``element`` class and return class
 names off all the siblings of the specified element.

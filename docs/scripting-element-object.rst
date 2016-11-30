@@ -269,7 +269,6 @@ Example 2: the element is not inserted into DOM
 
 .. _splash-element-mouse-click:
 
-
 element:mouse_click
 -------------------
 
