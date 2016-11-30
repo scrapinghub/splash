@@ -35,7 +35,7 @@ from splash.utils import (
     SplashJSONEncoder,
     to_unicode,
     ensure_tuple,
-    traverse_dict)
+    traverse_data)
 from splash.jsutils import escape_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
@@ -323,28 +323,21 @@ def get_lua_properties(obj):
     return lua_properties
 
 
-def create_html_elements_for_nodes(meth):
+def unwraps_html_element_arguments(meth):
     """
     Decorator for creating HTMLElements from tables with Element metatable.
     """
     @functools.wraps(meth)
-    def create_html_elements(self, *args, **kwargs):
-        def try_to_create(lua_table):
-            try:
-                retval = self.tab._populate_html_elements(
-                    self.lua.lua2python(lua_table.to_table(lua_table))
-                )
-            except (TypeError, AttributeError):
-                retval = self.lua.lua2python(lua_table)
-            except Exception:
-                retval = lua_table
-
-            return retval
-
-        args = map(try_to_create, args)
-        return meth(self, *args, **kwargs)
-
-    return create_html_elements
+    def wrapper(self, *args, **kwargs):
+        def unwrap_all(obj):
+            def _unexpose(o):
+                unwrapped = o.unwrapped(o, self.lua)
+                if isinstance(unwrapped, _ExposedElement):
+                    return unwrapped.element
+                return o
+            return traverse_data(obj, is_wrapped_exposed_object, _unexpose)
+        return meth(self, *unwrap_all(args), **unwrap_all(kwargs))
+    return wrapper
 
 
 class _WrappedJavascriptFunction(object):
@@ -362,12 +355,12 @@ class _WrappedJavascriptFunction(object):
         self.tab = splash.tab
         self.source = escape_js(source)
         self.exceptions = splash.exceptions
-        self.populate_exposed_elements = splash.populate_exposed_elements
+        self.splash = splash
 
     @exceptions_as_return_values
     @can_raise
     @emits_lua_objects
-    @create_html_elements_for_nodes
+    @unwraps_html_element_arguments
     @decodes_lua_arguments('utf8')
     def __call__(self, *args):
         expr = "eval('('+{func_text}+')')({args})".format(
@@ -386,12 +379,13 @@ class _WrappedJavascriptFunction(object):
                            "{!r}".format(e.args[0]['js_error'])
             })
 
-        return self.populate_exposed_elements(res)
+        return self.splash.expose_html_elements(res)
 
 
 class BaseExposedObject(object):
     """ Base class for objects exposed to Lua """
-    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage', 'is_exposed']
+    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage',
+                                 'is_exposed', 'unwrapped']
     _attribute_whitelist = []
     is_exposed = True
 
@@ -437,6 +431,27 @@ class BaseExposedObject(object):
                 yield self
         finally:
             self.clear()
+
+    @command(decode_arguments=False)
+    def unwrapped(self, lua):
+        """
+        Return self, but only if a caller is able to provide SplashScriptRunner
+        object this object is created with.
+
+        This method is internal, it shouldn't be called from Lua code.
+        """
+        if lua is self.lua:
+            return PyResult(self)
+
+
+def is_wrapped_exposed_object(obj):
+    """
+    Return True if ``obj`` is a Lua (lupa) wrapper for a BaseExposedObject
+    instance
+    """
+    if not hasattr(obj, 'is_object') or not callable(obj.is_object):
+        return False
+    return bool(obj.is_object())
 
 
 class Splash(BaseExposedObject):
@@ -753,17 +768,11 @@ class Splash(BaseExposedObject):
     def stop(self):
         self.tab.stop_loading()
 
-    def populate_exposed_elements(self, obj):
-        return traverse_dict(
-            obj,
-            lambda o: isinstance(o, HTMLElement),
-            lambda o: self.element_wrapper._create(_ExposedElement(self.lua, self.exceptions, self, o)),
-        )
-
     @command()
     def evaljs(self, snippet):
         try:
-            return self.populate_exposed_elements(self.tab.evaljs(snippet))
+            res = self.tab.evaljs(snippet)
+            return self.expose_html_elements(res)
         except JsError as e:
             info = e.args[0]
             info['type'] = ScriptError.JS_ERROR
@@ -1214,12 +1223,7 @@ class Splash(BaseExposedObject):
     def select(self, selector):
         try:
             result = self.tab.select(selector)
-            if result is None:
-                return None
-
-            return self.element_wrapper._create(
-                _ExposedElement(self.lua, self.exceptions, self, self.tab.select(selector))
-            )
+            return self.expose_html_elements(result)
         except (JsError, DOMError) as e:
             raise ScriptError({
                 "message": "cannot select the specified element " + str(e),
@@ -1231,10 +1235,7 @@ class Splash(BaseExposedObject):
     def select_all(self, selector):
         try:
             result = self.tab.select_all(selector)
-            return [
-                self.element_wrapper._create(_ExposedElement(self.lua, self.exceptions, self, el))
-                for el in result
-            ]
+            return self.expose_html_elements(result)
         except (JsError, DOMError):
             raise ScriptError({
                 "message": "cannot select the specified elements",
@@ -1315,6 +1316,19 @@ class Splash(BaseExposedObject):
             return runner
 
         return func
+
+    def expose_html_elements(self, obj):
+        """ Wrap all HTMLElement instances to _ExposedElement """
+        def _expose(o):
+            elem = _ExposedElement(self.lua, self.exceptions, self, o)
+            self._objects_to_clear.add(elem)
+            return self.element_wrapper._create(elem)
+
+        return traverse_data(
+            obj,
+            lambda o: isinstance(o, HTMLElement),
+            convert=_expose,
+        )
 
 
 class _ExposedTimer(BaseExposedObject):
@@ -1482,6 +1496,14 @@ class _ExposedElement(BaseExposedObject):
 
         self.wrapper = self.lua.eval("require('element')")
 
+    def clear(self):
+        super(_ExposedElement, self).clear()
+        self.wrapper = None
+        self.event_handlers = None
+        self.splash = None
+        self.tab = None
+        self.element = None
+
     @lua_property('inner_id')
     @command()
     def get_inner_id(self):
@@ -1503,6 +1525,7 @@ class _ExposedElement(BaseExposedObject):
 
             if not read_only:
                 @get_property.lua_setter
+                @unwraps_html_element_arguments
                 @command()
                 @rename('set_' + property_name)
                 def set_property(self, value, property_name=property_name):
@@ -1516,8 +1539,8 @@ class _ExposedElement(BaseExposedObject):
                             cls.HTMLELEMENT_METHODS
 
         for method_name in available_methods:
-            @create_html_elements_for_nodes
-            @command(table_argument=True, decode_arguments=False)
+            @unwraps_html_element_arguments
+            @command(table_argument=True)
             def call_method(self, *args, method_name=method_name):
                 return cls._node_method(self, method_name, *args)
 
@@ -1525,15 +1548,15 @@ class _ExposedElement(BaseExposedObject):
 
     def _node_method(self, method_name, *args):
         result = self.element.node_method(method_name)(*args)
-        return self.splash.populate_exposed_elements(result)
+        return self.splash.expose_html_elements(result)
 
     def _node_property(self, property_name):
         result = self.element.node_property(property_name)
-        return self.splash.populate_exposed_elements(result)
+        return self.splash.expose_html_elements(result)
 
     def _set_node_property(self, property_name, property_value):
         result = self.element.set_node_property(property_name, property_value)
-        return self.splash.populate_exposed_elements(result)
+        return self.splash.expose_html_elements(result)
 
     @command()
     def _get_style(self):

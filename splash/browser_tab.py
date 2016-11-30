@@ -24,7 +24,7 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
-from splash.utils import to_bytes, get_id, traverse_dict
+from splash.utils import to_bytes, get_id, traverse_data
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -589,24 +589,29 @@ class BrowserTab(QObject):
         self.web_page.har.store_redirect(six.text_type(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
-    def _is_node(self, obj):
+    def _populate_html_elements(self, obj):
         if not isinstance(obj, dict):
-            return False
-        if obj.get("type", None) != "node":
-            return False
-        return obj.get("id", None) is not None
+            raise ValueError("Invalid input object")
 
-    def _populate_html_elements(self, obj, max_depth=100):
-        return traverse_dict(
-            obj,
-            predicate=lambda o: self._is_node(o),
-            convert=lambda o: HTMLElement(tab=self,
-                                          storage=self._elements_storage,
-                                          event_handlers_storage=self._event_handlers_storage,
-                                          events_storage=self._events_storage,
-                                          node=o),
-            max_depth=max_depth
-        )
+        result_type = obj.get('type')
+        if result_type not in {'Node', 'NodeList', 'other'}:
+            raise ValueError("Invalid result type: %r" % result_type)
+
+        if result_type == 'Node':
+            # result is a single Node
+            return self._html_element(obj['id'])
+        elif result_type == 'NodeList':
+            # Array of nodes
+            return [self._html_element(node_id) for node_id in obj['ids']]
+        elif result_type == "other":
+            return obj.get('data', None)
+
+    def _html_element(self, node_id):
+        return HTMLElement(tab=self,
+                           storage=self._elements_storage,
+                           event_handlers_storage=self._event_handlers_storage,
+                           events_storage=self._events_storage,
+                           node_id=node_id)
 
     def run_js_file(self, filename, handle_errors=True):
         """
@@ -679,7 +684,7 @@ class BrowserTab(QObject):
         when the script result is known to be good, i.e. it only
         contains objects/arrays/primitives without circular references.
 
-        When `dom_elements` is True (default) DOM elements will be
+        When `dom_elements` is True (default) top-level DOM elements will be
         saved in JS field of window object under `self._elements_storage.name`
         key. The result of evaluation will be object with `type` property and
         `id` property. In JS the original DOM element can accessed through
@@ -1000,7 +1005,7 @@ class BrowserTab(QObject):
         :return element
         """
         js_query = u"document.querySelector({})".format(escape_js(selector))
-        result = self.evaljs(js_query, result_protection=False)
+        result = self.evaljs(js_query)
 
         if result == "":
             return None
@@ -1014,7 +1019,7 @@ class BrowserTab(QObject):
         :return list of elements
         """
         js_query = u"document.querySelectorAll({})".format(escape_js(selector))
-        return self.evaljs(js_query, result_protection=False)
+        return self.evaljs(js_query)
 
 
 class _SplashHttpClient(QObject):

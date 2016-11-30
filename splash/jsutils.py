@@ -100,31 +100,37 @@ def get_sanitized_result_js(expression, max_depth=0):
 
 STORE_DOM_ELEMENTS_JS = u"""
 function (elements_storage_name, o) {
-  var storage = window[elements_storage_name];
+    var storage = window[elements_storage_name];
 
-  function storeNode(node) {
-    var id = storage.getId();
+    function storeNode(node) {
+        var id = storage.getId();
+        Object.defineProperty(storage, id, {
+            configurable: false,
+            enumerable: false,
+            writable: false,
+            value: node,
+        });
+        return id;
+    }
 
-    Object.defineProperty(storage, id, {
-      configurable: false,
-      enumerable: false,
-      writable: false,
-      value: node,
-    });
-
+    if (o instanceof Node) {
+        var id = storeNode(o);
+        return {
+            type: 'Node',
+            id: id,
+        }
+    }
+    else if (o instanceof NodeList) {
+        var ids = Array.prototype.slice.call(o).map(storeNode);
+        return {
+            type: 'NodeList',
+            ids: ids,
+        }
+    }
     return {
-      type: 'node',
-      id: id
+        type: 'other',
+        data: o,
     };
-  }
-
-  if (o instanceof Node) {
-    return storeNode(o);
-  } else if (o instanceof NodeList) {
-    return Array.prototype.slice.call(o).map(storeNode);
-  }
-
-  return o;
 }
 """
 

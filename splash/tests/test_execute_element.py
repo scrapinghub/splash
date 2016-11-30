@@ -1486,6 +1486,19 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, 'mydiv')
 
+    def test_element_as_jsfunc_argument(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            local tagname = splash:jsfunc("function(el) {return el.tagName}")
+            local body = splash:select('body')
+            return tagname(body)
+        end
+        """, {"url": self.mockurl("various-elements")})
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'BODY')
+
     def test_elements_after_go(self):
         resp = self.request_lua("""
         function main(splash)

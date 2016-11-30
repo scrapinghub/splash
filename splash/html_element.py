@@ -55,12 +55,12 @@ class HTMLElement(object):
     """ Class for manipulating DOM HTML Element """
 
     def __init__(self, tab, storage, event_handlers_storage, events_storage,
-                 node):
+                 node_id):
         self.tab = tab
         self.storage = storage
         self.event_handlers_storage = event_handlers_storage
         self.events_storage = events_storage
-        self.id = node["id"]
+        self.id = node_id
         self.element_js = self.get_element_js()
         msg = "HTMLElement is created with id=%s in object %s" % (
             self.id, self.element_js

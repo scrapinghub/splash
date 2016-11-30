@@ -206,9 +206,9 @@ def get_id():
     return str(uuid1())
 
 
-def traverse_dict(obj, predicate, convert, max_depth=100):
+def traverse_data(obj, predicate, convert, max_depth=100):
     """
-    Traverse dictionary and if the `predicate` returns True value on
+    Traverse data structure and if the `predicate` returns True value on
     a traversed object call `convert` passing that object.
     """
     if max_depth <= 0:
@@ -222,17 +222,26 @@ def traverse_dict(obj, predicate, convert, max_depth=100):
 
     if isinstance(obj, dict):
         return {
-            traverse_dict(key, predicate, convert, max_depth=max_depth - 1): traverse_dict(value, predicate, convert, max_depth=max_depth - 1)
+            traverse_data(key, predicate, convert, max_depth=max_depth - 1): traverse_data(value, predicate, convert, max_depth=max_depth - 1)
             for key, value in obj.items()
         }
 
     if isinstance(obj, list):
-        return [traverse_dict(v, predicate, convert, max_depth=max_depth - 1) for v in obj]
+        return [
+            traverse_data(v, predicate, convert, max_depth=max_depth - 1)
+            for v in obj
+        ]
 
     if isinstance(obj, tuple):
-        return tuple([traverse_dict(v, predicate, convert, max_depth=max_depth - 1) for v in obj])
+        return tuple([
+            traverse_data(v, predicate, convert, max_depth=max_depth - 1)
+            for v in obj
+        ])
 
     if isinstance(obj, set):
-        return {traverse_dict(v, predicate, convert, max_depth=max_depth - 1) for v in obj}
+        return {
+            traverse_data(v, predicate, convert, max_depth=max_depth - 1)
+            for v in obj
+        }
 
     return obj
