@@ -241,6 +241,9 @@ class JsonRender(JpegRender):
 
         if self.include['console'] and self.js_console_output:
             res['console'] = self.js_console_output
+        
+        if self.include['console']:
+            res['console_page'] = self.tab.web_page.console_log
 
         res.update(self.tab.iframes_info(
             children=self.include['iframes'],
