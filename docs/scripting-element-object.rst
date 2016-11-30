@@ -4,8 +4,12 @@ Element Object
 ==============
 
 Element objects wrap JavaScript DOM nodes. They are created whenever some method
-returns any type of DOM node (Node, Element, HTMLElement, etc). For example,
-:ref:`splash-select` and :ref:`splash-select-all` return element objects.
+returns any type of DOM node (Node, Element, HTMLElement, etc).
+
+:ref:`splash-select` and :ref:`splash-select-all` return element objects;
+:ref:`splash-evaljs` may also return element objects, but currently they
+can't be inside other objects or arrays - only top-level Node and NodeList
+is supported.
 
 .. _splash-element-attributes:
 

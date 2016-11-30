@@ -36,5 +36,6 @@ Documentation
    kernel
    faq
    contributing
+   internals/index
    changes
 
