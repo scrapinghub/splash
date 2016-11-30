@@ -1,8 +1,8 @@
 Changes
 =======
 
-2.3 (TBA)
----------
+2.3 (2016-12-01)
+----------------
 
 This release adds lots of scraping helpers to Splash: CSS selectors,
 form filling, easy access to HTML node attributes. Scraping helpers were
