@@ -30,10 +30,12 @@ Documentation
    scripting-ref
    scripting-response-object
    scripting-request-object
+   scripting-element-object
    scripting-binary-data
    scripting-libs
    kernel
    faq
-   development
+   contributing
+   internals/index
    changes
 

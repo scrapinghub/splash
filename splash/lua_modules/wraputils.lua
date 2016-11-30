@@ -134,7 +134,7 @@ end
 --
 -- Handle @lua_property decorators.
 --
-local function setup_property_access(py_object, self, cls)
+local function setup_property_access(py_object, self)
   rawset(self, '__getters', {})
   rawset(self, '__setters', {})
 
@@ -182,7 +182,7 @@ local function wrap_exposed_object(py_object, private_self, cls)
     end,
 
     __pairs = function(self)
-      wrapper = function(t, k)
+      local wrapper = function(t, k)
         local v
         repeat
           k, v = next(private_self, k)

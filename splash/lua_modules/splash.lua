@@ -6,6 +6,7 @@
 local wraputils = require("wraputils")
 local Response = require("response")
 local Request = require("request")
+local Element = require("element")
 
 --
 -- Lua wrapper for Splash Python object.
@@ -75,6 +76,5 @@ function Splash:call_later(cb, delay)
   local py_timer = self:_call_later(cb, delay)
   return Timer._create(py_timer)
 end
-
 
 return Splash

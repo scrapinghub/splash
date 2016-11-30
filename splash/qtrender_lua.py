@@ -23,7 +23,7 @@ from splash.lua_runner import (
 )
 from splash.qtrender import RenderScript, stop_on_error
 from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
-                        PyResult)
+                        PyResult, _mark_table_as_array)
 from splash.har.qt import reply2har, request2har
 from splash.har.utils import get_response_body_bytes
 from splash.render_options import RenderOptions
@@ -34,8 +34,9 @@ from splash.utils import (
     requires_attr,
     SplashJSONEncoder,
     to_unicode,
-    ensure_tuple)
-from splash.jsutils import escape_js, get_process_errors_js
+    ensure_tuple,
+    traverse_data)
+from splash.jsutils import escape_js
 from splash.qtutils import (
     REQUEST_ERRORS_SHORT,
     drop_request,
@@ -44,7 +45,8 @@ from splash.qtutils import (
     get_versions,
     get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
-from splash.exceptions import ScriptError
+from splash.exceptions import ScriptError, DOMError
+from splash.html_element import HTMLElement, escape_js_args
 
 
 class AsyncBrowserCommand(AsyncCommand):
@@ -79,8 +81,16 @@ class StoredExceptions(object):
             return self._exceptions[-1]
 
 
+def rename(name):
+    def decorator(meth):
+        meth.__name__ = name
+        return meth
+
+    return decorator
+
+
 def command(table_argument=False, sets_callback=False,
-            decode_arguments=True):
+            decode_arguments=True, error_as_flag=False, result_as_flag=False):
     """ Decorator for marking methods as commands available to Lua """
 
     if sets_callback:
@@ -105,7 +115,9 @@ def command(table_argument=False, sets_callback=False,
         meth = exceptions_as_return_values(
             can_raise(
                 emits_lua_objects(meth)
-            )
+            ),
+            error_as_flag,
+            result_as_flag
         )
         meth._is_command = True
         meth._sets_callback = sets_callback
@@ -218,7 +230,12 @@ def can_raise(meth):
     return can_raise_wrapper
 
 
-def exceptions_as_return_values(meth):
+def add_flag(tuple, flag):
+    new_tuple = tuple[:1] + (flag,) + tuple[1:]
+    return new_tuple
+
+
+def exceptions_as_return_values(meth, error_as_flag=False, result_as_flag=False):
     """Decorator for allowing Python exceptions to be caught from Lua.
 
     TODO: this decorator is the last one on the way from Python to Lua and thus
@@ -234,8 +251,15 @@ def exceptions_as_return_values(meth):
                 res = res.result
             else:
                 res = (b'return',) + ensure_tuple(res)
+            if error_as_flag and (result_as_flag or res[1] is None or res[1] is False):
+                res = add_flag(res, True)
         except Exception as e:
-            res = (b'raise', repr(e))
+            if error_as_flag and self.FLAG_EXCEPTIONS is not None \
+                    and any(isinstance(e, x) for x in self.FLAG_EXCEPTIONS):
+                res = (b'return', False, repr(e).encode('utf-8'))
+            else:
+                res = (b'raise', repr(e).encode('utf-8'))
+
         return res
 
     return exceptions_as_return_values_wrapper
@@ -291,11 +315,29 @@ def get_lua_properties(obj):
         value = getattr(obj, attr_name)
         if is_lua_property(value):
             property_name = getattr(value, '_name')
+
             lua_properties[property_name] = {
                 'getter': attr_name,
                 'setter': getattr(value, '_setter_method', None),
             }
     return lua_properties
+
+
+def unwraps_html_element_arguments(meth):
+    """
+    Decorator for creating HTMLElements from tables with Element metatable.
+    """
+    @functools.wraps(meth)
+    def wrapper(self, *args, **kwargs):
+        def unwrap_all(obj):
+            def _unexpose(o):
+                unwrapped = o.unwrapped(o, self.lua)
+                if isinstance(unwrapped, _ExposedElement):
+                    return unwrapped.element
+                return o
+            return traverse_data(obj, is_wrapped_exposed_object, _unexpose)
+        return meth(self, *unwrap_all(args), **unwrap_all(kwargs))
+    return wrapper
 
 
 class _WrappedJavascriptFunction(object):
@@ -313,51 +355,42 @@ class _WrappedJavascriptFunction(object):
         self.tab = splash.tab
         self.source = escape_js(source)
         self.exceptions = splash.exceptions
+        self.splash = splash
 
     @exceptions_as_return_values
     @can_raise
     @emits_lua_objects
+    @unwraps_html_element_arguments
     @decodes_lua_arguments('utf8')
     def __call__(self, *args):
         expr = "eval('('+{func_text}+')')({args})".format(
             func_text=self.source,
-            args=escape_js(*args)
+            args=escape_js_args(*args)
         )
-        wrapper_script = get_process_errors_js(expr)
-        res = self.tab.evaljs(wrapper_script)
-
-        if not isinstance(res, dict):
-            raise ScriptError({
-                'type': ScriptError.UNKNOWN_ERROR,
-                'js_error_message': res,
-                'message': "unknown error during JS function call: "
-                           "{!r}; {!r}".format(res, wrapper_script)
-            })
-
-        if res.get("error", False):
-            err_message = res.get('errorMessage')
-            err_type = res.get('errorType', '<custom JS error>')
-            err_repr = res.get('errorRepr', '<unknown JS error>')
-            if err_message is None:
-                err_message = err_repr
+        try:
+            res = self.tab.evaljs(expr)
+        except JsError as e:
             raise ScriptError({
                 'type': ScriptError.JS_ERROR,
-                'js_error_type': err_type,
-                'js_error_message': err_message,
-                'js_error': err_repr,
+                'js_error_type': e.args[0]['js_error_type'],
+                'js_error_message': e.args[0]['js_error_message'],
+                'js_error': e.args[0]['js_error'],
                 'message': "error during JS function call: "
-                           "{!r}".format(err_repr)
+                           "{!r}".format(e.args[0]['js_error'])
             })
 
-        return res.get("result")
+        return self.splash.expose_html_elements(res)
 
 
 class BaseExposedObject(object):
     """ Base class for objects exposed to Lua """
-    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage']
+    _base_attribute_whitelist = ['commands', 'lua_properties', 'tmp_storage',
+                                 'is_exposed', 'unwrapped']
     _attribute_whitelist = []
+    is_exposed = True
 
     def __init__(self, lua, exceptions):
+        # type: (SplashLuaRuntime, StoredExceptions) -> None
         self.lua = lua
         commands = get_commands(self)
         self.commands = lua.python2lua(commands)
@@ -399,6 +432,27 @@ class BaseExposedObject(object):
         finally:
             self.clear()
 
+    @command(decode_arguments=False)
+    def unwrapped(self, lua):
+        """
+        Return self, but only if a caller is able to provide SplashScriptRunner
+        object this object is created with.
+
+        This method is internal, it shouldn't be called from Lua code.
+        """
+        if lua is self.lua:
+            return PyResult(self)
+
+
+def is_wrapped_exposed_object(obj):
+    """
+    Return True if ``obj`` is a Lua (lupa) wrapper for a BaseExposedObject
+    instance
+    """
+    if not hasattr(obj, 'is_object') or not callable(obj.is_object):
+        return False
+    return bool(obj.is_object())
+
 
 class Splash(BaseExposedObject):
     """
@@ -422,7 +476,8 @@ class Splash(BaseExposedObject):
         elif render_options is None:
             self.args = lua.python2lua({})
         else:
-            raise ValueError("Invalid render_options type: %s" % render_options.__class__)
+            raise TypeError("Invalid render_options type: %s" %
+                            render_options.__class__)
 
         self.tab = tab  # type: BrowserTab
         self.log = log or tab.logger.log
@@ -435,9 +490,11 @@ class Splash(BaseExposedObject):
         self._wrapped = wrapper._create(self)
         self.request_wrapper = self.lua.eval("require('request')")
         self.response_wrapper = self.lua.eval("require('response')")
+        self.element_wrapper = self.lua.eval("require('element')")
 
     def clear(self):
-        self.log("[splash] clearing %d objects" % len(self._objects_to_clear), min_level=2)
+        self.log("[splash] clearing %d objects" % len(self._objects_to_clear),
+                 min_level=2)
         for obj in self._objects_to_clear:
             try:
                 obj.clear()
@@ -571,7 +628,8 @@ class Splash(BaseExposedObject):
         return PyResult.yield_(cmd)
 
     @command(decode_arguments=False)
-    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None, formdata=None):
+    def go(self, url, baseurl=None, headers=None, http_method="GET", body=None,
+           formdata=None):
         url = self.lua.lua2python(url, max_depth=1)
         baseurl = self.lua.lua2python(baseurl, max_depth=1)
         headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
@@ -657,7 +715,7 @@ class Splash(BaseExposedObject):
             width = int(width)
         if height is not None:
             height = int(height)
-        region = self._validate_region(region)
+        region = self.validate_region(region)
         result = self.tab.png(width, height, b64=False, render_all=render_all,
                               scale_method=scale_method, region=region)
         if not result:
@@ -674,7 +732,7 @@ class Splash(BaseExposedObject):
         if quality is not None:
             quality = int(quality)
 
-        region = self._validate_region(region)
+        region = self.validate_region(region)
         result = self.tab.jpeg(width, height, b64=False, render_all=render_all,
                                scale_method=scale_method, quality=quality,
                                region=region)
@@ -682,15 +740,16 @@ class Splash(BaseExposedObject):
             return None
         return BinaryCapsule(result, 'image/jpeg')
 
-    def _validate_region(self, region):
+    @staticmethod
+    def validate_region(region, var_name="region"):
         if region is not None:
             try:
                 if isinstance(region, dict):
                     region = [region[i] for i in range(1, 5)]
                 region = tuple(int(region[i]) for i in range(4))
             except Exception:
-                raise ScriptError("region must be a table containing 4 numbers"
-                                  " {left, top, right, bottom} ")
+                raise ScriptError("%s must be a table containing 4 numbers"
+                                  " {left, top, right, bottom} " % var_name)
         return region
 
     @command()
@@ -712,7 +771,8 @@ class Splash(BaseExposedObject):
     @command()
     def evaljs(self, snippet):
         try:
-            return self.tab.evaljs(snippet)
+            res = self.tab.evaljs(snippet)
+            return self.expose_html_elements(res)
         except JsError as e:
             info = e.args[0]
             info['type'] = ScriptError.JS_ERROR
@@ -1160,6 +1220,30 @@ class Splash(BaseExposedObject):
         return timer
 
     @command()
+    def select(self, selector):
+        try:
+            result = self.tab.select(selector)
+            return self.expose_html_elements(result)
+        except (JsError, DOMError) as e:
+            raise ScriptError({
+                "message": "cannot select the specified element " + str(e),
+                "type": ScriptError.SPLASH_LUA_ERROR,
+                "splash_method": "select",
+            })
+
+    @command()
+    def select_all(self, selector):
+        try:
+            result = self.tab.select_all(selector)
+            return self.expose_html_elements(result)
+        except (JsError, DOMError):
+            raise ScriptError({
+                "message": "cannot select the specified elements",
+                "type": ScriptError.SPLASH_LUA_ERROR,
+                "splash_method": "select_all",
+            })
+
+    @command()
     def on_response_reset(self):
         self.tab.clear_callbacks("on_response")
 
@@ -1233,6 +1317,19 @@ class Splash(BaseExposedObject):
 
         return func
 
+    def expose_html_elements(self, obj):
+        """ Wrap all HTMLElement instances to _ExposedElement """
+        def _expose(o):
+            elem = _ExposedElement(self.lua, self.exceptions, self, o)
+            self._objects_to_clear.add(elem)
+            return self.element_wrapper._create(elem)
+
+        return traverse_data(
+            obj,
+            lambda o: isinstance(o, HTMLElement),
+            convert=_expose,
+        )
+
 
 class _ExposedTimer(BaseExposedObject):
     """
@@ -1274,6 +1371,524 @@ class _ExposedTimer(BaseExposedObject):
         self.timer.deleteLater()
         self.timer = None
         super(_ExposedTimer, self).clear()
+
+
+class _ExposedElement(BaseExposedObject):
+    FLAG_EXCEPTIONS = [DOMError]
+    _attribute_whitelist = ['inner_id']
+    HTMLELEMENT_PROPERTIES = [
+        ('accessKey', False),
+        ('accessKeyLabel', True),
+        ('contentEditable', False),
+        ('isContentEditable', True),
+        ('dataset', True),
+        ('dir', False),
+        ('draggable', False),
+        ('hidden', False),
+        ('lang', False),
+        ('offsetHeight', True),
+        ('offsetLeft', True),
+        ('offsetParent', True),
+        ('offsetTop', True),
+        ('spellcheck', False),
+        ('tabIndex', False),
+        ('title', False),
+        ('translate', False),
+    ]
+    ELEMENT_PROPERTIES = [
+        ('attributes', True), # NamedNodeMap
+        ('classList', True), # DOMTokenList
+        ('className', False),
+        ('clientHeight', True),
+        ('clientLeft', True),
+        ('clientTop', True),
+        ('clientWidth', True),
+        ('id', False),
+        ('innerHTML', False),
+        ('localeName', True),
+        ('namespaceURI', True),
+        ('nextElementSibling', True),
+        ('outerHTML', False),
+        ('prefix', True),
+        ('previousElementSibling', True),
+        ('scrollHeight', True),
+        ('scrollLeft', False),
+        ('scrollTop', False),
+        ('scrollWidth', True),
+        ('tabStop', False),
+        ('tagName', True),
+    ]
+    NODE_PROPERTIES = [
+        ('baseURI', True),
+        ('childNodes', True),
+        ('firstChild', True),
+        ('lastChild', True),
+        ('nextSibling', True),
+        ('nodeName', True),
+        ('nodeType', True),
+        ('nodeValue', False),
+        ('ownerDocument', True),
+        ('parentNode', True),
+        ('parentElement', True),
+        ('previousSibling', True),
+        ('rootNode', True),
+        ('textContent', False),
+    ]
+
+    HTMLELEMENT_METHODS = [
+        'blur',
+        'click',
+        'focus'
+    ]
+    ELEMENT_METHODS = [
+        # 'addEventListener',
+        # 'dispatchEvent',
+        'getAttribute',
+        'getAttributeNS',
+        'getBoundingClientRect',
+        'getClientRects',
+        'getElementsByClassName',
+        'getElementsByTagName',
+        'getElementsByTagNameNS',
+        'hasAttribute',
+        'hasAttributeNS',
+        'hasAttributes',
+        'querySelector',
+        'querySelectorAll',
+        'releasePointerCapture',
+        'remove',
+        'removeAttribute',
+        'removeAttributeNS',
+        # 'removeEventListener',
+        'requestFullscreen',
+        'requestPointerLock',
+        'scrollIntoView',
+        'setAttribute',
+        'setAttributeNS',
+        'setPointerCapture'
+    ]
+    NODE_METHODS = [
+        'appendChild',
+        'cloneNode',
+        'compareDocumentPosition',
+        'contains',
+        'hasChildNodes',
+        'insertBefore',
+        'isDefaultNamespace',
+        'isEqualNode',
+        'isSameNode',
+        'lookupPrefix',
+        'lookupNamespaceURI',
+        'normalize',
+        'removeChild',
+        'replaceChild'
+    ]
+
+    def __init__(self, lua, exceptions, splash, element):
+        # type: (SplashLuaRuntime, StoredExceptions, Splash, HTMLElement) -> None
+        self.element = element
+        self.splash = splash
+        self.tab = splash.tab
+        self.inner_id = element.id
+        self.event_handlers = {}
+
+        super(_ExposedElement, self).__init__(lua, exceptions)
+
+        self.wrapper = self.lua.eval("require('element')")
+
+    def clear(self):
+        super(_ExposedElement, self).clear()
+        self.wrapper = None
+        self.event_handlers = None
+        self.splash = None
+        self.tab = None
+        self.element = None
+
+    @lua_property('inner_id')
+    @command()
+    def get_inner_id(self):
+        return self.inner_id
+
+    @classmethod
+    def init_properties(cls):
+        available_properties = cls.NODE_PROPERTIES + cls.ELEMENT_PROPERTIES + \
+                               cls.HTMLELEMENT_PROPERTIES
+
+        for (property_name, read_only) in available_properties:
+            @lua_property(property_name)
+            @command()
+            @rename('get_' + property_name)
+            def get_property(self, property_name=property_name):
+                return cls._node_property(self, property_name)
+
+            setattr(cls, 'get_' + property_name, get_property)
+
+            if not read_only:
+                @get_property.lua_setter
+                @unwraps_html_element_arguments
+                @command()
+                @rename('set_' + property_name)
+                def set_property(self, value, property_name=property_name):
+                    return cls._set_node_property(self, property_name, value)
+
+                setattr(cls, 'set_' + property_name, set_property)
+
+    @classmethod
+    def init_methods(cls):
+        available_methods = cls.NODE_METHODS + cls.ELEMENT_METHODS + \
+                            cls.HTMLELEMENT_METHODS
+
+        for method_name in available_methods:
+            @unwraps_html_element_arguments
+            @command(table_argument=True)
+            def call_method(self, *args, method_name=method_name):
+                return cls._node_method(self, method_name, *args)
+
+            setattr(cls, method_name, call_method)
+
+    def _node_method(self, method_name, *args):
+        result = self.element.node_method(method_name)(*args)
+        return self.splash.expose_html_elements(result)
+
+    def _node_property(self, property_name):
+        result = self.element.node_property(property_name)
+        return self.splash.expose_html_elements(result)
+
+    def _set_node_property(self, property_name, property_value):
+        result = self.element.set_node_property(property_name, property_value)
+        return self.splash.expose_html_elements(result)
+
+    @command()
+    def _get_style(self):
+        return _ExposedElementStyle(self.lua, self.exceptions, self.element)
+
+    def _save_event_handler_id(self, event_name, handler, handler_id,
+                               is_on_event=False):
+        if self.event_handlers.get(event_name, None) is None:
+            self.event_handlers[event_name] = {}
+
+        handler_key = "on" if is_on_event else str(handler)
+        self.event_handlers[event_name][handler_key] = handler_id
+
+    def _remove_event_handler_id(self, event_name, handler, is_on_event=False):
+        if self.event_handlers.get(event_name, None) is None:
+            return None
+
+        handler_key = "on" if is_on_event else str(handler)
+        handler_id = self.event_handlers[event_name].get(handler_key, None)
+        if handler_id is not None:
+            del self.event_handlers[event_name][handler_key]
+        return handler_id
+
+    @command(decode_arguments=False)
+    def _set_event_handler(self, event_name, handler):
+        event_name = self.lua.lua2python(event_name)
+
+        if event_name == "":
+            raise ScriptError({
+                "argument": "event_name",
+                "message": "element:set_event_handler event_name must be specified",
+                "splash_method": "set_event_handler",
+            })
+
+        if handler is None:
+            handler_id = self._remove_event_handler_id(event_name, handler, True)
+            if handler_id is not None:
+                self.element.unset_event_handler(event_name, handler_id)
+            return
+
+        if lupa.lua_type(handler) != 'function':
+            raise ScriptError({
+                "argument": "handler",
+                "message": "element:set_event_handler handler is not a function",
+                "splash_method": "set_event_handler",
+            })
+
+        def cleanup():
+            for handler in run_coro.on_call_after:
+                handler()
+
+        def log_error(error, event_name=event_name):
+            self.splash.log("[element:on%s] error %s" % (event_name, error),
+                            min_level=3)
+            cleanup()
+
+        def on_handler_call(result=None):
+            cleanup()
+
+        def on_handler_call_error(error):
+            log_error(error)
+
+        coro = self.splash.get_coroutine_run_func(
+            name="element:on" + event_name,
+            callback=handler,
+            return_result=on_handler_call,
+            return_error=on_handler_call_error
+        )
+
+        def run_coro(event, coro=coro):
+            wrapper = self.lua.eval("require('event')")
+            coro(wrapper._create(_ExposedEvent(self.lua, self.exceptions, event)))
+
+        run_coro.on_call_after = []
+
+        handler_id = self.element.set_event_handler(event_name, run_coro)
+        self._save_event_handler_id(event_name, handler, handler_id, True)
+
+    @command(decode_arguments=False)
+    def addEventListener(self, event_name, handler, options=None):
+        event_name = self.lua.lua2python(event_name)
+
+        if event_name == "":
+            raise ScriptError({
+                "argument": "event_name",
+                "message": "element:addEventListener event_name must be specified",
+                "splash_method": "addEventListener",
+            })
+
+        if lupa.lua_type(handler) != 'function':
+            raise ScriptError({
+                "argument": "handler",
+                "message": "element:addEventListener handler is not a function",
+                "splash_method": "addEventListener",
+            })
+
+        if options is not None and not isinstance(options, bool) and lupa.lua_type(options) != 'table':
+            raise ScriptError({
+                "argument": "options",
+                "message": "element:addEventListener options must be a boolean or a table",
+                "splash_method": "addEventListener",
+            })
+
+        options = self.lua.lua2python(options)
+
+        def cleanup():
+            for handler in run_coro.on_call_after:
+                handler()
+
+        def log_error(error, event_name=event_name):
+            self.splash.log("[element:on%s] error %s" % (event_name, error),
+                            min_level=3)
+            cleanup()
+
+        def on_handler_call(result=None):
+            cleanup()
+
+        def on_handler_call_error(error):
+            log_error(error)
+
+        coro = self.splash.get_coroutine_run_func(
+            name="element:on" + event_name,
+            callback=handler,
+            return_result=on_handler_call,
+            return_error=on_handler_call_error
+        )
+
+        def run_coro(event, coro=coro):
+            wrapper = self.lua.eval("require('event')")
+            exposed_event = _ExposedEvent(self.lua, self.exceptions, event)
+            coro(wrapper._create(exposed_event))
+
+        run_coro.on_call_after = []
+
+        handler_id = self.element.add_event_handler(event_name, run_coro, options)
+        self._save_event_handler_id(event_name, handler, handler_id)
+
+    @command(decode_arguments=False)
+    def removeEventListener(self, event_name, handler):
+        event_name = self.lua.lua2python(event_name)
+
+        if event_name == "":
+            raise ScriptError({
+                "argument": "event_name",
+                "message": "element:removeEventListener event_name must be specified",
+                "splash_method": "removeEventListener",
+            })
+
+        handler_id = self._remove_event_handler_id(event_name, handler)
+        if handler_id is not None:
+            self.element.remove_event_handler(event_name, handler_id)
+
+    @command()
+    def exists(self):
+        return self.element.exists()
+
+    @command(error_as_flag=True)
+    def mouse_click(self, x=0, y=0):
+        if not isinstance(x, (float, int)):
+            raise ScriptError({
+                "argument": "x",
+                "message": "element:mouse_click x coordinate must be a number",
+                "splash_method": "mouse_click",
+            })
+
+        if not isinstance(y, (float, int)):
+            raise ScriptError({
+                "argument": "y",
+                "message": "element:mouse_click y coordinate must be a number",
+                "splash_method": "mouse_click",
+            })
+
+        self.element.mouse_click(float(x), float(y))
+
+    @command(error_as_flag=True)
+    def mouse_hover(self, x=0, y=0):
+        if not isinstance(x, (float, int)):
+            raise ScriptError({
+                "argument": "x",
+                "message": "element:mouse_hover x coordinate must be a number",
+                "splash_method": "mouse_hover",
+            })
+
+        if not isinstance(y, (float, int)):
+            raise ScriptError({
+                "argument": "y",
+                "message": "element:mouse_hover y coordinate must be a number",
+                "splash_method": "mouse_hover",
+            })
+
+        self.element.mouse_hover(float(x), float(y))
+
+    @command()
+    def styles(self):
+        return self.element.styles()
+
+    @command()
+    def bounds(self):
+        return self.element.bounds()
+
+    @command()
+    def png(self, width=None, scale_method=None, pad=None):
+        if width is not None:
+            width = int(width)
+
+        if pad is not None and isinstance(pad, (int, float)):
+            pad = (pad, pad, pad, pad)
+        pad = self.splash.validate_region(pad, 'pad')
+        result = self.element.png(width, scale_method=scale_method, pad=pad)
+
+        if not result:
+            return None
+        return BinaryCapsule(result, 'image/png')
+
+    @command()
+    def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
+        if width is not None:
+            width = int(width)
+        if quality is not None:
+            quality = int(quality)
+
+        if pad is not None and isinstance(pad, (int, float)):
+            pad = (pad, pad, pad, pad)
+        pad = self.splash.validate_region(pad, 'pad')
+        result = self.element.jpeg(width, scale_method=scale_method,
+                                   quality=quality, pad=pad)
+
+        if not result:
+            return None
+        return BinaryCapsule(result, 'image/jpeg')
+
+    @command()
+    def visible(self):
+        return self.element.visible()
+
+    @command()
+    def focused(self):
+        return self.element.focused()
+
+    @command()
+    def text(self):
+        return self.element.text()
+
+    @command()
+    def info(self):
+        return self.element.info()
+
+    @command(error_as_flag=True, result_as_flag=True)
+    def field_value(self):
+        return self.element.field_value()
+
+    @command(error_as_flag=True)
+    def form_values(self, values='auto'):
+        if values not in ['auto', 'first', 'list']:
+            raise ScriptError({
+                "argument": "multi",
+                "message": "element:form_values values can only be "
+                           "'auto', 'first' or 'list'",
+                "splash_method": "form_values",
+            })
+
+        return self.element.form_values(values)
+
+    @command(error_as_flag=True, table_argument=True, decode_arguments=False)
+    def fill(self, values):
+        if lupa.lua_type(values) != 'table':
+            raise ScriptError({
+                "argument": "values",
+                "message": "element:fill values is not a table",
+                "splash_method": "fill",
+            })
+
+        # marking all tables as arrays by default
+        for key, value in values.items():
+            if lupa.lua_type(value) == 'table':
+                _mark_table_as_array(self.lua, value)
+
+        values = self.lua.lua2python(values)
+
+        return self.element.fill(values)
+
+    @command(error_as_flag=True)
+    def send_keys(self, text):
+        return self.element.send_keys(text)
+
+    @command(error_as_flag=True)
+    def send_text(self, text):
+        return self.element.send_text(text)
+
+    @command(error_as_flag=True)
+    def submit(self):
+        return self.element.submit()
+
+
+_ExposedElement.init_properties()
+_ExposedElement.init_methods()
+
+
+class _ExposedElementStyle(BaseExposedObject):
+    def __init__(self, lua, exceptions, element):
+        self.element = element
+        super(_ExposedElementStyle, self).__init__(lua, exceptions)
+
+    @command()
+    def _get_style(self, name):
+        return self.element.get_node_style(name)
+
+    @command()
+    def _set_style(self, name, value):
+        return self.element.set_node_style(name, value)
+
+
+class _ExposedEvent(BaseExposedObject):
+    def __init__(self, lua, exceptions, event):
+        self.event = event
+        super(_ExposedEvent, self).__init__(lua, exceptions)
+
+    @command()
+    def _get_property(self, name):
+        return self.event[name]
+
+    @command()
+    def preventDefault(self):
+        return self.event.preventDefault()
+
+    @command()
+    def stopImmediatePropagation(self):
+        return self.event.stopImmediatePropagation()
+
+    @command()
+    def stopPropagation(self):
+        return self.event.stopPropagation()
 
 
 requires_request = requires_attr(

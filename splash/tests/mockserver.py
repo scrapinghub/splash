@@ -723,6 +723,53 @@ KeyUpDownEventLoggerPage = _html_resource("""
 </html>
 """)
 
+VariousElementsPage = _html_resource("""
+<html>
+<head>
+<style>
+  html, body { margin: 0; padding: 0; }
+</style>
+</head>
+<body>
+<button id="showTitleBtn" type="button" onclick="document.querySelector('.title').style.display = 'block'">Click me</button>
+<h1 id="title" class="title" style="display: none ">Title</h1>
+
+<form id="login" action="/submitted">
+   <input type="text" name="username" value="admin" />
+   <input type="password" name="password" value="pass123" />
+   <input type="checkbox" name="remember" />
+</form>
+
+<form id="form">
+    <input type="text" name="foo[]" value="coffee" />
+    <input type="text" name="foo[]" value="milk" />
+    <input type="text" name="foo[]" value="eggs" />
+    <input type="text" name="baz" value="foo" />
+    <input type="radio" name="choice" value="yes" />
+    <input type="radio" name="choice" value="no" checked />
+    <input type="checkbox" name="check" value="checked" checked />
+
+    <select multiple name="selection">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3" selected>2</option>
+    </select>
+</form>
+
+<div id="editable" contenteditable style="width: 100px; height: 100px;"></div>
+
+<p class="p" id="multiline-inline" style="width: 5px"><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</span></p>
+
+<div id="block" onclick="this.parentNode.remove()" style="position: relative">
+    <div id="nestedBlock" style="position: absolute; top: 10px; left: 10px;">nested</div>
+</div>
+<div class="test" id="clickMe" onclick="this.innerText = (+this.innerText) + 1">0</div>
+<div id="hoverMe" onmousemove="this.innerText = (+this.innerText) + 1">0</div>
+<div id="parent"><div id="child">click</div></div>
+</body>
+</html>
+""")
+
 
 class HttpRedirectResource(Resource):
     def render_GET(self, request):
@@ -970,6 +1017,7 @@ class Root(Resource):
         self.putChild(b"form-inputs-event-page", FormInputsEventPage())
         self.putChild(b"key-press-event-logger-page", KeyPressEventLoggerPage())
         self.putChild(b"key-up-down-event-logger-page", KeyUpDownEventLoggerPage())
+        self.putChild(b"various-elements", VariousElementsPage())
 
         # self.putChild(b"flashpage", FlashPage())
 

@@ -11,6 +11,7 @@ from PIL import Image
 import requests
 import six
 import pytest
+
 lupa = pytest.importorskip("lupa")
 
 from splash.exceptions import ScriptError
@@ -53,7 +54,7 @@ class MainFunctionTest(BaseLuaRenderTest):
           return {
             mystatus="ok",
             number=5,
-            float=-0.5,
+            float=-0.1,
             obj=obj,
             bool=true,
             bool2=false,
@@ -66,7 +67,7 @@ class MainFunctionTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {
             "mystatus": "ok",
             "number": 5,
-            "float": -0.5,
+            "float": -0.1,
             "obj": {"key": "value"},
             "bool": True,
             "bool2": False,
@@ -606,8 +607,16 @@ class EvaljsTest(BaseLuaRenderTest):
         # XXX: functions are not returned by QT
         self.assertEvaljsResult("x = function(){return 5}; x", None, "nil")
 
-    def test_host_object_document(self):
-        self.assertEvaljsResult("document", None, "nil")
+    def test_html_element(self):
+        resp = self.request_lua("""
+        function main(splash)
+           local div = splash:evaljs("document.createElement('div')")
+           return div.node.nodeName:lower()
+        end
+        """)
+
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'div')
 
     def test_host_object_xhr(self):
         self.assertEvaljsResult("(new XMLHttpRequest())", None, "nil")
@@ -1224,6 +1233,29 @@ class JsfuncTest(BaseLuaRenderTest):
         err = self.assertScriptError(resp, ScriptError.LUA_ERROR)
         self.assertEqual(err['info']['line_number'], 3)
 
+    def test_html_element(self):
+        resp = self.request_lua("""
+        treat = require("treat")
+        function main(splash)
+            local create_el = splash:jsfunc("function(type){return document.createElement(type)}")
+            return create_el('div').node.nodeName:lower();
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'div')
+
+    def test_element_as_argument(self):
+        resp = self.request_lua("""
+        treat = require("treat")
+        function main(splash)
+            local div = splash:evaljs('document.createElement("div")')
+            local get_node_name = splash:jsfunc("function(node){return node.nodeName.toLowerCase(); }")
+            return get_node_name(div)
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, 'div')
+
 
 class WaitTest(BaseLuaRenderTest):
     def wait(self, wait_args, request_args=None):
@@ -1629,7 +1661,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertTrue(
             "param2=bar&amp;param1=foo" in resp.text or
             "param1=foo&amp;param2=bar" in resp.text
-        , resp.text)
+            , resp.text)
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
     def test_splash_go_body_and_invalid_method(self):
@@ -1687,7 +1719,7 @@ class GoTest(BaseLuaRenderTest):
         self.assertTrue(
             "param2=bar&amp;param1=foo" in resp.text or
             "param1=foo&amp;param2=bar" in resp.text
-        , resp.text)
+            , resp.text)
         self.assertIn("application/x-www-form-urlencoded", resp.text)
 
     def test_splash_bad_http_method(self):
@@ -2882,9 +2914,9 @@ class HttpPostTest(BaseLuaRenderTest):
                 return resp.body
             end
             """, {
-                "url": self.mockurl("postrequest"),
-                "postbody": base64.b64encode(postbody)
-            })
+            "url": self.mockurl("postrequest"),
+            "postbody": base64.b64encode(postbody)
+        })
         self.assertStatusCode(resp, 200)
         self.assertIn(repr(postbody), resp.text)
 
@@ -3000,7 +3032,7 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         """
         out = self.request_lua(func).json()
         self.assertEqual(sorted(list(out.keys())),
-                              sorted(['walltime', 'cputime', 'maxrss']))
+                         sorted(['walltime', 'cputime', 'maxrss']))
         self.assertIsInstance(out['cputime'], numbers.Real)
         self.assertIsInstance(out['walltime'], numbers.Real)
         self.assertIsInstance(out['maxrss'], numbers.Integral)
@@ -3361,7 +3393,6 @@ class VersionTest(BaseLuaRenderTest):
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
-
     LOCAL_STORAGE_WORKS_JS = """
     (function () {
         localStorage.setItem("hello", "world of splash");
@@ -3401,9 +3432,9 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 return splash:evaljs(splash.args.js)
             end
             """, {
-                "js": self.LOCAL_STORAGE_WORKS_JS,
-                "url": self.mockurl("jsrender")
-            })
+            "js": self.LOCAL_STORAGE_WORKS_JS,
+            "url": self.mockurl("jsrender")
+        })
         err = self.assertJsonError(resp, 400)
         self.assertEqual(
             err['info']['js_error'],
@@ -3418,9 +3449,9 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 return splash:evaljs(splash.args.js)
             end
             """, {
-                "js": self.LOCAL_STORAGE_WORKS_JS,
-                "url": self.mockurl("jsrender")
-            })
+            "js": self.LOCAL_STORAGE_WORKS_JS,
+            "url": self.mockurl("jsrender")
+        })
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "True")
 
@@ -3468,7 +3499,6 @@ class PluginsEnabledTest(BaseLuaRenderTest):
 
 
 class MouseEventsTest(BaseLuaRenderTest):
-
     def _assert_event_property(self, name, value, resp):
         self.assertIn("{}:{}".format(name, value), resp.text)
 
@@ -3792,7 +3822,7 @@ class KeyEventsTest(BaseLuaRenderTest):
         resp = self.request_lua(u"""
             function main(splash)
                 assert(splash:go(splash.args.url))
-                assert(splash:wait(05))
+                assert(splash:wait(0.5))
                 get_input = splash:jsfunc([[
                     function () {
                         return document.getElementById('text').value
@@ -3889,12 +3919,12 @@ class KeyEventsTest(BaseLuaRenderTest):
             """, {"url": self.mockurl("key-up-down-event-logger-page")})
         self.assertStatusCode(resp, 200)
         expected = [
-            13, -13,    # <Return>
-            13, -13,    # <Enter>
-            32, -32,    # <Space>
-            9, -9,      # <Tab>
-            46, -46,    # <Delete>
-            27, -27     # <Escape>
+            13, -13,  # <Return>
+            13, -13,  # <Enter>
+            32, -32,  # <Space>
+            9, -9,  # <Tab>
+            46, -46,  # <Delete>
+            27, -27  # <Escape>
         ]
         result = list(map(int, resp.text.split(',')))
         self.assertEqual(expected, result)

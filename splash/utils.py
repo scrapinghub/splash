@@ -10,6 +10,7 @@ import resource
 from collections import defaultdict
 import functools
 import psutil
+from uuid import uuid1
 
 import six
 
@@ -90,6 +91,8 @@ def get_alive():
         '_ExposedRequest', '_ExposedBoundRequest',
         '_ExposedResponse', '_ExposedBoundResponse',
         '_ExposedTimer',
+        '_ExposedElement', '_ExposedElementStyle', '_ExposedEvent',
+        'EventHandlersStorage', 'EventsStorage', ' ElementsStorage',
         'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
         'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
@@ -197,3 +200,48 @@ def ensure_tuple(val):
     if not isinstance(val, tuple):
         return (val,)
     return val
+
+
+def get_id():
+    return str(uuid1())
+
+
+def traverse_data(obj, predicate, convert, max_depth=100):
+    """
+    Traverse data structure and if the `predicate` returns True value on
+    a traversed object call `convert` passing that object.
+    """
+    if max_depth <= 0:
+        raise ValueError("Can't traverse through object: depth limit is reached")
+
+    if obj is None:
+        return None
+
+    if predicate(obj):
+        return convert(obj)
+
+    if isinstance(obj, dict):
+        return {
+            traverse_data(key, predicate, convert, max_depth=max_depth - 1): traverse_data(value, predicate, convert, max_depth=max_depth - 1)
+            for key, value in obj.items()
+        }
+
+    if isinstance(obj, list):
+        return [
+            traverse_data(v, predicate, convert, max_depth=max_depth - 1)
+            for v in obj
+        ]
+
+    if isinstance(obj, tuple):
+        return tuple([
+            traverse_data(v, predicate, convert, max_depth=max_depth - 1)
+            for v in obj
+        ])
+
+    if isinstance(obj, set):
+        return {
+            traverse_data(v, predicate, convert, max_depth=max_depth - 1)
+            for v in obj
+        }
+
+    return obj

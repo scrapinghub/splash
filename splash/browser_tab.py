@@ -4,15 +4,13 @@ import base64
 import functools
 import os
 import weakref
-import uuid
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF
+from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWidgets import QApplication
-
 from twisted.internet import defer
 from twisted.python import log
 import six
@@ -26,24 +24,32 @@ from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
-from splash.utils import to_bytes
+from splash.utils import to_bytes, get_id, traverse_data
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
     get_process_errors_js,
     escape_js,
+    store_dom_elements,
 )
+from splash.html_element import HTMLElement
 
 
 def skip_if_closing(meth):
     @functools.wraps(meth)
     def wrapped(self, *args, **kwargs):
         if self._closing:
-            self.logger.log("%s is not called because BrowserTab is closing" % meth.__name__, min_level=2)
+            self.logger.log("%s is not called because BrowserTab "
+                            "is closing" % meth.__name__, min_level=2)
             return
         return meth(self, *args, **kwargs)
 
     return wrapped
+
+
+def escape_and_evaljs(frame, js_func):
+    eval_expr = u"eval({})".format(escape_js(js_func))
+    return frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
 
 class BrowserTab(QObject):
@@ -75,13 +81,15 @@ class BrowserTab(QObject):
         self._callback_proxies_to_cancel = weakref.WeakSet()
         self._js_console = None
         self._autoload_scripts = []
+        self._js_storage_initiated = False
 
         self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
                            render_options)
         self.http_client = _SplashHttpClient(self.web_page)
 
-    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory, render_options):
+    def _init_webpage(self, verbosity, network_manager, splash_proxy_factory,
+                      render_options):
         """ Create and initialize QWebPage and QWebView """
         self.web_page = SplashQWebPage(verbosity)
         self.web_page.setNetworkAccessManager(network_manager)
@@ -104,6 +112,35 @@ class BrowserTab(QObject):
         # XXX: hack to ensure that default window size is not 640x480.
         self.web_view.resize(
             QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
+
+    def _init_elements_storage(self):
+        frame = self.web_page.mainFrame()
+        self._elements_storage = ElementsStorage(self)
+        frame.addToJavaScriptWindowObject(self._elements_storage.name,
+                                          self._elements_storage)
+
+    def _init_event_handlers_storage(self):
+        frame = self.web_page.mainFrame()
+        self._event_handlers_storage = EventHandlersStorage(self,
+                                                            self._events_storage)
+        frame.addToJavaScriptWindowObject(self._event_handlers_storage.name,
+                                          self._event_handlers_storage)
+
+    def _init_events_storage(self):
+        frame = self.web_page.mainFrame()
+        self._events_storage = EventsStorage(self)
+        frame.addToJavaScriptWindowObject(self._events_storage.name,
+                                          self._events_storage)
+        self._events_storage.init_storage()
+
+    def _init_js_objects_storage(self):
+        if self._js_storage_initiated:
+            return
+
+        self._init_elements_storage()
+        self._init_events_storage()
+        self._init_event_handlers_storage()
+        self._js_storage_initiated = True
 
     def set_js_enabled(self, val):
         settings = self.web_page.settings()
@@ -142,16 +179,18 @@ class BrowserTab(QObject):
         web_page.mainFrame().setScrollBarPolicy(Qt.Horizontal, scroll_bars)
 
         if self.visible:
-            web_page.settings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+            settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 
         self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
         self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
 
     def _setup_webpage_events(self):
-        self._load_finished = WrappedSignal(self.web_page.mainFrame().loadFinished)
-        self.web_page.mainFrame().loadFinished.connect(self._on_load_finished)
-        self.web_page.mainFrame().urlChanged.connect(self._on_url_changed)
-        self.web_page.mainFrame().javaScriptWindowObjectCleared.connect(self._on_javascript_window_object_cleared)
+        main_frame = self.web_page.mainFrame()
+        self._load_finished = WrappedSignal(main_frame.loadFinished)
+        main_frame.loadFinished.connect(self._on_load_finished)
+        main_frame.urlChanged.connect(self._on_url_changed)
+        main_frame.javaScriptWindowObjectCleared.connect(
+            self._on_javascript_window_object_cleared)
         self.logger.add_web_page(self.web_page)
 
     def return_result(self, result):
@@ -270,7 +309,8 @@ class BrowserTab(QObject):
             callback=callback,
             errback=errback,
         )
-        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
+        self.logger.log("callback %s is connected to loadFinished" % callback_id,
+                        min_level=3)
         self.web_page.mainFrame().setContent(data, mime_type, to_qurl(baseurl))
 
     def set_user_agent(self, value):
@@ -325,7 +365,8 @@ class BrowserTab(QObject):
         if headers_user_agent:
             # User passed User-Agent header to go() so we need to set
             # consistent UA for all rendering requests.
-            # Passing UA header to go() will have same effect as splash:set_user_agent().
+            # Passing UA header to go() will have same effect as
+            # splash:set_user_agent().
             self.set_user_agent(headers_user_agent)
 
         if baseurl:
@@ -410,7 +451,8 @@ class BrowserTab(QObject):
         loadFinished events.
         """
         if self.web_page.maybe_redirect(ok):
-            self.logger.log("Redirect or other non-fatal error detected", min_level=2)
+            self.logger.log("Redirect or other non-fatal error detected",
+                            min_level=2)
             return
 
         if self.web_page.is_ok(ok):  # or maybe_redirect:
@@ -419,7 +461,8 @@ class BrowserTab(QObject):
             self._cancel_timers(self._timers_to_cancel_on_error)
 
             if self.web_page.error_loading(ok):
-                self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)), min_level=1)
+                self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)),
+                                min_level=1)
             else:
                 self.logger.log("loadFinished: unknown error", min_level=1)
 
@@ -440,7 +483,8 @@ class BrowserTab(QObject):
             baseurl=baseurl,
         )
         if reply.error():
-            self.logger.log("Error loading %s: %s" % (url, reply.errorString()), min_level=1)
+            self.logger.log("Error loading %s: %s" % (url, reply.errorString()),
+                            min_level=1)
 
     def _load_url_to_mainframe(self, url, http_method, body=None, headers=None):
         request = self.http_client.request_obj(url, headers=headers, body=body)
@@ -463,7 +507,8 @@ class BrowserTab(QObject):
             # the result only after a timeout.
             return
 
-        self.logger.log("loadFinished: disconnecting callback %s" % callback_id, min_level=3)
+        self.logger.log("loadFinished: disconnecting callback %s" % callback_id,
+                        min_level=3)
         self._load_finished.disconnect(callback_id)
 
         if self.web_page.is_ok(ok):
@@ -496,7 +541,8 @@ class BrowserTab(QObject):
         )
         timer.timeout.connect(timer_callback)
 
-        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)), min_level=2)
+        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)),
+                        min_level=2)
 
         timer.start(time_ms)
         self._active_timers.add(timer)
@@ -532,7 +578,8 @@ class BrowserTab(QObject):
 
     def _cancel_all_timers(self):
         total_len = len(self._active_timers) + len(self._callback_proxies_to_cancel)
-        self.logger.log("cancelling %d remaining timers" % total_len, min_level=2)
+        self.logger.log("cancelling %d remaining timers" % total_len,
+                        min_level=2)
         for timer in list(self._active_timers):
             self._cancel_timer(timer)
         for callback_proxy in self._callback_proxies_to_cancel:
@@ -541,6 +588,35 @@ class BrowserTab(QObject):
     def _on_url_changed(self, url):
         self.web_page.har.store_redirect(six.text_type(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
+
+    def _process_js_result(self, obj, allow_dom):
+        if obj is None:
+            return None
+
+        if not isinstance(obj, dict):
+            raise ValueError("Invalid input object: %r" % obj)
+
+        allowed_types = {'Node', 'NodeList', 'other'} if allow_dom else {'other'}
+        result_type = obj.get('type')
+
+        if result_type not in allowed_types:
+            raise ValueError("Invalid result type: %r" % result_type)
+
+        if result_type == 'Node':
+            # result is a single Node
+            return self._html_element(obj['id'])
+        elif result_type == 'NodeList':
+            # Array of nodes
+            return [self._html_element(node_id) for node_id in obj['ids']]
+        elif result_type == "other":
+            return obj.get('data', None)
+
+    def _html_element(self, node_id):
+        return HTMLElement(tab=self,
+                           storage=self._elements_storage,
+                           event_handlers_storage=self._event_handlers_storage,
+                           events_storage=self._events_storage,
+                           node_id=node_id)
 
     def run_js_file(self, filename, handle_errors=True):
         """
@@ -568,6 +644,8 @@ class BrowserTab(QObject):
         self._autoload_scripts = []
 
     def _on_javascript_window_object_cleared(self):
+        self._js_storage_initiated = False
+
         for script in self._autoload_scripts:
             # XXX: handle_errors=False is used to execute autoload scripts
             # in a global context (not inside a closure).
@@ -577,14 +655,17 @@ class BrowserTab(QObject):
             self.runjs(script, handle_errors=False)
 
     def http_get(self, url, callback, headers=None, follow_redirects=True):
-        """ Send a GET request; call a callback with the reply as an argument. """
+        """
+        Send a GET request; call a callback with the reply as an argument.
+        """
         self.http_client.get(url,
             callback=callback,
             headers=headers,
             follow_redirects=follow_redirects
         )
 
-    def http_post(self, url, callback, headers=None, follow_redirects=True, body=None):
+    def http_post(self, url, callback, headers=None, follow_redirects=True,
+                  body=None):
         if body is not None:
             body = to_bytes(body)
 
@@ -594,7 +675,8 @@ class BrowserTab(QObject):
                               follow_redirects=follow_redirects,
                               body=body)
 
-    def evaljs(self, js_source, handle_errors=True, result_protection=True):
+    def evaljs(self, js_source, handle_errors=True, result_protection=True,
+               dom_elements=True):
         """
         Run JS code in page context and return the result.
 
@@ -606,40 +688,52 @@ class BrowserTab(QObject):
         badly written or malicious scripts is activated. Disable it
         when the script result is known to be good, i.e. it only
         contains objects/arrays/primitives without circular references.
+
+        When `dom_elements` is True (default) top-level DOM elements will be
+        saved in JS field of window object under `self._elements_storage.name`
+        key. The result of evaluation will be object with `type` property and
+        `id` property. In JS the original DOM element can accessed through
+        ``window[self._elements_storage.name][id]``.
         """
         frame = self.web_page.mainFrame()
         eval_expr = u"eval({})".format(escape_js(js_source))
 
+        if dom_elements:
+            self._init_js_objects_storage()
+            eval_expr = store_dom_elements(eval_expr,
+                                           self._elements_storage.name)
         if result_protection:
             eval_expr = get_sanitized_result_js(eval_expr)
 
-        if not handle_errors:
-            return qt2py(frame.evaluateJavaScript(eval_expr))
+        if handle_errors:
+            res = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
-        res = frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+            if not isinstance(res, dict):
+                raise JsError({
+                    'type': ScriptError.UNKNOWN_ERROR,
+                    'js_error_message': res,
+                    'message': "unknown JS error: {!r}".format(res)
+                })
 
-        if not isinstance(res, dict):
-            raise JsError({
-                'type': ScriptError.UNKNOWN_ERROR,
-                'js_error_message': res,
-                'message': "unknown JS error: {!r}".format(res)
-            })
+            if res.get("error", False):
+                err_message = res.get('errorMessage')
+                err_type = res.get('errorType', '<custom JS error>')
+                err_repr = res.get('errorRepr', '<unknown JS error>')
+                if err_message is None:
+                    err_message = err_repr
+                raise JsError({
+                    'type': ScriptError.JS_ERROR,
+                    'js_error_type': err_type,
+                    'js_error_message': err_message,
+                    'js_error': err_repr,
+                    'message': "JS error: {!r}".format(err_repr)
+                })
 
-        if res.get("error", False):
-            err_message = res.get('errorMessage')
-            err_type = res.get('errorType', '<custom JS error>')
-            err_repr = res.get('errorRepr', '<unknown JS error>')
-            if err_message is None:
-                err_message = err_repr
-            raise JsError({
-                'type': ScriptError.JS_ERROR,
-                'js_error_type': err_type,
-                'js_error_message': err_message,
-                'js_error': err_repr,
-                'message': "JS error: {!r}".format(err_repr)
-            })
+            result = res.get("result", None)
+        else:
+            result = qt2py(frame.evaluateJavaScript(eval_expr))
 
-        return res.get("result", None)
+        return self._process_js_result(result, allow_dom=dom_elements)
 
     def runjs(self, js_source, handle_errors=True):
         """ Run JS code in page context and discard the result. """
@@ -651,7 +745,8 @@ class BrowserTab(QObject):
         self.evaljs(
             js_source="%s;undefined" % js_source,
             handle_errors=handle_errors,
-            result_protection=False
+            result_protection=False,
+            dom_elements=False,
         )
 
     def wait_for_resume(self, js_source, callback, errback, timeout):
@@ -861,8 +956,8 @@ class BrowserTab(QObject):
         :param button string specifying button type
         :return: None
         """
-        # XXX only left click supported for now, we can add support and tests for right click
-        # in the future if there is need for that
+        # XXX only left click supported for now, we can add support and
+        # tests for right click in the future if there is need for that.
         self.mouse_press(x, y, button)
         self.mouse_release(x, y, button)
 
@@ -904,6 +999,29 @@ class BrowserTab(QObject):
         """
         for key in text.split():
             qt_send_key(key, self.web_page)
+
+    def select(self, selector):
+        """ Select DOM element and return an instance of `HTMLElement`
+
+        :param selector valid CSS selector
+        :return element
+        """
+        js_query = u"document.querySelector({})".format(escape_js(selector))
+        result = self.evaljs(js_query)
+
+        if result == "":
+            return None
+
+        return result
+
+    def select_all(self, selector):
+        """ Select DOM elements and return a list of instances of `HTMLElement`
+
+        :param selector valid CSS selector
+        :return list of elements
+        """
+        js_query = u"document.querySelectorAll({})".format(escape_js(selector))
+        return self.evaljs(js_query)
 
 
 class _SplashHttpClient(QObject):
@@ -967,7 +1085,8 @@ class _SplashHttpClient(QObject):
         """ Send HTTP POST request;
         """
         cb = functools.partial(self._return_reply, callback=callback, url=url)
-        self.request(url, cb, headers=headers, follow_redirects=follow_redirects, body=body,
+        self.request(url, cb, headers=headers,
+                     follow_redirects=follow_redirects, body=body,
                      method="POST")
 
     def _send_request(self, url, callback, method='GET', body=None,
@@ -1116,6 +1235,177 @@ class _BrowserTabLogger(object):
         log.msg(message, system='render')
 
 
+class ElementsStorage(QObject):
+    """
+    Object that allows to store JavaScript Node objects.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has `get_id()` function which can be called from JavaScript for
+    retrieving a unique id for each Node object
+    """
+    def __init__(self, parent):
+        self.name = get_id()
+        super(ElementsStorage, self).__init__(parent)
+
+    @pyqtSlot(name="getId", result=str)
+    def get_id(self):
+        return get_id()
+
+
+class Event(object):
+    """
+    Proxy object that allows to access JavaScript Event objects properties
+    and methods.
+
+    Properties are defined using `__getitem__` method and can be accessed using
+    `self[key]` operation.
+
+    To create the objects of this type you should pass an instance
+    of `EventsStorage` and an id of the event by which it can be accessed
+    in the events storage
+    """
+    def __init__(self, storage, id, event):
+        self.storage = storage
+        self.id = id
+        self.event = event
+
+    def __getitem__(self, item):
+        return self.storage.get_event_property(self.id, item)
+
+    def preventDefault(self):
+        return self.storage.preventDefault.emit(self.id)
+
+    def stopImmediatePropagation(self):
+        return self.storage.stopImmediatePropagation.emit(self.id)
+
+    def stopPropagation(self):
+        return self.storage.stopPropagation.emit(self.id)
+
+    def remove(self):
+        return self.storage.remove_event(self.id)
+
+
+class EventHandlersStorage(QObject):
+    """
+    Object that allows to store JavaScript event listeners.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has `run_function()` function which is called from JS when the event
+    is triggered and the event listener is called.
+    """
+    def __init__(self, parent, events_storage):
+        self.name = get_id()
+        self.events_storage = events_storage
+        self.storage = {}
+        super(EventHandlersStorage, self).__init__(parent)
+
+    def add(self, func):
+        func_id = get_id()
+
+        event_wrapper = u"window[{storage_name}].add(event)".format(
+            storage_name=escape_js(self.events_storage.name),
+        )
+        js_func = u"window[{storage_name}][{func_id}] = " \
+                  u"function(event) {{ window[{storage_name}].run({func_id}, {event}, event) }}"\
+            .format(
+                storage_name=escape_js(self.name),
+                func_id=escape_js(func_id),
+                event=event_wrapper
+            )
+
+        escape_and_evaljs(self.parent().web_page.mainFrame(), js_func)
+
+        self.storage[func_id] = func
+        return func_id
+
+    def remove(self, func_id):
+        if self.storage.get(func_id, None) is not None:
+            del self.storage[func_id]
+
+    @pyqtSlot(str, str, 'QVariantMap', name="run")
+    def run_function(self, func_id, event_id, event):
+        wrapped_event = Event(self.events_storage, event_id, event)
+        self.storage[func_id].on_call_after.append(wrapped_event.remove)
+        self.storage[func_id](wrapped_event)
+
+
+class EventsStorage(QObject):
+    """
+    Object that allows to store JavaScript Event objects and access them.
+
+    This creates a JavaScript-compatible object (can be added to `window`)
+    that has `get_id()` function which can be called from JavaScript for
+    retrieving a unique id for each event object.
+
+    After adding to the JS window object the `init_storage(self)` method
+    should be called to initialize the storage. During the initialization
+    the storage object is connected to the QT signals which allows to call
+    appropriate methods of the specified event.
+    """
+    preventDefault = pyqtSignal(str)
+    stopImmediatePropagation = pyqtSignal(str)
+    stopPropagation = pyqtSignal(str)
+
+    def __init__(self, parent):
+        self.name = get_id()
+        super(EventsStorage, self).__init__(parent)
+
+    def init_storage(self):
+        frame = self.parent().web_page.mainFrame()
+        eval_expr = u"eval({})".format(escape_js("""
+        (function() {{
+            var storage = window[{storage_name}];
+
+            storage.events = {{}};
+
+            storage.callMethod = function(methodName) {{
+                return function(eventId) {{
+                    var eventsStorage = window[{storage_name}].events;
+                    eventsStorage[eventId][methodName].call(eventsStorage[eventId]);
+                }};
+            }}
+
+            storage.preventDefault.connect(storage.callMethod('preventDefault'))
+            storage.stopImmediatePropagation.connect(storage.callMethod('stopImmediatePropagation'))
+            storage.stopPropagation.connect(storage.callMethod('stopPropagation'))
+
+            storage.add = function(event) {{
+                var id = storage.getId()
+                storage.events[id] = event;
+                return id;
+            }}
+        }})()
+        """.format(storage_name=escape_js(self.name))))
+
+        frame.evaluateJavaScript(eval_expr)
+
+    @pyqtSlot(name="getId", result=str)
+    def get_id(self):
+        return get_id()
+
+    def get_event_property(self, event_id, property_name):
+        js_func = """
+        window[{storage_name}].events[{event_id}][{property_name}]
+        """.format(
+            storage_name=escape_js(self.name),
+            event_id=escape_js(event_id),
+            property_name=escape_js(property_name)
+        )
+
+        result = escape_and_evaljs(self.parent().web_page.mainFrame(), js_func)
+
+        return result.get('result', None)
+
+    def remove_event(self, event_id):
+        js_func = """
+        delete window[{storage_name}].events[{event_id}]
+        """.format(
+            storage_name=escape_js(self.name),
+            event_id=escape_js(event_id),
+        )
+        escape_and_evaljs(self.parent().web_page.mainFrame(), js_func)
+
+
 class OneShotCallbackProxy(QObject):
     """
     A proxy object that allows JavaScript to run Python callbacks.
@@ -1132,7 +1422,7 @@ class OneShotCallbackProxy(QObject):
     """
 
     def __init__(self, parent, callback, errback, timeout=0):
-        self.name = str(uuid.uuid1())
+        self.name = get_id()
         self._used_up = False
         self._callback = callback
         self._errback = errback

@@ -3,11 +3,6 @@
 Splash Scripts Tutorial
 =======================
 
-.. warning::
-
-    Scripting support is an experimental feature for early adopters;
-    API could change in future releases.
-
 Intro
 -----
 
@@ -198,7 +193,7 @@ handling?). Splash scripts are standard Lua code.
     respect; please don't take this writeup as an attack on them.
     These tools are much more mature and feature complete than Splash.
     Splash tries to look at the problem from a different angle, but
-    for each unique Splash feature there are ten unique PhantomJS features.
+    for each unique Splash feature there is an unique PhantomJS feature.
 
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS: http://www.nightmarejs.org/

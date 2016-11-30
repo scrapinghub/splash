@@ -3,11 +3,6 @@
 Splash Scripts Reference
 ========================
 
-.. warning::
-
-    Scripting support is an experimental feature for early adopters;
-    API could change in future releases.
-
 ``splash`` object is passed to ``main`` function; via this object
 a script can control the browser. Think of it as of an API to
 a single browser tab.
@@ -23,6 +18,19 @@ splash.args
 ``splash.args`` is a table with incoming parameters. It contains
 merged values from the orignal URL string (GET arguments) and
 values sent using ``application/json`` POST request.
+
+For example, if you passed 'url' argument to a script using HTTP API,
+then ``splash.args.url`` contains this URL.
+
+:ref:`splash-args` is the preferred way to pass parameters to Splash scripts.
+An alternative way is to use string formatting to build a script with
+variables embedded. There are two problems which make :ref:`splash-args`
+a better solution:
+
+1. data must be escaped somehow, so that it doesn't break a Lua script;
+2. embedding variables makes it impossible to use script cache efficiently
+   (see :ref:`save_args <arg-save-args>` and :ref:`load_args <arg-load-args>`
+   arguments of the HTTP API).
 
 .. _splash-js-enabled:
 
@@ -2476,4 +2484,124 @@ arguments passed to splash, `username` and `password`.
         assert(splash:wait(0))
         -- Usually, wait for the submit request to finish
         -- ...
+    end
+
+
+.. _splash-select:
+
+
+splash:select
+-------------
+
+Select the first HTML element from DOM of the current web page that
+matches the specified CSS selector.
+
+**Signature:** ``element = splash:select(selector)``
+
+**Parameters:**
+
+* selector - valid CSS selector
+
+**Returns:** an :ref:`Element <splash-element>` object.
+
+**Async:** no.
+
+Using :ref:`splash-select` you can get the element that matches your
+specified CSS selector like using `document.querySelector`_ in the browser.
+The returned element is an :ref:`splash-element` which has many useful
+methods and almost all methods and attributes that element has in JavaScript.
+
+If the element cannot be found using the specified selector ``nil`` will
+be returned. If your selector is not a valid CSS selector an error will be raised.
+
+Example 1: select an element which has ``element`` class and return class
+names off all the siblings of the specified element.
+
+.. code-block:: lua
+
+    local treat = require('treat')
+
+    function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.5))
+
+        local el = splash:select('.element')
+        local seen = {}
+        local classNames = {}
+
+        while el do
+          local classList = el.node.classList
+          if classList then
+            for _, v in ipairs(classList) do
+              if (not seen[v]) then
+                classNames[#classNames + 1] = v
+                seen[v] = true
+              end
+            end
+          end
+
+          el = el.node.nextSibling
+        end
+
+        return treat.as_array(classNames)
+    end
+
+
+Example 2: assert that the returned element exists
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local el = assert(splash:select('.element'))
+        -- ...
+    end
+
+
+.. _document.querySelector: https://en.wikipedia.org/wiki/Cooperative_multitasking
+
+
+.. _splash-select-all:
+
+
+splash:select_all
+-----------------
+
+Select the list of HTML elements from DOM of the current web page
+that match the specified CSS selector.
+
+**Signature:** ``elements = splash:select_all(selector)``
+
+**Parameters:**
+
+* selector - valid CSS selector
+
+**Returns:** a list of :ref:`Element <splash-element>` objects.
+
+**Async:** no.
+
+This method differs from :ref:`splash-select` by returning the *all*
+elements in a table that match the specified selector.
+
+If no elements can be found using the specified selector ``{}`` is
+returned. If the selector is not a valid CSS selector an error is raised.
+
+Example: select all ``<img />`` elements and get their ``src`` attributes
+
+.. code-block:: lua
+
+    local treat = require('treat')
+
+    function main(splash)
+        assert(splash:go(splash.args.url))
+        assert(splash:wait(0.5))
+
+        local imgs = splash:select_all('img')
+        local srcs = {}
+
+        for _, img in ipairs(imgs) do
+          srcs[#srcs+1] = img.node.attributes.src
+        end
+
+        return treat.as_array(srcs)
     end

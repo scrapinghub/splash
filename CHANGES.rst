@@ -1,6 +1,21 @@
 Changes
 =======
 
+2.3 (TBA)
+---------
+
+This release adds lots of scraping helpers to Splash: CSS selectors,
+form filling, easy access to HTML node attributes. Scraping helpers were
+implemented by Michael Manukyan as a Google Summer of Code 2016 project.
+
+New features:
+
+* :ref:`splash-select` and :ref:`splash-select-all` methods which allow
+  to execute CSS selectors;
+* new :ref:`Element <splash-element>` object which wraps JavaScript DOM
+  node and allows to interact with it.
+
+
 2.2.2 (2016-11-10)
 ------------------
 

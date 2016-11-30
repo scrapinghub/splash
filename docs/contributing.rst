@@ -1,8 +1,5 @@
-Splash Development
-==================
-
-Contributing
-------------
+Contributing to Splash
+======================
 
 Splash is free & open source.
 Development happens at GitHub: https://github.com/scrapinghub/splash
@@ -54,4 +51,3 @@ Typical output::
       200: 500/500
       504: 200/200
       502: 300/300
-
