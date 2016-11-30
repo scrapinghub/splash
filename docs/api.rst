@@ -8,13 +8,13 @@ may be sent either as GET arguments or encoded to JSON and
 POSTed with ``Content-Type: application/json`` header.
 
 The most versatile endpoint that provides all Splash features
-is :ref:`execute` (WARNING: it is still experimental).
+is :ref:`execute`; it allows to execute arbitrary Lua rendering scripts.
+
 Other endpoints may be easier to use in specific
 cases - for example, :ref:`render.png` returns a screenshot in PNG format
 that can be used as `img src` without any further processing, and
 :ref:`render.json` is convenient if you don't need to interact with a page.
 
-The following endpoints are supported:
 
 .. _render.html:
 
@@ -579,10 +579,6 @@ Curl examples::
 execute
 -------
 
-.. warning::
-
-    This endpoint is experimental. API could change in future releases.
-
 Execute a custom rendering script and return a result.
 
 :ref:`render.html`, :ref:`render.png`, :ref:`render.jpeg`, :ref:`render.har`
@@ -620,6 +616,9 @@ load_args : JSON object or a string : optional
   Same as :ref:`'load_args' <arg-load-args>` argument for `render.html`_.
   Note that you can load not only default Splash arguments,
   but any other parameters as well.
+
+You can pass any other arguments. All arguments passed to :ref:`execute`
+endpoint are available in a script in :ref:`splash.args <splash-args>` table.
 
 .. _execute javascript:
 

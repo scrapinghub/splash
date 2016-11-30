@@ -3,11 +3,6 @@
 Splash Scripts Reference
 ========================
 
-.. warning::
-
-    Scripting support is an experimental feature for early adopters;
-    API could change in future releases.
-
 ``splash`` object is passed to ``main`` function; via this object
 a script can control the browser. Think of it as of an API to
 a single browser tab.
@@ -23,6 +18,19 @@ splash.args
 ``splash.args`` is a table with incoming parameters. It contains
 merged values from the orignal URL string (GET arguments) and
 values sent using ``application/json`` POST request.
+
+For example, if you passed 'url' argument to a script using HTTP API,
+then ``splash.args.url`` contains this URL.
+
+:ref:`splash-args` is the preferred way to pass parameters to Splash scripts.
+An alternative way is to use string formatting to build a script with
+variables embedded. There are two problems which make :ref:`splash-args`
+a better solution:
+
+1. data must be escaped somehow, so that it doesn't break a Lua script;
+2. embedding variables makes it impossible to use script cache efficiently
+   (see :ref:`save_args <arg-save-args>` and :ref:`load_args <arg-load-args>`
+   arguments of the HTTP API).
 
 .. _splash-js-enabled:
 
