@@ -48,6 +48,7 @@ class SplashQWebPage(QWebPage):
     navigation_locked = False
     resource_timeout = 0
     response_body_enabled = False
+    console_log = list()
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
@@ -105,6 +106,7 @@ class SplashQWebPage(QWebPage):
     def javaScriptConsoleMessage(self, msg, line_number, source_id):
         if self.verbosity >= 2:
             log.msg("JsConsole(%s:%d): %s" % (source_id, line_number, msg), system='render')
+        self.console_log.append("JsConsole(%s:%d): %s" % (source_id, line_number, msg));
 
     def userAgentForUrl(self, url):
         if self.custom_user_agent is None:
