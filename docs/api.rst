@@ -352,7 +352,7 @@ following:
 
 response_body : int : optional
   Possible values are ``1`` and ``0``.  When ``response_body=1``,
-  response content is included in HAR records. Default is ``render_all=0``.
+  response content is included in HAR records. Default is ``response_body=0``.
 
 
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
