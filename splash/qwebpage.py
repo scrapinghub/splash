@@ -63,6 +63,26 @@ class SplashQWebPage(QWebPage):
         self.mainFrame().initialLayoutCompleted.connect(self.on_layout_completed)
         self.har = HarBuilder()
 
+        self.setForwardUnsupportedContent(True)
+        self.unsupportedContent.connect(self.handleUnsupportedContent)
+        
+        self.unsupported_content_handler = lambda reply: None
+
+
+    def handleUnsupportedContent(self, reply):
+        log.msg("SplashQWebPage:: recieved unsupportedContent")
+        
+        self.unsupported_content_handler(reply)
+        return
+    
+    def raiseerror(self, message, code, method='http', url=''):
+        self.error_info = RenderErrorInfo(
+            method,
+            code,
+            message,
+            url
+        )
+
     def reset_har(self):
         self.har.reset()
 

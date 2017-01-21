@@ -478,7 +478,7 @@ class Splash(BaseExposedObject):
         else:
             raise TypeError("Invalid render_options type: %s" %
                             render_options.__class__)
-
+        
         self.tab = tab  # type: BrowserTab
         self.log = log or tab.logger.log
         self._result_headers = []
@@ -491,6 +491,7 @@ class Splash(BaseExposedObject):
         self.request_wrapper = self.lua.eval("require('request')")
         self.response_wrapper = self.lua.eval("require('response')")
         self.element_wrapper = self.lua.eval("require('element')")
+        
 
     def clear(self):
         self.log("[splash] clearing %d objects" % len(self._objects_to_clear),
@@ -629,12 +630,16 @@ class Splash(BaseExposedObject):
 
     @command(decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None,
-           formdata=None):
+           formdata=None, unsupported_content=None, download_directory=None):
         url = self.lua.lua2python(url, max_depth=1)
         baseurl = self.lua.lua2python(baseurl, max_depth=1)
         headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
         http_method = self.lua.lua2python(http_method, max_depth=1)
         formdata = self.lua.lua2python(formdata, max_depth=3)
+        self.tab.unsupported_content = self.lua.lua2python(unsupported_content, max_depth=1)
+        self.tab.download_directory = self.lua.lua2python(download_directory, max_depth=1)
+        
+        print ("Splash::go set unsupportedContent to " + str(self.tab.unsupported_content) )
 
         if url is None:
             raise ScriptError({
