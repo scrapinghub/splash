@@ -4,6 +4,7 @@ import os
 import shutil
 import unittest
 
+import pytest
 import requests
 
 from splash.proxy import (
@@ -233,3 +234,45 @@ class ProxyInParameterTest(BaseHtmlProxyTest):
         })
         self.assertProxied(r2.text)
         self.assertIn('application/x-www-form-urlencoded', r2.text)
+
+    @pytest.mark.skip(reason="testing proxy server doesn't support CONNECT")
+    def test_proxy_https(self):
+        url = self.ts.mockserver.https_url('jsrender')
+        r1 = self.request({'url': url})
+        self.assertNotProxied(r1.text)
+
+        r2 = self.request({
+            'url': url,
+            'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port
+        })
+        self.assertProxied(r2.text)
+
+    def test_proxy_auth(self):
+        resp = self.request({
+            'url': self.mockurl('jsrender'),
+            'proxy': self._proxy_url(self.ts.mock_auth_proxy_user, 'splash'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertProxied(resp.text)
+
+    @pytest.mark.skip(reason="testing proxy server doesn't support CONNECT")
+    def test_proxy_auth_https(self):
+        resp = self.request({
+            'url': self.ts.mockserver.https_url('jsrender'),
+            'proxy': self._proxy_url(self.ts.mock_auth_proxy_user, 'splash'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertProxied(resp.text)
+
+    def test_proxy_bad_auth(self):
+        resp = self.request({
+            'url': self.mockurl('jsrender'),
+            'proxy': self._proxy_url('foobar', 'splash'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertNotProxied(resp.text)
+        # self.assertIn("407", resp.text)
+
+    def _proxy_url(self, user, password):
+        proxy_port = self.ts.mock_auth_proxy_port
+        return "http://{}:{}@0.0.0.0:{}".format(user, password, proxy_port)

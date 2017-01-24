@@ -203,6 +203,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         return req, req_id
 
     def _handle_custom_proxies(self, request):
+        proxy = None
+
         # proxies set in proxy profiles or `proxy` HTTP argument
         splash_proxy_factory = self._get_webpage_attribute(request, 'splash_proxy_factory')
         if splash_proxy_factory:
@@ -212,12 +214,18 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         # proxies set in on_request
         if hasattr(request, 'custom_proxy'):
-            self.setProxy(request.custom_proxy)
-            user, password = request.custom_proxy.user(), request.custom_proxy.password()
-            if not user and not password:
-                return
-            auth = b"Basic " + base64.b64encode("{}:{}".format(user, password).encode("utf-8"))
-            request.setRawHeader(b"Proxy-Authorization", auth)
+            proxy = request.custom_proxy
+            self.setProxy(proxy)
+
+        # Handle proxy auth. We're setting Proxy-Authorization header
+        # explicitly because Qt loves to cache proxy credentials.
+        if proxy is None:
+            return
+        user, password = proxy.user(), proxy.password()
+        if not user and not password:
+            return
+        auth = b"Basic " + base64.b64encode("{}:{}".format(user, password).encode("utf-8"))
+        request.setRawHeader(b"Proxy-Authorization", auth)
 
     def _handle_custom_headers(self, request):
         if self._get_webpage_attribute(request, "skip_custom_headers"):
