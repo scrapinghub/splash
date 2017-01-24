@@ -2602,7 +2602,7 @@ Example 2: assert that the returned element exists
     end
 
 
-.. _document.querySelector: https://en.wikipedia.org/wiki/Cooperative_multitasking
+.. _document.querySelector: https://developer.mozilla.org/en-US/docs/Web/API/Document/querySelector
 
 
 .. _splash-select-all:

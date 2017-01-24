@@ -1,6 +1,13 @@
 Changes
 =======
 
+2.3.1 (2017-01-24)
+------------------
+
+* Fixed proxy authentication for proxies set using :ref:`'proxy' <arg-proxy>`
+  HTTP argument;
+* minor documentation fixes.
+
 2.3 (2016-12-01)
 ----------------
 
