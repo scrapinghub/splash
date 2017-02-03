@@ -630,14 +630,12 @@ class Splash(BaseExposedObject):
 
     @command(decode_arguments=False)
     def go(self, url, baseurl=None, headers=None, http_method="GET", body=None,
-           formdata=None, unsupported_content=None, download_directory=None):
+           formdata=None):
         url = self.lua.lua2python(url, max_depth=1)
         baseurl = self.lua.lua2python(baseurl, max_depth=1)
         headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
         http_method = self.lua.lua2python(http_method, max_depth=1)
         formdata = self.lua.lua2python(formdata, max_depth=3)
-        self.tab.unsupported_content = self.lua.lua2python(unsupported_content, max_depth=1)
-        self.tab.download_directory = self.lua.lua2python(download_directory, max_depth=1)
         
         print ("Splash::go set unsupportedContent to " + str(self.tab.unsupported_content) )
 
@@ -1115,6 +1113,29 @@ class Splash(BaseExposedObject):
                 "message": "splash.resource_timeout can't be negative"
             })
         self.tab.set_resource_timeout(timeout)
+
+    @lua_property('unsupported_content')
+    @command()
+    def get_unsupported_content(self):
+        return self.tab.unsupported_content
+
+    @get_unsupported_content.lua_setter
+    @command()
+    def set_unsupported_content(self, option):
+        if option is not None:
+            if option.lower() in ('drop', 'download'):
+                self.tab.unsupported_content = option
+
+    @lua_property('download_directory')
+    @command()
+    def get_download_directory(self):
+        return self.tab.download_directory
+
+    @get_download_directory.lua_setter
+    @command()
+    def set_download_directory(self, path):
+        if path is not None:
+            self.tab.download_directory = path
 
     @command()
     def status_code(self):

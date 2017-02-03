@@ -1,6 +1,6 @@
 function main(splash)
-  assert(splash:go{url="http://orimi.com/pdf-test.pdf"
-      , unsupported_content="download"
-      , download_directory="/home/mohamed/Downloads"})
+  splash.unsupported_content = 'download'
+  splash.download_directory="/tmp"
+  assert(splash:go("http://orimi.com/pdf-test.pdf"))
   return {png=splash:png()}
 end

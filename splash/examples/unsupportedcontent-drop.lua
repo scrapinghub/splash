@@ -1,5 +1,5 @@
 function main(splash)
-  assert(splash:go{url="http://orimi.com/pdf-test.pdf"
-      , unsupported_content="drop"})
+  splash.unsupported_content = 'drop'
+  assert(splash:go("http://orimi.com/pdf-test.pdf"))
   return {png=splash:png()}
 end
