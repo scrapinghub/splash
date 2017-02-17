@@ -102,7 +102,10 @@ install_pyqt5 () {
     chmod a+rw /downloads && \
     curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
     curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt-gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
-    # TODO: check downloads
+    if [ -f '/downloads/sip.tar.gz' ] && [-f '/downloads/pyqt5.tar.gz' ]; then
+        echo "Error downloading"
+        exit 0
+    fi
     mkdir -p /builds && \
     chmod a+rw /builds && \
     pushd /builds && \
