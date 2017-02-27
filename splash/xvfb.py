@@ -35,6 +35,6 @@ def _get_xvfb():
     try:
         from xvfbwrapper import Xvfb
         width, height = map(int, defaults.VIEWPORT_SIZE.split("x"))
-        return Xvfb(width, height)
+        return Xvfb(width, height, nolisten="tcp")
     except ImportError:
         return None
