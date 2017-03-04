@@ -94,7 +94,18 @@ class BrowserTab(QObject):
         self.download_directory = None
 
 
-
+    def download_unsupported_content_handler(self, reply, fname):
+        
+        #req_id = self.http_client.network_manager._get_request_id(reply.request())
+        #bodies = self.http_client.network_manager._response_bodies[req_id]
+        #log.msg('request id: %d, %d chunks' %(req_id, len(bodies)))
+        
+        content = bytes(reply.readAll())
+        
+        with open(fname, 'wb+') as f: f.write(content)
+        
+        self.web_view.setHtml("<html><head /><body><h1>file was downloaded to %s</h1></body>"%(fname,))
+        
 
     def unsupported_content_handler(self, reply):
         log.msg("BrowserTab:: recieved unsupportedContent " + str(self.unsupported_content) )
@@ -120,7 +131,6 @@ class BrowserTab(QObject):
                 reply.deleteLater()
                 return
             
-            content = bytes(reply.readAll())
             # try to determine the file name
             fname = hashlib.sha1(url.encode('utf-8')).hexdigest()
             
@@ -129,10 +139,15 @@ class BrowserTab(QObject):
             
             fname = os.path.join(self.download_directory, fname)
             
-            with open(fname, 'wb+') as f: f.write(content)
+            # NOTE trying to retrieve the already downloaded chunks, cannot find the request in _response_bodies
+            #req_id = self.http_client.network_manager._get_request_id(reply.request())
+            #bodies = self.http_client.network_manager._response_bodies[req_id]
+            #log.msg('request id: %d, %d chunks' %(req_id, len(bodies)))
             
-            self.web_view.setHtml("<html><head /><body><h1>file was downloaded from %s to %s</h1></body>"%(url, fname))
-            
+            self.http_client.get(url, 
+                                 callback=functools.partial(
+                                     self.download_unsupported_content_handler,
+                                     fname=fname))
             reply.close()
             reply.deleteLater()
             
