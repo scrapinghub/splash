@@ -93,6 +93,52 @@ class BrowserTab(QObject):
         self.unsupported_content = None
         self.download_directory = None
 
+
+
+
+    def unsupported_content_handler(self, reply):
+        log.msg("BrowserTab:: recieved unsupportedContent " + str(self.unsupported_content) )
+        
+        url = reply.url().toString()
+        
+        if self.unsupported_content is None:
+            reply.close()
+            reply.deleteLater()
+            self.web_page.raiseerror('Unsupported Media Type, no option set to deal with it', 415, url=url)
+            return
+        
+        if self.unsupported_content.lower() == 'drop':
+            reply.close()
+            reply.deleteLater()
+            self.web_view.setHtml("<html><head /><body><h1>unsupported content dropped for %s</h1></body>"%(url))
+            return
+            
+        if self.unsupported_content.lower() == 'download':
+            if self.download_directory is None:
+                self.web_page.raiseerror('Option set to download unsupported content, but no download directory set', 415, url=url)
+                reply.close()
+                reply.deleteLater()
+                return
+            
+            content = bytes(reply.readAll())
+            # try to determine the file name
+            fname = hashlib.sha1(url.encode('utf-8')).hexdigest()
+            
+            if re.match(r'.+\.\S\S\S\S?$', url) is not None:
+                fname = url.split('/')[-1]
+            
+            fname = os.path.join(self.download_directory, fname)
+            
+            with open(fname, 'wb+') as f: f.write(content)
+            
+            self.web_view.setHtml("<html><head /><body><h1>file was downloaded from %s to %s</h1></body>"%(url, fname))
+            
+            reply.close()
+            reply.deleteLater()
+            
+            return
+
+
     def _init_webpage(self, verbosity, network_manager, splash_proxy_factory,
                       render_options):
         """ Create and initialize QWebPage and QWebView """
@@ -101,52 +147,7 @@ class BrowserTab(QObject):
         self.web_page.splash_proxy_factory = splash_proxy_factory
         self.web_page.render_options = render_options
         
-        
-        def unsupported_content_handler(reply):
-            log.msg("BrowserTab:: recieved unsupportedContent " + str(self.unsupported_content) )
-            
-            url = reply.url().toString()
-            
-            if self.unsupported_content is None:
-                reply.close()
-                reply.deleteLater()
-                self.web_page.raiseerror('Unsupported Media Type, no option set to deal with it', 415, url=url)
-                return
-            
-            if self.unsupported_content.lower() == 'drop':
-                reply.close()
-                reply.deleteLater()
-                self.web_view.setHtml("<html><head /><body><h1>unsupported content dropped for %s</h1></body>"%(url))
-                return
-                
-            if self.unsupported_content.lower() == 'download':
-                if self.download_directory is None:
-                    self.web_page.raiseerror('Option set to download unsupported content, but no download directory set', 415, url=url)
-                    reply.close()
-                    reply.deleteLater()
-                    return
-                
-                content = bytes(reply.readAll())
-                # try to determine the file name
-                fname = hashlib.sha1(url.encode('utf-8')).hexdigest()
-                
-                if re.match(r'.+\.\S\S\S\S?$', url) is not None:
-                    fname = url.split('/')[-1]
-                
-                fname = os.path.join(self.download_directory, fname)
-                
-                with open(fname, 'wb+') as f: f.write(content)
-                
-                self.web_view.setHtml("<html><head /><body><h1>file was downloaded from %s to %s</h1></body>"%(url, fname))
-                
-                reply.close()
-                reply.deleteLater()
-                
-                return
-                
-                
-        
-        self.web_page.unsupported_content_handler = unsupported_content_handler
+        self.web_page.unsupported_content_handler = self.unsupported_content_handler
 
         self._set_default_webpage_options(self.web_page)
         self._setup_webpage_events()
