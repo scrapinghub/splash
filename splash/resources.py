@@ -495,7 +495,7 @@ class DemoUI(_ValidatingResource):
                       <li><a href="https://github.com/scrapinghub/splash">Source Code</a></li>
                     </ul>
 
-                    <form class="navbar-form navbar-right" method="GET" action="/info">
+                    <form class="navbar-form navbar-right" method="GET" action="/info" target="_new">
                       <input type="hidden" name="wait" value="0.5">
                       <input type="hidden" name="images" value="1">
                       <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
