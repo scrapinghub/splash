@@ -65,6 +65,7 @@ install_deps () {
         netbase \
         ca-certificates \
         xvfb \
+        libgl1-mesa-dri \
         pkg-config \
         python3 \
         qt55base \
