@@ -81,12 +81,6 @@ Ubuntu 14.04 (manual way)
         Change back to the parent directory of splash, i.e. `cd ~`
        
         $ sudo pip3 install splash/
-        
-3. **OPTIONAL** Remove packages unnecessary for Splash:
-        
-        $ sudo ./provision.sh remove_builddeps
-
-        $ sudo ./provision.sh remove_extra
 
 
 To run the server execute the following command::
