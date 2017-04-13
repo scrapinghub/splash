@@ -77,14 +77,17 @@ Ubuntu 14.04 (manual way)
         $ sudo ./provision.sh install_pyqt5
        
         $ sudo ./provision.sh install_python_deps
-       
-        $ sudo ./provision.sh remove_builddeps
-       
-        $ sudo ./provision.sh remove_extra
-       
+        
         Change back to the parent directory of splash, i.e. `cd ~`
        
         $ sudo pip3 install splash/
+        
+3. **OPTIONAL** Remove packages unecessary for Splash:
+        
+        $ sudo ./provision.sh remove_builddeps
+
+        $ sudo ./provision.sh remove_extra
+
 
 To run the server execute the following command::
 
