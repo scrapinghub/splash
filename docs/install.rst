@@ -82,7 +82,7 @@ Ubuntu 14.04 (manual way)
        
         $ sudo pip3 install splash/
         
-3. **OPTIONAL** Remove packages unecessary for Splash:
+3. **OPTIONAL** Remove packages unnecessary for Splash:
         
         $ sudo ./provision.sh remove_builddeps
 
