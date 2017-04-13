@@ -80,7 +80,7 @@ Ubuntu 14.04 (manual way)
        
         $ sudo ./provision.sh remove_builddeps
        
-        $ sudo ./provision.sh reomve_extra
+        $ sudo ./provision.sh remove_extra
        
         Change back to the parent directory of splash, i.e. `cd ~`
        
