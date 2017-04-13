@@ -64,19 +64,10 @@ Ubuntu 14.04 (manual way)
 
         $ cd splash/dockerfiles/splash   
         
-        $ sudo ./provision.sh prepare_install 
-        
-        $ sudo ./provision.sh install_msfonts 
-        
-        $ sudo ./provision.sh install_builddeps
-        
-        $ sudo ./provision.sh install_deps
-        
-        $ sudo ./provision.sh install_extra_fonts
-       
-        $ sudo ./provision.sh install_pyqt5
-       
-        $ sudo ./provision.sh install_python_deps
+        $ sudo ./provision.sh prepare_install install_msfonts \
+                              install_builddeps install_deps \
+                              install_extra_fonts install_pyqt5 \
+                              install_python_deps install_flash
         
         Change back to the parent directory of splash, i.e. `cd ~`
        
