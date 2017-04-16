@@ -14,10 +14,9 @@ Splash - A javascript rendering service
    :alt: Join the chat at https://gitter.im/scrapinghub/splash
    :target: https://gitter.im/scrapinghub/splash
 
-Splash is a javascript rendering service with an HTTP API. It's a lightweight
-browser with an HTTP API, implemented in Python using Twisted and QT.
+Splash is a JavaScript rendering service developed by the folks at `Scrapinghub`_ to bring JavaScript support to web scrapers. It is a lightweight headless browser with a HTTP API so any service can use it to render pages that require JavaScript.
 
-It's fast, lightweight and state-less which makes it easy to distribute.
+It's fast, lightweight and state-less, which makes it easy to distribute.
 
 Documentation
 -------------
