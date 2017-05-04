@@ -54,6 +54,8 @@ class UnsupportedContentTest(BaseLuaRenderTest):
         function main(splash)
             splash.unsupported_content = 'download'
             splash.download_directory="%s"
+            local d = splash.download_directory
+            local u = splash.unsupported_content
             assert(splash:go("http://orimi.com/pdf-test.pdf"))
             return {png=splash:png()}
         end
