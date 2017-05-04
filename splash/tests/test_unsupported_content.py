@@ -67,6 +67,16 @@ class UnsupportedContentTest(BaseLuaRenderTest):
         
         d.cleanup()
         
+    def test_download_nodir(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.unsupported_content = 'download'
+            assert(splash:go("http://orimi.com/pdf-test.pdf"))
+            return {png=splash:png()}
+        end
+        """ )
+        self.assertStatusCode(resp, 400)
+        
     def test_discard(self):
         resp = self.request_lua("""
         function main(splash)
