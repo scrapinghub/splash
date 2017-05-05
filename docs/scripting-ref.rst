@@ -144,6 +144,32 @@ To enable response content tracking per-request call
 :ref:`splash-request-enable-response-body` in a :ref:`splash-on-request`
 callback.
 
+.. _splash-unsupported-content:
+
+splash.unsupported_content
+---------------------
+
+Defines the way to handle content of unsupported type (e.g. PDFs).
+
+**Signature:** ``splash.images_enabled = "drop"/"download"``
+
+By default, content of unsupported type is discarded. If `unsupported_content`
+is set to "download", a download directory has to be provided.
+
+
+.. _splash-download-directory:
+
+splash.download_directory
+---------------------
+
+Defines the directory where unsupported content is downloaded.
+
+**Signature:** ``splash.download_directory = path``
+
+This option is required only if `unsupported_content` is set to "download".
+
+
+
 Methods
 ~~~~~~~
 
