@@ -11,6 +11,7 @@ usage -- print this message
 prepare_install -- prepare image for installation
 install_deps -- install system-level dependencies
 install_builddeps -- install system-level build-dependencies
+install_qtwebkit -- install updated WebKit for QT
 install_pyqt5 -- install PyQT5 from sources
 install_python_deps -- install python-level dependencies
 install_msfonts -- agree with EULA and install Microsoft fonts
@@ -24,10 +25,10 @@ EOF
 
 env | grep SPLASH
 
-SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.17"}
-SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.5.1"}
-SPLASH_QT_PATH=${SPLASH_QT_PATH:-"/opt/qt55"}
-SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"1"}
+SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.2"}
+SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.8.2"}
+SPLASH_QT_PATH=${SPLASH_QT_PATH:-"/opt/qt58"}
+SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"4"}
 
 # '2' is not fully supported by this script!
 SPLASH_PYTHON_VERSION=${SPLASH_PYTHON_VERSION:-"3"}
@@ -59,7 +60,7 @@ prepare_install () {
 
 install_deps () {
     # Install package dependencies.
-    apt-add-repository -y ppa:beineri/opt-qt551-trusty && \
+    apt-add-repository -y ppa:beineri/opt-qt58-xenial && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         netbase \
@@ -67,14 +68,17 @@ install_deps () {
         xvfb \
         pkg-config \
         python3 \
-        qt55base \
-        qt55webkit \
-        qt55svg \
-        libre2 \
-        libicu52 \
-        liblua5.2-0 \
+        qt58base \
+        qt58svg \
         zlib1g
 }
+
+
+install_qtwebkit () {
+    # Install webkit from https://github.com/annulen/webkit
+    echo "TODO"
+}
+
 
 install_builddeps () {
     # Install build dependencies for package (and its pip dependencies).
@@ -95,13 +99,29 @@ install_builddeps () {
         mesa-common-dev
 }
 
+download_unpack_tarballs() {
+    mkdir -p /downloads && \
+    chmod a+rw /downloads && \
+    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
+    ls -lh /downloads && \
+    mkdir -p /builds && \
+    chmod a+rw /builds && \
+    pushd /builds && \
+    tar xzf /downloads/sip.tar.gz --keep-newer-files  && \
+    tar xzf /downloads/pyqt5.tar.gz --keep-newer-files  && \
+    popd
+}
+
+
 install_pyqt5 () {
     _activate_venv && \
     ${_PYTHON} --version && \
     mkdir -p /downloads && \
     chmod a+rw /downloads && \
-    curl -L -o /downloads/sip.tar.gz http://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
-    curl -L -o /downloads/pyqt5.tar.gz http://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt-gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
+    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
+    ls -lh /downloads && \
     # TODO: check downloads
     mkdir -p /builds && \
     chmod a+rw /builds && \
@@ -115,10 +135,14 @@ install_pyqt5 () {
     popd  && \
     # PyQt5
     tar xzf /downloads/pyqt5.tar.gz --keep-newer-files  && \
-    pushd PyQt-gpl-${SPLASH_PYQT_VERSION}  && \
-    ${_PYTHON} configure.py -c --qmake "${SPLASH_QT_PATH}/bin/qmake" --verbose \
+    pushd PyQt5_gpl-${SPLASH_PYQT_VERSION}  && \
+#        --qmake "${SPLASH_QT_PATH}/bin/qmake" \
+    ${_PYTHON} configure.py -c \
+        --verbose \
         --confirm-license \
         --no-designer-plugin \
+        --no-qml-plugin \
+        --no-python-dbus \
         -e QtCore \
         -e QtGui \
         -e QtWidgets \
@@ -137,7 +161,7 @@ install_pyqt5 () {
 install_python_deps () {
     # Install python-level dependencies.
     _activate_venv && \
-    ${_PYTHON} -m pip install -U pip && \
+    ${_PYTHON} -m pip install -U pip setuptools && \
     ${_PYTHON} -m pip install \
         qt5reactor==0.3 \
         psutil==5.0.0 \
