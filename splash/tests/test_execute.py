@@ -15,7 +15,7 @@ import pytest
 lupa = pytest.importorskip("lupa")
 
 from splash.exceptions import ScriptError
-from splash.qtutils import qt_551_plus
+from splash.qtutils import has_min_qt_version
 from splash import __version__ as splash_version
 from splash.har_builder import HarBuilder
 from splash.har.utils import get_response_body_bytes
@@ -1774,7 +1774,7 @@ class GoTest(BaseLuaRenderTest):
 
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
-    if not qt_551_plus():
+    if not has_min_qt_version('5.5.1'):
         pytestmark = pytest.mark.xfail(
             run=False,
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. "
@@ -3071,6 +3071,12 @@ function alter_state(splash)
 end
 """
 
+    def _process_outer_size(self, size):
+        if not has_min_qt_version('5.8'):
+            return size
+        w, h = map(int, size.split('x'))
+        return "{}x{}".format(w - 1, h - 1)
+
     def return_json_from_lua(self, script, **kwargs):
         resp = self.request_lua(script, kwargs)
         if resp.ok:
@@ -3098,32 +3104,36 @@ end
         self.assertEqual(out, {'width': w, 'height': h})
 
     def test_default_dimensions(self):
-        self.assertSizeAfter("",
-                             {'inner': defaults.VIEWPORT_SIZE,
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': defaults.VIEWPORT_SIZE})
+        self.assertSizeAfter("", {
+            'inner': defaults.VIEWPORT_SIZE,
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': defaults.VIEWPORT_SIZE
+        })
 
     def test_set_sizes_as_table(self):
-        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
-                             {'inner': '111x222',
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': '111x222'})
-        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}',
-                             {'inner': '444x333',
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': '444x333'})
+        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}', {
+            'inner': '111x222',
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': '111x222'
+        })
+        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}', {
+            'inner': '444x333',
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': '444x333'
+        })
 
     def test_viewport_size_roundtrips(self):
         self.assertSizeAfter(
             'splash:set_viewport_size(splash:get_viewport_size())',
             {'inner': defaults.VIEWPORT_SIZE,
-             'outer': defaults.VIEWPORT_SIZE,
+             'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
              'client': defaults.VIEWPORT_SIZE})
 
     def test_viewport_size(self):
         self.assertSizeAfter('splash:set_viewport_size(2000, 2000)',
                              {'inner': '2000x2000',
-                              'outer': defaults.VIEWPORT_SIZE,
+                              'outer': self._process_outer_size(
+                                  defaults.VIEWPORT_SIZE),
                               'client': '2000x2000'})
 
     def test_viewport_size_validation(self):
@@ -3186,7 +3196,8 @@ end
                              'splash:wait(0.1);'
                              'splash:set_viewport_full();',
                              {'inner': '%dx2000' % w,
-                              'outer': defaults.VIEWPORT_SIZE,
+                              'outer': self._process_outer_size(
+                                  defaults.VIEWPORT_SIZE),
                               'client': '%dx2000' % w},
                              url=self.mockurl('tall'))
 

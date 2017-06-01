@@ -294,11 +294,11 @@ def get_versions():
     }
 
 
-def qt_551_plus():
-    """ Return True if Qt version is 5.5.1+ """
+def has_min_qt_version(version):
+    """ Return True is Qt version is greater or equal to ``version`` """
     from distutils.version import LooseVersion
     from PyQt5.QtCore import QT_VERSION_STR
-    return LooseVersion(QT_VERSION_STR) >= LooseVersion("5.5.1")
+    return LooseVersion(QT_VERSION_STR) >= LooseVersion(version)
 
 
 def get_headers_dict(request_or_reply):

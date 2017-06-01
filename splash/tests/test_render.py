@@ -11,7 +11,7 @@ from PIL import Image, ImageChops
 from six.moves.urllib import parse as urlparse
 
 from splash import defaults
-from splash.qtutils import qt_551_plus
+from splash.qtutils import has_min_qt_version
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 
@@ -210,7 +210,7 @@ class Base(object):
                 self.assertStatusCode(r, 400)
 
         @pytest.mark.skipif(
-            not qt_551_plus(),
+            not has_min_qt_version('5.5.1'),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
         )
         def test_resource_timeout(self):
@@ -222,7 +222,7 @@ class Base(object):
             self.assertStatusCode(resp, 200)
 
         @pytest.mark.skipif(
-            not qt_551_plus(),
+            not has_min_qt_version('5.5.1'),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
         )
         def test_resource_timeout_abort_first(self):

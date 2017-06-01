@@ -6,7 +6,7 @@ import shutil
 import requests
 import pytest
 
-from splash.tests.utils import TestServers, SplashServer
+from splash.tests.utils import MockServers, SplashServer
 from splash.tests.test_render import BaseRenderTest
 
 
@@ -90,7 +90,7 @@ class DefaultFiltersTest(BaseFiltersTest):
         os.unlink(dst)
 
     def test_testing_setup(self):
-        with TestServers() as ts2:
+        with MockServers() as ts2:
             # no filters, no default.txt
             r = self.ts_request(ts2)
             self.assertFiltersWork(r, noscript=False, noscript2=False)
@@ -102,7 +102,7 @@ class DefaultFiltersTest(BaseFiltersTest):
 
     def test_default_works(self):
 
-        ts2 = TestServers()
+        ts2 = MockServers()
 
         # create default.txt. It is the same as 'noscript.txt'.
         self.create_default_txt(ts2, copy_from='noscript.txt')
