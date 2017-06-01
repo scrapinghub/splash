@@ -1,3 +1,10 @@
+# Docker file for running Splash tests.
+# It needs a base image named "splash";
+# build it by running ``docker build -t splash .`` from Splash
+# source checkout.
+#
+# XXX: in future it should be possible to base this image on
+# scrapinghub/splash:master.
 FROM splash
 
 RUN apt-get update -q && \
@@ -13,6 +20,9 @@ RUN apt-get update -q && \
 
 RUN pip install -r /app/requirements-dev.txt
 RUN pip install -U pytest-cov coverage codecov pytest-xdist
+
+ADD . /app
+RUN pip3 install /app
 
 WORKDIR /app
 RUN find . -name \*.pyc -delete

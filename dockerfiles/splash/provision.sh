@@ -9,11 +9,11 @@ Usage: $0 COMMAND [ COMMAND ... ]
 Available commands:
 usage -- print this message
 prepare_install -- prepare image for installation
-install_deps -- install system-level dependencies
-install_builddeps -- install system-level build-dependencies
+install_deps -- install general system-level dependencies
+install_qtwebkit_deps -- install Qt and WebKit dependencies
 install_qtwebkit -- install updated WebKit for QT
 install_pyqt5 -- install PyQT5 from sources
-install_python_deps -- install python-level dependencies
+install_python_deps -- install python packages
 install_msfonts -- agree with EULA and install Microsoft fonts
 install_extra_fonts -- install extra fonts
 install_flash -- install flash plugin
@@ -27,10 +27,9 @@ env | grep SPLASH
 
 SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.2"}
 SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.8.2"}
-SPLASH_QT_PATH=${SPLASH_QT_PATH:-"/opt/qt58"}
-SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"4"}
+SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"1"}
 
-# '2' is not fully supported by this script!
+# '2' is not supported by this script; allowed values are "3" and "venv" (?).
 SPLASH_PYTHON_VERSION=${SPLASH_PYTHON_VERSION:-"3"}
 
 if [[ ${SPLASH_PYTHON_VERSION} == "venv" ]]; then
@@ -54,77 +53,97 @@ prepare_install () {
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         curl \
+        wget \
         software-properties-common \
+        apt-transport-https \
         python3-software-properties
 }
 
 install_deps () {
-    # Install package dependencies.
-    apt-add-repository -y ppa:beineri/opt-qt58-xenial && \
-    apt-get update -q && \
-    apt-get install -y --no-install-recommends \
-        netbase \
-        ca-certificates \
-        xvfb \
-        pkg-config \
-        python3 \
-        qt58base \
-        qt58svg \
-        zlib1g
-}
-
-
-install_qtwebkit () {
-    # Install webkit from https://github.com/annulen/webkit
-    echo "TODO"
-}
-
-
-install_builddeps () {
-    # Install build dependencies for package (and its pip dependencies).
+    # Install system dependencies for Qt, Python packages, etc.
     # ppa:pi-rho/security is a repo for libre2-dev
     add-apt-repository -y ppa:pi-rho/security && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
+        python3 \
         python3-dev \
         python3-pip \
         build-essential \
         libre2-dev \
         liblua5.2-dev \
         libsqlite3-dev \
+        zlib1g \
         zlib1g-dev \
+        netbase \
+        ca-certificates \
+        pkg-config
+}
+
+install_qtwebkit_deps () {
+    apt-get install -y --no-install-recommends \
+        xvfb \
         libjpeg-turbo8-dev \
         libgl1-mesa-dev \
         libglu1-mesa-dev \
-        mesa-common-dev
+        mesa-common-dev \
+        libfontconfig1-dev \
+        libicu-dev \
+        libpng12-dev \
+        libxslt1-dev \
+        libxml2-dev \
+        libhyphen-dev \
+        libgbm1 \
+        libxcb-image0 \
+        libxcb-icccm4 \
+        libxcb-keysyms1 \
+        libxcb-render-util0 \
+        libxi6 \
+        libxcomposite-dev \
+        libxrender-dev \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
+        rsync
 }
 
-download_unpack_tarballs() {
+_ensure_folders () {
     mkdir -p /downloads && \
-    chmod a+rw /downloads && \
-    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
-    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
-    ls -lh /downloads && \
     mkdir -p /builds && \
-    chmod a+rw /builds && \
+    chmod a+rw /downloads && \
+    chmod a+rw /builds
+}
+
+install_official_qt () {
+    # XXX: if qt version is changed, Dockerfile should be updated,
+    # as well as qt-installer-noninteractive.qs script.
+    _ensure_folders && \
+    pushd downloads && \
+    wget http://download.qt.io/official_releases/qt/5.8/5.8.0/qt-opensource-linux-x64-5.8.0.run && \
+    popd && \
+    chmod +x /downloads/qt-opensource-linux-x64-5.8.0.run && \
+    xvfb-run /downloads/qt-opensource-linux-x64-5.8.0.run \
+        --script /tmp/script.qs \
+        | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))'
+}
+
+
+install_qtwebkit () {
+    # Install webkit from https://github.com/annulen/webkit
+    _ensure_folders && \
+    curl -L -o /downloads/qtwebkit.tar.xz https://github.com/annulen/webkit/releases/download/qtwebkit-tp5/qtwebkit-tp5-qt58-linux-x64.tar.xz && \
     pushd /builds && \
-    tar xzf /downloads/sip.tar.gz --keep-newer-files  && \
-    tar xzf /downloads/pyqt5.tar.gz --keep-newer-files  && \
-    popd
+    tar xvfJ /downloads/qtwebkit.tar.xz --keep-newer-files && \
+    rsync -aP /builds/qtwebkit-tp5-qt58-linux-x64/* `qmake -query QT_INSTALL_PREFIX`
 }
 
 
 install_pyqt5 () {
+    _ensure_folders && \
     _activate_venv && \
     ${_PYTHON} --version && \
-    mkdir -p /downloads && \
-    chmod a+rw /downloads && \
     curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
     curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
     ls -lh /downloads && \
     # TODO: check downloads
-    mkdir -p /builds && \
-    chmod a+rw /builds && \
     pushd /builds && \
     # SIP
     tar xzf /downloads/sip.tar.gz --keep-newer-files  && \
@@ -161,7 +180,7 @@ install_pyqt5 () {
 install_python_deps () {
     # Install python-level dependencies.
     _activate_venv && \
-    ${_PYTHON} -m pip install -U pip setuptools && \
+    ${_PYTHON} -m pip install -U pip setuptools six && \
     ${_PYTHON} -m pip install \
         qt5reactor==0.3 \
         psutil==5.0.0 \
@@ -176,16 +195,17 @@ install_python_deps () {
 
 install_msfonts() {
     # Agree with EULA and install Microsoft fonts
-    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu trusty multiverse" && \
-    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu trusty-updates multiverse" && \
-    apt-get update && \
+#    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu xenial multiverse" && \
+#    apt-add-repository -y "deb http://archive.ubuntu.com/ubuntu xenial-updates multiverse" && \
+#    apt-get update && \
     echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections && \
     apt-get install --no-install-recommends -y ttf-mscorefonts-installer
 }
 
 install_extra_fonts() {
-    # Install extra fonts (Chinese)
+    # Install extra fonts (Chinese and other)
     apt-get install --no-install-recommends -y \
+        fonts-liberation \
         ttf-wqy-zenhei \
         fonts-arphic-gbsn00lp \
         fonts-arphic-bsmi00lp \
@@ -204,6 +224,9 @@ remove_builddeps () {
     # Uninstall build dependencies.
     apt-get remove -y --purge \
         python3-dev \
+        libpython3.5-dev \
+        libpython3.5 \
+        libpython3.5-dev \
         build-essential \
         libre2-dev \
         liblua5.2-dev \
@@ -211,8 +234,7 @@ remove_builddeps () {
         libc-dev \
         libjpeg-turbo8-dev \
         libcurl3 \
-        gcc cpp binutils perl && \
-    apt-get autoremove -y && \
+        gcc cpp cpp-5 binutils perl rsync && \
     apt-get clean -y
 }
 
@@ -222,17 +244,13 @@ remove_extra () {
     rm -rf \
         /builds \
         /downloads \
-        ${SPLASH_QT_PATH}/examples \
-        ${SPLASH_QT_PATH}/include \
-        ${SPLASH_QT_PATH}/mkspecs \
-        ${SPLASH_QT_PATH}/bin \
-        ${SPLASH_QT_PATH}/doc \
-        /usr/share/perl \
-        /usr/share/perl5 \
-        /usr/share/man \
-        /usr/share/info \
-        /usr/share/doc \
-        /var/lib/apt/lists/*
+        /opt/qt58/Docs \
+        /opt/qt58/Tools \
+        /opt/qt58/Examples
+#        /usr/share/man \
+#        /usr/share/info \
+#        /usr/share/doc
+#        /var/lib/apt/lists/*
 }
 
 if [ \( $# -eq 0 \) -o \( "$1" = "-h" \) -o \( "$1" = "--help" \) ]; then
