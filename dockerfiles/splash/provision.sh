@@ -17,8 +17,8 @@ install_python_deps -- install python-level dependencies
 install_msfonts -- agree with EULA and install Microsoft fonts
 install_extra_fonts -- install extra fonts
 install_flash -- install flash plugin
-remove_builddeps -- remove build-dependencies
-remove_extra -- remove files that are unnecessary to run Splash
+remove_builddeps -- WARNING: only for Docker! Remove build-dependencies.
+remove_extra -- WARNING: only for Docker! Eemove files that are not necessary to run Splash.
 
 EOF
 }
@@ -200,6 +200,7 @@ install_flash () {
 }
 
 remove_builddeps () {
+    # WARNING: only for Docker, don't run blindly!
     # Uninstall build dependencies.
     apt-get remove -y --purge \
         python3-dev \
@@ -216,6 +217,7 @@ remove_builddeps () {
 }
 
 remove_extra () {
+    # WARNING: only for Docker, don't run blindly!
     # Remove unnecessary files.
     rm -rf \
         /builds \
