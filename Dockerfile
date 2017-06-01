@@ -142,7 +142,7 @@ VOLUME [ \
     "/etc/splash/lua_modules" \
 ]
 
-EXPOSE 8050 8051 5023
+EXPOSE 8050 5023
 
 ENTRYPOINT [ \
     "python3", \

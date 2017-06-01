@@ -13,10 +13,10 @@ Linux + Docker
 
 3. Start the container::
 
-       $ sudo docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash
+       $ sudo docker run -p 8050:8050 -p 5023:5023 scrapinghub/splash
 
 4. Splash is now available at 0.0.0.0 at ports
-   8050 (http), 8051 (https) and 5023 (telnet).
+   8050 (http) and 5023 (telnet).
 
 OS X + Docker
 -------------
@@ -36,7 +36,7 @@ OS X + Docker
 
 3. Start the container::
 
-       $ docker run -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash
+       $ docker run -p 5023:5023 -p 8050:8050 scrapinghub/splash
 
 4. Figure out the ip address of the docker-machine::
 
@@ -45,7 +45,7 @@ OS X + Docker
        192.168.59.103
 
 5. Splash is available at the returned IP address at ports
-   8050 (http), 8051 (https) and 5023 (telnet).
+   8050 (http) and 5023 (telnet).
 
 .. _Docker: http://docker.io
 .. _Instructions: https://docs.docker.com/mac/

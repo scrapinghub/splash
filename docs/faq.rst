@@ -187,7 +187,7 @@ There are two ways to go about it:
 - at startup, with the ``--disable-private-mode`` argument, e.g., if you're
   using Docker::
 
-        $ sudo docker run -it -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
+        $ sudo docker run -it -p 8050:8050 scrapinghub/splash --disable-private-mode
 
 - at runtime when using the ``/execute`` endpoint and setting
   :ref:`splash-private-mode-enabled` attribute to ``false``
