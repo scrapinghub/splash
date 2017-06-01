@@ -19,8 +19,16 @@ from splash import defaults
 from splash.har.qt import cookies2har
 from splash.network_manager import SplashQNetworkAccessManager
 from splash.qtrender_image import QtImageRenderer
-from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
-                            qurl2ascii, to_qurl, qt_send_key, qt_send_text)
+from splash.qtutils import (
+    OPERATION_QT_CONSTANTS,
+    MediaSourceEnabled,
+    WrappedSignal,
+    qt2py,
+    qurl2ascii,
+    to_qurl,
+    qt_send_key,
+    qt_send_text,
+)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
@@ -173,6 +181,9 @@ class BrowserTab(QObject):
         settings = web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
+
+        # enable Media Source by default, at least to make html5test.com work
+        settings.setAttribute(MediaSourceEnabled, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
         web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, scroll_bars)

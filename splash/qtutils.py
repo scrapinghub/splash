@@ -102,6 +102,11 @@ QT_KEY_INPUTS = {
     Qt.Key_Delete: chr(127),
 }
 
+# Constant from https://github.com/annulen/webkit which is not available
+# in PyQT:
+MediaSourceEnabled = QWebSettings.Accelerated2dCanvasEnabled + 1
+
+
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
 _qtapp = None
