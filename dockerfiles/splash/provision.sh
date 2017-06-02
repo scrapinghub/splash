@@ -53,7 +53,6 @@ prepare_install () {
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
         curl \
-        wget \
         software-properties-common \
         apt-transport-https \
         python3-software-properties
@@ -116,11 +115,10 @@ install_official_qt () {
     # XXX: if qt version is changed, Dockerfile should be updated,
     # as well as qt-installer-noninteractive.qs script.
     _ensure_folders && \
-    pushd downloads && \
-    wget http://download.qt.io/official_releases/qt/5.8/5.8.0/qt-opensource-linux-x64-5.8.0.run && \
-    popd && \
-    chmod +x /downloads/qt-opensource-linux-x64-5.8.0.run && \
-    xvfb-run /downloads/qt-opensource-linux-x64-5.8.0.run \
+    curl -L -o /downloads/qt-installer.run \
+               http://download.qt.io/official_releases/qt/5.8/5.8.0/qt-opensource-linux-x64-5.8.0.run && \
+    chmod +x /downloads/qt-installer.run && \
+    xvfb-run /downloads/qt-installer.run \
         --script /tmp/script.qs \
         | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))'
 }
