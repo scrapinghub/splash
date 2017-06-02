@@ -18,7 +18,7 @@ before_install:
     - docker build -t splash-tests -f dockerfiles/tests/Dockerfile .
 
 script:
-    - docker run -it splash-test
+    - docker run -it splash-tests
 
 #after_success:
 #    - codecov
