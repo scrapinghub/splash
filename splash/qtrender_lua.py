@@ -708,6 +708,15 @@ class Splash(BaseExposedObject):
         return PyResult.yield_(cmd)
 
     @command()
+    def download(self):
+        return self.tab.download()
+    
+    @command()
+    def download_filename(self):
+        return self.tab.download_filename
+    
+    
+    @command()
     def html(self):
         return self.tab.html()
 

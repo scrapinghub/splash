@@ -92,8 +92,16 @@ class BrowserTab(QObject):
         
         self.unsupported_content = None
         self.download_directory = None
+        self.download_filename = None
 
-
+    
+    def download(self):
+        if self.download_filename is None: return None
+        f = open(self.download_filename, 'rb')
+        data = f.read()
+        f.close()
+        return data
+    
     def download_unsupported_content_handler(self, reply, fname):
         
         #req_id = self.http_client.network_manager._get_request_id(reply.request())
@@ -105,6 +113,8 @@ class BrowserTab(QObject):
         with open(fname, 'wb+') as f: f.write(content)
         
         self.web_view.setHtml("<html><head /><body><h1>file was downloaded to %s</h1></body>"%(fname,))
+        
+        self.download_filename = fname
         
 
     def unsupported_content_handler(self, reply):
@@ -148,6 +158,9 @@ class BrowserTab(QObject):
                                  callback=functools.partial(
                                      self.download_unsupported_content_handler,
                                      fname=fname))
+            
+            
+            
             reply.close()
             reply.deleteLater()
             
