@@ -151,7 +151,7 @@ splash.unsupported_content
 
 Defines the way to handle content of unsupported type (e.g. PDFs).
 
-**Signature:** ``splash.images_enabled = "drop"/"download"``
+**Signature:** ``splash.unsupported_content = "drop"/"download"``
 
 By default, content of unsupported type is discarded. If `unsupported_content`
 is set to "download", a download directory has to be provided.
