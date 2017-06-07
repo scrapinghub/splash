@@ -23,7 +23,7 @@ Documentation
 -------------
 
 Documentation is available here:
-http://splash.readthedocs.org/
+https://splash.readthedocs.io/
 
 Using Splash with Scrapy
 ------------------------
@@ -34,10 +34,10 @@ Support
 -------
 
 Open source support is provided here in GitHub. Please `create a question
-issue`_ (ie. issue with "question" label).
+issue`_.
 
 Commercial support is also available by `Scrapinghub`_.
 
 .. _create a question issue: https://github.com/scrapinghub/splash/issues/new?labels=question
-.. _Scrapinghub: http://scrapinghub.com
+.. _Scrapinghub: https://scrapinghub.com
 .. _scrapy-splash library: https://github.com/scrapy-plugins/scrapy-splash
