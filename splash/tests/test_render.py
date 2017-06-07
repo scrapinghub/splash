@@ -204,7 +204,8 @@ class Base(object):
             self.assertStatusCode(r, 200)
 
         def test_invalid_wait(self):
-            for wait in ['foo', '11', '11.0']:
+            wait = defaults.MAX_WAIT_TIME + 1
+            for wait in ['foo', "%d" % wait, '%0.1f' % wait]:
                 r = self.request({'url': self.mockurl("jsrender"),
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
