@@ -56,17 +56,23 @@ OS X + Docker
 Ubuntu 14.04 (manual way)
 -------------------------
 
-1. Install system dependencies (check
-`provision.sh <https://github.com/scrapinghub/splash/blob/master/dockerfiles/splash/provision.sh>`)
-
-2. Clone the repo from GitHub::
+1. Clone the repo from GitHub::
 
         $ git clone https://github.com/scrapinghub/splash/
 
-3. Install dependencies with pip::
+2. Install dependencies::
 
-        $ cd splash
-        $ pip3 install -r requirements.txt
+        $ cd splash/dockerfiles/splash   
+        
+        $ sudo ./provision.sh prepare_install install_msfonts \
+                              install_builddeps install_deps \
+                              install_extra_fonts install_pyqt5 \
+                              install_python_deps install_flash
+        
+        Change back to the parent directory of splash, i.e. `cd ~`
+       
+        $ sudo pip3 install splash/
+
 
 To run the server execute the following command::
 

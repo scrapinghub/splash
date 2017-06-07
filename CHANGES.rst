@@ -1,6 +1,15 @@
 Changes
 =======
 
+2.3.3 (2017-06-07)
+------------------
+
+* WebGL support in default Docker image;
+* Maximum value for ``wait`` argument in render.??? endpoints
+  is increased from 10 seconds to 30 seconds;
+* Lua sandbox limits (RAM and CPU) are raised;
+* documentation and testing improvements.
+
 2.3.2 (2017-03-03)
 ------------------
 
