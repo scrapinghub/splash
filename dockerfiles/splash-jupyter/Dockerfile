@@ -1,4 +1,4 @@
-FROM scrapinghub/splash:2.3.2
+FROM scrapinghub/splash:2.3.3
 
 # Install, use dev tools, and then clean up in one RUN transaction
 # to minimize image size.
