@@ -26,4 +26,4 @@ RUN pip3 install /app
 
 WORKDIR /app
 RUN find . -name \*.pyc -delete
-ENTRYPOINT py.test --cov=splash --doctest-modules --duration=50 -v splash
+ENTRYPOINT /app/dockerfiles/tests/runtests.sh
