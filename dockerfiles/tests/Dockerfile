@@ -16,7 +16,8 @@ RUN apt-get update -q && \
         build-essential \
         python3-cryptography \
         python3-openssl \
-        libsqlite3-dev
+        libsqlite3-dev \
+        git
 
 RUN pip install -r /app/requirements-dev.txt
 RUN pip install -U pytest-cov coverage codecov pytest-xdist

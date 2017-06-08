@@ -244,7 +244,8 @@ remove_extra () {
         /downloads \
         /opt/qt58/Docs \
         /opt/qt58/Tools \
-        /opt/qt58/Examples
+        /opt/qt58/Examples \
+        /app/.git
 #        /usr/share/man \
 #        /usr/share/info \
 #        /usr/share/doc
