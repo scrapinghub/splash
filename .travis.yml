@@ -8,20 +8,16 @@ branches:
         - master
         - /^\d\.\d+$/
 
-matrix:
-    include:
-        - env: SPLASH_PYTHON_VERSION="3" SPLASH_BUILD_PARALLEL_JOBS=2
-
-
 before_install:
-    - docker build -t splash .
+    - docker build -t splash -e SPLASH_BUILD_PARALLEL_JOBS=2 .
     - docker build -t splash-tests -f dockerfiles/tests/Dockerfile .
 
 script:
     - docker run -it splash-tests
 
-#after_success:
-#    - codecov
+after_success:
+    - docker run `bash <(curl -s https://codecov.io/env)` --entrypoint=codecov -it splash-tests
+
 #cache:
 #    directories:
 #        - $HOME/.cache/pip
