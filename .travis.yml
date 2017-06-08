@@ -9,7 +9,7 @@ branches:
         - /^\d\.\d+$/
 
 before_install:
-    - docker build -t splash -e SPLASH_BUILD_PARALLEL_JOBS=2 .
+    - docker build -t splash .
     - docker build -t splash-tests -f dockerfiles/tests/Dockerfile .
 
 script:
