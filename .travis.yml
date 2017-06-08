@@ -13,10 +13,7 @@ before_install:
     - docker build -t splash-tests -f dockerfiles/tests/Dockerfile .
 
 script:
-    - docker run -it splash-tests
-
-after_success:
-    - docker run `bash <(curl -s https://codecov.io/env)` --entrypoint=codecov -it splash-tests
+    - docker run `bash <(curl -s https://codecov.io/env)` -it splash-tests
 
 #cache:
 #    directories:
