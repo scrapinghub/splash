@@ -50,3 +50,8 @@ If you've changed Splash source code and want to re-run tests, repeat steps
 Repeating step (1) is only necessary if you're adding new
 dependencies to Splash (Python or system-level), or if you want to update
 the base Splash image (e.g. after a recent rebase on Splash master).
+
+There is a script in the root of Splash repository
+(``runtests-docker.sh``) which combines steps (2) and (3); you can use it
+during development to run tests: change Splash source code or testing source
+code, then run ``./runtests-docker.sh`` from source checkout.
