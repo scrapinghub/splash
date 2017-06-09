@@ -27,4 +27,4 @@ RUN pip3 install /app
 
 WORKDIR /app
 RUN find . -name \*.pyc -delete
-ENTRYPOINT /app/dockerfiles/tests/runtests.sh
+ENTRYPOINT ["/app/dockerfiles/tests/runtests.sh"]
