@@ -316,7 +316,7 @@ is restricted, and there are resource limits (quite loose though).
 
 To disable the sandbox start Splash with ``--disable-lua-sandbox`` option::
 
-    $ python -m splash.server --disable-lua-sandbox
+    $ docker run -it -p 8050:8050 scrapinghub/splash --disable-lua-sandbox
 
 Timeouts
 --------
