@@ -235,6 +235,15 @@ some of the methods will fail, returning the error flag.
 
 **Async:** no.
 
+.. note::
+
+    **Don't use** ``splash:select(..):exists()`` to check
+    if an element is present - :ref:`splash-select` returns ``nil``
+    if selector returns nothing. Check for ``nil`` instead.
+
+    ``element:exists()`` should only be used if you already have
+    an Element instance, but suspect it can be removed from the current DOM.
+
 There are several reasons why the element can be absent from DOM.
 One of the reasons is that the element was removed by some JavaScript code.
 
