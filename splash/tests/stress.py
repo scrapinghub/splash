@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import sys, requests, random, optparse, time, json
+import sys, random, optparse, time, json
 from itertools import islice
 from threading import Thread
 from collections import Counter
@@ -10,6 +10,7 @@ import six
 from six.moves.queue import Queue
 
 from .utils import SplashServer, MockServer
+
 
 class StressTest():
 
