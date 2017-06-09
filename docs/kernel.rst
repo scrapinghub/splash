@@ -25,12 +25,33 @@ Then start the container::
 
     Without ``-it`` flags you won't be able to stop the container using Ctrl-C.
 
-If you're on Linux, Jupyter server with Splash kernel enabled
-will be available at http://0.0.0.0:8888.
+This command should print something like this::
 
-If you use boot2docker_, run ``$ boot2docker ip`` to get the ip address,
-the visit http://<ip-returned-by-boot2docker>:8888. If you use
-docker-machine_, run ``$ docker-machine ip <your machine>`` to get the ip.
+    Copy/paste this URL into your browser when you connect for the first time,
+    to login with a token:
+        http://localhost:8888/?token=e2435ae336d22b23d5e868d03ce728bc33e73b6159e391ba
+
+To view Jupyter, open the suggested location in a browser.
+It should display an usual Jupyter Notebook overview page.
+
+.. note::
+
+    In older Docker setups (e.g. with boot2docker_ on OS X) you may have
+    to replace 'localhost' with the IP address Docker is available on,
+    e.g. a result of ``boot2docker ip`` in case of boot2docker or
+    ``docker-machine ip <your machine>`` in case of docker-machine_.
+
+Click "New" button and choose "Splash" in the drop-down list - Splash Notebook
+should open.
+
+Splash Notebook looks like an IPython notebook or other Jupyter-based
+notebooks; it allows to run and develop Splash Lua scripts interactively.
+For example, try entering ``splash:go("you-favorite-website")`` in a cell,
+execute it, then enter ``splash:png()`` in the next cell and run it
+as well - you should get a screenshot of the website displayed inline.
+
+Persistence
+-----------
 
 By default, notebooks are stored in a Docker container; they are destroyed
 when you restart an image. To persist notebooks you can mount a local folder
@@ -38,6 +59,10 @@ to ``/notebooks``. For example, let's use current folder to store the
 notebooks::
 
     $ docker run -v `/bin/pwd`/notebooks:/notebooks -p 8888:8888 -it splash-jupyter
+
+
+Live Webkit window
+------------------
 
 To view Live Webkit window with web inspector when Splash-Jupyter is executed
 from Docker, you will need to pass additional docker parameters to share the
@@ -51,29 +76,14 @@ command line flag::
                  -p 8888:8888 \
                  -it scrapinghub/splash-jupyter --disable-xvfb
 
-Alternatively, to enable live Webkit window you can install Splash
-in a "manual way" - see :ref:`manual-install-ubuntu`.
+.. note::
 
-1. Install IPython/Jupyter with notebook feature. Splash kernel requires
-   IPython 4.x::
-
-       $ pip3 install 'ipython[notebook] >= 4.1.2, < 5.0'
-
-2. Make sure Splash is installed: run ``pip3 install -U splash``. If you use
-   Splash master branch run ``pip3 install -U .`` from source checkout
-   instead.
-
-3. Let IPython know about Splash kernel by running the following command::
-
-       $ python3 -m splash.kernel install
-
-To run IPython with Splash notebook, first start IPython notebook and then
-create a new Splash notebook using "New" button.
+    The command above is tested on Linux.
 
 From Notebook to HTTP API
 -------------------------
 
-After you finished developing the script using a Jupyter Notebook,
+After you finished developing the script using Splash Notebook,
 you may want to convert it to a form suitable for submitting
 to Splash HTTP API (see :ref:`execute`).
 
