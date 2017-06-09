@@ -255,13 +255,13 @@ class HTMLElement(object):
     def send_keys(self, text):
         """ Send key events to the element separated by whitespaces """
         if not self.focused():
-            self.mouse_click()
+            self.mouse_click(0, 0)
         self.tab.send_keys(text)
 
     def send_text(self, text):
         """ Send text to the element """
         if not self.focused():
-            self.mouse_click()
+            self.mouse_click(0, 0)
         self.tab.send_text(text)
 
     def focused(self):
