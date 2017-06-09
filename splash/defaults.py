@@ -4,8 +4,7 @@ TIMEOUT = 30
 WAIT_TIME = 0.0
 RESOURCE_TIMEOUT = 0.0
 
-MAX_TIMEOUT = 60.0
-MAX_WAIT_TIME = 30.0
+MAX_TIMEOUT = 90.0
 
 # Default size of browser window.  As there're no decorations, this affects
 # both "window.inner*" and "window.outer*" values.
