@@ -101,6 +101,11 @@ install_qtwebkit_deps () {
         libxrender-dev \
         libgstreamer1.0-dev \
         libgstreamer-plugins-base1.0-dev \
+        libgstreamer-plugins-good1.0-dev \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-x \
+        gstreamer1.0-libav \
+        webp \
         rsync
 }
 
