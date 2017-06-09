@@ -665,7 +665,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local username = splash:select('input[name="username"]')
-            username:mouse_click()   -- fixme
+            username:mouse_click(0, 0)   -- fixme
             splash:wait(0)
 
             assert(username:send_text('super '))
@@ -993,9 +993,9 @@ class HTMLElementTest(BaseLuaRenderTest):
                 prevented = event.defaultPrevented
             end
 
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
 
             return {called=called, x=x, y=y, prevented=prevented}
@@ -1327,14 +1327,14 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             button.node:addEventListener('click', handler)
 
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
 
             button.node:removeEventListener('click', handler)
 
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
 
             return {called=called, x=x, y=y, prevented=prevented}
