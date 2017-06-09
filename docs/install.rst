@@ -21,69 +21,75 @@ Linux + Docker
 OS X + Docker
 -------------
 
-1. Install Docker_ (via the Toolbox Instructions_).
-2. Create, run & load the configuration for the docker-machine
-
-       $ docker-machine create default
-
-       $ docker-machine start default
-
-       $ eval "$(docker-machine env default)"
-
+1. Install Docker_ for Mac (see https://docs.docker.com/docker-for-mac/).
 2. Pull the image::
 
        $ docker pull scrapinghub/splash
 
 3. Start the container::
 
-       $ docker run -p 5023:5023 -p 8050:8050 scrapinghub/splash
+       $ docker run -p 8050:8050 -p 5023:5023 scrapinghub/splash
 
-4. Figure out the ip address of the docker-machine::
-
-       $ docker-machine ip default
-
-       192.168.59.103
-
-5. Splash is available at the returned IP address at ports
+5. Splash is available at 0.0.0.0 address at ports
    8050 (http) and 5023 (telnet).
 
 .. _Docker: http://docker.io
-.. _Instructions: https://docs.docker.com/mac/
 
 
 .. _manual-install-ubuntu:
 
-Ubuntu 14.04 (manual way)
+Ubuntu 16.04 (manual way)
 -------------------------
+
+.. warning::
+
+    On desktop machines it is often better to use Docker.
+    Use manual installation with care; at least read the
+    provision.sh script.
 
 1. Clone the repo from GitHub::
 
-        $ git clone https://github.com/scrapinghub/splash/
+      $ git clone https://github.com/scrapinghub/splash/
 
 2. Install dependencies::
 
-        $ cd splash/dockerfiles/splash   
-        
-        $ sudo ./provision.sh prepare_install install_msfonts \
-                              install_builddeps install_deps \
-                              install_extra_fonts install_pyqt5 \
-                              install_python_deps install_flash
-        
-        Change back to the parent directory of splash, i.e. `cd ~`
-       
-        $ sudo pip3 install splash/
+      $ cd splash/dockerfiles/splash
 
+      $ sudo provision.sh \
+                 prepare_install \
+                 install_msfonts \
+                 install_extra_fonts \
+                 install_deps \
+                 install_flash \
+                 install_qtwebkit_deps \
+                 install_official_qt \
+                 install_qtwebkit \
+                 install_pyqt5 \
+                 install_python_deps
+
+   Change back to the parent directory of splash, i.e. `cd ~`,
+   then run::
+
+        $ sudo pip3 install splash/
 
 To run the server execute the following command::
 
     python3 -m splash.server
 
-Run ``python -m splash.server --help`` to see options available.
+Run ``python3 -m splash.server --help`` to see options available.
 
 By default, Splash API endpoints listen to port 8050 on all available
 IPv4 addresses. To change the port use ``--port`` option::
 
     python3 -m splash.server --port=5000
+
+.. note::
+
+    Official Docker image uses Ubuntu 16.04; commands above are similar to
+    commands executed in Dockerfile. The main difference is that dangerous
+    ``provision.sh`` remove... commands are not executed; they allow to save
+    space in a Docker image, but can break unrelated software on a
+    desktop system.
 
 Required Python packages
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,7 +104,7 @@ Splash Versions
 ``docker pull scrapinghub/splash`` will give you the latest stable Splash
 release. To obtain the latest development version use
 ``docker pull scrapinghub/splash:master``. Specific Splash versions
-are also available, e.g. ``docker pull scrapinghub/splash:1.8``.
+are also available, e.g. ``docker pull scrapinghub/splash:2.3.3``.
 
 Customizing Dockerized Splash
 -----------------------------
@@ -154,11 +160,10 @@ To setup :ref:`custom-lua-modules` mount a folder to
 
 .. warning::
 
-    Folder sharing (``-v`` option) doesn't work on OS X and Windows
+    Folder sharing (``-v`` option) may still have issues on OS X and Windows
     (see https://github.com/docker/docker/issues/4023).
-    It should be fixed in future Docker & Boot2Docker releases.
-    For now use one of the workarounds mentioned in issue comments
-    or clone Splash repo and customize its Dockerfile.
+    If you have problems with volumes, use workarounds mentioned
+    in issue comments or clone Splash repo and customize its Dockerfile.
 
 Building Local Docker Images
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -176,5 +181,3 @@ You may have to change FROM line in :file:`dockerfiles/splash-jupyter/Dockerfile
 if you want it to be based on your local Splash Docker container.
 
 .. _source code: https://github.com/scrapinghub/splash
-
-
