@@ -1712,40 +1712,40 @@ class _ExposedElement(BaseExposedObject):
         return self.element.exists()
 
     @command(error_as_flag=True)
-    def mouse_click(self, x=0, y=0):
-        if not isinstance(x, (float, int)):
+    def mouse_click(self, x=None, y=None):
+        if x is not None and not isinstance(x, (float, int)):
             raise ScriptError({
                 "argument": "x",
                 "message": "element:mouse_click x coordinate must be a number",
                 "splash_method": "mouse_click",
             })
 
-        if not isinstance(y, (float, int)):
+        if y is not None and not isinstance(y, (float, int)):
             raise ScriptError({
                 "argument": "y",
                 "message": "element:mouse_click y coordinate must be a number",
                 "splash_method": "mouse_click",
             })
 
-        self.element.mouse_click(float(x), float(y))
+        self.element.mouse_click(x, y)
 
     @command(error_as_flag=True)
-    def mouse_hover(self, x=0, y=0):
-        if not isinstance(x, (float, int)):
+    def mouse_hover(self, x=None, y=None):
+        if x is not None and not isinstance(x, (float, int)):
             raise ScriptError({
                 "argument": "x",
                 "message": "element:mouse_hover x coordinate must be a number",
                 "splash_method": "mouse_hover",
             })
 
-        if not isinstance(y, (float, int)):
+        if y is not None and not isinstance(y, (float, int)):
             raise ScriptError({
                 "argument": "y",
                 "message": "element:mouse_hover y coordinate must be a number",
                 "splash_method": "mouse_hover",
             })
 
-        self.element.mouse_hover(float(x), float(y))
+        self.element.mouse_hover(x, y)
 
     @command()
     def styles(self):

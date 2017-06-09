@@ -283,7 +283,7 @@ element:mouse_click
 
 Trigger mouse click event on the element.
 
-**Signature:** ``ok, reason = element:mouse_click{x=0, y=0}``
+**Signature:** ``ok, reason = element:mouse_click{x=nil, y=nil}``
 
 **Parameters:**
 
@@ -295,16 +295,16 @@ the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-If x or y coordinate is not provided they will be set to 0 and the click
-will be triggered on the left-top corner of the element. The coordinates
-can have a negative value which means the click will be triggered outside
-of the element.
+If x or y coordinate is not provided, they are set to width/2 and height/2
+respectively, and the click is triggered on the middle of the element.
+
+Coordinates can have a negative value which means the click will be triggered
+outside of the element.
 
 Mouse events are not propagated immediately, to see consequences of click
 reflected in page source you must call :ref:`splash-wait`
 
-Example 1: get width and height of the element, calculate its center and
-click on it
+Example 1: click inside element, but closer to the top left corner:
 
 .. code-block:: lua
 
@@ -312,7 +312,7 @@ click on it
         -- ...
         local element = splash:select('.element')
         local bounds = element:bounds()
-        assert(element:mouse_click{x=bounds.width/2, y=bounds.height/2})
+        assert(element:mouse_click{x=bounds.width/3, y=bounds.height/3})
         -- ...
     end
 
@@ -350,24 +350,23 @@ during the function call; ``reason`` provides an information about error type.
 
 **Async:** no.
 
-If x or y coordinate is not provided they will be set to 0 and the hover
-will be triggered on the left-top corner of the element. The coordinates
-can have a negative value which means the hover will be triggered outside
-of the element.
+If x or y coordinate is not provided, they are set to width/2 and height/2
+respectively, and the hover is triggered on the middle of the element.
+
+Coordinates can have a negative value which means the hover will be
+triggered outside of the element.
 
 Mouse events are not propagated immediately, to see consequences of hover
 reflected in page source you must call :ref:`splash-wait`
 
-Example 1: get width and height of the element, calculate its center and
-hover over it
+Example 1: mouse hover over top left element corner:
 
 .. code-block:: lua
 
     function main(splash)
         -- ...
         local element = splash:select('.element')
-        local bounds = element:bounds()
-        assert(element:mouse_hover{x=bounds.width/2, y=bounds.height/2})
+        assert(element:mouse_hover{x=0, y=0})
         -- ...
     end
 

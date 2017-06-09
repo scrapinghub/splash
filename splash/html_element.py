@@ -140,17 +140,25 @@ class HTMLElement(object):
 
         return call
 
-    def mouse_click(self, x=0, y=0, button="left"):
+    def mouse_click(self, x=None, y=None, button="left"):
         """ Click on the element """
         self.assert_element_exists()
-        dimensions = self._get_dimensions()
-        self.tab.mouse_click(dimensions["x"] + x, dimensions["y"] + y, button)
+        x, y = self._relative_to_absolute_xy(x, y)
+        self.tab.mouse_click(x, y, button)
 
-    def mouse_hover(self, x=0, y=0):
+    def mouse_hover(self, x=None, y=None):
         """ Hover over the element """
         self.assert_element_exists()
+        x, y = self._relative_to_absolute_xy(x, y)
+        self.tab.mouse_hover(x, y)
+
+    def _relative_to_absolute_xy(self, dx=None, dy=None):
         dimensions = self._get_dimensions()
-        self.tab.mouse_hover(dimensions["x"] + x, dimensions["y"] + y)
+        if dx is None:
+            dx = dimensions['width'] // 2
+        if dy is None:
+            dy = dimensions['height'] // 2
+        return dimensions["x"] + dx, dimensions["y"] + dy
 
     def _get_dimensions(self):
         return self.tab.evaljs(DIMENSIONS_JS_FUNC % self.element_js)

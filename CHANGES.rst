@@ -21,6 +21,8 @@ Backwards incompatible changes:
   as it is smaller than ``timeout``.
 * Python 2 support is removed. You can still use Python 2 to make requests
   to Splash, but Splash server itself now runs on Python 3.4+.
+* :ref:`splash-element-mouse-click` and :ref:`splash-element-mouse-hover`
+  now click/hover element center by default, not element top-left corner.
 
 Other changes:
 
