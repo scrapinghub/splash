@@ -39,14 +39,14 @@ testing Docker container.
 
       docker run -it splash-tests
 
+   You can also pass pytest command-line arguments in the command above.
+   For example, you can select only a subset of tests to execute
+   (SandboxTest test case in this example)::
+
+      docker run -it splash-tests -k SandboxTest
+
 If you've changed Splash source code and want to re-run tests, repeat steps
 (2) and (3). Step (2) should take much less time now.
 Repeating step (1) is only necessary if you're adding new
 dependencies to Splash (Python or system-level), or if you want to update
 the base Splash image (e.g. after a recent rebase on Splash master).
-
-TODO: xdist (py.test --doctest-modules -n4 splash)
-TODO: running individual tests
-TODO: stress tests (There are some stress tests that spawn its own splash
-server and a mock server to run tests against. To run the stress tests::
-python -m splash.tests.stress)
