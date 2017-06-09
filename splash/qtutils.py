@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """ Utils for working with QWebKit objects.
 """
-from __future__ import absolute_import
-
 import functools
 import itertools
 import re
@@ -17,7 +15,6 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWebKitWidgets import QWebFrame
 from twisted.python import log
-import six
 
 from splash.utils import truncated, to_bytes
 
@@ -152,7 +149,7 @@ def get_qt_app():
 
 def qurl2ascii(url):
     """ Convert QUrl to ASCII text suitable for logging """
-    url = six.text_type(url.toString()).encode('unicode-escape').decode('ascii')
+    url = str(url.toString()).encode('unicode-escape').decode('ascii')
     if url.lower().startswith('data:'):
         return truncated(url, 80, '...[data uri truncated]')
     return url

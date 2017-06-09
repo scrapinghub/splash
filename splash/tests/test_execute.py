@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import base64
 import unittest
 from io import BytesIO
@@ -9,7 +7,6 @@ import time
 
 from PIL import Image
 import requests
-import six
 import pytest
 
 lupa = pytest.importorskip("lupa")
@@ -39,7 +36,7 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         err = self.assertJsonError(resp, 400, 'ScriptError')
         self.assertEqual(err['info']['type'], subtype)
         if message is not None:
-            self.assertRegexpMatches(err['info']['message'], message)
+            self.assertRegex(err['info']['message'], message)
         return err
 
     def assertErrorLineNumber(self, resp, line_number):
@@ -1013,7 +1010,7 @@ class RunjsTest(BaseLuaRenderTest):
         err = resp.json()['err']
         self.assertEqual(err['type'], ScriptError.JS_ERROR)
         self.assertEqual(err['js_error_type'], 'ReferenceError')
-        self.assertRegexpMatches(err['message'], "Can't find variable")
+        self.assertRegex(err['message'], "Can't find variable")
         self.assertEqual(err['splash_method'], 'runjs')
 
 
@@ -1100,10 +1097,7 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'ABC'", data[u"res"])
-        else:
-            self.assertIn("error during JS function call: u'ABC'", data[u"res"])
+        self.assertIn("error during JS function call: 'ABC'", data[u"res"])
 
     def test_throw_error(self):
         resp = self.request_lua("""
@@ -1138,10 +1132,7 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
-        else:
-            self.assertIn("error during JS function call: u'Error: ABC'", data[u"res"])
+        self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
         resp = self.request_lua("""
@@ -1537,12 +1528,8 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        if six.PY3:
-            self.assertIn("{b'foo': [b'1']}", data['html_1'])
-            self.assertIn("{b'bar': [b'2']}", data['html_2'])
-        else:
-            self.assertIn("{'foo': ['1']}", data['html_1'])
-            self.assertIn("{'bar': ['2']}", data['html_2'])
+        self.assertIn("{b'foo': [b'1']}", data['html_1'])
+        self.assertIn("{b'bar': [b'2']}", data['html_2'])
 
     def test_go_404_then_good(self):
         resp = self.request_lua("""
@@ -1904,14 +1891,9 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn("Mozilla", data["res2"])
         self.assertNotIn("Mozilla", data["res3"])
 
-        if six.PY3:
-            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
-        else:
-            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+        self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
+        self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
+        self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
 
     def test_set_user_agent_base_url(self):
         resp = self.request_lua("""
@@ -3138,57 +3120,52 @@ end
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments',
+            ('()',
              'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{}',
              'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(1)',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(1, nil)', 'a number is required', None),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(1, nil)', 'a number is required'),
+            ('{1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(nil, 1)', 'a number is required', None),
-            ('{nil, 1}', 'a number is required', None),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(nil, 1)', 'a number is required'),
+            ('{nil, 1}', 'a number is required'),
+            ('{width=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{width=1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{nil, width=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{height=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{height=1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{nil, height=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'a number is required', None),
-            ('{100, {}}', 'a number is required', None),
+            ('{100, "a"}', 'a number is required'),
+            ('{100, {}}', 'a number is required'),
 
-            ('{100, -1}', 'Viewport is out of range', None),
-            ('{100, 0}', 'Viewport is out of range', None),
-            ('{100, 99999}', 'Viewport is out of range', None),
-            ('{1, -100}', 'Viewport is out of range', None),
-            ('{0, 100}', 'Viewport is out of range', None),
-            ('{99999, 100}', 'Viewport is out of range', None),
+            ('{100, -1}', 'Viewport is out of range'),
+            ('{100, 0}', 'Viewport is out of range'),
+            ('{100, 99999}', 'Viewport is out of range'),
+            ('{1, -100}', 'Viewport is out of range'),
+            ('{0, 100}', 'Viewport is out of range'),
+            ('{99999, 100}', 'Viewport is out of range'),
         ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for size_str, errmsg_py2, errmsg_py3 in cases:
-            if not errmsg_py3:
-                errmsg_py3 = errmsg_py2
-            if six.PY3:
-                self.assertRaisesRegexp(RuntimeError, errmsg_py3, run_test, size_str)
-            else:
-                self.assertRaisesRegexp(RuntimeError, errmsg_py2, run_test, size_str)
+        for size_str, err_msg in cases:
+            self.assertRaisesRegex(RuntimeError, err_msg, run_test, size_str)
 
     def test_viewport_full(self):
         w = int(defaults.VIEWPORT_SIZE.split('x')[0])
@@ -3261,12 +3238,12 @@ end
     def test_viewport_full_raises_error_if_fails_in_script(self):
         # XXX: for local resources loadFinished event generally arrives after
         # initialLayoutCompleted, so the error doesn't manifest itself.
-        self.assertRaisesRegexp(RuntimeError, "zyzzy",
-                                self.get_dims_after,
-                                """
-                                splash:go(splash.args.url)
-                                splash:set_viewport_full()
-                                """, url=self.mockurl('delay'))
+        self.assertRaisesRegex(RuntimeError, "zyzzy",
+                               self.get_dims_after,
+                               """
+                               splash:go(splash.args.url)
+                               splash:set_viewport_full()
+                               """, url=self.mockurl('delay'))
 
 
 class RenderRegionTest(BaseLuaRenderTest):

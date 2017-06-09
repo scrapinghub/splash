@@ -1,13 +1,10 @@
-from __future__ import print_function
-
 import sys, random, optparse, time, json
 from itertools import islice
 from threading import Thread
 from collections import Counter
-import requests
+from queue import Queue
 
-import six
-from six.moves.queue import Queue
+import requests
 
 from .utils import SplashServer, MockServer
 
@@ -31,7 +28,7 @@ class StressTest():
 
         starttime = time.time()
         q, p = Queue(), Queue()
-        for _ in six.moves.range(self.concurrency):
+        for _ in range(self.concurrency):
             t = Thread(target=worker, args=(self.host, q, p, self.verbose))
             t.daemon = True
             t.start()
@@ -40,7 +37,7 @@ class StressTest():
         q.join()
 
         outputs = []
-        for _ in six.moves.range(self.requests):
+        for _ in range(self.requests):
             outputs.append(p.get())
 
         elapsed = time.time() - starttime

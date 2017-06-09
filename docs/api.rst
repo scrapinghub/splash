@@ -111,7 +111,7 @@ allowed_content_types : string : optional
   Comma-separated list of allowed content types.
   If present, Splash will abort any request if the response's content type
   doesn't match any of the content types in this list.
-  Wildcards are supported using the `fnmatch <https://docs.python.org/2/library/fnmatch.html>`_
+  Wildcards are supported using the `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_
   syntax.
 
 .. _arg-forbidden-content-types:
@@ -120,7 +120,7 @@ forbidden_content_types : string : optional
   Comma-separated list of forbidden content types.
   If present, Splash will abort any request if the response's content type
   matches any of the content types in this list.
-  Wildcards are supported using the `fnmatch <https://docs.python.org/2/library/fnmatch.html>`_
+  Wildcards are supported using the `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_
   syntax.
 
 .. _arg-viewport:

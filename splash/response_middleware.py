@@ -4,7 +4,6 @@ Classes that process (and maybe abort) responses based on
 various conditions. They should be used with
 :class:`splash.network_manager.SplashQNetworkAccessManager`.
 """
-from __future__ import absolute_import
 from PyQt5.QtNetwork import QNetworkRequest
 from splash.qtutils import request_repr
 from twisted.python import log

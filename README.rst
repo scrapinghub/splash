@@ -15,7 +15,7 @@ Splash - A javascript rendering service
    :target: https://gitter.im/scrapinghub/splash
 
 Splash is a javascript rendering service with an HTTP API. It's a lightweight
-browser with an HTTP API, implemented in Python using Twisted and QT.
+browser with an HTTP API, implemented in Python 3 using Twisted and QT5.
 
 It's fast, lightweight and state-less which makes it easy to distribute.
 

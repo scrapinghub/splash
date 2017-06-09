@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import os
-import six
 import sys
 
 import lupa
@@ -30,7 +28,7 @@ import splash.server as server
 
 def install(user=True):
     """ Install IPython kernel specification """
-    name = 'splash-py2' if six.PY2 else 'splash-py3'
+    name = 'splash-py3'
     folder = os.path.join(os.path.dirname(__file__), 'kernels', name)
     install_kernel_spec(folder, kernel_name="splash", user=user, replace=True)
 
@@ -168,7 +166,7 @@ class SplashKernel(Kernel):
             reply, result, ct = result
             if result:
                 data = {
-                    'text/plain': result if isinstance(result, six.text_type) else str(result),
+                    'text/plain': result if isinstance(result, str) else str(result),
                 }
                 if isinstance(result, BinaryCapsule):
                     if result.content_type in {'image/png', 'image/jpeg'}:

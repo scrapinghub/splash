@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 from splash.tests.test_execute import BaseLuaRenderTest
 from splash.tests.test_request_filters import BaseFiltersTest
 

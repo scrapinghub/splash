@@ -9,7 +9,6 @@ To start the kernel, use IPython web interface or run
     $ python -m splash.kernel
 
 """
-from __future__ import absolute_import
 import sys
 from .kernel import start, install
 

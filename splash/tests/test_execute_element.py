@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import base64
 from io import BytesIO
 from PIL import Image
@@ -1448,7 +1446,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertRegexpMatches(resp.text, '/submitted\?username=admin&password=pass123')
+        self.assertRegex(resp.text, '/submitted\?username=admin&password=pass123')
 
     def test_submit_not_form(self):
         resp = self.request_lua("""

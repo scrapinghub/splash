@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import pytest
 jupyter_kernel_test = pytest.importorskip("jupyter_kernel_test")
 lupa = pytest.importorskip("lupa")

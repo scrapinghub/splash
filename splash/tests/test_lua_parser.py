@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """ Unit tests for Lua parser internals """
-from __future__ import absolute_import
 import functools
 
 import pytest

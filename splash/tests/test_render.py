@@ -4,11 +4,11 @@ import unittest
 import base64
 from functools import wraps
 from io import BytesIO
+from urllib.parse import urlencode
 
 import pytest
 import requests
 from PIL import Image, ImageChops
-from six.moves.urllib import parse as urlparse
 
 from splash import defaults
 from splash.qtutils import has_min_qt_version
@@ -335,7 +335,7 @@ class RenderHtmlTest(Base.RenderTest):
     def assertCookiesPreserved(self, use_js):
         use_js = "true" if use_js else ""
         get_cookie_url = self.mockurl("get-cookie?key=foo")
-        q = urlparse.urlencode({
+        q = urlencode({
             "key": "foo",
             "value": "bar",
             "next": get_cookie_url,

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import base64
 import functools
 import os
@@ -13,7 +12,6 @@ from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWidgets import QApplication
 from twisted.internet import defer
 from twisted.python import log
-import six
 
 from splash import defaults
 from splash.har.qt import cookies2har
@@ -359,7 +357,7 @@ class BrowserTab(QObject):
     @property
     def url(self):
         """ Current URL """
-        return six.text_type(self.web_page.mainFrame().url().toString())
+        return str(self.web_page.mainFrame().url().toString())
 
     def go(self, url, callback, errback, baseurl=None, http_method='GET',
            body=None, headers=None):
@@ -597,7 +595,7 @@ class BrowserTab(QObject):
             callback_proxy.use_up()
 
     def _on_url_changed(self, url):
-        self.web_page.har.store_redirect(six.text_type(url.toString()))
+        self.web_page.har.store_redirect(str(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def _process_js_result(self, obj, allow_dom):
@@ -942,20 +940,20 @@ class BrowserTab(QObject):
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
-            "url": six.text_type(frame.url().toString()),
-            "requestedUrl": six.text_type(frame.requestedUrl().toString()),
+            "url": str(frame.url().toString()),
+            "requestedUrl": str(frame.requestedUrl().toString()),
             "geometry": (g.x(), g.y(), g.width(), g.height()),
-            "title": six.text_type(frame.title())
+            "title": str(frame.title())
         }
         if html:
-            res["html"] = six.text_type(frame.toHtml())
+            res["html"] = str(frame.toHtml())
 
         if children:
             res["childFrames"] = [
                 self._frame_to_dict(f, True, html)
                 for f in frame.childFrames()
             ]
-            res["frameName"] = six.text_type(frame.frameName())
+            res["frameName"] = str(frame.frameName())
 
         return res
 
@@ -1189,7 +1187,7 @@ class _JavascriptConsole(QObject):
 
     @pyqtSlot(str)
     def log(self, message):
-        self.messages.append(six.text_type(message))
+        self.messages.append(str(message))
 
 
 class _BrowserTabLogger(object):
@@ -1239,7 +1237,7 @@ class _BrowserTabLogger(object):
         if min_level is not None and self.verbosity < min_level:
             return
 
-        if isinstance(message, six.text_type):
+        if isinstance(message, str):
             message = message.encode('unicode-escape').decode('ascii')
 
         message = "[%s] %s" % (self.uid, message)

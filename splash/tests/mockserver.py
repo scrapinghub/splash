@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
 import os
 import optparse
 import base64
 import random
 from functools import wraps
-from six.moves.urllib.parse import unquote
+from urllib.parse import unquote
 
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource

@@ -5,14 +5,12 @@ This modules provides classes ("proxy factories") which define
 which proxies to use for a given request. QNetworkManager calls
 a proxy factory for each outgoing request.
 """
-from __future__ import absolute_import
 import re
 import os
+from urllib.parse import urlparse
+import configparser
 
 from PyQt5.QtNetwork import QNetworkProxy
-import six
-from six.moves.urllib.parse import urlparse
-from six.moves import configparser
 
 from splash.render_options import RenderOptions
 from splash.qtutils import create_proxy, validate_proxy_type
@@ -35,8 +33,8 @@ class _BlackWhiteSplashProxyFactory(object):
         self.proxy_list = proxy_list or []
 
     def queryProxy(self, query=None, *args, **kwargs):
-        protocol = six.text_type(query.protocolTag())
-        url = six.text_type(query.url().toString())
+        protocol = str(query.protocolTag())
+        url = str(query.url().toString())
         if self.should_use_proxy_list(protocol, url):
             return self._get_custom_proxy_list()
         return self._get_default_proxy_list()
