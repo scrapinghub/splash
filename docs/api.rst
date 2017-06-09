@@ -45,11 +45,11 @@ baseurl : string : optional
 timeout : float : optional
   A timeout (in seconds) for the render (defaults to 30).
 
-  By default, maximum allowed value for the timeout is 60 seconds.
+  By default, maximum allowed value for the timeout is 90 seconds.
   To override it start Splash with ``--max-timeout`` command line option.
-  For example, here Splash is configured to allow timeouts up to 2 minutes::
+  For example, here Splash is configured to allow timeouts up to 5 minutes::
 
-      $ docker run -it -p 8050:8050 scrapinghub/splash --max-timeout 120
+      $ docker run -it -p 8050:8050 scrapinghub/splash --max-timeout 300
 
 .. _arg-resource-timeout:
 
@@ -67,9 +67,10 @@ wait : float : optional
   (defaults to 0). Increase this value if you expect pages to contain
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
-  :ref:`wait <arg-wait>` is also required for PNG and JPEG rendering when doing
-  full-page rendering (see :ref:`render_all <arg-render-all>`). Maximum
-  allowed value for wait is 30 seconds.
+  :ref:`wait <arg-wait>` is also required for PNG and JPEG rendering when
+  doing full-page rendering (see :ref:`render_all <arg-render-all>`).
+
+  Wait time must be less than :ref:`timeout <arg-timeout>`.
 
 .. _arg-proxy:
 

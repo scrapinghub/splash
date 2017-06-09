@@ -27,6 +27,13 @@ class Base:
             r = self.request({"url": "http://non-existent-host/"})
             err = self.assertJsonError(r, 400)
 
+        @pytest.mark.xfail(
+            run=False,
+            reason="wait time validation is not implemented in emulation scripts"
+        )
+        def test_invalid_wait(self):
+            super().test_invalid_wait()
+
         def test_self(self):
             # make sure mixin order is correct
             assert self.endpoint == 'execute'

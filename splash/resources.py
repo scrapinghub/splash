@@ -115,10 +115,8 @@ class BaseRenderResource(_ValidatingResource):
         render_options.get_filters(self.pool)
 
         timeout = render_options.get_timeout()
-        wait_time = render_options.get_wait()
-
         pool_d = self._get_render(request, render_options)
-        timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
+        timer = reactor.callLater(timeout, pool_d.cancel)
         request.notifyFinish().addErrback(self._request_failed, pool_d, timer)
 
         pool_d.addCallback(self._cancel_timer, timer)

@@ -122,7 +122,7 @@ class RenderOptions(object):
 
     def get_wait(self):
         return self.get("wait", defaults.WAIT_TIME, type=float,
-                        range=(0, defaults.MAX_WAIT_TIME))
+                        range=(0, self.get_timeout()))
 
     def get_timeout(self):
         default = min(self.max_timeout, defaults.TIMEOUT)
