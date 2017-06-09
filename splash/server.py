@@ -329,7 +329,6 @@ def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
 
     settings = QWebSettings.globalSettings()
     settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, private_mode)
-    settings.setAttribute(QWebSettings.LocalStorageEnabled, not private_mode)
 
 
 def main(jupyter=False, argv=sys.argv, server_factory=splash_server):

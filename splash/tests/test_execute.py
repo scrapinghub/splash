@@ -3446,11 +3446,8 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
             "js": self.LOCAL_STORAGE_WORKS_JS,
             "url": self.mockurl("jsrender")
         })
-        err = self.assertJsonError(resp, 400)
-        self.assertEqual(
-            err['info']['js_error'],
-            "TypeError: null is not an object (evaluating \'localStorage.setItem\')"
-        )
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
 
     def test_private_mode_disabled(self):
         resp = self.request_lua("""
@@ -3477,6 +3474,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 html1 = splash:html()
                 splash.private_mode_enabled = true
                 assert(splash:go(splash.args.url))
+                assert(splash:runjs(splash.args.js))
                 html2 = splash:html()
                 return {html1=html1, html2=html2}
             end
@@ -3494,7 +3492,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertIn(u'world of splash', data["html1"])
-        self.assertNotIn(u"world of splash", data["html2"])
+        self.assertIn(u"world of splash", data["html2"])
 
 
 class PluginsEnabledTest(BaseLuaRenderTest):
