@@ -13,7 +13,7 @@ lupa = pytest.importorskip("lupa")
 
 from splash.exceptions import ScriptError
 from splash.qtutils import has_min_qt_version
-from splash import __version__ as splash_version
+from splash import version_info
 from splash.har_builder import HarBuilder
 from splash.har.utils import get_response_body_bytes
 
@@ -3376,7 +3376,7 @@ class VersionTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        version_min_maj = '.'.join(splash_version.split('.')[:2])
+        version_min_maj = '.'.join(map(str, version_info[:2]))
         self.assertEqual(resp.text, version_min_maj)
 
 
