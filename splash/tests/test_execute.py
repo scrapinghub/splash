@@ -3507,6 +3507,27 @@ class PluginsEnabledTest(BaseLuaRenderTest):
         self.assertEqual(resp.json(), {'enabled': defaults.PLUGINS_ENABLED})
 
 
+class WebGLTest(BaseLuaRenderTest):
+    def test_webgl(self):
+        # WebGL detection code is from
+        # https://developer.mozilla.org/en-US/docs/Learn/WebGL/By_example/Detect_WebGL
+        resp = self.request_lua("""
+        function main(splash)
+            webgl_supported = splash:jsfunc([[
+                function () {
+                    var canvas = document.createElement("canvas");
+                    var gl = canvas.getContext("webgl")
+                                || canvas.getContext("experimental-webgl");
+                    return (gl && gl instanceof WebGLRenderingContext);
+                }
+            ]])
+            return webgl_supported()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
+
+
 class MouseEventsTest(BaseLuaRenderTest):
     def _assert_event_property(self, name, value, resp):
         self.assertIn("{}:{}".format(name, value), resp.text)
