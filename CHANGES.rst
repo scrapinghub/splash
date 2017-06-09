@@ -1,6 +1,25 @@
 Changes
 =======
 
+3.0 (TBA)
+---------
+
+WebKit is upgraded in this Splash release - Splash now uses
+https://github.com/annulen/webkit instead of official QtWebKit,
+which is deprecated and unsupported. Splash rendering engine
+is now similar to Safari from mid-2016. It fixes a lot of problems
+with compatibility, speed and quality of rendering.
+
+Other changes:
+
+* Python 2 support is removed. You can still use Python 2 to make requests
+  to Splash, but Splash server itself now runs on Python 3.4+.
+* Qt is upgraded to 5.8, PyQT is upgraded to 5.8.2;
+* Docker now uses Ubuntu 16.04;
+* issues with localStorage are fixed - it is no longer needed to disable
+  Private Mode to get localStorage working;
+* documentation and testing improvements.
+
 2.3.3 (2017-06-07)
 ------------------
 
