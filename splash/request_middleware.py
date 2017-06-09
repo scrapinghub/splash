@@ -4,13 +4,11 @@ Classes that process (and maybe filter) requests based on
 various conditions. They should be used with
 :class:`splash.network_manager.SplashQNetworkAccessManager`.
 """
-from __future__ import absolute_import
 import re
 import os
+from urllib.parse import urlsplit
 
 from twisted.python import log
-import six
-from six.moves.urllib.parse import urlsplit
 
 from splash.qtutils import request_repr, drop_request, get_request_webframe
 
@@ -27,7 +25,7 @@ class AllowedDomainsMiddleware(object):
     def process(self, request, render_options, operation, data):
         allowed_domains = render_options.get_allowed_domains()
         host_re = self._get_host_regex(allowed_domains, self.allow_subdomains)
-        if not host_re.match(six.text_type(request.url().host())):
+        if not host_re.match(str(request.url().host())):
             if self.verbosity >= 2:
                 msg = "Dropped offsite %s" % request_repr(request, operation)
                 log.msg(msg, system='request_middleware')
@@ -122,7 +120,7 @@ class AdblockMiddleware(object):
             else:
                 return request
 
-        url = six.text_type(request.url().toString())
+        url = str(request.url().toString())
         browser_url = self._get_browser_url(request)
         domain = urlsplit(browser_url).hostname or ''
         # XXX: here we're using domain of a parent frame
@@ -147,7 +145,7 @@ class AdblockMiddleware(object):
             return ""
         # in case of iframes use URL from 'address bar', not iframe's URL
         main_frame = current_frame.page().mainFrame()
-        return six.text_type(main_frame.url().toString())
+        return str(main_frame.url().toString())
 
 
 class AdblockRulesRegistry(object):

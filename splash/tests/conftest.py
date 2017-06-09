@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import pytest
-from .utils import TestServers, SplashServer
+
+from .utils import MockServers, SplashServer
 
 
 @pytest.yield_fixture(scope="session")
 def test_servers():
-    with TestServers() as ts:
+    with MockServers() as ts:
         yield ts
 
 

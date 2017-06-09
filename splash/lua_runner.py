@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import abc
 import itertools
-import six
 
 import lupa
 
@@ -35,7 +33,7 @@ class AsyncCommand(object):
         self.dispatcher.dispatch(self.id, PyResult.yield_(*args))
 
 
-class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
+class BaseScriptRunner(metaclass=abc.ABCMeta):
     """
     An utility class for running Lua coroutines.
     """

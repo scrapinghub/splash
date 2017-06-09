@@ -330,7 +330,7 @@ that's replaced with the module name.
 
 Example::
 
-    $ python -m splash.server --lua-package-path "/etc/splash/lua_modules/?.lua;/home/myuser/splash-modules/?.lua"
+    $ python3 -m splash.server --lua-package-path "/etc/splash/lua_modules/?.lua;/home/myuser/splash-modules/?.lua"
 
 .. note::
 
@@ -350,7 +350,7 @@ you can require nothing. To make your modules available for scripts start
 Splash with ``--lua-sandbox-allowed-modules`` option. It should contain a
 semicolon-separated list of Lua module names allowed in a sandbox::
 
-    $ python -m splash.server --lua-sandbox-allowed-modules "foo;bar" --lua-package-path "/etc/splash/lua_modules/?.lua"
+    $ python3 -m splash.server --lua-sandbox-allowed-modules "foo;bar" --lua-package-path "/etc/splash/lua_modules/?.lua"
 
 After that it becomes possible to load these modules from Lua scripts using
 ``require``:

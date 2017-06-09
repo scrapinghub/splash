@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import os
 import shutil
 import unittest
@@ -15,7 +14,7 @@ from splash.proxy import (
 from splash.qtutils import PROXY_TYPES
 from splash.render_options import BadOption
 from splash.tests.test_render import BaseRenderTest
-from splash.tests.utils import TestServers
+from splash.tests.utils import MockServers
 
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
@@ -161,7 +160,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
         os.unlink(dst)
 
     def test_ts_setup(self):
-        with TestServers() as ts2:
+        with MockServers() as ts2:
             r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender', gzip=False)})
             self.assertNotProxied(r1.text)
 
@@ -172,7 +171,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
             self.assertProxied(r2.text)
 
     def test_default_profile_works(self):
-        with TestServers() as ts2:
+        with MockServers() as ts2:
             self.create_default_ini(ts2)
             try:
                 # default.ini present, proxy is used by default

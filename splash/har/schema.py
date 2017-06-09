@@ -2,9 +2,6 @@
 """
 Module for validating HAR data. Uses official HAR JSON Schema.
 """
-from __future__ import absolute_import
-
-
 def validate(instance):
     """ Validate HAR data; raise an exception if it is invalid """
     validator = get_validator()

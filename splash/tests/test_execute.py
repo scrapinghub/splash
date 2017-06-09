@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import base64
 import unittest
 from io import BytesIO
@@ -9,13 +7,12 @@ import time
 
 from PIL import Image
 import requests
-import six
 import pytest
 
 lupa = pytest.importorskip("lupa")
 
 from splash.exceptions import ScriptError
-from splash.qtutils import qt_551_plus
+from splash.qtutils import has_min_qt_version
 from splash import __version__ as splash_version
 from splash.har_builder import HarBuilder
 from splash.har.utils import get_response_body_bytes
@@ -39,7 +36,7 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         err = self.assertJsonError(resp, 400, 'ScriptError')
         self.assertEqual(err['info']['type'], subtype)
         if message is not None:
-            self.assertRegexpMatches(err['info']['message'], message)
+            self.assertRegex(err['info']['message'], message)
         return err
 
     def assertErrorLineNumber(self, resp, line_number):
@@ -1013,7 +1010,7 @@ class RunjsTest(BaseLuaRenderTest):
         err = resp.json()['err']
         self.assertEqual(err['type'], ScriptError.JS_ERROR)
         self.assertEqual(err['js_error_type'], 'ReferenceError')
-        self.assertRegexpMatches(err['message'], "Can't find variable")
+        self.assertRegex(err['message'], "Can't find variable")
         self.assertEqual(err['splash_method'], 'runjs')
 
 
@@ -1100,10 +1097,7 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'ABC'", data[u"res"])
-        else:
-            self.assertIn("error during JS function call: u'ABC'", data[u"res"])
+        self.assertIn("error during JS function call: 'ABC'", data[u"res"])
 
     def test_throw_error(self):
         resp = self.request_lua("""
@@ -1138,10 +1132,7 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
-        else:
-            self.assertIn("error during JS function call: u'Error: ABC'", data[u"res"])
+        self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
         resp = self.request_lua("""
@@ -1537,12 +1528,8 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        if six.PY3:
-            self.assertIn("{b'foo': [b'1']}", data['html_1'])
-            self.assertIn("{b'bar': [b'2']}", data['html_2'])
-        else:
-            self.assertIn("{'foo': ['1']}", data['html_1'])
-            self.assertIn("{'bar': ['2']}", data['html_2'])
+        self.assertIn("{b'foo': [b'1']}", data['html_1'])
+        self.assertIn("{b'bar': [b'2']}", data['html_2'])
 
     def test_go_404_then_good(self):
         resp = self.request_lua("""
@@ -1774,7 +1761,7 @@ class GoTest(BaseLuaRenderTest):
 
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
-    if not qt_551_plus():
+    if not has_min_qt_version('5.5.1'):
         pytestmark = pytest.mark.xfail(
             run=False,
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. "
@@ -1904,14 +1891,9 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn("Mozilla", data["res2"])
         self.assertNotIn("Mozilla", data["res3"])
 
-        if six.PY3:
-            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
-        else:
-            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+        self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
+        self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
+        self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
 
     def test_set_user_agent_base_url(self):
         resp = self.request_lua("""
@@ -3071,6 +3053,12 @@ function alter_state(splash)
 end
 """
 
+    def _process_outer_size(self, size):
+        if not has_min_qt_version('5.8'):
+            return size
+        w, h = map(int, size.split('x'))
+        return "{}x{}".format(w - 1, h - 1)
+
     def return_json_from_lua(self, script, **kwargs):
         resp = self.request_lua(script, kwargs)
         if resp.ok:
@@ -3098,87 +3086,86 @@ end
         self.assertEqual(out, {'width': w, 'height': h})
 
     def test_default_dimensions(self):
-        self.assertSizeAfter("",
-                             {'inner': defaults.VIEWPORT_SIZE,
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': defaults.VIEWPORT_SIZE})
+        self.assertSizeAfter("", {
+            'inner': defaults.VIEWPORT_SIZE,
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': defaults.VIEWPORT_SIZE
+        })
 
     def test_set_sizes_as_table(self):
-        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
-                             {'inner': '111x222',
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': '111x222'})
-        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}',
-                             {'inner': '444x333',
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': '444x333'})
+        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}', {
+            'inner': '111x222',
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': '111x222'
+        })
+        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}', {
+            'inner': '444x333',
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': '444x333'
+        })
 
     def test_viewport_size_roundtrips(self):
         self.assertSizeAfter(
             'splash:set_viewport_size(splash:get_viewport_size())',
             {'inner': defaults.VIEWPORT_SIZE,
-             'outer': defaults.VIEWPORT_SIZE,
+             'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
              'client': defaults.VIEWPORT_SIZE})
 
     def test_viewport_size(self):
         self.assertSizeAfter('splash:set_viewport_size(2000, 2000)',
                              {'inner': '2000x2000',
-                              'outer': defaults.VIEWPORT_SIZE,
+                              'outer': self._process_outer_size(
+                                  defaults.VIEWPORT_SIZE),
                               'client': '2000x2000'})
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments',
+            ('()',
              'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{}',
              'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(1)',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(1, nil)', 'a number is required', None),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(1, nil)', 'a number is required'),
+            ('{1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(nil, 1)', 'a number is required', None),
-            ('{nil, 1}', 'a number is required', None),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(nil, 1)', 'a number is required'),
+            ('{nil, 1}', 'a number is required'),
+            ('{width=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{width=1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{nil, width=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{height=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{height=1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{nil, height=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'a number is required', None),
-            ('{100, {}}', 'a number is required', None),
+            ('{100, "a"}', 'a number is required'),
+            ('{100, {}}', 'a number is required'),
 
-            ('{100, -1}', 'Viewport is out of range', None),
-            ('{100, 0}', 'Viewport is out of range', None),
-            ('{100, 99999}', 'Viewport is out of range', None),
-            ('{1, -100}', 'Viewport is out of range', None),
-            ('{0, 100}', 'Viewport is out of range', None),
-            ('{99999, 100}', 'Viewport is out of range', None),
+            ('{100, -1}', 'Viewport is out of range'),
+            ('{100, 0}', 'Viewport is out of range'),
+            ('{100, 99999}', 'Viewport is out of range'),
+            ('{1, -100}', 'Viewport is out of range'),
+            ('{0, 100}', 'Viewport is out of range'),
+            ('{99999, 100}', 'Viewport is out of range'),
         ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for size_str, errmsg_py2, errmsg_py3 in cases:
-            if not errmsg_py3:
-                errmsg_py3 = errmsg_py2
-            if six.PY3:
-                self.assertRaisesRegexp(RuntimeError, errmsg_py3, run_test, size_str)
-            else:
-                self.assertRaisesRegexp(RuntimeError, errmsg_py2, run_test, size_str)
+        for size_str, err_msg in cases:
+            self.assertRaisesRegex(RuntimeError, err_msg, run_test, size_str)
 
     def test_viewport_full(self):
         w = int(defaults.VIEWPORT_SIZE.split('x')[0])
@@ -3186,7 +3173,8 @@ end
                              'splash:wait(0.1);'
                              'splash:set_viewport_full();',
                              {'inner': '%dx2000' % w,
-                              'outer': defaults.VIEWPORT_SIZE,
+                              'outer': self._process_outer_size(
+                                  defaults.VIEWPORT_SIZE),
                               'client': '%dx2000' % w},
                              url=self.mockurl('tall'))
 
@@ -3250,12 +3238,12 @@ end
     def test_viewport_full_raises_error_if_fails_in_script(self):
         # XXX: for local resources loadFinished event generally arrives after
         # initialLayoutCompleted, so the error doesn't manifest itself.
-        self.assertRaisesRegexp(RuntimeError, "zyzzy",
-                                self.get_dims_after,
-                                """
-                                splash:go(splash.args.url)
-                                splash:set_viewport_full()
-                                """, url=self.mockurl('delay'))
+        self.assertRaisesRegex(RuntimeError, "zyzzy",
+                               self.get_dims_after,
+                               """
+                               splash:go(splash.args.url)
+                               splash:set_viewport_full()
+                               """, url=self.mockurl('delay'))
 
 
 class RenderRegionTest(BaseLuaRenderTest):
@@ -3435,11 +3423,8 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
             "js": self.LOCAL_STORAGE_WORKS_JS,
             "url": self.mockurl("jsrender")
         })
-        err = self.assertJsonError(resp, 400)
-        self.assertEqual(
-            err['info']['js_error'],
-            "TypeError: null is not an object (evaluating \'localStorage.setItem\')"
-        )
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
 
     def test_private_mode_disabled(self):
         resp = self.request_lua("""
@@ -3466,6 +3451,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 html1 = splash:html()
                 splash.private_mode_enabled = true
                 assert(splash:go(splash.args.url))
+                assert(splash:runjs(splash.args.js))
                 html2 = splash:html()
                 return {html1=html1, html2=html2}
             end
@@ -3483,7 +3469,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertIn(u'world of splash', data["html1"])
-        self.assertNotIn(u"world of splash", data["html2"])
+        self.assertIn(u"world of splash", data["html2"])
 
 
 class PluginsEnabledTest(BaseLuaRenderTest):
@@ -3496,6 +3482,27 @@ class PluginsEnabledTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'enabled': defaults.PLUGINS_ENABLED})
+
+
+class WebGLTest(BaseLuaRenderTest):
+    def test_webgl(self):
+        # WebGL detection code is from
+        # https://developer.mozilla.org/en-US/docs/Learn/WebGL/By_example/Detect_WebGL
+        resp = self.request_lua("""
+        function main(splash)
+            webgl_supported = splash:jsfunc([[
+                function () {
+                    var canvas = document.createElement("canvas");
+                    var gl = canvas.getContext("webgl")
+                                || canvas.getContext("experimental-webgl");
+                    return (gl && gl instanceof WebGLRenderingContext);
+                }
+            ]])
+            return webgl_supported()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
 
 
 class MouseEventsTest(BaseLuaRenderTest):

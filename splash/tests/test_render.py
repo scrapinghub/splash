@@ -4,14 +4,14 @@ import unittest
 import base64
 from functools import wraps
 from io import BytesIO
+from urllib.parse import urlencode
 
 import pytest
 import requests
 from PIL import Image, ImageChops
-from six.moves.urllib import parse as urlparse
 
 from splash import defaults
-from splash.qtutils import qt_551_plus
+from splash.qtutils import has_min_qt_version
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 
@@ -211,7 +211,7 @@ class Base(object):
                 self.assertStatusCode(r, 400)
 
         @pytest.mark.skipif(
-            not qt_551_plus(),
+            not has_min_qt_version('5.5.1'),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
         )
         def test_resource_timeout(self):
@@ -223,7 +223,7 @@ class Base(object):
             self.assertStatusCode(resp, 200)
 
         @pytest.mark.skipif(
-            not qt_551_plus(),
+            not has_min_qt_version('5.5.1'),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
         )
         def test_resource_timeout_abort_first(self):
@@ -335,7 +335,7 @@ class RenderHtmlTest(Base.RenderTest):
     def assertCookiesPreserved(self, use_js):
         use_js = "true" if use_js else ""
         get_cookie_url = self.mockurl("get-cookie?key=foo")
-        q = urlparse.urlencode({
+        q = urlencode({
             "key": "foo",
             "value": "bar",
             "next": get_cookie_url,

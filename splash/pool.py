@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from twisted.internet import defer
 from twisted.python import log
 

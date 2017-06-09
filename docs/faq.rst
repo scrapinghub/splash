@@ -18,14 +18,14 @@ by default you can't pass ``?timeout=300`` to run a long script - an
 error will be returned.
 
 Maximum allowed timeout can be increased by passing ``--max-timeout``
-option to Splash server on startup::
-
-    $ python -m splash.server --max-timeout 3600
-
-For Docker the command would be something like this
-(see :ref:`docker-custom-options`)::
+option to Splash server on startup (see :ref:`docker-custom-options`)::
 
     $ docker run -it -p 8050:8050 scrapinghub/splash --max-timeout 3600
+
+If you've installed Splash without Docker, use
+::
+
+    $ python3 -m splash.server --max-timeout 3600
 
 The next question is why a request can need 10 minutes to render.
 There are 3 common reasons:
@@ -187,7 +187,7 @@ There are two ways to go about it:
 - at startup, with the ``--disable-private-mode`` argument, e.g., if you're
   using Docker::
 
-        $ sudo docker run -it -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
+        $ sudo docker run -it -p 8050:8050 scrapinghub/splash --disable-private-mode
 
 - at runtime when using the ``/execute`` endpoint and setting
   :ref:`splash-private-mode-enabled` attribute to ``false``
@@ -197,11 +197,6 @@ items kept in localStorage may persist between requests. If you're using
 Splash in a shared environment it could mean your cookies or local storage
 items can be accessed by other clients, or that you can occasionally access
 other client's cookies.
-
-You may still want to turn Private mode off because in WebKit localStorage
-doesn't work when Private mode is enabled, and it is not possible
-to provide a JavaScript shim for localStorage. So for some websites you may
-have to turn Private model off.
 
 .. _why-splash:
 

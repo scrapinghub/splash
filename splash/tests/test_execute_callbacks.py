@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import base64
 from io import BytesIO
+from urllib.parse import urlencode
 
 from PIL import Image
-import six
-from six.moves.urllib.parse import urlencode
 import pytest
 
 from splash.exceptions import ScriptError
@@ -215,12 +213,8 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-        if six.PY3:
-            self.assertIn("b'custom-header': b'some-val'", resp.text)
-            self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
-        else:
-            self.assertIn("'custom-header': 'some-val'", resp.text)
-            self.assertIn("'user-agent': 'Fooozilla'", resp.text)
+        self.assertIn("b'custom-header': b'some-val'", resp.text)
+        self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
 
     def test_bad_callback(self):
         for arg in '', '"foo"', '123':
@@ -405,7 +399,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         }
         mocked_url = self.mockurl("set-header?" + urlencode(headers))
         some_attrs = {
-            "url": (six.text_type, mocked_url),
+            "url": (str, mocked_url),
             "status": (int, 200),
             "info": (dict, {}),
             "ok": (bool, True),

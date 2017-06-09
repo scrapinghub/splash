@@ -4,50 +4,54 @@ Contributing to Splash
 Splash is free & open source.
 Development happens at GitHub: https://github.com/scrapinghub/splash
 
-Development Setup
------------------
-
-Consult with :ref:`install-docs` to get Splash up and running.
-
-Install development specific dependencies with::
-
-    $ sudo apt-get install libffi-dev libssl-dev
-
-    pip install -r requirements-dev.txt
-
-Functional Tests
-----------------
+Testing Suite
+-------------
 
 .. image:: https://secure.travis-ci.org/scrapinghub/splash.png?branch=master
    :target: http://travis-ci.org/scrapinghub/splash
 
-Run with::
+The recommended way to execute Splash testing suite is to use a special
+testing Docker container.
 
-    py.test --doctest-modules splash
+1. First, create a base Splash image named "splash". If you're not
+   customizing Splash dependencies, and your changes are based on Splash
+   master branch, you can use ``scrapinghub/splash:master`` image::
 
-To speedup test running install ``pytest-xdist`` Python package and run
-Splash tests in parallel::
+       docker pull scrapinghub/splash:master
+       docker tag scrapinghub/splash:master splash
 
-    py.test --doctest-modules -n4 splash
+   If you've changed Splash dependencies (Python-level or system-level)
+   then you have to build Splash image from scratch. Run the following
+   command from the source checkout::
 
-Stress tests
-------------
+      docker build -t splash .
 
-There are some stress tests that spawn its own splash server and a mock server
-to run tests against.
+   It can take a while (maybe half an hour).
 
-To run the stress tests::
+2. Create a testing Docker image::
 
-    python -m splash.tests.stress
+      docker build -t splash-tests -f dockerfiles/tests/Dockerfile .
 
-Typical output::
+   Testing Docker image is based on ``splash`` docker image, so you need to
+   have an image called ``splash`` - we created such image at step (1).
 
-    $ python -m splash.tests.stress
-    Total requests: 1000
-    Concurrency   : 50
-    Log file      : /tmp/splash-stress-48H91h.log
-    ........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
-    Received/Expected (per status code or error):
-      200: 500/500
-      504: 200/200
-      502: 300/300
+3. Run tests inside this testing image::
+
+      docker run -it splash-tests
+
+   You can also pass pytest command-line arguments in the command above.
+   For example, you can select only a subset of tests to execute
+   (SandboxTest test case in this example)::
+
+      docker run -it splash-tests -k SandboxTest
+
+If you've changed Splash source code and want to re-run tests, repeat steps
+(2) and (3). Step (2) should take much less time now.
+Repeating step (1) is only necessary if you're adding new
+dependencies to Splash (Python or system-level), or if you want to update
+the base Splash image (e.g. after a recent rebase on Splash master).
+
+There is a script in the root of Splash repository
+(``runtests-docker.sh``) which combines steps (2) and (3); you can use it
+during development to run tests: change Splash source code or testing source
+code, then run ``./runtests-docker.sh`` from source checkout.

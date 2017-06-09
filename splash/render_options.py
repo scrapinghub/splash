@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import os
 import json
-
-import six
 
 from splash import defaults
 from splash.utils import to_bytes, path_join_secure
@@ -86,7 +83,7 @@ class RenderOptions(object):
         for name, key in (load_args or {}).items():
             self.data[name] = cache[key]
 
-    def get(self, name, default=_REQUIRED, type=six.text_type, range=None):
+    def get(self, name, default=_REQUIRED, type=str, range=None):
         value = self.data.get(name)
         if value is not None:
             if type is not None:
@@ -230,7 +227,7 @@ class RenderOptions(object):
 
         if isinstance(headers, (list, tuple)):
             for el in headers:
-                string_only = all(isinstance(e, six.string_types) for e in el)
+                string_only = all(isinstance(e, str) for e in el)
                 if not (isinstance(el, (list, tuple)) and len(el) == 2 and string_only):
                     self.raise_error(
                         argument='headers',
@@ -245,7 +242,7 @@ class RenderOptions(object):
         if save_args is None:
             return []
 
-        if isinstance(save_args, six.text_type):
+        if isinstance(save_args, str):
             # comma-separated string
             save_args = save_args.split(',')
 
@@ -257,7 +254,7 @@ class RenderOptions(object):
             )
 
         # JSON array
-        if not all(isinstance(a, six.text_type) for a in save_args):
+        if not all(isinstance(a, str) for a in save_args):
             self.raise_error(
                 argument="save_args",
                 description="'save_args' should be a list of strings",
@@ -269,7 +266,7 @@ class RenderOptions(object):
         if load_args is None:
             return {}
 
-        if isinstance(load_args, six.text_type):
+        if isinstance(load_args, str):
             try:
                 load_args = dict(
                     kv.split("=", 1) for kv in load_args.split(';')
@@ -340,13 +337,13 @@ class RenderOptions(object):
 
     def get_allowed_content_types(self):
         content_types = self.get("allowed_content_types", default=['*'])
-        if isinstance(content_types, six.text_type):
+        if isinstance(content_types, str):
             content_types = list(filter(None, content_types.split(',')))
         return content_types
 
     def get_forbidden_content_types(self):
         content_types = self.get("forbidden_content_types", default=[])
-        if isinstance(content_types, six.text_type):
+        if isinstance(content_types, str):
             content_types = list(filter(None, content_types.split(',')))
         return content_types
 

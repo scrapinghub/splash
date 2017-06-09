@@ -1,9 +1,7 @@
-from __future__ import absolute_import
 import abc
 import json
 import functools
 import pprint
-import six
 
 from splash import defaults
 from splash.browser_tab import BrowserTab
@@ -20,7 +18,7 @@ def stop_on_error(meth):
     return stop_on_error_wrapper
 
 
-class RenderScript(six.with_metaclass(abc.ABCMeta, object)):
+class RenderScript(metaclass=abc.ABCMeta):
     """
     Interface that all render scripts must implement.
     """

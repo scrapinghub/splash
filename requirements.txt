@@ -1,4 +1,4 @@
-# install PyQt5 (Splash is tested on PyQT 5.5.1)
+# install PyQt5 (Splash is tested on PyQT 5.8)
 # and the following packages:
 twisted >= 15.5.0, < 16.3.0
 qt5reactor
@@ -7,7 +7,6 @@ adblockparser >= 0.5
 https://github.com/sunu/pyre2/archive/c610be52c3b5379b257d56fc0669d022fd70082a.zip#egg=re2
 xvfbwrapper
 Pillow
-six
 
 # for scripting support
 lupa >= 1.3

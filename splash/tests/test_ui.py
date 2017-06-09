@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 from splash import lua
 from .test_render import BaseRenderTest
 

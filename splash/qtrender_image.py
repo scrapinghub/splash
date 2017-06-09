@@ -4,7 +4,6 @@ import array
 from abc import ABCMeta, abstractmethod, abstractproperty
 from io import BytesIO
 from math import ceil, floor
-import six
 
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
@@ -292,9 +291,9 @@ class QtImageRenderer(object):
             # which is not what we want.
             painter.setViewport(render_rect)
             # painter.setClipRect(web_rect)
-            for i in six.moves.range(tile_conf['horizontal_count']):
+            for i in range(tile_conf['horizontal_count']):
                 left = i * tile_qimage.width()
-                for j in six.moves.range(tile_conf['vertical_count']):
+                for j in range(tile_conf['vertical_count']):
                     top = j * tile_qimage.height()
                     painter.setViewport(render_rect.translated(-left, -top))
                     self.logger.log("Rendering with viewport=%s"
@@ -375,7 +374,7 @@ class _DummyLogger(object):
         pass
 
 
-class WrappedImage(six.with_metaclass(ABCMeta, object)):
+class WrappedImage(metaclass=ABCMeta):
     """
     Base interface for operations with images of rendered webpages.
 

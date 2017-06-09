@@ -49,7 +49,7 @@ timeout : float : optional
   To override it start Splash with ``--max-timeout`` command line option.
   For example, here Splash is configured to allow timeouts up to 2 minutes::
 
-      $ python -m splash.server --max-timeout 120
+      $ docker run -it -p 8050:8050 scrapinghub/splash --max-timeout 120
 
 .. _arg-resource-timeout:
 
@@ -111,7 +111,7 @@ allowed_content_types : string : optional
   Comma-separated list of allowed content types.
   If present, Splash will abort any request if the response's content type
   doesn't match any of the content types in this list.
-  Wildcards are supported using the `fnmatch <https://docs.python.org/2/library/fnmatch.html>`_
+  Wildcards are supported using the `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_
   syntax.
 
 .. _arg-forbidden-content-types:
@@ -120,7 +120,7 @@ forbidden_content_types : string : optional
   Comma-separated list of forbidden content types.
   If present, Splash will abort any request if the response's content type
   matches any of the content types in this list.
-  Wildcards are supported using the `fnmatch <https://docs.python.org/2/library/fnmatch.html>`_
+  Wildcards are supported using the `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_
   syntax.
 
 .. _arg-viewport:
@@ -675,7 +675,7 @@ The preloaded files can be used in the user's POST'ed code.
 To enable javascript profiles support, run splash server with the
 ``--js-profiles-path=<path to a folder with js profiles>`` option::
 
-    python -m splash.server --js-profiles-path=/etc/splash/js-profiles
+    python3 -m splash.server --js-profiles-path=/etc/splash/js-profiles
 
 .. note::
 
@@ -707,7 +707,7 @@ If Splash is started with ``--js-cross-domain-access`` option
 
 ::
 
-    python -m splash.server --js-cross-domain-access
+    $ docker run -it -p 8050:8050 scrapinghub/splash --js-cross-domain-access
 
 then javascript code is allowed to access the content of iframes
 loaded from a security origin diferent to the original page (browsers usually
@@ -741,7 +741,7 @@ custom fonts, etc.)
 To activate request filtering support start splash with ``--filters-path``
 option::
 
-    python -m splash.server --filters-path=/etc/splash/filters
+    python3 -m splash.server --filters-path=/etc/splash/filters
 
 .. note::
 
@@ -829,7 +829,7 @@ per-request using ``proxy`` parameter.
 To enable proxy profiles support, run splash server with
 ``--proxy-profiles-path=<path to a folder with proxy profiles>`` option::
 
-    python -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
+    python3 -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
 
 .. note::
 

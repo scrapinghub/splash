@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function
 import json
 import base64
 import functools
@@ -8,8 +7,7 @@ import contextlib
 import time
 import sys
 import weakref
-
-import six
+from urllib.parse import urlencode
 
 import twisted
 from PyQt5.QtCore import QTimer
@@ -659,7 +657,7 @@ class Splash(BaseExposedObject):
             # XXX: should it be binary or unicode?
             body = self.lua.lua2python(formdata, max_depth=3, encoding=None)
             if isinstance(body, dict):
-                body = six.moves.urllib.parse.urlencode(body)
+                body = urlencode(body)
             else:
                 raise ScriptError({
                     "argument": "formdata",
@@ -858,7 +856,7 @@ class Splash(BaseExposedObject):
         if isinstance(body, BinaryCapsule):
             body = body.data
 
-        if body and not isinstance(body, (six.text_type, bytes)):
+        if body and not isinstance(body, (str, bytes)):
             raise ScriptError({
                 "argument": "body",
                 "message": "body argument for splash:http_post() must be string"
@@ -946,7 +944,7 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_content(self, data, mime_type=None, baseurl=None):
-        if isinstance(data, six.text_type):
+        if isinstance(data, str):
             data = data.encode('utf8')
 
         def success():
@@ -1010,7 +1008,7 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_result_content_type(self, content_type):
-        if not isinstance(content_type, six.string_types):
+        if not isinstance(content_type, str):
             raise ScriptError({
                 "argument": "content_type",
                 "message": "splash:set_result_content_type() argument "
@@ -1030,7 +1028,7 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_result_header(self, name, value):
-        if not all([isinstance(h, six.string_types) for h in [name, value]]):
+        if not all([isinstance(h, str) for h in [name, value]]):
             raise ScriptError({
                 "message": "splash:set_result_header() arguments "
                            "must be strings",
@@ -1049,7 +1047,7 @@ class Splash(BaseExposedObject):
 
     @command()
     def set_user_agent(self, value):
-        if not isinstance(value, six.string_types):
+        if not isinstance(value, str):
             raise ScriptError({
                 "argument": "value",
                 "message": "splash:set_user_agent() argument must be a string",

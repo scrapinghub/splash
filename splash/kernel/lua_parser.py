@@ -2,7 +2,6 @@
 """
 Parser for a subset of Lua, useful for autocompletion.
 """
-from __future__ import absolute_import
 import string
 from operator import attrgetter
 from collections import namedtuple

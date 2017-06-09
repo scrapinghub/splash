@@ -2,7 +2,6 @@
 """
 Autocompleter for Lua code.
 """
-from __future__ import absolute_import
 import string
 
 from splash.utils import dedupe, to_unicode

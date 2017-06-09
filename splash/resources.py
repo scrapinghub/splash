@@ -2,7 +2,6 @@
 This module contains Splash twisted.web Resources (HTTP API endpoints
 exposed to the user).
 """
-from __future__ import absolute_import
 import os
 import gc
 import time
@@ -14,7 +13,6 @@ from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
-import six
 
 import splash
 from splash.argument_cache import ArgumentCache
@@ -175,7 +173,7 @@ class BaseRenderResource(_ValidatingResource):
                 request.setHeader(name, value)
             return self._write_output(data, request, content_type)
 
-        if data is None or isinstance(data, (bool, six.integer_types, float)):
+        if data is None or isinstance(data, (bool, int, float)):
             return self._write_output(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
