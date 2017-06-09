@@ -5,20 +5,34 @@ Changes
 ---------
 
 WebKit is upgraded in this Splash release - Splash now uses
-https://github.com/annulen/webkit instead of official QtWebKit,
-which is deprecated and unsupported. Splash rendering engine
+https://github.com/annulen/webkit instead of official QtWebKit
+(which is deprecated and unsupported). Splash rendering engine
 is now similar to Safari from mid-2016. It fixes a lot of problems
 with compatibility, speed and quality of rendering.
 
-Other changes:
+Backwards incompatible changes:
 
+* there are rendering changes, as WebKit is upgraded;
+* :ref:`wait <arg-wait>` argument for render.??? endpoints
+  no longer increases :ref:`timeout <arg-timeout>` automatically.
+  If you increase ``timeout`` by ``wait`` value requests to render.???
+  endpoints will work as before. Also, 30s limit (10s prior to Splash 2.3.3)
+  for wait argument is removed - you can set any ``wait`` value, as soon
+  as it is smaller than ``timeout``.
 * Python 2 support is removed. You can still use Python 2 to make requests
   to Splash, but Splash server itself now runs on Python 3.4+.
-* Qt is upgraded to 5.8, PyQT is upgraded to 5.8.2;
-* Docker now uses Ubuntu 16.04;
+
+Other changes:
+
 * issues with localStorage are fixed - it is no longer needed to disable
   Private Mode to get localStorage working;
+* Qt is upgraded to 5.8, PyQT is upgraded to 5.8.2;
+* Docker now uses Ubuntu 16.04;
+* default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
+  is increased from 60s to 90s; default ``timeout`` **value**
+  is still 30s.
 * documentation and testing improvements.
+
 
 2.3.3 (2017-06-07)
 ------------------
