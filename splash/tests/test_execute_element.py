@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
 from io import BytesIO
+
 from PIL import Image
 import pytest
 
 lupa = pytest.importorskip("lupa")
 
+from splash import defaults
 from splash.exceptions import ScriptError
 from .test_execute import BaseLuaRenderTest
 
@@ -109,8 +111,11 @@ class HTMLElementTest(BaseLuaRenderTest):
             end
 
             assert(body:mouse_click(0, 0))
+            assert(body:mouse_click{x=0, y=0})
             assert(body:mouse_click(5, 10))
+            assert(body:mouse_click{x=5, y=10})
             assert(body:mouse_click(20, 40))
+            assert(body:mouse_click())
 
             assert(splash:wait(0))
 
@@ -119,9 +124,38 @@ class HTMLElementTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
+
+        w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
         self.assertEqual(resp.json(), [
-            {'x': 0, 'y': 0}, {'x': 5, 'y': 10}, {'x': 20, 'y': 40}
+            {'x': 0, 'y': 0},
+            {'x': 0, 'y': 0},
+            {'x': 5, 'y': 10},
+            {'x': 5, 'y': 10},
+            {'x': 20, 'y': 40},
+            {'x': w//2, 'y': h//2}
         ])
+
+    def test_mouse_click_border_radius(self):
+        HTML = """
+        <html>
+        <body>
+            <a style="padding:10px;border-radius:7px"
+               onclick="document.write('clicked');">
+                click me
+            </div>
+        </body>
+        </html>        
+        """
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:set_content(splash.args.html))
+            assert(splash:select('a'):mouse_click())
+            assert(splash:wait(0))
+            return splash:html()
+        end
+        """, {'html': HTML})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text.count("onclick"), 0, resp.text)
 
     def test_mouse_click_bad_x_argument(self):
         resp = self.request_lua("""
@@ -631,7 +665,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local username = splash:select('input[name="username"]')
-            username:mouse_click()   -- fixme
+            username:mouse_click(0, 0)   -- fixme
             splash:wait(0)
 
             assert(username:send_text('super '))
@@ -959,9 +993,9 @@ class HTMLElementTest(BaseLuaRenderTest):
                 prevented = event.defaultPrevented
             end
 
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
 
             return {called=called, x=x, y=y, prevented=prevented}
@@ -1293,14 +1327,14 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             button.node:addEventListener('click', handler)
 
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
 
             button.node:removeEventListener('click', handler)
 
-            assert(button:mouse_click())
+            assert(button:mouse_click(0, 0))
             assert(splash:wait(0))
 
             return {called=called, x=x, y=y, prevented=prevented}
