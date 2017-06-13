@@ -783,9 +783,7 @@ class Splash(BaseExposedObject):
             return True
         except JsError as e:
             info = e.args[0]
-            info['type'] = ScriptError.JS_ERROR
-            info['splash_method'] = 'runjs'
-            return None, info
+            return None, info['message']
 
     @command()
     def wait_for_resume(self, snippet, timeout=0):

@@ -33,7 +33,12 @@ Other changes:
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
   is increased from 60s to 90s; default ``timeout`` **value**
   is still 30s.
-* documentation and testing improvements.
+* Fixed an issue with :ref:`splash-runjs`: previously in case of an error
+  it returned a table with error information. This approach didn't play well
+  with Lua ``assert``, so now a string with an error message is returned
+  instead. It was always documented that a string is returned by splash:runjs
+  as a second value when error happens.
+* Documentation and testing improvements.
 
 
 2.3.3 (2017-06-07)
