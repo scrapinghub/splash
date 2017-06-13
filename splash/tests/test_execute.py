@@ -995,9 +995,7 @@ class RunjsTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         err = resp.json()['err']
-        self.assertEqual(err['type'], ScriptError.JS_ERROR)
-        self.assertEqual(err['js_error_type'], 'SyntaxError')
-        self.assertEqual(err['splash_method'], 'runjs')
+        self.assertEqual(err, "JS error: 'SyntaxError: Function statements must have a name.'")
 
     def test_runjs_exception(self):
         resp = self.request_lua("""
@@ -1008,10 +1006,7 @@ class RunjsTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         err = resp.json()['err']
-        self.assertEqual(err['type'], ScriptError.JS_ERROR)
-        self.assertEqual(err['js_error_type'], 'ReferenceError')
-        self.assertRegex(err['message'], "Can't find variable")
-        self.assertEqual(err['splash_method'], 'runjs')
+        self.assertEqual(err, 'JS error: "ReferenceError: Can\'t find variable: y"')
 
 
 class JsfuncTest(BaseLuaRenderTest):
