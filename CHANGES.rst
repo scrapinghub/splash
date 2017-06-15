@@ -1,6 +1,13 @@
 Changes
 =======
 
+3.1 (TBA)
+
+* IndexedDB is enabled by default; to turn it off set
+  :ref:`splash-indexeddb-enabled` attribute to ``false``.
+* Documentation and testing improvements.
+
+
 3.0 (2017-07-06)
 ----------------
 
@@ -55,6 +62,7 @@ Other changes and bug fixes:
   with Lua ``assert``, so now a string with an error message is returned
   instead. It was always documented that a string is returned by splash:runjs
   as a second value when error happens.
+<<<<<<< HEAD
 * Fixed :ref:`splash-element-png` and :ref:`splash-element-jpeg` for elements
   outside curent viewport;
 * DOM attributes and methods are documented as accessible on

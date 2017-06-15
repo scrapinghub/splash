@@ -199,6 +199,19 @@ It is also possible to omit coordinates which you don't want to change.
 For example, ``splash.scroll_position = {y=200}`` sets y to 200 and keeps
 previous x value.
 
+.. _splash-indexeddb-enabled:
+
+splash.indexeddb_enabled
+------------------------
+
+Enable or disable IndexedDB_.
+
+**Signature:** ``splash.indexeddb_enabled = true/false``
+
+IndexedDB is enabled by default. Use ``splash.indexeddb_enabled = false``
+to disable it.
+
+.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 
 Methods
 ~~~~~~~
