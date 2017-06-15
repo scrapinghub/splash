@@ -62,6 +62,7 @@ class SplashServer(object):
         args = [sys.executable, '-u', '-m', 'splash.server']
         args += ['--port', str(self.portnum)]
         args += ['--verbosity', str(self.verbosity)]
+        args += ['--slots', '5']
         if self.logfile:
             args += ['-f', self.logfile]
         if self.proxy_profiles_path:
