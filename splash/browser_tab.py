@@ -58,6 +58,22 @@ def escape_and_evaljs(frame, js_func):
     return frame.evaluateJavaScript(get_process_errors_js(eval_expr))
 
 
+def webpage_option_getter(attr):
+    def _getter(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(attr)
+    return _getter
+
+
+def webpage_option_setter(attr, type_=None):
+    def _setter(self, value):
+        if type_ is not None:
+            value = type_(value)
+        settings = self.web_page.settings()
+        settings.setAttribute(attr, value)
+    return _setter
+
+
 class BrowserTab(QObject):
     """
     An object for controlling a single browser tab (QWebView).
@@ -148,27 +164,18 @@ class BrowserTab(QObject):
         self._init_event_handlers_storage()
         self._js_storage_initiated = True
 
-    def set_js_enabled(self, val):
-        settings = self.web_page.settings()
-        settings.setAttribute(QWebSettings.JavascriptEnabled, val)
+    get_js_enabled = webpage_option_getter(QWebSettings.JavascriptEnabled)
+    set_js_enabled = webpage_option_setter(QWebSettings.JavascriptEnabled)
 
-    def get_js_enabled(self):
-        settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.JavascriptEnabled)
+    get_private_mode_enabled = webpage_option_getter(QWebSettings.PrivateBrowsingEnabled)
+    set_private_mode_enabled = webpage_option_setter(QWebSettings.PrivateBrowsingEnabled, bool)
 
-    def set_private_mode_enabled(self, val):
-        settings = self.web_page.settings()
-        settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, bool(val))
+    get_images_enabled = webpage_option_getter(QWebSettings.AutoLoadImages)
+    set_images_enabled = webpage_option_setter(QWebSettings.AutoLoadImages)
 
-    def get_private_mode_enabled(self):
-        settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.PrivateBrowsingEnabled)
+    get_plugins_enabled = webpage_option_getter(QWebSettings.PluginsEnabled)
+    set_plugins_enabled = webpage_option_setter(QWebSettings.PluginsEnabled, bool)
 
-    def get_response_body_enabled(self):
-        return self.web_page.response_body_enabled
-
-    def set_response_body_enabled(self, val):
-        self.web_page.response_body_enabled = val
 
     def _set_default_webpage_options(self, web_page):
         """
@@ -229,6 +236,12 @@ class BrowserTab(QObject):
         """
         self.web_page.custom_headers = headers
 
+    def get_response_body_enabled(self):
+        return self.web_page.response_body_enabled
+
+    def set_response_body_enabled(self, val):
+        self.web_page.response_body_enabled = val
+
     def set_resource_timeout(self, timeout):
         """ Set a default timeout for HTTP requests, in seconds. """
         self.web_page.resource_timeout = timeout
@@ -237,21 +250,11 @@ class BrowserTab(QObject):
         """ Get a default timeout for HTTP requests, in seconds. """
         return self.web_page.resource_timeout
 
-    def set_images_enabled(self, enabled):
-        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,
-                                              enabled)
+    def lock_navigation(self):
+        self.web_page.navigation_locked = True
 
-    def get_images_enabled(self):
-        settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.AutoLoadImages)
-
-    def set_plugins_enabled(self, enabled):
-        self.web_page.settings().setAttribute(QWebSettings.PluginsEnabled,
-                                              bool(enabled))
-
-    def get_plugins_enabled(self):
-        settings = self.web_page.settings()
-        return bool(settings.testAttribute(QWebSettings.PluginsEnabled))
+    def unlock_navigation(self):
+        self.web_page.navigation_locked = False
 
     def set_viewport(self, size, raise_if_empty=False):
         """
@@ -297,12 +300,6 @@ class BrowserTab(QObject):
         # The side-effect of this operation is a forced synchronous relayout of
         # the page.
         self.web_page.setPreferredContentsSize(QSize())
-
-    def lock_navigation(self):
-        self.web_page.navigation_locked = True
-
-    def unlock_navigation(self):
-        self.web_page.navigation_locked = False
 
     def set_content(self, data, callback, errback, mime_type=None, baseurl=None):
         """
