@@ -3398,12 +3398,13 @@ class IsolationTest(BaseLuaRenderTest):
         assert cookies[0]['name'] == 'foo'
         assert cookies[0]['value'] == 'bar'
 
-        resp2 = self.request_lua("""
-        function main(splash)
-            return splash:get_cookies()
-        end
-        """)
-        assert len(resp2.json()) == 0
+        for x in range(10):
+            resp2 = self.request_lua("""
+            function main(splash)
+                return splash:get_cookies()
+            end
+            """)
+            assert len(resp2.json()) == 0
 
     def test_local_storage_isolated(self):
         resp = self.request_lua("""
