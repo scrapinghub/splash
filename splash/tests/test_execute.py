@@ -3385,6 +3385,61 @@ class VersionTest(BaseLuaRenderTest):
         self.assertEqual(resp.text, version_min_maj)
 
 
+class IsolationTest(BaseLuaRenderTest):
+    def test_cookies_isolated(self):
+        resp = self.request_lua("""
+        function main(splash)
+           assert(splash:go(splash.args.url))
+           return splash:get_cookies()
+        end
+        """, {'url': self.mockurl('set-cookie?key=foo&value=bar')})
+        cookies = resp.json()
+        assert len(cookies) == 1
+        assert cookies[0]['name'] == 'foo'
+        assert cookies[0]['value'] == 'bar'
+
+        resp2 = self.request_lua("""
+        function main(splash)
+            return splash:get_cookies()
+        end
+        """)
+        assert len(resp2.json()) == 0
+
+    def test_local_storage_isolated(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go(splash.args.url))            
+            splash:runjs([[localStorage.setItem("key", "value")]])        
+            return splash:evaljs([[localStorage.getItem("key")]]) 
+        end
+        """, {"url": self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "value")
+
+        for x in range(10):
+            resp = self.request_lua("""
+            function main(splash, args)
+                assert(splash:go(splash.args.url))
+                return splash:evaljs([[localStorage.getItem("key")]]) 
+            end
+            """, {"url": self.mockurl('jsrender')})
+            print(resp.text)
+            self.assertStatusCode(resp, 200)
+            assert resp.text == ""
+
+    @pytest.mark.xfail(reason="localStorage is not available before "
+                              "navigating to a page?")
+    def test_localstorage_nopage(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:runjs([[localStorage.setItem("key", "value")]])        
+            return splash:evaljs([[localStorage.getItem("key")]]) 
+        end
+        """, {"url": self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "value")
+
+
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
     LOCAL_STORAGE_WORKS_JS = """
     (function () {
@@ -3417,7 +3472,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertIn(u'world of splash', resp.text)
 
-    def test_private_mode_enabled(self):
+    def test_private_mode_enabled_local_storage_available(self):
         resp = self.request_lua("""
             function main(splash)
                 assert(splash.private_mode_enabled == true)
@@ -3431,7 +3486,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "True")
 
-    def test_private_mode_disabled(self):
+    def test_private_mode_disabled_local_storage_available(self):
         resp = self.request_lua("""
             function main(splash)
                 splash.private_mode_enabled = False
