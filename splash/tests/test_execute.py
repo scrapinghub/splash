@@ -953,6 +953,14 @@ class WaitForResumeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
+    def test_no_resume(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return assert(splash:wait_for_resume("function main(splash){}"))
+        end
+        """, {'timeout': 1})
+        self.assertJsonError(resp, 504)
+
 
 class RunjsTest(BaseLuaRenderTest):
     def test_define_variable(self):
