@@ -1466,11 +1466,15 @@ class OneShotCallbackProxy(QObject):
         self._errback(message, raise_)
 
     def cancel(self, reason):
+        if self._used_up:
+            return
         self.use_up()
         self._errback("One shot callback canceled due to: %s." % reason,
                       raise_=False)
 
     def _timed_out(self):
+        if self._used_up:
+            return
         self.use_up()
         self._errback("One shot callback timed out while waiting for"
                       " resume() or error().", raise_=False)
