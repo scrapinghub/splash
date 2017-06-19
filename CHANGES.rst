@@ -28,7 +28,7 @@ Other changes:
 
 * issues with localStorage are fixed - it is no longer needed to disable
   Private Mode to get localStorage working;
-* Qt is upgraded to 5.8, PyQT is upgraded to 5.8.2;
+* Qt is upgraded to 5.9 LTS, PyQT is upgraded to 5.9;
 * Docker now uses Ubuntu 16.04;
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
   is increased from 60s to 90s; default ``timeout`` **value**

@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 ENV DEBIAN_FRONTEND noninteractive
 
 # XXX: this needs to be updated if Qt is updated in provision.sh
-ENV PATH="/opt/qt58/5.8/gcc_64/bin:${PATH}"
+ENV PATH="/opt/qt59/5.9/gcc_64/bin:${PATH}"
 
 # Install, use dev tools, and then clean up in one RUN transaction
 # to minimize image size.
