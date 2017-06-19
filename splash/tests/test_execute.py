@@ -3577,52 +3577,96 @@ class IsolationTest(BaseLuaRenderTest):
 class IndexedDBTest(BaseLuaRenderTest):
     DETECT_INDEXEDDB_JS = """
     function main(splash) {
+        console.log("start");
         if (!window.indexedDB) {
+            console.log("no indexed db");
             splash.resume("no indexed DB");
             return;
         }
         var request = window.indexedDB.open("MyTestDatabase", 3);
+        console.log("request created");
         request.onerror = function(event) {
-            splash.resume("can't open IndexedDB database");            
+            console.log("onerror");
+            splash.resume("can't open IndexedDB database");
         };
         request.onsuccess = function(event) {
-            splash.resume("ok");
-        };                
+            console.log("onsuccess");
+            var db = event.target.result;        
+            // db.close();
+            splash.resume("onsuccess");
+        };
+        request.onupgradeneeded = function(event) { 
+            console.log("onupgradeneeded");
+            var db = event.target.result;        
+//            var objectStore = db.createObjectStore("name", { keyPath: "myKey" });
+            // db.close();
+            splash.resume("db created");
+        };
+        request.onversionchange = function(err) {
+            console.log("onversionchange", err);
+            splash.resume("versionchange");
+        };         
+        request.onblocked = function(event) {
+            console.log("onblocked");
+            splash.resume("blocked");            
+        }; 
+        console.log("end");
     }
     """
     def test_indexeddb_available(self):
         resp = self.request_lua("""
         function main(splash)
             assert(splash:go(splash.args.url))
-            return assert(splash:wait_for_resume(splash.args.js)) 
-        end        
-        """, {'url': self.mockurl('jsrender'), 'js': self.DETECT_INDEXEDDB_JS})
+            return assert(splash:wait_for_resume(splash.args.js))
+        end
+        """, {'url': self.mockurl('jsrender'), 'js': self.DETECT_INDEXEDDB_JS,
+              'timeout': 3})
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.json(), {'value': 'ok'})
+        self.assertEqual(resp.json(), {'value': 'db created'})
 
-    def test_indexeddb_enable_disable(self):
+    def test_indexeddb_available2(self):
         resp = self.request_lua("""
-        treat = require('treat')
         function main(splash)
-            splash.indexeddb_enabled = false
             assert(splash:go(splash.args.url))
-            local res1 = assert(splash:wait_for_resume(splash.args.js))
-            local val1 = splash.indexeddb_enabled
-            
-            splash.indexeddb_enabled = true
-            assert(splash:go(splash.args.url))
-            local res2 = assert(splash:wait_for_resume(splash.args.js))
-            local val2 = splash.indexeddb_enabled
-            return treat.as_array({res1, val1, res2, val2})
-        end        
-        """, {'url': self.mockurl('jsrender'), 'js': self.DETECT_INDEXEDDB_JS})
+            return assert(splash:wait_for_resume(splash.args.js))
+        end
+        """, {'url': self.mockurl('jsrender'), 'js': self.DETECT_INDEXEDDB_JS,
+              'timeout': 3})
         self.assertStatusCode(resp, 200)
-        res1, val1, res2, val2 = resp.json()
-        assert res1 == {'value': 'no indexed DB'}
-        assert val1 is False
+        self.assertEqual(resp.json(), {'value': 'db created'})
 
-        assert res2 == {'value': 'ok'}
-        assert val2 is True
+    # def test_indexeddb_enable_disable(self):
+    # #     resp = self.request_lua("""
+    # #     function main(splash)
+    # #         assert(splash:go(splash.args.url))
+    # #         return assert(splash:wait_for_resume(splash.args.js))
+    # #     end
+    # #     """, {'url': self.mockurl('jsrender'), 'js': self.DETECT_INDEXEDDB_JS})
+    #
+    #     resp = self.request_lua("""
+    #     treat = require('treat')
+    #     function main(splash)
+    #         --splash.indexeddb_enabled = false
+    #         --assert(splash:go(splash.args.url))
+    #         --local res1 = assert(splash:wait_for_resume(splash.args.js))
+    #         --local val1 = splash.indexeddb_enabled
+    #
+    #         --splash.indexeddb_enabled = true
+    #         assert(splash:go(splash.args.url))
+    #         --assert(splash:wait(1.0))
+    #         local res2 = assert(splash:wait_for_resume(splash.args.js))
+    #         local val2 = splash.indexeddb_enabled
+    #         return treat.as_array({res1, val1, res2, val2})
+    #     end
+    #     """, {'url': self.mockurl('jsrender'), 'js': self.DETECT_INDEXEDDB_JS,
+    #           'timeout': 5})
+    #     self.assertStatusCode(resp, 200)
+    #     res1, val1, res2, val2 = resp.json()
+    #     assert res1 == {'value': 'no indexed DB'}
+    #     assert val1 is False
+    #
+    #     assert res2 == {'value': 'db created'}
+    #     assert val2 is True
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
