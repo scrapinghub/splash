@@ -198,6 +198,11 @@ Splash in a shared environment it could mean your cookies or local storage
 items can be accessed by other clients, or that you can occasionally access
 other client's cookies.
 
+You may still want to turn Private mode off because in WebKit localStorage
+doesn't work when Private mode is enabled, and it is not possible
+to provide a JavaScript shim for localStorage. So for some websites you may
+have to turn Private model off.
+
 .. _why-splash:
 
 Why was Splash created in the first place?
