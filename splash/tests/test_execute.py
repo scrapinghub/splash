@@ -666,8 +666,14 @@ class EvaljsTest(BaseLuaRenderTest):
         self.assertEqual(err['info']['js_error_message'], 'ABC')
 
 
+@pytest.mark.usefixtures("class_splash_strict_lua_runner")
 class WaitForResumeTest(BaseLuaRenderTest):
     maxDiff = 2000
+
+    def request_lua(self, code, query=None, **kwargs):
+        endpoint = self.splash_strict_lua_runner.url('execute')
+        kwargs.setdefault('endpoint', endpoint)
+        return super().request_lua(code, query, **kwargs)
 
     def _wait_for_resume_request(self, js, timeout=1.0):
         return self.request_lua("""
@@ -952,6 +958,38 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
+
+    def test_no_resume(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return assert(splash:wait_for_resume("function main(splash){}"))
+        end
+        """, {'timeout': 1})
+        self.assertJsonError(resp, 504)
+
+    def test_no_out_of_order_results(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local script = [[
+                function main(splash){
+                    splash.resume('ok');
+                    setTimeout(function () {
+                        splash.resume('not ok');
+                    }, 1000);                
+                }            
+            ]]
+            assert(splash:go(splash.args.url))
+            local a = assert(splash:wait_for_resume(script))
+            assert(splash:go(splash.args.url))
+            local b = assert(splash:wait_for_resume(script))
+            return {a=a, b=b}
+        end
+        """, {'timeout': 1, 'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"a": {"value": "ok"},
+                                       "b": {"value": "ok"}})
+        # XXX: there shouldn't be "skipping an out-of-order result"
+        # messages in Splash log.
 
 
 class RunjsTest(BaseLuaRenderTest):
@@ -3026,9 +3064,9 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         self.assertLess(out['cputime'], 1000.)
         self.assertLess(0., out['cputime'])
         # Should be safe to assume that splash process consumes between 1Mb
-        # and 1Gb of RAM, right?
+        # and 2Gb of RAM, right?
         self.assertLess(1E6, out['maxrss'])
-        self.assertLess(out['maxrss'], 1E9)
+        self.assertLess(out['maxrss'], 2E9)
         # I wonder if we could break this test...
         now = time.time()
         self.assertLess(now - 120, out['walltime'])

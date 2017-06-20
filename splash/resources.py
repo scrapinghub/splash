@@ -270,11 +270,13 @@ class ExecuteLuaScriptResource(BaseRenderResource):
                  lua_sandbox_allowed_modules,
                  max_timeout,
                  argument_cache,
+                 strict,
                  ):
         BaseRenderResource.__init__(self, pool, max_timeout, argument_cache)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
+        self.strict = strict
 
     def _get_render(self, request, options):
         params = dict(
@@ -283,6 +285,7 @@ class ExecuteLuaScriptResource(BaseRenderResource):
             sandboxed=self.sandboxed,
             lua_package_path=self.lua_package_path,
             lua_sandbox_allowed_modules=self.lua_sandbox_allowed_modules,
+            strict=self.strict,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -557,6 +560,7 @@ class Root(Resource):
                  lua_sandbox_allowed_modules,
                  max_timeout,
                  argument_cache_max_entries,
+                 strict_lua_runner,
                  ):
         Resource.__init__(self)
         self.argument_cache = ArgumentCache(argument_cache_max_entries)
@@ -585,6 +589,7 @@ class Root(Resource):
                 lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
                 max_timeout=max_timeout,
                 argument_cache=self.argument_cache,
+                strict=strict_lua_runner,
             ))
 
         if self.ui_enabled:

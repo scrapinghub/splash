@@ -73,6 +73,7 @@ class DeferredSplashRunner(object):
             log=self.log,
             splash=splash,
             sandboxed=self.sandboxed,
+            strict=False,
         )
 
     def run(self, main_coro):
