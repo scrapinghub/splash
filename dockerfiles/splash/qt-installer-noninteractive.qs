@@ -23,7 +23,7 @@ Controller.prototype.IntroductionPageCallback = function() {
 
 Controller.prototype.TargetDirectoryPageCallback = function()
 {
-    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt58");
+    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt59");
     gui.clickButton(buttons.NextButton);
 }
 
@@ -31,10 +31,8 @@ Controller.prototype.ComponentSelectionPageCallback = function() {
     var widget = gui.currentPageWidget();
 
     widget.deselectAll();
-    widget.selectComponent("qt.58.gcc_64");
-    widget.selectComponent("qt.58.qtwebengine");
-    // to add more components:
-
+    widget.selectComponent("qt.59.gcc_64");
+    widget.selectComponent("qt.59.qtwebengine");
     gui.clickButton(buttons.NextButton);
 }
 

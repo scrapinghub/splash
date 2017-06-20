@@ -54,8 +54,10 @@ Enable or disable browser's private mode (incognito mode).
 
 Private mode is enabled by default unless you pass flag
 ``--disable-private-mode`` at Splash startup. Note that if you disable
-private mode browsing data such as cookies or items kept in local
-storage may persist between requests.
+private mode some of the browsing data may persist between requests
+(it doesn't affect cookies though).
+
+See also: :ref:`disable-private-mode`.
 
 .. _splash-resource-timeout:
 

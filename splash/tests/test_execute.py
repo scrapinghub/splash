@@ -3409,6 +3409,7 @@ class IsolationTest(BaseLuaRenderTest):
     def test_local_storage_isolated(self):
         resp = self.request_lua("""
         function main(splash)
+            splash.private_mode_enabled = false
             assert(splash:go(splash.args.url))            
             splash:runjs([[localStorage.setItem("key", "value")]])        
             return splash:evaljs([[localStorage.getItem("key")]]) 
@@ -3420,6 +3421,7 @@ class IsolationTest(BaseLuaRenderTest):
         for x in range(10):
             resp = self.request_lua("""
             function main(splash, args)
+                splash.private_mode_enabled = false
                 assert(splash:go(splash.args.url))
                 return splash:evaljs([[localStorage.getItem("key")]]) 
             end
@@ -3433,6 +3435,7 @@ class IsolationTest(BaseLuaRenderTest):
     def test_localstorage_nopage(self):
         resp = self.request_lua("""
         function main(splash)
+            splash.private_mode_enabled = false
             splash:runjs([[localStorage.setItem("key", "value")]])        
             return splash:evaljs([[localStorage.getItem("key")]]) 
         end
@@ -3484,8 +3487,11 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
             "js": self.LOCAL_STORAGE_WORKS_JS,
             "url": self.mockurl("jsrender")
         })
-        self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "True")
+        err = self.assertJsonError(resp, 400)
+        self.assertEqual(
+            err['info']['js_error'],
+            "TypeError: null is not an object (evaluating \'localStorage.setItem\')"
+        )
 
     def test_private_mode_disabled_local_storage_available(self):
         resp = self.request_lua("""
@@ -3512,7 +3518,6 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
                 html1 = splash:html()
                 splash.private_mode_enabled = true
                 assert(splash:go(splash.args.url))
-                assert(splash:runjs(splash.args.js))
                 html2 = splash:html()
                 return {html1=html1, html2=html2}
             end
@@ -3530,7 +3535,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertIn(u'world of splash', data["html1"])
-        self.assertIn(u"world of splash", data["html2"])
+        self.assertNotIn(u"world of splash", data["html2"])
 
 
 class PluginsEnabledTest(BaseLuaRenderTest):

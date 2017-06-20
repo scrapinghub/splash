@@ -168,7 +168,10 @@ class BrowserTab(QObject):
     set_js_enabled = webpage_option_setter(QWebSettings.JavascriptEnabled)
 
     get_private_mode_enabled = webpage_option_getter(QWebSettings.PrivateBrowsingEnabled)
-    set_private_mode_enabled = webpage_option_setter(QWebSettings.PrivateBrowsingEnabled, bool)
+    def set_private_mode_enabled(self, val):
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, bool(val))
+        settings.setAttribute(QWebSettings.LocalStorageEnabled, not bool(val))
 
     get_images_enabled = webpage_option_getter(QWebSettings.AutoLoadImages)
     set_images_enabled = webpage_option_setter(QWebSettings.AutoLoadImages)
@@ -185,7 +188,6 @@ class BrowserTab(QObject):
         settings = web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
-        settings.setAttribute(QWebSettings.LocalStorageEnabled, True)
 
         # enable Media Source by default, at least to make html5test.com work
         settings.setAttribute(MediaSourceEnabled, True)

@@ -25,8 +25,8 @@ EOF
 
 env | grep SPLASH
 
-SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.2"}
-SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.8.2"}
+SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.3.dev1706161918"}
+SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.9.dev1706151807"}
 SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"2"}
 
 # '2' is not supported by this script; allowed values are "3" and "venv" (?).
@@ -121,7 +121,7 @@ install_official_qt () {
     # as well as qt-installer-noninteractive.qs script.
     _ensure_folders && \
     curl -L -o /downloads/qt-installer.run \
-               http://download.qt.io/official_releases/qt/5.8/5.8.0/qt-opensource-linux-x64-5.8.0.run && \
+               http://download.qt.io/official_releases/qt/5.9/5.9.0/qt-opensource-linux-x64-5.9.0.run && \
     chmod +x /downloads/qt-installer.run && \
     xvfb-run /downloads/qt-installer.run \
         --script /tmp/script.qs \
@@ -132,10 +132,10 @@ install_official_qt () {
 install_qtwebkit () {
     # Install webkit from https://github.com/annulen/webkit
     _ensure_folders && \
-    curl -L -o /downloads/qtwebkit.tar.xz https://github.com/annulen/webkit/releases/download/qtwebkit-tp5/qtwebkit-tp5-qt58-linux-x64.tar.xz && \
+    curl -L -o /downloads/qtwebkit.tar.xz https://github.com/annulen/webkit/releases/download/qtwebkit-5.212.0-alpha2/qtwebkit-5.212.0_alpha2-qt59-linux-x64.tar.xz && \
     pushd /builds && \
     tar xvfJ /downloads/qtwebkit.tar.xz --keep-newer-files && \
-    rsync -aP /builds/qtwebkit-tp5-qt58-linux-x64/* `qmake -query QT_INSTALL_PREFIX`
+    rsync -aP /builds/qtwebkit-5.212.0_alpha2-qt59-linux-x64/* `qmake -query QT_INSTALL_PREFIX`
 }
 
 
@@ -143,8 +143,10 @@ install_pyqt5 () {
     _ensure_folders && \
     _activate_venv && \
     ${_PYTHON} --version && \
-    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
-    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
+#    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+#    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
+    curl -L -o /downloads/sip.tar.gz https://www.riverbankcomputing.com/static/Downloads/sip/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+    curl -L -o /downloads/pyqt5.tar.gz https://www.riverbankcomputing.com/static/Downloads/PyQt5/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
     ls -lh /downloads && \
     # TODO: check downloads
     pushd /builds && \
@@ -247,9 +249,9 @@ remove_extra () {
     rm -rf \
         /builds \
         /downloads \
-        /opt/qt58/Docs \
-        /opt/qt58/Tools \
-        /opt/qt58/Examples \
+        /opt/qt59/Docs \
+        /opt/qt59/Tools \
+        /opt/qt59/Examples \
         /app/.git
 #        /usr/share/man \
 #        /usr/share/info \
