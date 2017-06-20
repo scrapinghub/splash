@@ -961,6 +961,30 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """, {'timeout': 1})
         self.assertJsonError(resp, 504)
 
+    def test_no_resume_clear_callback(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local script = [[
+                function main(splash){
+                    splash.resume('ok');
+                    setTimeout(function () {
+                        splash.resume('not ok');
+                    }, 1000);                
+                }            
+            ]]
+            assert(splash:go(splash.args.url))
+            local a = assert(splash:wait_for_resume(script))
+            assert(splash:go(splash.args.url))
+            local b = assert(splash:wait_for_resume(script))
+            return {a=a, b=b}
+        end
+        """, {'timeout': 1, 'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"a": {"value": "ok"},
+                                       "b": {"value": "ok"}})
+        # XXX: there shouldn't be "skipping an out-of-order result"
+        # messages in Splash log.
+
 
 class RunjsTest(BaseLuaRenderTest):
     def test_define_variable(self):
