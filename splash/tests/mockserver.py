@@ -162,7 +162,6 @@ BadRelatedResource = _html_resource("""
 EggSpamScript = _html_resource("function egg(){return 'spam';}")
 
 
-
 class BaseUrl(Resource):
 
     @use_chunked_encoding
@@ -273,7 +272,7 @@ class SlowGif(Resource):
         request, n = request_info
         # write 1px black gif
         gif_data = b'AQABAIAAAAAAAAAAACH5BAAAAAAALAAAAAABAAEAAAICTAEAOw=='
-        request.write(base64.decodestring(gif_data))
+        request.write(base64.decodebytes(gif_data))
         if not request._disconnected:
             request.finish()
 
@@ -803,7 +802,6 @@ class JsRedirectTo(Resource):
         """ % next_url).encode('utf-8')
 
 
-
 class JsEventResource(Resource):
     isLeaf = True
 
@@ -900,7 +898,7 @@ class Subresources(Resource):
         @use_chunked_encoding
         def render_GET(self, request):
             request.setHeader(b"Content-Type", b"image/gif")
-            return base64.decodestring(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
+            return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
 class SetHeadersResource(Resource):
@@ -911,6 +909,7 @@ class SetHeadersResource(Resource):
             for v in values:
                 request.setHeader(k, v)
         return b""
+
 
 class InvalidContentTypeResource(Resource):
 
