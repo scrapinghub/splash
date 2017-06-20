@@ -666,8 +666,14 @@ class EvaljsTest(BaseLuaRenderTest):
         self.assertEqual(err['info']['js_error_message'], 'ABC')
 
 
+@pytest.mark.usefixtures("class_splash_strict_lua_runner")
 class WaitForResumeTest(BaseLuaRenderTest):
     maxDiff = 2000
+
+    def request_lua(self, code, query=None, **kwargs):
+        endpoint = self.splash_strict_lua_runner.url('execute')
+        kwargs.setdefault('endpoint', endpoint)
+        return super().request_lua(code, query, **kwargs)
 
     def _wait_for_resume_request(self, js, timeout=1.0):
         return self.request_lua("""
@@ -961,7 +967,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
         """, {'timeout': 1})
         self.assertJsonError(resp, 504)
 
-    def test_no_resume_clear_callback(self):
+    def test_no_out_of_order_results(self):
         resp = self.request_lua("""
         function main(splash)
             local script = [[

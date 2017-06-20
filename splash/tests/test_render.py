@@ -4,7 +4,7 @@ import unittest
 import base64
 from functools import wraps
 from io import BytesIO
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 
 import pytest
 import requests
@@ -48,11 +48,11 @@ class DirectRequestHandler(object):
 
     def _url_and_params(self, endpoint, query):
         endpoint = endpoint if endpoint is not None else self.endpoint
+        url = urljoin("http://%s/" % self.host, endpoint)
         if isinstance(query, dict):
-            url = "http://%s/%s" % (self.host, endpoint)
             params = query
         else:
-            url = "http://%s/%s?%s" % (self.host, endpoint, query)
+            url = "%s?%s" % (url, query)
             params = None
         return url, params
 
@@ -86,7 +86,8 @@ class BaseRenderTest(unittest.TestCase):
         return self._get_handler().post(query, endpoint, payload, headers, **kwargs)
 
     def assertStatusCode(self, response, code):
-        msg = (response.status_code, truncated(response.text, 1000))
+        msg = (response.status_code, truncated(response.text, 1000),
+               response.url)
         self.assertEqual(response.status_code, code, msg)
 
     def assertJsonError(self, response, code, error_type=None):

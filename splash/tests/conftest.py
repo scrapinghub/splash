@@ -30,6 +30,19 @@ def class_splash_unrestricted(request, splash_unrestricted):
     yield splash_unrestricted
 
 
+@pytest.yield_fixture(scope="session")
+def splash_strict_lua_runner():
+    with SplashServer(extra_args=['--strict-lua-runner']) as splash:
+        yield splash
+
+
+@pytest.yield_fixture(scope="class")
+def class_splash_strict_lua_runner(request, splash_strict_lua_runner):
+    """ Splash server with additional internal checks for Lua scripts """
+    request.cls.splash_strict_lua_runner = splash_strict_lua_runner
+    yield splash_strict_lua_runner
+
+
 @pytest.fixture()
 def lua(request):
     import lupa
