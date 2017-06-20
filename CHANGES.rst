@@ -5,8 +5,8 @@ Changes
 ---------
 
 WebKit is upgraded in this Splash release - Splash now uses
-https://github.com/annulen/webkit instead of official QtWebKit
-(which is deprecated and unsupported). Splash rendering engine
+https://github.com/annulen/webkit instead of official (deprecated
+and unsupported) QtWebKit. Splash rendering engine
 is now similar to Safari from mid-2016. It fixes a lot of problems
 with compatibility, speed and quality of rendering.
 
@@ -26,8 +26,6 @@ Backwards incompatible changes:
 
 Other changes:
 
-* issues with localStorage are fixed - it is no longer needed to disable
-  Private Mode to get localStorage working;
 * Qt is upgraded to 5.9 LTS, PyQT is upgraded to 5.9;
 * Docker now uses Ubuntu 16.04;
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
