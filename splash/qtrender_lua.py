@@ -2155,9 +2155,14 @@ class SplashCoroutineRunner(BaseScriptRunner):
     """
     Utility class for running Splash async functions (e.g. callbacks).
     """
-    def __init__(self, lua, splash, log, sandboxed):
+    def __init__(self, lua, splash, log, sandboxed, strict):
         self.splash = splash
-        super(SplashCoroutineRunner, self).__init__(lua=lua, log=log, sandboxed=sandboxed)
+        super(SplashCoroutineRunner, self).__init__(
+            lua=lua,
+            log=log,
+            sandboxed=sandboxed,
+            strict=strict,
+        )
 
     def start(self, coro_func, coro_args=None, return_result=None, return_error=None):
         do_nothing = lambda *args, **kwargs: None
@@ -2180,19 +2185,25 @@ class MainCoroutineRunner(SplashCoroutineRunner):
     """
     Utility class for running main Splash Lua coroutine.
     """
-    def __init__(self, lua, splash, log, sandboxed):
+    def __init__(self, lua, splash, log, sandboxed, strict):
         self.exceptions = splash.exceptions
         super(MainCoroutineRunner, self).__init__(
             lua=lua,
             splash=splash,
             log=log,
-            sandboxed=sandboxed
+            sandboxed=sandboxed,
+            strict=strict,
         )
 
     def start(self, main_coro, return_result=None, return_error=None):
         self.exceptions.clear()
         args = [self.splash.get_wrapped()]
-        super(MainCoroutineRunner, self).start(main_coro, args, return_result, return_error)
+        super(MainCoroutineRunner, self).start(
+            coro_func=main_coro,
+            coro_args=args,
+            return_result=return_result,
+            return_error=return_error
+        )
 
     def on_result(self, result):
         # Request writer expects JSON-like values and misbehaves when the
@@ -2255,7 +2266,7 @@ class LuaRender(RenderScript):
 
     @stop_on_error
     def start(self, lua_source, sandboxed, lua_package_path,
-              lua_sandbox_allowed_modules):
+              lua_sandbox_allowed_modules, strict=False):
         self.exceptions = StoredExceptions()
         self.log(lua_source)
         self.sandboxed = sandboxed
@@ -2274,6 +2285,7 @@ class LuaRender(RenderScript):
             splash=self.splash,
             log=self.log,
             sandboxed=sandboxed,
+            strict=strict,
         )
 
         try:

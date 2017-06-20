@@ -54,6 +54,8 @@ def parse_opts(jupyter=False, argv=sys.argv):
              "Each place can have a ? in it that's replaced with the module name.")
     op.add_option("--lua-sandbox-allowed-modules", default="",
         help="semicolon-separated list of Lua module names allowed to be required from a sandbox.")
+    op.add_option("--strict-lua-runner", action="store_true", default=False,
+        help="enable additional internal checks for Lua scripts (WARNING: for debugging only)")
     op.add_option("-v", "--verbosity", type=int, default=defaults.VERBOSITY,
         help="verbosity level; valid values are integers from 0 to 5 (default: %default)")
     op.add_option("--version", action="store_true",
@@ -170,6 +172,7 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
                   lua_sandbox_enabled=True,
                   lua_package_path="",
                   lua_sandbox_allowed_modules=(),
+                  strict_lua_runner=False,
                   argument_cache_max_entries=None,
                   verbosity=None):
     from twisted.internet import reactor
@@ -219,6 +222,7 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
+        strict_lua_runner=strict_lua_runner,
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory)
@@ -262,6 +266,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
                           lua_sandbox_enabled=True,
                           lua_package_path="",
                           lua_sandbox_allowed_modules=(),
+                          strict_lua_runner=False,
                           argument_cache_max_entries=None,
                           verbosity=None,
                           server_factory=splash_server):
@@ -285,6 +290,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
         lua_sandbox_enabled=lua_sandbox_enabled,
         lua_package_path=lua_package_path,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
+        strict_lua_runner=strict_lua_runner,
         verbosity=verbosity,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
@@ -365,6 +371,7 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
             lua_sandbox_enabled=not opts.disable_lua_sandbox,
             lua_package_path=opts.lua_package_path.strip(";"),
             lua_sandbox_allowed_modules=opts.lua_sandbox_allowed_modules.split(";"),
+            strict_lua_runner=opts.strict_lua_runner,
             verbosity=opts.verbosity,
             max_timeout=opts.max_timeout,
             argument_cache_max_entries=opts.argument_cache_max_entries,
