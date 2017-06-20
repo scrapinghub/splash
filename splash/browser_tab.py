@@ -1219,7 +1219,6 @@ class _BrowserTabLogger(object):
     def on_frame_load_started(self):
         self.log("mainFrame().loadStarted")
 
-    @pyqtSlot('QSize')
     def on_contents_size_changed(self, sz):
         self.log("mainFrame().contentsSizeChanged: %s" % sz)
 

@@ -897,6 +897,15 @@ class CommandLineOptionsTest(BaseRenderTest):
             )
             self.assertStatusCode(r4, 200)
 
+    def test_verbosity4_works(self):
+        with SplashServer(extra_args=['-v4']) as splash:
+            resp = requests.get(
+                url=splash.url("render.html"),
+                params={'url': self.mockurl("jsrender")},
+                timeout=3,
+            )
+            self.assertStatusCode(resp, 200)
+
 
 @pytest.mark.usefixtures("class_ts")
 class TestTestSetup(unittest.TestCase):
