@@ -192,16 +192,16 @@ There are two ways to go about it:
 - at runtime when using the ``/execute`` endpoint and setting
   :ref:`splash-private-mode-enabled` attribute to ``false``
 
-Note that if you disable private mode then browsing data such as cookies or
-items kept in localStorage may persist between requests. If you're using
-Splash in a shared environment it could mean your cookies or local storage
-items can be accessed by other clients, or that you can occasionally access
-other client's cookies.
+Note that if you disable private mode then browsing data may persist
+between requests (cookies are not affected though). If you're using
+Splash in a shared environment it could mean some information about
+requests you're making can be accessible for other Splash users.
 
 You may still want to turn Private mode off because in WebKit localStorage
 doesn't work when Private mode is enabled, and it is not possible
-to provide a JavaScript shim for localStorage. So for some websites you may
-have to turn Private model off.
+to provide a JavaScript shim for localStorage. So for some websites
+(AngularJS websites are common offenders) you may have to turn
+Private model off.
 
 .. _why-splash:
 
