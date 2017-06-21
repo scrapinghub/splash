@@ -72,13 +72,7 @@ class QtImageRenderer(object):
         buf = qimage.bits().asstring(qimage.byteCount())
         if sys.byteorder != "little":
             buf = self.swap_byte_order_i32(buf)
-        # PIL>2.0 doesn't have fromstring. But older ones don't have frombytes.
-        if hasattr(Image, 'frombytes'):
-            frombytes = Image.frombytes
-        else:
-            frombytes = Image.fromstring
-
-        return frombytes(
+        return Image.frombytes(
             self.pillow_image_format,
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
@@ -86,9 +80,9 @@ class QtImageRenderer(object):
     def swap_byte_order_i32(self, buf):
         """Swap order of bytes in each 32-bit word of given byte sequence."""
         arr = array.array('I')
-        arr.fromstring(buf)
+        arr.frombytes(buf)
         arr.byteswap()
-        return arr.tostring()
+        return arr.tobytes()
 
     def render_qwebpage(self):
         """
