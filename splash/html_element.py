@@ -129,12 +129,12 @@ class HTMLElement(object):
 
     def node_method(self, method_name):
         """ Return function which calls the specified method of the element """
-
+        method_name = escape_js(method_name)
         @empty_strings_as_none
         def call(*args):
             return self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,
-                method=escape_js(method_name),
+                method=method_name,
                 args=escape_js_args(*args)
             ))
 
