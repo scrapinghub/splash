@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 
 import requests
 
@@ -12,11 +12,8 @@ class JsonPostRequestHandler(test_render.DirectRequestHandler):
     def request(self, query, endpoint=None, headers=None):
         assert not isinstance(query, str)
         endpoint = endpoint or self.endpoint
-        url = "http://%s/%s" % (self.host, endpoint)
-        data = json.dumps(query)
-        _headers = {'content-type': 'application/json'}
-        _headers.update(headers or {})
-        return requests.post(url, data=data, headers=_headers)
+        url = urljoin("http://%s" % self.host, endpoint)
+        return requests.post(url, json=query, headers=headers)
 
     def post(self, query, endpoint=None, payload=None, headers=None):
         raise NotImplementedError()

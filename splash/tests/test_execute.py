@@ -26,6 +26,7 @@ from .. import defaults
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
     endpoint = 'execute'
+    request_handler = JsonPostRequestHandler
 
     def request_lua(self, code, query=None, **kwargs):
         q = {"lua_source": code}
@@ -1440,10 +1441,17 @@ class ArgsTest(BaseLuaRenderTest):
         err = self.assertJsonError(resp, 400, "BadOption")
         self.assertEqual(err['info']['argument'], 'filters')
 
+    def test_int_args_values(self):
+        self.assertArgsPassed({'egg': 59})
+
+    def test_list_args_values(self):
+        self.assertArgsPassed({'egg': ['foo', 'bar']})
+
+    def test_mixed_args_values(self):
+        self.assertArgsPassed({'egg': [{'foo': {'x': 1}}, 'bar']})
+
 
 class JsonPostUnicodeTest(BaseLuaRenderTest):
-    request_handler = JsonPostRequestHandler
-
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
@@ -1890,7 +1898,7 @@ class ResultStatusCodeTest(BaseLuaRenderTest):
         for code in [200, 404, 500, 999]:
             resp = self.request_lua("""
             function main(splash)
-                splash:set_result_status_code(tonumber(splash.args.code))
+                splash:set_result_status_code(splash.args.code)
                 return "hello"
             end
             """, {'code': code})
@@ -1906,8 +1914,10 @@ class ResultStatusCodeTest(BaseLuaRenderTest):
             end
             """, {'code': code})
             err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
-            self.assertEqual(err['info']['splash_method'],
-                             'set_result_status_code')
+            assert 'set_result_status_code' in err['info']['message']
+            if 'unexpected keyword argument' not in err['info']['error']:
+                self.assertEqual(err['info']['splash_method'],
+                                 'set_result_status_code')
 
 
 class SetUserAgentTest(BaseLuaRenderTest):
@@ -2940,7 +2950,7 @@ class HttpPostTest(BaseLuaRenderTest):
             end
             """, {
             "url": self.mockurl("postrequest"),
-            "postbody": base64.b64encode(postbody)
+            "postbody": base64.b64encode(postbody).decode()
         })
         self.assertStatusCode(resp, 200)
         self.assertIn(repr(postbody), resp.text)
