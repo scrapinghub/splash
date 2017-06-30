@@ -4088,3 +4088,81 @@ class KeyEventsTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                message="Unknown key")
+
+
+class ScrollPositionTest(BaseLuaRenderTest):
+    PAGE_HTML = """
+<html>
+    <head>
+        <style>
+            div{font-size:32px; padding:32px}
+            #top {height: 200px; background-color: #7ea;}
+            #middle {height: 1500px; background-color: #517; color:white}
+            #bottom {height: 200px; background-color: #000; color:white}
+        </style>
+    </head>
+    <body>
+        <div id="top">Hello</div>
+        <div id="middle">World</div>
+        <div id="bottom">
+            Footer
+            <a href="javascript:document.querySelector('#top').innerHTML = 'clicked';">
+                click me
+            </a>
+        </div>
+    </body>
+</html>
+"""
+
+    COLORS = {
+        'top': (0x77, 0xEE, 0xAA, 255),
+        'middle': (0x55, 0x11, 0x77, 255),
+        'bottom': (0, 0, 0, 255)
+    }
+
+    def test_scroll_position(self):
+        def request_scroll(x, y):
+            return self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                splash.scroll_position = splash.args.pos
+                return splash:png()
+            end
+            """, {'html': self.PAGE_HTML, 'pos': {'x': x, 'y': y}})
+
+        resp = request_scroll(0, 0)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['top'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['middle'])
+
+        resp = request_scroll(0, 300)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['middle'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['middle'])
+
+        resp = request_scroll(0, 1600)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['middle'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['bottom'])
+
+    def test_scroll_position_short(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {0, 200}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.json() == {'x': 0, 'y': 200}
+
+    def test_bad_scroll_position(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {0, 'foo'}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 5)

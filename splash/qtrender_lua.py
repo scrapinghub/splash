@@ -942,6 +942,29 @@ class Splash(BaseExposedObject):
     def send_text(self, text):
         self.tab.send_text(text)
 
+    @lua_property('scroll_position')
+    @command()
+    def get_scroll_position(self):
+        return self.tab.get_scroll_position()
+
+    @get_scroll_position.lua_setter
+    @command()
+    def scroll_to(self, x=None, y=None):
+        if x is None or y is None:
+            pos = self.tab.get_scroll_position()
+            x = pos['x'] if x is None else x
+            y = pos['y'] if y is None else y
+
+        for value, name in [(x, "x"), (y, "y")]:
+            if not isinstance(value, (int, float)):
+                raise ScriptError({
+                    "argument": name,
+                    "message": "scroll {} coordinate must be "
+                               "a number, got {}".format(name, repr(value))
+                })
+
+        self.tab.set_scroll_position(x, y)
+
     @command()
     def set_content(self, data, mime_type=None, baseurl=None):
         if isinstance(data, str):

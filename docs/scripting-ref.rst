@@ -147,6 +147,34 @@ To enable response content tracking per-request call
 :ref:`splash-request-enable-response-body` in a :ref:`splash-on-request`
 callback.
 
+.. _splash-scroll-position:
+
+splash.scroll_position
+----------------------
+
+Get or set current scroll position.
+
+**Signature:** ``splash.scroll_position = {x=..., y=...}``
+
+This property allows to get and set current scroll position of the
+main window.
+
+Scrolling outside window content has no effect. For example, if you set
+``splash.scroll_position`` to ``{x=-100, y=-100}``, then
+``splash.scroll_position`` will likely still be equal to the default
+``{x=0, y=0}``.
+
+To set scroll position instead of the full form
+(e.g. ``splash.scroll_position = {x=100, y=200}``) you can also use the
+short form ``splash.scroll_position = {100, 200}``. Attribute
+value is always a table with ``x`` and ``y`` keys, even if you set it using
+the short form.
+
+It is also possible to omit coordinates which you don't want to change.
+For example, ``splash.scroll_position = {y=200}`` sets y to 200 and keeps
+previous x value.
+
+
 Methods
 ~~~~~~~
 

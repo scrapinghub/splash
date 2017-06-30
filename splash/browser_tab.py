@@ -4,7 +4,8 @@ import functools
 import os
 import weakref
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
+from PyQt5.QtCore import (QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
+                          QPointF, QPoint, pyqtSignal)
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
@@ -1030,6 +1031,14 @@ class BrowserTab(QObject):
         """
         js_query = u"document.querySelectorAll({})".format(escape_js(selector))
         return self.evaljs(js_query)
+
+    def get_scroll_position(self):
+        point = self.web_page.mainFrame().scrollPosition()
+        return {'x': point.x(), 'y': point.y()}
+
+    def set_scroll_position(self, x, y):
+        point = QPoint(x, y)
+        self.web_page.mainFrame().setScrollPosition(point)
 
 
 class _SplashHttpClient(QObject):
