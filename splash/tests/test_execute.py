@@ -4155,6 +4155,18 @@ class ScrollPositionTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         assert resp.json() == {'x': 0, 'y': 200}
 
+    def test_scroll_position_missing(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {y=200}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.json() == {'x': 0, 'y': 200}
+
     def test_bad_scroll_position(self):
         resp = self.request_lua("""
         function main(splash)
