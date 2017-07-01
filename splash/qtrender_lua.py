@@ -1492,7 +1492,9 @@ class _ExposedElement(BaseExposedObject):
         'scrollIntoView',
         'setAttribute',
         'setAttributeNS',
-        'setPointerCapture'
+        'setPointerCapture',
+        'scrollIntoView',
+        'scrollIntoViewIfNeeded',
     ]
     NODE_METHODS = [
         'appendChild',

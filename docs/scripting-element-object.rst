@@ -117,6 +117,7 @@ Methods inherited from Element_:
     - requestFullscreen
     - requestPointerLock
     - scrollIntoView
+    - scrollIntoViewIfNeeded
     - setAttribute
     - setAttributeNS
     - setPointerCapture
