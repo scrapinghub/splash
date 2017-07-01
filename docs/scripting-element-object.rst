@@ -11,292 +11,11 @@ method returns any type of DOM node (Node, Element, HTMLElement, etc).
 can't be inside other objects or arrays - only top-level Node and NodeList
 is supported.
 
-.. _splash-element-attributes:
-
-Attributes
-~~~~~~~~~~
-
-.. _splash-element-node:
-
-element.node
-------------
-
-``element.node`` is a object that contains almost all DOM element attributes
-and methods.
-
-For example, to get element's innerHTML use ``.node.innerHTML``:
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-        return {html=splash:select('.element').node.innerHTML}
-    end
-
-To use methods just call them on ``element.node`` attribute.
-For example, to make sure element is in a viewport, you can call its
-``scrollIntoViewIfNeeded`` method:
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-        splash:select('.element').node:scrollIntoViewIfNeeded()
-        -- ...
-    end
-
-The list of supported properties (some of them are mutable, other
-are read-only):
-
-Properties inherited from HTMLElement_:
-    - accessKey
-    - accessKeyLabel *(read-only)*
-    - contentEditable
-    - isContentEditable *(read-only)*
-    - dataset *(read-only)*
-    - dir
-    - draggable
-    - hidden
-    - lang
-    - offsetHeight *(read-only)*
-    - offsetLeft *(read-only)*
-    - offsetParent *(read-only)*
-    - offsetTop *(read-only)*
-    - spellcheck
-    - style - a table with styles which can be modified
-    - tabIndex
-    - title
-    - translate
-
-Properties inherited from Element_:
-    - attributes *(read-only)* - a table with attributes of the element
-    - classList *(read-only)* - a table with class names of the element
-    - className
-    - clientHeight *(read-only)*
-    - clientLeft *(read-only)*
-    - clientTop *(read-only)*
-    - clientWidth *(read-only)*
-    - id
-    - innerHTML
-    - localeName *(read-only)*
-    - namespaceURI *(read-only)*
-    - nextElementSibling *(read-only)*
-    - outerHTML
-    - prefix *(read-only)*
-    - previousElementSibling *(read-only)*
-    - scrollHeight *(read-only)*
-    - scrollLeft
-    - scrollTop
-    - scrollWidth *(read-only)*
-    - tabStop
-    - tagName *(read-only)*
-
-Properties inherited from Node_:
-    - baseURI *(read-only)*
-    - childNodes *(read-only)*
-    - firstChild *(read-only)*
-    - lastChild *(read-only)*
-    - nextSibling *(read-only)*
-    - nodeName *(read-only)*
-    - nodeType *(read-only)*
-    - nodeValue
-    - ownerDocument *(read-only)*
-    - parentNode *(read-only)*
-    - parentElement *(read-only)*
-    - previousSibling *(read-only)*
-    - rootNode *(read-only)*
-    - textContent
-
-The list of supported methods:
-
-Methods inherited from EventTarget_:
-    - addEventListener
-    - removeEventListener
-
-Methods inherited from HTMLElement_:
-    - blur
-    - click
-    - focus
-
-Methods inherited from Element_:
-    - getAttribute
-    - getAttributeNS
-    - getBoundingClientRect
-    - getClientRects
-    - getElementsByClassName
-    - getElementsByTagName
-    - getElementsByTagNameNS
-    - hasAttribute
-    - hasAttributeNS
-    - hasAttributes
-    - querySelector
-    - querySelectorAll
-    - releasePointerCapture
-    - remove
-    - removeAttribute
-    - removeAttributeNS
-    - requestFullscreen
-    - requestPointerLock
-    - scrollIntoView
-    - scrollIntoViewIfNeeded
-    - setAttribute
-    - setAttributeNS
-    - setPointerCapture
-
-Methods inherited from Node_:
-    - appendChild
-    - cloneNode
-    - compareDocumentPosition
-    - contains
-    - hasChildNodes
-    - insertBefore
-    - isDefaultNamespace
-    - isEqualNode
-    - isSameNode
-    - lookupPrefix
-    - lookupNamespaceURI
-    - normalize
-    - removeChild
-    - replaceChild
-
-Also, you can attach event handlers to the specified event. When the handler
-is called it will receive ``event`` table with the almost all available
-methods and properties.
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-        local element = splash:select('.element')
-
-        local x, y = 0, 0
-
-        element.onclick = function(event)
-            event:preventDefault()
-            x = event.clientX
-            y = event.clientY
-        end
-
-        assert(splash:wait(10))
-
-        return x, y
-    end
-
-The another way to attach event handlers is to use
-``element.node:addEventListener(event, listener)``.
-It allows you to add more than a single event handler for an event.
-
-Example of using ``element.node:addEventListener(event, listener)``
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-        local element = splash:select('.element')
-
-        local x, y = 0, 0
-
-        local store_coordinates = function(event)
-            x = event.clientX
-            y = event.clientY
-        end
-
-        element.node:addEventListener('click', store_coordinates)
-
-        assert(splash:wait(10))
-
-        return x, y
-    end
-
-.. _HTMLElement: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
-.. _Element: https://developer.mozilla.org/en-US/docs/Web/API/Element
-.. _Node: https://developer.mozilla.org/en-US/docs/Web/API/Node
-.. _Event: https://developer.mozilla.org/en-US/docs/Web/API/Event
-.. _EventTarget: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
-
-
-.. _splash-element-inner_id:
-
-The following fields are read-only.
-
-element.inner_id
-----------------
-
-Id of the inner representation of the element. It may be useful for comparing
-the elements for the equality.
-
-Example:
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-
-        local same = element2.inner_id == element2.inner_id
-
-        -- ...
-    end
-
 Methods
 ~~~~~~~
 
-To modify or retrieve some information about the element you can use the
+To modify or retrieve information about the element you can use the
 following methods.
-
-.. _splash-element-exists:
-
-element:exists
---------------
-
-Check whether the element exists in DOM. If the element doesn't exist
-some of the methods will fail, returning the error flag.
-
-**Signature:** ``exists = element:exists()``
-
-**Returns:** ``exists`` indicated whether the element exists.
-
-**Async:** no.
-
-.. note::
-
-    **Don't use** ``splash:select(..):exists()`` to check
-    if an element is present - :ref:`splash-select` returns ``nil``
-    if selector returns nothing. Check for ``nil`` instead.
-
-    ``element:exists()`` should only be used if you already have
-    an Element instance, but suspect it can be removed from the current DOM.
-
-There are several reasons why the element can be absent from DOM.
-One of the reasons is that the element was removed by some JavaScript code.
-
-
-Example 1: the element was removed by JS code
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-        local element = splash:select('.element')
-        assert(splash:runjs('document.write("<body></body>")'))
-        assert(splash:wait(0.1))
-        local exists = element:exists() -- exists will be `false`
-        -- ...
-    end
-
-Another reason is that the element was created by script and not inserted
-into DOM.
-
-Example 2: the element is not inserted into DOM
-
-.. code-block:: lua
-
-    function main(splash)
-        -- ...
-        local element = splash:select('.element')
-        local cloned = element.node:cloneNode() -- the cloned element isn't in DOM
-        local exists = cloned:exists() -- exists will be `false`
-        -- ...
-    end
 
 .. _splash-element-mouse-click:
 
@@ -948,3 +667,343 @@ Example: get the form, fill with values and submit it
         assert(form:submit())
         -- ...
     end
+
+.. _splash-element-exists:
+
+element:exists
+--------------
+
+Check whether the element exists in DOM. If the element doesn't exist
+some of the methods will fail, returning the error flag.
+
+**Signature:** ``exists = element:exists()``
+
+**Returns:** ``exists`` indicated whether the element exists.
+
+**Async:** no.
+
+.. note::
+
+    **Don't use** ``splash:select(..):exists()`` to check
+    if an element is present - :ref:`splash-select` returns ``nil``
+    if selector returns nothing. Check for ``nil`` instead.
+
+    ``element:exists()`` should only be used if you already have
+    an Element instance, but suspect it can be removed from the current DOM.
+
+There are several reasons why the element can be absent from DOM.
+One of the reasons is that the element was removed by some JavaScript code.
+
+
+Example 1: the element was removed by JS code
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        assert(splash:runjs('document.write("<body></body>")'))
+        assert(splash:wait(0.1))
+        local exists = element:exists() -- exists will be `false`
+        -- ...
+    end
+
+Another reason is that the element was created by script and not inserted
+into DOM.
+
+Example 2: the element is not inserted into DOM
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        local cloned = element.node:cloneNode() -- the cloned element isn't in DOM
+        local exists = cloned:exists() -- exists will be `false`
+        -- ...
+    end
+
+
+.. _splash-element-dom-methods:
+
+DOM Methods
+~~~~~~~~~~~
+
+In addition to custom Splash-specific methods Element supports many
+common DOM HTMLElement methods.
+
+Usage
+-----
+
+To use these methods just call them on ``element``. For example, to check
+if an element has a specific attribute you can use hasAttribute_ method:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        if splash:select('.element'):hasAttribute('foo') then
+            -- ...
+        end
+        -- ...
+    end
+
+
+.. _hasAttribute: https://developer.mozilla.org/en-US/docs/Web/API/Element/hasAttribute
+
+Another example: to make sure element is in a viewport, you can call its
+``scrollIntoViewIfNeeded`` method:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        splash:select('.element'):scrollIntoViewIfNeeded()
+        -- ...
+    end
+
+Supported DOM methods
+---------------------
+
+Methods inherited from EventTarget_:
+    - addEventListener
+    - removeEventListener
+
+Methods inherited from HTMLElement_:
+    - blur
+    - click
+    - focus
+
+Methods inherited from Element_:
+    - getAttribute
+    - getAttributeNS
+    - getBoundingClientRect
+    - getClientRects
+    - getElementsByClassName
+    - getElementsByTagName
+    - getElementsByTagNameNS
+    - hasAttribute
+    - hasAttributeNS
+    - hasAttributes
+    - querySelector
+    - querySelectorAll
+    - releasePointerCapture
+    - remove
+    - removeAttribute
+    - removeAttributeNS
+    - requestFullscreen
+    - requestPointerLock
+    - scrollIntoView
+    - scrollIntoViewIfNeeded
+    - setAttribute
+    - setAttributeNS
+    - setPointerCapture
+
+Methods inherited from Node_:
+    - appendChild
+    - cloneNode
+    - compareDocumentPosition
+    - contains
+    - hasChildNodes
+    - insertBefore
+    - isDefaultNamespace
+    - isEqualNode
+    - isSameNode
+    - lookupPrefix
+    - lookupNamespaceURI
+    - normalize
+    - removeChild
+    - replaceChild
+
+These methods should work as their JS counterparts, but in Lua.
+
+For example, you can attach event handlers using
+``element:addEventListener(event, listener)``.
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+        local x, y = 0, 0
+
+        local store_coordinates = function(event)
+            x = event.clientX
+            y = event.clientY
+        end
+
+        element:addEventListener('click', store_coordinates)
+        assert(splash:wait(10))
+        return x, y
+    end
+
+
+.. _HTMLElement: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
+.. _Element: https://developer.mozilla.org/en-US/docs/Web/API/Element
+.. _Node: https://developer.mozilla.org/en-US/docs/Web/API/Node
+.. _Event: https://developer.mozilla.org/en-US/docs/Web/API/Event
+.. _EventTarget: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
+
+
+.. _splash-element-attributes:
+
+Attributes
+~~~~~~~~~~
+
+.. _splash-element-node:
+
+element.node
+------------
+
+``element.node`` has all exposed element DOM methods and attributes available,
+but not custom Splash methods and attributes. Use it for readability if
+you want to be more explicit. It also allows to avoid possible naming
+conflicts in future.
+
+For example, to get element's innerHTML one can use ``.node.innerHTML``:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        return {html=splash:select('.element').node.innerHTML}
+    end
+
+.. _splash-element-inner_id:
+
+element.inner_id
+----------------
+
+ID of the inner representation of the element, read-only.
+It may be useful for comparing element instances for the equality.
+
+Example:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+
+        local same = element2.inner_id == element2.inner_id
+
+        -- ...
+    end
+
+DOM Attributes
+~~~~~~~~~~~~~~
+
+Usage
+-----
+
+Element objects also provide almost all DOM element attributes.
+For example, get element's node name (p, div, a, etc.):
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local tag_name = splash:select('.foo').nodeName
+        -- ...
+    end
+
+Many of attributes are writable, not only readable - you can e.g.
+set innerHTML of an element:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        splash:select('.foo').innerHTML = "hello"
+        -- ...
+    end
+
+Supported DOM attributes
+------------------------
+
+The list of supported properties (some of them are mutable, other
+are read-only):
+
+Properties inherited from HTMLElement_:
+    - accessKey
+    - accessKeyLabel *(read-only)*
+    - contentEditable
+    - isContentEditable *(read-only)*
+    - dataset *(read-only)*
+    - dir
+    - draggable
+    - hidden
+    - lang
+    - offsetHeight *(read-only)*
+    - offsetLeft *(read-only)*
+    - offsetParent *(read-only)*
+    - offsetTop *(read-only)*
+    - spellcheck
+    - style - a table with styles which can be modified
+    - tabIndex
+    - title
+    - translate
+
+Properties inherited from Element_:
+    - attributes *(read-only)* - a table with attributes of the element
+    - classList *(read-only)* - a table with class names of the element
+    - className
+    - clientHeight *(read-only)*
+    - clientLeft *(read-only)*
+    - clientTop *(read-only)*
+    - clientWidth *(read-only)*
+    - id
+    - innerHTML
+    - localeName *(read-only)*
+    - namespaceURI *(read-only)*
+    - nextElementSibling *(read-only)*
+    - outerHTML
+    - prefix *(read-only)*
+    - previousElementSibling *(read-only)*
+    - scrollHeight *(read-only)*
+    - scrollLeft
+    - scrollTop
+    - scrollWidth *(read-only)*
+    - tabStop
+    - tagName *(read-only)*
+
+Properties inherited from Node_:
+    - baseURI *(read-only)*
+    - childNodes *(read-only)*
+    - firstChild *(read-only)*
+    - lastChild *(read-only)*
+    - nextSibling *(read-only)*
+    - nodeName *(read-only)*
+    - nodeType *(read-only)*
+    - nodeValue
+    - ownerDocument *(read-only)*
+    - parentNode *(read-only)*
+    - parentElement *(read-only)*
+    - previousSibling *(read-only)*
+    - rootNode *(read-only)*
+    - textContent
+
+Also, you can attach event handlers to the specified event. When the handler
+is called it will receive ``event`` table with the almost all available
+methods and properties.
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        local element = splash:select('.element')
+
+        local x, y = 0, 0
+
+        element.onclick = function(event)
+            event:preventDefault()
+            x = event.clientX
+            y = event.clientY
+        end
+
+        assert(splash:wait(10))
+
+        return x, y
+    end
+
+Use ``element:addEventListener()`` method if you want to attach multiple event
+handlers for an event.
