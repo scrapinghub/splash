@@ -1490,6 +1490,7 @@ class _ExposedElement(BaseExposedObject):
         'requestFullscreen',
         'requestPointerLock',
         'scrollIntoView',
+        'scrollIntoViewIfNeeded',
         'setAttribute',
         'setAttributeNS',
         'setPointerCapture',
