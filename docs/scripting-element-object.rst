@@ -3,8 +3,8 @@
 Element Object
 ==============
 
-Element objects wrap JavaScript DOM nodes. They are created whenever some method
-returns any type of DOM node (Node, Element, HTMLElement, etc).
+Element objects wrap JavaScript DOM nodes. They are created whenever some
+method returns any type of DOM node (Node, Element, HTMLElement, etc).
 
 :ref:`splash-select` and :ref:`splash-select-all` return element objects;
 :ref:`splash-evaljs` may also return element objects, but currently they
@@ -23,6 +23,27 @@ element.node
 
 ``element.node`` is a object that contains almost all DOM element attributes
 and methods.
+
+For example, to get element's innerHTML use ``.node.innerHTML``:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        return {html=splash:select('.element').node.innerHTML}
+    end
+
+To use methods just call them on ``element.node`` attribute.
+For example, to make sure element is in a viewport, you can call its
+``scrollIntoViewIfNeeded`` method:
+
+.. code-block:: lua
+
+    function main(splash)
+        -- ...
+        splash:select('.element').node:scrollIntoViewIfNeeded()
+        -- ...
+    end
 
 The list of supported properties (some of them are mutable, other
 are read-only):
@@ -482,6 +503,9 @@ Example: return a padded screenshot of the element
         return element:png{pad=10}
     end
 
+If an element is not in a viewport, viewport temporarily scrolls
+to make the element visible, then it scrolls back.
+
 See more in :ref:`splash-png`.
 
 
@@ -514,6 +538,9 @@ integer then the padding from all sides will be equal. If the value of the
 padding is positive the resulting screenshot will be expanded by the
 specified amount of pixes. And if the value of padding is negative the resulting
 screenshot will be shrunk by the specified amount of pixes.
+
+If an element is not in a viewport, viewport temporarily scrolls
+to make the element visible, then it scrolls back.
 
 See more in :ref:`splash-jpeg`.
 
