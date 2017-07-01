@@ -4098,7 +4098,7 @@ class ScrollPositionTest(BaseLuaRenderTest):
             div{font-size:32px; padding:32px}
             #top {height: 200px; background-color: #7ea;}
             #middle {height: 1500px; background-color: #517; color:white}
-            #bottom {height: 200px; background-color: #000; color:white}
+            #bottom {height: 200px; background-color: #111; color:white}
         </style>
     </head>
     <body>
@@ -4117,12 +4117,12 @@ class ScrollPositionTest(BaseLuaRenderTest):
     COLORS = {
         'top': (0x77, 0xEE, 0xAA, 255),
         'middle': (0x55, 0x11, 0x77, 255),
-        'bottom': (0, 0, 0, 255)
+        'bottom': (0x11, 0x11, 0x11, 255)
     }
 
     def test_scroll_position(self):
         def request_scroll(x, y):
-            return self.request_lua("""
+            resp = self.request_lua("""
             function main(splash)
                 splash:set_viewport_size(350, 400)
                 splash:set_content(splash.args.html)
@@ -4130,6 +4130,8 @@ class ScrollPositionTest(BaseLuaRenderTest):
                 return splash:png()
             end
             """, {'html': self.PAGE_HTML, 'pos': {'x': x, 'y': y}})
+            self.assertStatusCode(resp, 200)
+            return resp
 
         resp = request_scroll(0, 0)
         self.assertPixelColor(resp, 300, 50, self.COLORS['top'])
@@ -4178,3 +4180,21 @@ class ScrollPositionTest(BaseLuaRenderTest):
         """, {'html': self.PAGE_HTML})
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
         self.assertErrorLineNumber(resp, 5)
+
+    def test_element_screenshot(self):
+        def _request(method):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                return splash:select('#bottom'):%s()
+            end
+            """ % method, {'html': self.PAGE_HTML})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = _request('png')
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'])
+
+        resp = _request('jpeg')  # no alpha channel
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
