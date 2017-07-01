@@ -609,7 +609,7 @@ class EvaljsTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
            local div = splash:evaljs("document.createElement('div')")
-           return div.node.nodeName:lower()
+           return div.nodeName:lower()
         end
         """)
 
@@ -1273,7 +1273,7 @@ class JsfuncTest(BaseLuaRenderTest):
         treat = require("treat")
         function main(splash)
             local create_el = splash:jsfunc("function(type){return document.createElement(type)}")
-            return create_el('div').node.nodeName:lower();
+            return create_el('div').nodeName:lower();
         end
         """)
         self.assertStatusCode(resp, 200)
