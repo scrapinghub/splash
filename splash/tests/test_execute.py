@@ -609,7 +609,7 @@ class EvaljsTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
            local div = splash:evaljs("document.createElement('div')")
-           return div.node.nodeName:lower()
+           return div.nodeName:lower()
         end
         """)
 
@@ -1273,7 +1273,7 @@ class JsfuncTest(BaseLuaRenderTest):
         treat = require("treat")
         function main(splash)
             local create_el = splash:jsfunc("function(type){return document.createElement(type)}")
-            return create_el('div').node.nodeName:lower();
+            return create_el('div').nodeName:lower();
         end
         """)
         self.assertStatusCode(resp, 200)
@@ -4088,3 +4088,187 @@ class KeyEventsTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                message="Unknown key")
+
+
+class ScrollPositionTest(BaseLuaRenderTest):
+    PAGE_HTML = """
+<html>
+    <head>
+        <style>
+            div{font-size:32px; padding:32px}
+            #top {height: 200px; background-color: #7ea;}
+            #middle {height: 1500px; background-color: #517; color:white}
+            #bottom {height: 200px; background-color: #111; color:white}
+        </style>
+    </head>
+    <body>
+        <div id="top">Hello</div>
+        <div id="middle">World</div>
+        <div id="bottom">
+            Footer
+            <a id="clickme" href="javascript:setTopHtml('clicked');">
+                click me
+            </a>
+        </div>
+        <script>
+        window.setTopHtml = function(html){
+            document.querySelector('#top').innerHTML = html;
+        }
+        document.querySelector("#bottom").addEventListener(
+            "mousemove", 
+            function(event) {            
+                setTopHtml('hover');
+            }
+        );
+        </script>
+    </body>
+</html>
+"""
+
+    COLORS = {
+        'top': (0x77, 0xEE, 0xAA, 255),
+        'middle': (0x55, 0x11, 0x77, 255),
+        'bottom': (0x11, 0x11, 0x11, 255)
+    }
+
+    def test_scroll_position(self):
+        def request_scroll(x, y):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                splash.scroll_position = splash.args.pos
+                return splash:png()
+            end
+            """, {'html': self.PAGE_HTML, 'pos': {'x': x, 'y': y}})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = request_scroll(0, 0)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['top'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['middle'])
+
+        resp = request_scroll(0, 300)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['middle'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['middle'])
+
+        resp = request_scroll(0, 1600)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['middle'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['bottom'])
+
+    def test_scroll_position_short(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {0, 200}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.json() == {'x': 0, 'y': 200}
+
+    def test_scroll_position_missing(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {y=200}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.json() == {'x': 0, 'y': 200}
+
+    def test_bad_scroll_position(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {0, 'foo'}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 5)
+
+    def test_element_screenshot(self):
+        def _request(method):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                return splash:select('#bottom'):%s()
+            end
+            """ % method, {'html': self.PAGE_HTML})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = _request('png')
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'])
+
+        resp = _request('jpeg')  # no alpha channel
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
+
+    def test_element_screenshots(self):
+        def _request(method):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                local res = splash:select('#bottom'):%s()
+                splash:select('#top'):%s()                                        
+                return res
+            end
+            """ % (method, method), {'html': self.PAGE_HTML})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = _request('png')
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'])
+
+        resp = _request('jpeg')  # no alpha channel
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
+
+    def _request_get_top_text(self, script, params=None):
+        params = dict(html=self.PAGE_HTML, **(params or {}))
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            %s
+            return splash:select('#top'):text()
+        end
+        """ % script, params)
+        self.assertStatusCode(resp, 200)
+        return resp
+
+    def test_element_mouse_click_viewport_full(self):
+        resp = self._request_get_top_text("""
+        splash:set_viewport_full()
+        splash:select("a#clickme"):mouse_click()
+        splash:wait(0.01)
+        """)
+        assert resp.text == "clicked"
+
+    def test_element_mouse_click_outside_viewport(self):
+        resp = self._request_get_top_text("""
+        local el = splash:select("a#clickme")
+        el:mouse_click()
+        -- splash:wait(0)
+        splash.scroll_position = {0, 0}
+        splash:wait(0.01)
+        """)
+        assert resp.text == "clicked"
+
+    def test_mouse_hover_outside_viewport(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            assert(splash:set_content(splash.args.html))
+            assert(splash:select("#bottom").mouse_hover())
+            return splash:select("#top"):text()
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.text == "hover"

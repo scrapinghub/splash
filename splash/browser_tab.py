@@ -4,7 +4,8 @@ import functools
 import os
 import weakref
 
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
+from PyQt5.QtCore import (QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
+                          QPointF, QPoint, pyqtSignal)
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
@@ -147,6 +148,10 @@ class BrowserTab(QObject):
                                                             self._events_storage)
         frame.addToJavaScriptWindowObject(self._event_handlers_storage.name,
                                           self._event_handlers_storage)
+
+    def _clear_event_handlers_storage(self):
+        if hasattr(self, '_event_handlers_storage'):
+            self._event_handlers_storage.clear()
 
     def _init_events_storage(self):
         frame = self.web_page.mainFrame()
@@ -436,6 +441,7 @@ class BrowserTab(QObject):
         self.logger.log("close is requested by a script", min_level=2)
         self._closing = True
         self._closing_normally = True
+        self._clear_event_handlers_storage()
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
@@ -1031,6 +1037,14 @@ class BrowserTab(QObject):
         js_query = u"document.querySelectorAll({})".format(escape_js(selector))
         return self.evaljs(js_query)
 
+    def get_scroll_position(self):
+        point = self.web_page.mainFrame().scrollPosition()
+        return {'x': point.x(), 'y': point.y()}
+
+    def set_scroll_position(self, x, y):
+        point = QPoint(x, y)
+        self.web_page.mainFrame().setScrollPosition(point)
+
 
 class _SplashHttpClient(QObject):
     """ Wrapper class for making HTTP requests on behalf of a SplashQWebPage """
@@ -1329,8 +1343,13 @@ class EventHandlersStorage(QObject):
         if self.storage.get(func_id, None) is not None:
             del self.storage[func_id]
 
+    def clear(self):
+        self.storage.clear()
+
     @pyqtSlot(str, str, 'QVariantMap', name="run")
     def run_function(self, func_id, event_id, event):
+        if func_id not in self.storage:
+            return
         wrapped_event = Event(self.events_storage, event_id, event)
         self.storage[func_id].on_call_after.append(wrapped_event.remove)
         self.storage[func_id](wrapped_event)

@@ -26,11 +26,11 @@ class HTMLElementTest(BaseLuaRenderTest):
             local title = splash:select('.title')
 
             return {
-                p=p.node.nodeName:lower(),
-                form=form.node.nodeName:lower(),
-                username=username.node.nodeName:lower(),
-                password=password.node.nodeName:lower(),
-                title=title.node.nodeName:lower(),
+                p=p.nodeName:lower(),
+                form=form.nodeName:lower(),
+                username=username.nodeName:lower(),
+                password=password.nodeName:lower(),
+                title=title.nodeName:lower(),
             }
         end
         """, {"url": self.mockurl("various-elements")})
@@ -96,6 +96,25 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"before": True, "after": False})
 
+    def test_onclick_cleanup(self):
+        # This code used to break Splash because "onclick" event handler
+        # was triggered after Splash script is finished.
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            local body = splash:select('body')
+            local clicked_points = {}
+            body.onclick = function(event)
+             table.insert(clicked_points, {x=event.clientX, y=event.clientY})
+            end
+            assert(body:mouse_click(0, 0))
+            return treat.as_array(clicked_points)
+        end
+        """, {"url": self.mockurl("various-elements")})
+        self.assertStatusCode(resp, 200)
+
     def test_mouse_click(self):
         resp = self.request_lua("""
         local treat = require('treat')
@@ -106,19 +125,18 @@ class HTMLElementTest(BaseLuaRenderTest):
             local body = splash:select('body')
             local clicked_points = {}
 
-            body.node.onclick = function(event)
+            body.onclick = function(event)
              table.insert(clicked_points, {x=event.clientX, y=event.clientY})
             end
 
+            assert(body:mouse_click())
             assert(body:mouse_click(0, 0))
             assert(body:mouse_click{x=0, y=0})
             assert(body:mouse_click(5, 10))
             assert(body:mouse_click{x=5, y=10})
-            assert(body:mouse_click(20, 40))
-            assert(body:mouse_click())
-
+            assert(body:mouse_click(20, 40))            
             assert(splash:wait(0))
-
+            
             return treat.as_array(clicked_points)
         end
         """, {"url": self.mockurl("various-elements")})
@@ -127,12 +145,12 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
         self.assertEqual(resp.json(), [
+            {'x': w//2, 'y': h//2},
             {'x': 0, 'y': 0},
             {'x': 0, 'y': 0},
             {'x': 5, 'y': 10},
             {'x': 5, 'y': 10},
             {'x': 20, 'y': 40},
-            {'x': w//2, 'y': h//2}
         ])
 
     def test_mouse_click_border_radius(self):
@@ -216,7 +234,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local body = splash:select('body')
             local hovered_points = {}
 
-            body.node.onmousemove = function(event)
+            body.onmousemove = function(event)
              table.insert(hovered_points, {x=event.clientX, y=event.clientY})
             end
 
@@ -418,7 +436,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(splash:wait(0.1))
 
             local form = splash:select('#login')
-            form.node.innerHTML = ''
+            form.innerHTML = ''
 
             return assert(form:form_values())
         end
@@ -983,7 +1001,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local called = 0
 
             local button = splash:select('button')
-            button.node.onclick = function(event)
+            button.onclick = function(event)
                 event:preventDefault()
                 event:stopImmediatePropagation()
                 event:stopPropagation()
@@ -1069,7 +1087,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local called = 0
 
             local button = splash:select('button')
-            button.node.onclick = function(event)
+            button.onclick = function(event)
                 called = called + 1
             end
 
@@ -1078,7 +1096,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             assert(button:mouse_click())
             assert(splash:wait(0))
 
-            button.node.onclick = nil
+            button.onclick = nil
 
             assert(button:mouse_click())
             assert(splash:wait(0))
@@ -1133,7 +1151,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local properties = splash.args.properties;
             local element = splash:select('#clickMe')
 
-            element.node.className = 'my-class'
+            element.className = 'my-class'
 
             return splash:evaljs('document.querySelector("#clickMe").className')
         end
@@ -1153,8 +1171,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             local ids = {}
 
             while el do
-                table.insert(ids, el.node.id)
-                el = el.node.nextSibling
+                table.insert(ids, el.id)
+                el = el.nextSibling
             end
 
             return treat.as_array(ids)
@@ -1195,8 +1213,8 @@ class HTMLElementTest(BaseLuaRenderTest):
             splash:wait(0.1)
 
             local title = splash:select('#title')
-            local display = title.node.style.display;
-            title.node.style.display = 'block';
+            local display = title.style.display;
+            title.style.display = 'block';
 
             local styles = title:styles()
 
@@ -1238,7 +1256,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local ids = {}
             for i,el in ipairs(divs) do
-                ids[i] = el.node.id
+                ids[i] = el.id
             end
 
             return treat.as_array(ids)
@@ -1278,7 +1296,7 @@ class HTMLElementTest(BaseLuaRenderTest):
 
             local ids = {}
             for i,el in ipairs(divs) do
-                ids[i] = el.node.id
+                ids[i] = el.id
             end
 
             return treat.as_array(ids)
@@ -1508,10 +1526,10 @@ class HTMLElementTest(BaseLuaRenderTest):
             local body = splash:select('body')
             local div = splash:evaljs('document.createElement("div")')
 
-            div.node.id = 'mydiv';
-            body.node:appendChild(div);
+            div.id = 'mydiv';
+            body:appendChild(div);
 
-            return body.node.lastChild.node.id
+            return body.lastChild.node.id
         end
         """, {"url": self.mockurl("various-elements")})
 
@@ -1557,7 +1575,7 @@ class HTMLElementTest(BaseLuaRenderTest):
             local body = splash:select('body')
 
             function get_text()
-                return body.node.childNodes[1].node:text()
+                return body.childNodes[1]:text()
             end
 
             local text = get_text()

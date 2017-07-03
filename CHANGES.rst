@@ -26,6 +26,8 @@ Backwards incompatible changes:
 
 Other changes:
 
+* New :ref:`splash-scroll-position` attribute allows to get and set
+  window scroll position;
 * Qt is upgraded to 5.9 LTS, PyQT is upgraded to 5.9;
 * Docker now uses Ubuntu 16.04;
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
