@@ -34,16 +34,13 @@ Trigger mouse click event on the element.
 **Returns:** ``ok, reason`` pair. If ``ok`` is nil then error happened during
 the function call; ``reason`` provides an information about error type.
 
-**Async:** no.
+**Async:** yes.
 
 If x or y coordinate is not provided, they are set to width/2 and height/2
 respectively, and the click is triggered on the middle of the element.
 
 Coordinates can have a negative value which means the click will be triggered
 outside of the element.
-
-Mouse events are not propagated immediately, to see consequences of click
-reflected in page source you must call :ref:`splash-wait`
 
 Example 1: click inside element, but closer to the top left corner:
 
@@ -64,13 +61,21 @@ Example 2: click on the area above the element by 10 pixels
 
     function main(splash)
         -- ...
+        splash:set_viewport_full()
         local element = splash:select('.element')
         assert(element:mouse_click{y=-10})
         -- ...
     end
 
-See more about mouse events in :ref:`splash-mouse-click`.
+Unlike :ref:`splash-mouse-click`, :ref:`splash-element-mouse-click` waits
+until clicking is done, so to see consequences of click reflected in a page
+there is no need to call :ref:`splash-wait`.
 
+If an element is outside the current viewport, viewport is scrolled to make
+element visible. If scrolling was necessary, page is not scrolled back
+to the original position after the click.
+
+See more about mouse events in :ref:`splash-mouse-click`.
 
 .. _splash-element-mouse-hover:
 

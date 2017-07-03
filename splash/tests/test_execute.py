@@ -4106,7 +4106,7 @@ class ScrollPositionTest(BaseLuaRenderTest):
         <div id="middle">World</div>
         <div id="bottom">
             Footer
-            <a href="javascript:document.querySelector('#top').innerHTML = 'clicked';">
+            <a id="clickme" href="javascript:document.querySelector('#top').innerHTML = 'clicked';">
                 click me
             </a>
         </div>
@@ -4198,3 +4198,54 @@ class ScrollPositionTest(BaseLuaRenderTest):
 
         resp = _request('jpeg')  # no alpha channel
         self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
+
+    def test_element_screenshots(self):
+        def _request(method):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                local res = splash:select('#bottom'):%s()
+                splash:select('#top'):%s()                                        
+                return res
+            end
+            """ % (method, method), {'html': self.PAGE_HTML})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = _request('png')
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'])
+
+        resp = _request('jpeg')  # no alpha channel
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
+
+    def _request_get_top_text(self, script, params=None):
+        params = dict(html=self.PAGE_HTML, **(params or {}))
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            %s
+            return splash:select('#top'):text()
+        end
+        """ % script, params)
+        self.assertStatusCode(resp, 200)
+        return resp
+
+    def test_element_mouse_click_viewport_full(self):
+        resp = self._request_get_top_text("""
+        splash:set_viewport_full()
+        splash:select("a#clickme"):mouse_click()
+        splash:wait(0.01)
+        """)
+        assert resp.text == "clicked"
+
+    def test_element_mouse_click_outside_viewport(self):
+        resp = self._request_get_top_text("""
+        local el = splash:select("a#clickme")
+        el:mouse_click()
+        -- splash:wait(0)
+        splash.scroll_position = {0, 0}
+        splash:wait(0.01)
+        """)
+        assert resp.text == "clicked"

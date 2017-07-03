@@ -129,15 +129,14 @@ class HTMLElementTest(BaseLuaRenderTest):
              table.insert(clicked_points, {x=event.clientX, y=event.clientY})
             end
 
+            assert(body:mouse_click())
             assert(body:mouse_click(0, 0))
             assert(body:mouse_click{x=0, y=0})
             assert(body:mouse_click(5, 10))
             assert(body:mouse_click{x=5, y=10})
-            assert(body:mouse_click(20, 40))
-            assert(body:mouse_click())
-
+            assert(body:mouse_click(20, 40))            
             assert(splash:wait(0))
-
+            
             return treat.as_array(clicked_points)
         end
         """, {"url": self.mockurl("various-elements")})
@@ -146,12 +145,12 @@ class HTMLElementTest(BaseLuaRenderTest):
 
         w, h = map(int, defaults.VIEWPORT_SIZE.split('x'))
         self.assertEqual(resp.json(), [
+            {'x': w//2, 'y': h//2},
             {'x': 0, 'y': 0},
             {'x': 0, 'y': 0},
             {'x': 5, 'y': 10},
             {'x': 5, 'y': 10},
             {'x': 20, 'y': 40},
-            {'x': w//2, 'y': h//2}
         ])
 
     def test_mouse_click_border_radius(self):

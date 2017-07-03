@@ -2239,14 +2239,6 @@ Trigger mouse click event in web page.
 **Async:** no.
 
 Coordinates for mouse events must be relative to viewport.
-Element on which action is performed must be inside viewport
-(must be visible to the user). If element is outside viewport and
-user needs to scroll to see it, you must either scroll to the element
-with JavaScript or set viewport to full with
-:ref:`splash-set-viewport-full`.
-
-Mouse events are not propagated immediately, to see consequences of click
-reflected in page source you must call :ref:`splash-wait`.
 
 If you want to click on element an easy way is to use :ref:`splash-select`
 with :ref:`splash-element-mouse-click`:
@@ -2273,6 +2265,7 @@ use JavaScript getClientRects_ to get coordinates of html element:
         splash:set_viewport_full()
         splash:wait(0.1)
         local dimensions = get_dimensions()
+        -- FIXME: button must be inside a viewport
         splash:mouse_click(dimensions.x, dimensions.y)
 
         -- Wait split second to allow event to propagate.
@@ -2282,13 +2275,31 @@ use JavaScript getClientRects_ to get coordinates of html element:
 
 .. _getClientRects: https://developer.mozilla.org/en/docs/Web/API/Element/getClientRects
 
+Unlike :ref:`splash-element-mouse-click`, :ref:`splash-mouse-click` is not
+async. Mouse events are not propagated immediately, to see consequences
+of click reflected in page source you must call :ref:`splash-wait` if you
+use :ref:`splash-mouse-click`.
+
+Element on which action is performed must be inside viewport
+(must be visible to the user). If element is outside viewport and
+user needs to scroll to see it, you must either scroll to the element
+(using JavaScript, :ref:`splash-scroll-position` or e.g.
+``element:scrollIntoViewIfNeeded()``) or set viewport to full with
+:ref:`splash-set-viewport-full`.
+
+.. note::
+
+    :ref:`splash-element-mouse-click` scrolls automatically, unlike
+    :ref:`splash-mouse-click`.
+
 Under the hood :ref:`splash-mouse-click` performs :ref:`splash-mouse-press`
 followed by :ref:`splash-mouse-release`.
 
 At the moment only left click is supported.
 
 See also: :ref:`splash-element-mouse-click`, :ref:`splash-mouse-press`,
-:ref:`splash-mouse-release`, :ref:`splash-mouse-hover`, .
+:ref:`splash-mouse-release`, :ref:`splash-mouse-hover`,
+:ref:`splash-scroll-position`.
 
 
 .. _splash-mouse-hover:

@@ -115,13 +115,22 @@ def command(table_argument=False, sets_callback=False,
                 emits_lua_objects(meth)
             ),
             error_as_flag,
-            result_as_flag
+            result_as_flag,
         )
         meth._is_command = True
         meth._sets_callback = sets_callback
         return meth
 
     return decorator
+
+
+def _command_result_to_pyresult(res):
+    """ Convert result of a method decorated with @command to PyResult.
+    Use this method to call methods decorated with @command inside other
+    methods decorated with @command.
+    """
+    op, cmd = res
+    return PyResult(cmd, _operation=to_unicode(op))
 
 
 def lua_property(name):
@@ -233,13 +242,13 @@ def add_flag(tuple, flag):
     return new_tuple
 
 
-def exceptions_as_return_values(meth, error_as_flag=False, result_as_flag=False):
+def exceptions_as_return_values(meth, error_as_flag=False,
+                                result_as_flag=False):
     """Decorator for allowing Python exceptions to be caught from Lua.
 
     TODO: this decorator is the last one on the way from Python to Lua and thus
     is responsible for converting non-PyResult values to PyResult.  This is
     suboptimal and should be fixed.
-
     """
     @functools.wraps(meth)
     def exceptions_as_return_values_wrapper(self, *args, **kwargs):
@@ -257,7 +266,6 @@ def exceptions_as_return_values(meth, error_as_flag=False, result_as_flag=False)
                 res = (b'return', False, repr(e).encode('utf-8'))
             else:
                 res = (b'raise', repr(e).encode('utf-8'))
-
         return res
 
     return exceptions_as_return_values_wrapper
@@ -1358,6 +1366,9 @@ class Splash(BaseExposedObject):
             convert=_expose,
         )
 
+    def wait_tick(self, time=0.0):
+        return _command_result_to_pyresult(self.wait(time))
+
 
 class _ExposedTimer(BaseExposedObject):
     """
@@ -1761,6 +1772,7 @@ class _ExposedElement(BaseExposedObject):
             })
 
         self.element.mouse_click(x, y)
+        return self.splash.wait_tick()
 
     @command(error_as_flag=True)
     def mouse_hover(self, x=None, y=None):

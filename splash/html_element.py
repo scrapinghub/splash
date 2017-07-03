@@ -142,7 +142,7 @@ class HTMLElement(object):
         return call
 
     @contextmanager
-    def _in_viewport(self, disable=False):
+    def _in_viewport(self, disable=False, scroll_back=True):
         """ Ensure element is in a viewport; do nothing if disable is True """
         if disable:
             yield
@@ -152,13 +152,15 @@ class HTMLElement(object):
                 self.node_method('scrollIntoViewIfNeeded')()
                 yield
             finally:
-                self.tab.set_scroll_position(**pos)
+                if scroll_back:
+                    self.tab.set_scroll_position(**pos)
 
     def mouse_click(self, x=None, y=None, button="left"):
         """ Click on the element """
         self.assert_element_exists()
-        x, y = self._relative_to_absolute_xy(x, y)
-        self.tab.mouse_click(x, y, button)
+        with self._in_viewport(scroll_back=False):
+            x, y = self._relative_to_absolute_xy(x, y)
+            self.tab.mouse_click(x, y, button)
 
     def mouse_hover(self, x=None, y=None):
         """ Hover over the element """
