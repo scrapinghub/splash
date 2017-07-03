@@ -96,6 +96,25 @@ class HTMLElementTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"before": True, "after": False})
 
+    def test_onclick_cleanup(self):
+        # This code used to break Splash because "onclick" event handler
+        # was triggered after Splash script is finished.
+        resp = self.request_lua("""
+        local treat = require('treat')
+        function main(splash)
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(0.1))
+            local body = splash:select('body')
+            local clicked_points = {}
+            body.onclick = function(event)
+             table.insert(clicked_points, {x=event.clientX, y=event.clientY})
+            end
+            assert(body:mouse_click(0, 0))
+            return treat.as_array(clicked_points)
+        end
+        """, {"url": self.mockurl("various-elements")})
+        self.assertStatusCode(resp, 200)
+
     def test_mouse_click(self):
         resp = self.request_lua("""
         local treat = require('treat')

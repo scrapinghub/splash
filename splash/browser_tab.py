@@ -149,6 +149,10 @@ class BrowserTab(QObject):
         frame.addToJavaScriptWindowObject(self._event_handlers_storage.name,
                                           self._event_handlers_storage)
 
+    def _clear_event_handlers_storage(self):
+        if hasattr(self, '_event_handlers_storage'):
+            self._event_handlers_storage.clear()
+
     def _init_events_storage(self):
         frame = self.web_page.mainFrame()
         self._events_storage = EventsStorage(self)
@@ -437,6 +441,7 @@ class BrowserTab(QObject):
         self.logger.log("close is requested by a script", min_level=2)
         self._closing = True
         self._closing_normally = True
+        self._clear_event_handlers_storage()
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
@@ -1338,8 +1343,13 @@ class EventHandlersStorage(QObject):
         if self.storage.get(func_id, None) is not None:
             del self.storage[func_id]
 
+    def clear(self):
+        self.storage.clear()
+
     @pyqtSlot(str, str, 'QVariantMap', name="run")
     def run_function(self, func_id, event_id, event):
+        if func_id not in self.storage:
+            return
         wrapped_event = Event(self.events_storage, event_id, event)
         self.storage[func_id].on_call_after.append(wrapped_event.remove)
         self.storage[func_id](wrapped_event)
