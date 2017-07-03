@@ -23,6 +23,10 @@ Backwards incompatible changes:
   to Splash, but Splash server itself now runs on Python 3.4+.
 * :ref:`splash-element-mouse-click` and :ref:`splash-element-mouse-hover`
   now click/hover element center by default, not element top-left corner.
+  Also, they scroll to the element being clicked/hovered if needed, to
+  make it work when an element is outside the current viewport. These methods
+  are now async; they wait for events to propagate
+  (unlike :ref:`splash-mouse-click` and :ref:`splash-mouse-hover`).
 
 Other changes:
 
@@ -38,7 +42,15 @@ Other changes:
   with Lua ``assert``, so now a string with an error message is returned
   instead. It was always documented that a string is returned by splash:runjs
   as a second value when error happens.
-* Documentation and testing improvements.
+* Fixed :ref:`splash-element-png` and :ref:`splash-element-jpeg` for elements
+  outside curent viewport;
+* DOM attributes and methods are documented as accessible on
+  elements directly, without ``.node`` - i.e.
+  ``splash:select('.my-element'):getAttribute('foo')`` instead of
+  ``splash:select('.my-element').node:getAttribute('foo')``;
+* exposed ``element:scrollIntoViewIfNeeded()`` method;
+* cleanup of JS event handlers is improved;
+* documentation and testing improvements.
 
 
 2.3.3 (2017-06-07)
