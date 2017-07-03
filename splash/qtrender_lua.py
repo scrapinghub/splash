@@ -709,7 +709,8 @@ class Splash(BaseExposedObject):
 
     @command()
     def download(self):
-        return self.tab.download()
+        data, mime_type = self.tab.download()
+        return BinaryCapsule(data, mime_type)
     
     @command()
     def download_filename(self):

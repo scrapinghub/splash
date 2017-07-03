@@ -7,6 +7,7 @@ import re
 import hashlib
 import weakref
 
+
 from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
@@ -35,6 +36,8 @@ from splash.jsutils import (
     store_dom_elements,
 )
 from splash.html_element import HTMLElement
+
+import mimetypes
 
 
 def skip_if_closing(meth):
@@ -97,10 +100,10 @@ class BrowserTab(QObject):
     
     def download(self):
         if self.download_filename is None: return None
-        f = open(self.download_filename, 'rb')
-        data = f.read()
-        f.close()
-        return data
+        with open(self.download_filename, 'rb') as f : data = f.read()
+        mime_type = mimetypes.guess_type(self.download_filename)[0]
+        if mime_type is None: mime_type = application/octet-stream
+        return data, mime_type
     
     def download_unsupported_content_handler(self, reply, fname):
         
