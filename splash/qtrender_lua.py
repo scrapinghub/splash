@@ -1338,6 +1338,7 @@ class Splash(BaseExposedObject):
                 sandboxed=False,
                 strict=self.strict_lua_runner,
             )
+            self._objects_to_clear.add(runner)
             coro = self.lua.create_coroutine(callback)
             runner.start(coro, coro_args, return_result, return_error)
             return runner
@@ -2191,6 +2192,7 @@ class SplashCoroutineRunner(BaseScriptRunner):
     """
     def __init__(self, lua, splash, log, sandboxed, strict):
         self.splash = splash
+        self._exited = False
         super(SplashCoroutineRunner, self).__init__(
             lua=lua,
             log=log,
@@ -2198,21 +2200,29 @@ class SplashCoroutineRunner(BaseScriptRunner):
             strict=strict,
         )
 
-    def start(self, coro_func, coro_args=None, return_result=None, return_error=None):
+    def start(self, coro_func, coro_args=None, return_result=None,
+              return_error=None):
         do_nothing = lambda *args, **kwargs: None
         self.return_result = return_result or do_nothing
         self.return_error = return_error or do_nothing
         super(SplashCoroutineRunner, self).start(coro_func, coro_args)
 
     def on_result(self, result):
+        if self._exited:
+            return
         self.return_result(result)
 
     def on_async_command(self, cmd):
+        if self._exited:
+            return
         self.splash.run_async_command(cmd)
 
     @stop_on_error
     def dispatch(self, cmd_id, *args):
         super(SplashCoroutineRunner, self).dispatch(cmd_id, *args)
+
+    def clear(self):
+        self._exited = True
 
 
 class MainCoroutineRunner(SplashCoroutineRunner):
@@ -2245,6 +2255,8 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         # would be serialized like that anyway.
         #
         # FIXME: maybe request writer must be fixed?
+        if self._exited:
+            return
         if isinstance(result, tuple):
             result = list(result)
         self.return_result((
@@ -2255,6 +2267,8 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         ))
 
     def on_lua_error(self, lua_exception):
+        if self._exited:
+            return
         py_exception = self.exceptions.get_last()
 
         if not py_exception:
