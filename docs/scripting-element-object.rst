@@ -102,9 +102,6 @@ respectively, and the hover is triggered on the middle of the element.
 Coordinates can have a negative value which means the hover will be
 triggered outside of the element.
 
-Mouse events are not propagated immediately, to see consequences of hover
-reflected in page source you must call :ref:`splash-wait`
-
 Example 1: mouse hover over top left element corner:
 
 .. code-block:: lua
@@ -123,10 +120,19 @@ Example 2: hover over the area above the element by 10 pixels
 
     function main(splash)
         -- ...
+        splash:set_viewport_full()
         local element = splash:select('.element')
         assert(element:mouse_hover{y=-10})
         -- ...
     end
+
+Unlike :ref:`splash-mouse-hover`, :ref:`splash-element-mouse-hover` waits
+until event is propagated, so to see consequences of click reflected in a page
+there is no need to call :ref:`splash-wait`.
+
+If an element is outside the current viewport, viewport is scrolled to make
+element visible. If scrolling was necessary, page is not scrolled back
+to the original position.
 
 See more about mouse events in :ref:`splash-mouse-hover`.
 

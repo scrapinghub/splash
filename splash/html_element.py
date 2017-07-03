@@ -165,8 +165,9 @@ class HTMLElement(object):
     def mouse_hover(self, x=None, y=None):
         """ Hover over the element """
         self.assert_element_exists()
-        x, y = self._relative_to_absolute_xy(x, y)
-        self.tab.mouse_hover(x, y)
+        with self._in_viewport(scroll_back=False):
+            x, y = self._relative_to_absolute_xy(x, y)
+            self.tab.mouse_hover(x, y)
 
     def _relative_to_absolute_xy(self, dx=None, dy=None):
         dimensions = self._get_dimensions()

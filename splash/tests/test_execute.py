@@ -4106,10 +4106,21 @@ class ScrollPositionTest(BaseLuaRenderTest):
         <div id="middle">World</div>
         <div id="bottom">
             Footer
-            <a id="clickme" href="javascript:document.querySelector('#top').innerHTML = 'clicked';">
+            <a id="clickme" href="javascript:setTopHtml('clicked');">
                 click me
             </a>
         </div>
+        <script>
+        window.setTopHtml = function(html){
+            document.querySelector('#top').innerHTML = html;
+        }
+        document.querySelector("#bottom").addEventListener(
+            "mousemove", 
+            function(event) {            
+                setTopHtml('hover');
+            }
+        );
+        </script>
     </body>
 </html>
 """
@@ -4249,3 +4260,15 @@ class ScrollPositionTest(BaseLuaRenderTest):
         splash:wait(0.01)
         """)
         assert resp.text == "clicked"
+
+    def test_mouse_hover_outside_viewport(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            assert(splash:set_content(splash.args.html))
+            assert(splash:select("#bottom").mouse_hover())
+            return splash:select("#top"):text()
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.text == "hover"

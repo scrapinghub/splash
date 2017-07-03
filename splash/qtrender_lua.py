@@ -1791,6 +1791,7 @@ class _ExposedElement(BaseExposedObject):
             })
 
         self.element.mouse_hover(x, y)
+        return self.splash.wait_tick()
 
     @command()
     def styles(self):
