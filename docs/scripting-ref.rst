@@ -3,8 +3,8 @@
 Splash Scripts Reference
 ========================
 
-``splash`` object is passed to ``main`` function; via this object
-a script can control the browser. Think of it as of an API to
+``splash`` object is passed to ``main`` function as a first argument;
+via this object a script can control the browser. Think of it as of an API to
 a single browser tab.
 
 Attributes
@@ -22,10 +22,29 @@ values sent using ``application/json`` POST request.
 For example, if you passed 'url' argument to a script using HTTP API,
 then ``splash.args.url`` contains this URL.
 
-:ref:`splash-args` is the preferred way to pass parameters to Splash scripts.
-An alternative way is to use string formatting to build a script with
-variables embedded. There are two problems which make :ref:`splash-args`
-a better solution:
+You can also access ``splash.args`` using second, optional ``args`` argument
+of the ``main`` function:
+
+.. code-block:: lua
+
+    function main(splash, args)
+        local url = args.url
+        -- ...
+    end
+
+The example above is the same as
+
+.. code-block:: lua
+
+    function main(splash)
+        local url = splash.args.url
+        -- ...
+    end
+
+Using either ``args`` or :ref:`splash-args` is the preferred way to pass
+parameters to Splash scripts. An alternative way is to use string
+formatting to build a script with variables embedded.
+There are two problems which make :ref:`splash-args` a better solution:
 
 1. data must be escaped somehow, so that it doesn't break a Lua script;
 2. embedding variables makes it impossible to use script cache efficiently
@@ -1278,11 +1297,11 @@ a binary image data with a proper Content-Type header:
 .. code-block:: lua
 
      -- A simplistic implementation of render.jpeg endpoint
-     function main(splash)
-         assert(splash:go(splash.args.url))
+     function main(splash, args)
+         assert(splash:go(args.url))
          return splash:jpeg{
-            width=splash.args.width,
-            height=splash.args.height
+            width=args.width,
+            height=args.height
          }
      end
 
@@ -1353,10 +1372,10 @@ all existing logs and start recording from scratch:
 
 .. code-block:: lua
 
-     function main(splash)
-         assert(splash:go(splash.args.url1))
+     function main(splash, args)
+         assert(splash:go(args.url1))
          local har1 = splash:har{reset=true}
-         assert(splash:go(splash.args.url2))
+         assert(splash:go(args.url2))
          local har2 = splash:har()
          return {har1=har1, har2=har2}
      end
@@ -2551,18 +2570,18 @@ arguments passed to splash, `username` and `password`.
 
 .. code-block:: lua
 
-    function main(splash)
+    function main(splash, args)
         function focus(sel)
-            splash:select(sel).node:focus()
+            splash:select(sel):focus()
         end
 
-        assert(splash:go(splash.args.url))
+        assert(splash:go(args.url))
         assert(splash:wait(0.5))
         focus('input[name=username]')
-        splash:send_text(splash.args.username)
+        splash:send_text(args.username)
         assert(splash:wait(0))
         focus('input[name=password]')
-        splash:send_text(splash.args.password)
+        splash:send_text(args.password)
         splash:select('input[type=submit]'):mouse_click()
         assert(splash:wait(0))
         -- Usually, wait for the submit request to finish

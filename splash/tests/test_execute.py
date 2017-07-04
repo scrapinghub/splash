@@ -1414,18 +1414,25 @@ class ArgsTest(BaseLuaRenderTest):
         """
         return self.request_lua(func, query)
 
+    def args_param_request(self, query):
+        func = """
+        function main(splash, args)
+          return {args=args}
+        end
+        """
+        return self.request_lua(func, query)
+
     def assertArgs(self, query):
-        resp = self.args_request(query)
-        self.assertStatusCode(resp, 200)
-        data = resp.json()["args"]
-        data.pop('lua_source')
-        data.pop('uid')
-        return data
+        for resp in [self.args_request(query), self.args_param_request(query)]:
+            self.assertStatusCode(resp, 200)
+            data = resp.json()["args"]
+            data.pop('lua_source')
+            data.pop('uid')
+            yield data
 
     def assertArgsPassed(self, query):
-        args = self.assertArgs(query)
-        self.assertEqual(args, query)
-        return args
+        for args in self.assertArgs(query):
+            self.assertEqual(args, query)
 
     def test_known_args(self):
         self.assertArgsPassed({"wait": "1.0"})

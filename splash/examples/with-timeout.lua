@@ -1,8 +1,7 @@
-function main(splash)
+function main(splash, args)
   local ok, result = splash:with_timeout(function()
-    local url = splash.args.url
     splash:wait(3)
-    assert(splash:go(url))
+    assert(splash:go(args.url))
   end, 2)
 
   if not ok then

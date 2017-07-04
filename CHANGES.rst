@@ -30,9 +30,12 @@ Backwards incompatible changes:
 
 Other changes:
 
-* New :ref:`splash-scroll-position` attribute allows to get and set
+* An alternative way to access :ref:`splash-args`: it can be received
+  as a second argument of ``main`` function
+  (i.e. ``function main(splash, args) ...``);
+* new :ref:`splash-scroll-position` attribute allows to get and set
   window scroll position;
-* Qt is upgraded to 5.9.1 LTS, PyQT is upgraded to 5.9;
+* Qt is upgraded to 5.9.1, PyQT is upgraded to 5.9;
 * Docker now uses Ubuntu 16.04;
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
   is increased from 60s to 90s; default ``timeout`` **value**
