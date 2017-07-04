@@ -7,8 +7,9 @@ Splash is controlled via HTTP API. For all endpoints below parameters
 may be sent either as GET arguments or encoded to JSON and
 POSTed with ``Content-Type: application/json`` header.
 
-The most versatile endpoint that provides all Splash features
-is :ref:`execute`; it allows to execute arbitrary Lua rendering scripts.
+Most versatile endpoints that provide all Splash features
+are :ref:`execute` and :ref:`run`; they allow to execute arbitrary Lua
+rendering scripts.
 
 Other endpoints may be easier to use in specific
 cases - for example, :ref:`render.png` returns a screenshot in PNG format
@@ -620,6 +621,31 @@ load_args : JSON object or a string : optional
 
 You can pass any other arguments. All arguments passed to :ref:`execute`
 endpoint are available in a script in :ref:`splash.args <splash-args>` table.
+
+.. _run:
+
+run
+---
+
+This endpoint is the same as :ref:`execute`, but it wraps ``lua_source``
+in ``function main(splash, args) ... end`` automatically.
+For example, if you're sending this script to :ref:`execute`:
+
+.. code-block:: lua
+
+    funcion main(splash, args)
+        assert(splash:go(args.url))
+        assert(splash:wait(1.0))
+        return splash:html()
+    end
+
+equivalent script for :ref:`run` endpoint would be
+
+.. code-block:: lua
+
+    assert(splash:go(args.url))
+    assert(splash:wait(1.0))
+    return splash:html()
 
 .. _execute javascript:
 

@@ -344,7 +344,7 @@ if(splash.params) {
             }
         }
     };
-    xhr.open('POST', splash.lua_enabled ? '/execute' : '/render.json');
+    xhr.open('POST', splash.lua_enabled ? '/run' : '/render.json');
     xhr.setRequestHeader('content-type', 'application/json');
     xhr.responseType = 'blob'; // Need blob in case an image is returned directly
     xhr.send(JSON.stringify(params));

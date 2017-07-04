@@ -28,11 +28,8 @@ function find_input(forms)
   return potential[1].form, potential[1].input
 end
 
-function main(splash)
-  splash.images_enabled = false
-  assert(splash:go(splash.args.url))
-  assert(splash:wait(1))
-
+-- find a form and submit "splash" to it
+function search_for_splash()
   local forms = splash:select_all('form')
 
   if #forms == 0 then
@@ -47,9 +44,13 @@ function main(splash)
 
   assert(input:send_keys('splash'))
   assert(splash:wait(0))
-
   assert(form:submit())
-  assert(splash:wait(1))
-
-  return splash:png()
 end
+
+-- main rendering script
+assert(splash:go(args.url))
+assert(splash:wait(1))
+search_for_splash()
+assert(splash:wait(3))
+
+return splash:png()

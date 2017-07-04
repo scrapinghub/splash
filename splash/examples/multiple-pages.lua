@@ -19,11 +19,10 @@ end
 
 -- visit first 3 pages of hacker news
 local base = "https://news.ycombinator.com/news?p="
-function main(splash)
-    local result = treat.as_array({})
-    for i=1,3 do
-        local url =  base .. i
-        result[i] = page_info(splash, url)
-    end
-    return result
+local result = treat.as_array({})
+for i=1,3 do
+    local url =  base .. i
+    result[i] = page_info(splash, url)
 end
+
+return result

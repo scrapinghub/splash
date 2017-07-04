@@ -11,7 +11,8 @@ programming language. This allows us to use Splash as a browser automation
 tool similar to PhantomJS_.
 
 To execute a script and get the result back send it to the :ref:`execute`
-endpoint in a :ref:`lua_source <arg-lua-source>` argument.
+(or :ref:`run`) endpoint in a :ref:`lua_source <arg-lua-source>` argument.
+We'll be using :ref:`execute` endpoint in this tutorial.
 
 .. note::
 
@@ -43,7 +44,7 @@ Let's start with a basic example:
 
 If we submit this script to the :ref:`execute` endpoint in a ``lua_source``
 argument, Splash will go to the example.com website, wait until it loads,
-wait aother half-second, then get the page title (by evaluating a JavaScript
+wait another half-second, then get the page title (by evaluating a JavaScript
 snippet in page context), and then return the result as a JSON encoded object.
 
 .. note::
