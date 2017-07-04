@@ -11,6 +11,7 @@ usage -- print this message
 prepare_install -- prepare image for installation
 install_deps -- install general system-level dependencies
 install_qtwebkit_deps -- install Qt and WebKit dependencies
+install_official_qt -- install Qt using official installer
 install_qtwebkit -- install updated WebKit for QT
 install_pyqt5 -- install PyQT5 from sources
 install_python_deps -- install python packages
@@ -25,8 +26,8 @@ EOF
 
 env | grep SPLASH
 
-SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.3.dev1707021742"}
-SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.9.dev1706151807"}
+SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.3"}
+SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.9"}
 SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"2"}
 
 # '2' is not supported by this script; allowed values are "3" and "venv" (?).
@@ -121,11 +122,14 @@ install_official_qt () {
     # as well as qt-installer-noninteractive.qs script.
     _ensure_folders && \
     curl -L -o /downloads/qt-installer.run \
-               http://download.qt.io/official_releases/qt/5.9/5.9.0/qt-opensource-linux-x64-5.9.0.run && \
+               http://download.qt.io/official_releases/qt/5.9/5.9.1/qt-opensource-linux-x64-5.9.1.run && \
     chmod +x /downloads/qt-installer.run && \
     xvfb-run /downloads/qt-installer.run \
         --script /tmp/script.qs \
-        | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))'
+        | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))' && \
+    ls /opt/qt59/ && \
+    cat /opt/qt59/InstallationLog.txt && \
+    cat /opt/qt59/components.xml
 }
 
 
@@ -143,10 +147,10 @@ install_pyqt5 () {
     _ensure_folders && \
     _activate_venv && \
     ${_PYTHON} --version && \
-#    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
-#    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz
-    curl -L -o /downloads/sip.tar.gz https://www.riverbankcomputing.com/static/Downloads/sip/sip-${SPLASH_SIP_VERSION}.tar.gz && \
-    curl -L -o /downloads/pyqt5.tar.gz https://www.riverbankcomputing.com/static/Downloads/PyQt5/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
+    curl -L -o /downloads/sip.tar.gz https://sourceforge.net/projects/pyqt/files/sip/sip-${SPLASH_SIP_VERSION}/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+    curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
+#    curl -L -o /downloads/sip.tar.gz https://www.riverbankcomputing.com/static/Downloads/sip/sip-${SPLASH_SIP_VERSION}.tar.gz && \
+#    curl -L -o /downloads/pyqt5.tar.gz https://www.riverbankcomputing.com/static/Downloads/PyQt5/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
     ls -lh /downloads && \
     # TODO: check downloads
     pushd /builds && \
