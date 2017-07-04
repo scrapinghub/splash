@@ -34,7 +34,6 @@ Controller.prototype.ComponentSelectionPageCallback = function() {
     widget.deselectAll();
     widget.selectComponent("qt.591.gcc_64");
     widget.selectComponent("qt.591.qtwebengine.gcc_64");
-    widget.selectComponent("qt.591.qtspeech.gcc_64")
     gui.clickButton(buttons.NextButton);
 }
 
