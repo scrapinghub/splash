@@ -2254,7 +2254,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
 
     def start(self, main_coro, return_result=None, return_error=None):
         self.exceptions.clear()
-        args = [self.splash.get_wrapped()]
+        args = [self.splash.get_wrapped(), self.splash.args]
         super(MainCoroutineRunner, self).start(
             coro_func=main_coro,
             coro_args=args,

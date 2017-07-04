@@ -64,13 +64,13 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         url = self.mockurl("http-redirect?code=302")
         new_url = self.mockurl("jsrender")
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             splash:on_request(function(request)
-                if request.url == splash.args.url then
-                    request:set_url(splash.args.new_url)
+                if request.url == args.url then
+                    request:set_url(args.new_url)
                 end
             end)
-            splash:go(splash.args.url)
+            splash:go(args.url)
             return splash:html()
         end
         """, {'url': url, 'new_url': new_url})
@@ -80,18 +80,18 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_set_proxy(self):
         proxy_port = self.ts.mock_proxy_port
         resp = self.request_lua("""
-        function main(splash)
-            assert(splash:go(splash.args.url))
+        function main(splash, args)
+            assert(splash:go(args.url))
             local html_1 = splash:html()
 
             splash:on_request(function(request)
                 request:set_proxy{
                     host="0.0.0.0",
-                    port=splash.args.proxy_port
+                    port=args.proxy_port
                 }
             end)
 
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             local html_2 = splash:html()
             return html_1, html_2
         end
@@ -104,35 +104,37 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_set_proxy_with_auth(self):
         proxy_port = self.ts.mock_auth_proxy_port
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             splash:on_request(function(request)
                 request:set_proxy{
                     host="0.0.0.0",
-                    port=splash.args.proxy_port,
+                    port=args.proxy_port,
                     username='%s',
                     password='splash'
                 }
             end)
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             return splash.html()
         end
-        """ % self.ts.mock_auth_proxy_user, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        """ % self.ts.mock_auth_proxy_user, {
+            'url': self.mockurl("jsrender"), 'proxy_port': proxy_port
+        })
         self.assertStatusCode(resp, 200)
         self.assertProxied(resp.text)
 
     def test_set_proxy_with_bad_auth(self):
         proxy_port = self.ts.mock_auth_proxy_port
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             splash:on_request(function(request)
                 request:set_proxy{
                     host="0.0.0.0",
-                    port=splash.args.proxy_port,
+                    port=args.proxy_port,
                     username='testar',
                     password='splash'
                 }
             end)
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             return splash.html()
         end
         """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
@@ -143,21 +145,21 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_set_proxy_twice(self):
         proxy_port = self.ts.mock_proxy_port
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             local first = true
             splash:on_request(function(request)
                 if first then
                     request:set_proxy{
                         host="0.0.0.0",
-                        port=splash.args.proxy_port
+                        port=args.proxy_port
                     }
                     first = false
                 end
             end)
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             local html_1 = splash:html()
 
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             local html_2 = splash:html()
             return html_1, html_2
         end
@@ -227,12 +229,12 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
     def test_on_request_reset(self):
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             x = 0
             splash:on_request(function(req) x = x + 1 end)
-            splash:go(splash.args.url)
+            splash:go(args.url)
             splash:on_request_reset()
-            splash:go(splash.args.url)
+            splash:go(args.url)
             return x
         end
         """, {'url': self.mockurl('jsrender')})

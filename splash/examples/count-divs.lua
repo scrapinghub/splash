@@ -1,4 +1,4 @@
-function main(splash)
+function main(splash, args)
   local get_div_count = splash:jsfunc([[
     function () {
       var body = document.body;
@@ -7,8 +7,7 @@ function main(splash)
     }
   ]])
 
-  local url = splash.args.url
-  splash:go(url)
+  splash:go(args.url)
   return string.format("There are %s DIVs in %s",
-      get_div_count(), url)
+      get_div_count(), args.url)
 end
