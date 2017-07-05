@@ -53,6 +53,12 @@ snippet in page context), and then return the result as a JSON encoded object.
     for Lua and a button to submit a script to ``execute``. Visit
     http://127.0.0.1:8050/ (or whatever host/port Splash is listening to).
 
+    To run scripts from your programming environment you need to figure
+    out how to send HTTP requests. Check :ref:`using-http-api` FAQ
+    section - it contains recipes for some of the common setupts
+    (e.g. Python + requests library).
+
+
 Entry Point: the "main" Function
 --------------------------------
 
