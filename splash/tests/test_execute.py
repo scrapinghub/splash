@@ -2637,6 +2637,22 @@ class HttpGetTest(BaseLuaRenderTest):
             return response.request.headers
         end
         """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertEqual(headers['Header-1'], 'Value 1')
+        self.assertEqual(headers['Header-2'], '2')
+
+    def test_get_with_invalid_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = {"a"},
+            })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
         msg = "splash:set_custom_headers\(\) arguments must be a table with strings as keys and values."
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
 

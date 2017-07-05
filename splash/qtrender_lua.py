@@ -1087,20 +1087,18 @@ class Splash(BaseExposedObject):
 
     @command(table_argument=True)
     def set_custom_headers(self, headers):
-        self.validate_headers(headers)
+        self._validate_headers(headers)
         self.tab.set_custom_headers(self.lua.lua2python(headers, max_depth=3))
 
-    def validate_headers(self, headers):
+    def _validate_headers(self, headers):
         for key, value in headers.items():
-            try:
-                to_bytes(key), to_bytes(value)
-            except TypeError as e:
+            if (not isinstance(key, (bytes, str)) or
+                not isinstance(value, (bytes, str, int, float))):
                 raise ScriptError({
                     "message": "splash:set_custom_headers() arguments must be a table"
                                 " with strings as keys and values."
-                                "Header: `{}:{}` is not valid".format(key, value)
+                                "Header: `{!r}:{!r}` is not valid".format(key, value)
                 })
-
 
     @command()
     def get_viewport_size(self):

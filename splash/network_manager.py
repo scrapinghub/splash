@@ -107,7 +107,6 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _on_finished(self, reply):
         reply.deleteLater()
 
-
     def createRequest(self, operation, request, outgoingData=None):
         try:
             return self._createRequest(operation, request, outgoingData=outgoingData)
@@ -257,9 +256,11 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         for name, value in headers or []:
             try:
+                if isinstance(value, (int, float)):
+                    value = str(value)
                 request.setRawHeader(to_bytes(name), to_bytes(value))
             except TypeError:
-                msg = "invalid header {}: {}. Header keys and values must be string or bytes"
+                msg = "invalid header {!r}: {!r}. Header keys and values must be strings or bytes"
                 self.log(msg.format(name, value), min_level=1, format_msg=False)
                 continue
 
