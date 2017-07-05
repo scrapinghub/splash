@@ -128,7 +128,7 @@ install_official_qt () {
         --script /tmp/script.qs \
         | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))' && \
     ls /opt/qt59/ && \
-    cat /opt/qt59/InstallationLog.txt && \
+#    cat /opt/qt59/InstallationLog.txt && \
     cat /opt/qt59/components.xml
 }
 
