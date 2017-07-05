@@ -13,7 +13,7 @@ Script as an HTTP API endpoint
 
 Each Splash Lua script can be seen as an HTTP API endpoint, with input
 arguments and structured result value. For example, you can emulate
-:ref:`render-png` endpoint using Lua script, including all its
+:ref:`render.png` endpoint using Lua script, including all its
 HTTP arguments.
 
 * :ref:`splash-args` is the way to get data to the script;
