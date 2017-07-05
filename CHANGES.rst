@@ -28,7 +28,7 @@ Backwards incompatible changes:
   are now async; they wait for events to propagate
   (unlike :ref:`splash-mouse-click` and :ref:`splash-mouse-hover`).
 
-Other changes, features and bug fixes:
+New features:
 
 * An alternative way to access :ref:`splash-args`: it can be received
   as a second argument of ``main`` function
@@ -39,10 +39,15 @@ Other changes, features and bug fixes:
 * new :ref:`splash-scroll-position` attribute allows to get and set
   window scroll position;
 * Qt is upgraded to 5.9.1, PyQT is upgraded to 5.9;
-* Docker now uses Ubuntu 16.04;
+* official Docker image now uses Ubuntu 16.04.
+
+Other changes and bug fixes:
+
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
   is increased from 60s to 90s; default ``timeout`` **value**
   is still 30s.
+* new docs section: :ref:`splash-lua-api-overview`;
+* new FAQ entry: :ref:`using-http-api`;
 * Fixed an issue with :ref:`splash-runjs`: previously in case of an error
   it returned a table with error information. This approach didn't play well
   with Lua ``assert``, so now a string with an error message is returned
