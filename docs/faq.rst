@@ -254,6 +254,32 @@ https://github.com/nabilm/ansible-splash.
 
 .. _Ansible: https://www.ansible.com/
 
+.. _rendering-problems:
+
+Website is not rendered correctly
+---------------------------------
+
+Sometimes websites are not rendered correctly by Splash.
+Common reasons:
+
+* not enough wait time; solution - wait more (see e.g. :ref:`splash-wait`);
+* non-working localStorage in Private Mode. This is a common issue e.g. for
+  websites based on AngularJS. If rendering doesn't work, try disabling
+  Private mode (see :ref:`disable-private-mode`).
+* missing features in WebKit used by Splash. Splash now uses
+  https://github.com/annulen/webkit, which is much more recent than WebKit
+  provided by Qt; we'll be updating Splash WebKit as annulen's webkit
+  develops.
+* Qt or WebKit bugs which cause Splash to hang. Often the whole website works,
+  but some specific .js (or other) file causes problems. In this case you
+  can try starting splash in verbose mode
+  (e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``),
+  noting what resources are downloaded last, and filtering them out
+  using :ref:`splash-on-request` or :ref:`request filters`.
+
+If you have troubles making Splash work, consider asking a question
+at https://stackoverflow.com. If you think it is a Splash bug,
+raise an issue at https://github.com/scrapinghub/splash/issues.
 
 .. _disable-private-mode:
 

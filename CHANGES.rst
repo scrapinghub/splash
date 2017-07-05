@@ -47,7 +47,7 @@ Other changes and bug fixes:
   is increased from 60s to 90s; default ``timeout`` **value**
   is still 30s.
 * new docs section: :ref:`splash-lua-api-overview`;
-* new FAQ entry: :ref:`using-http-api`;
+* new FAQ entries: :ref:`using-http-api`, :ref:`rendering-problems`;
 * Fixed an issue with :ref:`splash-runjs`: previously in case of an error
   it returned a table with error information. This approach didn't play well
   with Lua ``assert``, so now a string with an error message is returned
