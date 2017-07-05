@@ -247,6 +247,9 @@ handling?). Splash scripts are standard Lua code.
     Splash tries to look at the problem from a different angle, but
     for each unique Splash feature there is an unique PhantomJS feature.
 
+To read more about Splash Lua API features
+check :ref:`splash-lua-api-overview`.
+
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS: http://www.nightmarejs.org/
 

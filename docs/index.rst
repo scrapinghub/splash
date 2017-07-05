@@ -27,6 +27,7 @@ Documentation
    install
    api
    scripting-tutorial
+   scripting-overview
    scripting-ref
    scripting-response-object
    scripting-request-object
