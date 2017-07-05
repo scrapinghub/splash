@@ -546,7 +546,7 @@ class DemoUI(_ValidatingResource):
             harviewer_path=HARVIEWER_PATH,
             options=safe_json({
                 "params": params,
-                "endpoint": "run" if self.lua_enabled else "render.json",
+                "endpoint": "execute" if self.lua_enabled else "render.json",
                 "harviewer_path": HARVIEWER_PATH,
                 "lua_enabled": self.lua_enabled,
             }),
