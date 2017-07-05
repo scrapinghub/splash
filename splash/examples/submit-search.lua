@@ -28,29 +28,31 @@ function find_input(forms)
   return potential[1].form, potential[1].input
 end
 
--- find a form and submit "splash" to it
-function search_for_splash()
-  local forms = splash:select_all('form')
+function main(splash, args)
+  -- find a form and submit "splash" to it
+  local function search_for_splash()
+    local forms = splash:select_all('form')
 
-  if #forms == 0 then
-    error('no search form is found')
+    if #forms == 0 then
+      error('no search form is found')
+    end
+
+    local form, input = find_input(forms)
+
+    if not input then
+      error('no search form is found')
+    end
+
+    assert(input:send_keys('splash'))
+    assert(splash:wait(0))
+    assert(form:submit())
   end
 
-  local form, input = find_input(forms)
+  -- main rendering script
+  assert(splash:go(args.url))
+  assert(splash:wait(1))
+  search_for_splash()
+  assert(splash:wait(3))
 
-  if not input then
-    error('no search form is found')
-  end
-
-  assert(input:send_keys('splash'))
-  assert(splash:wait(0))
-  assert(form:submit())
+  return splash:png()
 end
-
--- main rendering script
-assert(splash:go(args.url))
-assert(splash:wait(1))
-search_for_splash()
-assert(splash:wait(3))
-
-return splash:png()

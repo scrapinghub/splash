@@ -34,4 +34,6 @@ function process(splash, users)
   return result
 end
 
-return {users=process(splash, USERS)}
+function main(splash, args)
+  return {users=process(splash, USERS)}
+end

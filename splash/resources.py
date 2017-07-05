@@ -625,13 +625,15 @@ class Root(Resource):
 
     def get_example_script(self):
         return """
-assert(splash:go(args.url))
-assert(splash:wait(0.5))
-return {
-  html = splash:html(),
-  png = splash:png(),
-  har = splash:har(),
-}
+function main(splash, args)
+  assert(splash:go(args.url))
+  assert(splash:wait(0.5))
+  return {
+    html = splash:html(),
+    png = splash:png(),
+    har = splash:har(),
+  }
+end
 """.strip()
 
     def render_GET(self, request):
@@ -734,7 +736,7 @@ return {
             version=splash.__version__,
             theme=BOOTSTRAP_THEME,
             options=safe_json({
-                "endpoint": "run" if self.lua_enabled else "render.json",
+                "endpoint": "execute" if self.lua_enabled else "render.json",
                 "lua_enabled": self.lua_enabled,
                 "example_script": self.get_example_script(),
             }),
