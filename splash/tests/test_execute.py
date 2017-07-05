@@ -1657,6 +1657,29 @@ class GoTest(BaseLuaRenderTest):
         self.assertIn("'Header Value'", data["res1"])
         self.assertNotIn("'Header Value'", data["res2"])
 
+    def test_go_headers_float(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Custom-Header"] = 23.3,
+            }})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("'23.3'", resp.text)
+
+    def test_go_headers_bad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Custom-Header"] = {23.3},
+            }})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+
     def test_set_custom_headers(self):
         resp = self.request_lua("""
         function main(splash)
@@ -2624,6 +2647,38 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertEqual(headers["Header-1"], "Value 1")
         self.assertEqual(headers["Header-2"], "Value 2")
         self.assertIn("user-agent", headers)
+
+    def test_get_with_integer_headers(self):
+        # header with integer value should not crash splash
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = 2
+                })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertEqual(headers['Header-1'], 'Value 1')
+        self.assertEqual(headers['Header-2'], '2')
+
+    def test_get_with_invalid_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = {"a"},
+            })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        msg = "headers must be a table with strings as keys and values."
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
+        self.assertErrorLineNumber(resp, 3)
 
     def test_get_with_custom_ua(self):
         resp = self.request_lua("""

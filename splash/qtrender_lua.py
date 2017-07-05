@@ -641,9 +641,9 @@ class Splash(BaseExposedObject):
         url = self.lua.lua2python(url, max_depth=1)
         baseurl = self.lua.lua2python(baseurl, max_depth=1)
         headers = self.lua.lua2python(headers, max_depth=2, encoding=None)
+        headers = self._validate_headers(headers)
         http_method = self.lua.lua2python(http_method, max_depth=1)
         formdata = self.lua.lua2python(formdata, max_depth=3)
-
         if url is None:
             raise ScriptError({
                 "argument": "url",
@@ -836,10 +836,13 @@ class Splash(BaseExposedObject):
             resp_wrapped = self.response_wrapper._create(resp)
             cmd.return_result(resp_wrapped)
 
+        headers = self.lua.lua2python(headers, max_depth=3)
+        headers = self._validate_headers(headers)
+
         command_args = dict(
             url=url,
             callback=callback,
-            headers=self.lua.lua2python(headers, max_depth=3),
+            headers=headers,
             follow_redirects=follow_redirects
         )
         if browser_command == "http_post":
@@ -1087,7 +1090,26 @@ class Splash(BaseExposedObject):
 
     @command(table_argument=True)
     def set_custom_headers(self, headers):
+        headers = self._validate_headers(headers)
         self.tab.set_custom_headers(self.lua.lua2python(headers, max_depth=3))
+
+    def _validate_headers(self, headers):
+        if headers is None:
+            return headers
+        res = {}
+        for key, value in headers.items():
+            if isinstance(value, (int, float)):
+                value = str(value)
+
+            if (not isinstance(key, (bytes, str)) or
+                not isinstance(value, (bytes, str))):
+                raise ScriptError({
+                    "message": "headers must be a table"
+                                " with strings as keys and values."
+                                "Header: `{!r}:{!r}` is not valid".format(key, value)
+                })
+            res[key] = value
+        return res
 
     @command()
     def get_viewport_size(self):

@@ -108,6 +108,19 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
+        try:
+            return self._createRequest(operation, request, outgoingData=outgoingData)
+        except:
+            # There are too many errors that can happen in NAT, in case something happens
+            # splash will segfault. To avoid this in case of Splash NAT error we will just
+            # delegate to superclass (no splash intervention).
+            # WARNING: this can hide error from user (no more segfault on error, and response will be 200,
+            # but without intended splash behavior). This is not perfect but is better than crash.
+            self.log("internal error in _createRequest middleware", min_level=1)
+            self.log(traceback.format_exc(), min_level=1, format_msg=False)
+            return super(ProxiedQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
+
+    def _createRequest(self, operation, request, outgoingData=None):
         """
         This method is called when a new request is sent;
         it must return a reply object to work with.
@@ -242,7 +255,14 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             headers = headers.items()
 
         for name, value in headers or []:
-            request.setRawHeader(to_bytes(name), to_bytes(value))
+            try:
+                if isinstance(value, (int, float)):
+                    value = str(value)
+                request.setRawHeader(to_bytes(name), to_bytes(value))
+            except TypeError:
+                msg = "invalid header {!r}: {!r}. Header keys and values must be strings or bytes"
+                self.log(msg.format(name, value), min_level=1, format_msg=False)
+                continue
 
     def _handle_request_cookies(self, request):
         self.cookiejar.update_cookie_header(request)
