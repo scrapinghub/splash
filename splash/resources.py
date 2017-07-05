@@ -683,7 +683,7 @@ end
                             <div class="dropdown examples-dropdown">
                                 <a class="btn btn-info if-lua dropdown-toggle" data-toggle="dropdown" href="#">Examples&nbsp;<b class="caret"></b></a>
                                 <ul class="dropdown-menu panel panel-default if-lua">
-                                    <li><a href="#" onclick="splash.loadExample('phantomjs-follow', '')">Count twitter followers</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('render-multiple', '')">Take screenshots of multiple pages</a></li>
                                     <li><a href="#" onclick="splash.loadExample('wait-for-element')">Wait for element</a></li>
                                     <li><a href="#" onclick="splash.loadExample('scroll', 'http://scrapinghub.com')">Scroll page</a></li>
                                     <li><a href="#" onclick="splash.loadExample('preload-jquery')">Preload jQuery</a></li>
