@@ -20,18 +20,17 @@ We'll be using :ref:`execute` endpoint in this tutorial.
     without knowing Lua; nevertheless, the language is worth learning.
     With Lua you can, for example, write Redis_, Nginx_, Apache_,
     `World of Warcraft`_ scripts, create mobile apps using
-    Moai_ or `Corona SDK`_ or use the state of the art Deep Learning
+    `Corona`_ or use the state of the art Deep Learning
     framework Torch7_. It is easy to get started and there are good online
     resources available like the tutorial `Learn Lua in 15 minutes`_ and the
     book `Programming in Lua`_.
 
 .. _Learn Lua in 15 minutes: http://tylerneylon.com/a/learn-lua/
-.. _Nginx: http://wiki.nginx.org/HttpLuaModule
+.. _Nginx: https://github.com/openresty/lua-nginx-module
 .. _Redis: http://redis.io/commands/EVAL
 .. _Apache: http://httpd.apache.org/docs/trunk/mod/mod_lua.html
 .. _World of Warcraft: http://www.wowwiki.com/Lua
-.. _Moai: http://getmoai.com/
-.. _Corona SDK: http://coronalabs.com/products/corona-sdk/
+.. _Corona: https://coronalabs.com/
 .. _Torch7: http://torch.ch/
 .. _Programming in Lua: http://www.lua.org/pil/contents.html
 .. _Lua: http://www.lua.org/
@@ -52,6 +51,12 @@ snippet in page context), and then return the result as a JSON encoded object.
     Splash UI provides an easy way to try scripts: there is a code editor
     for Lua and a button to submit a script to ``execute``. Visit
     http://127.0.0.1:8050/ (or whatever host/port Splash is listening to).
+
+    To run scripts from your programming environment you need to figure
+    out how to send HTTP requests. Check :ref:`using-http-api` FAQ
+    section - it contains recipes for some of the common setupts
+    (e.g. Python + requests library).
+
 
 Entry Point: the "main" Function
 --------------------------------
@@ -117,65 +122,111 @@ Splash switches from the script to other tasks, and comes back after 0.5s.
 It is possible to use loops, conditional statements, functions as usual
 in Splash scripts which enables more straightforward coding.
 
-Let's check an `example <https://github.com/ariya/phantomjs/blob/master/examples/follow.js>`__
+Let's check an `example <https://github.com/ariya/phantomjs/blob/master/examples/render_multi_url.js>`__
 PhantomJS script:
 
 .. code-block:: javascript
 
-    var users = ["PhantomJS", "ariyahidayat", /*...*/];
+    // Render Multiple URLs to file
 
-    function followers(user, callback) {
-        var page = require('webpage').create();
-        page.open('http://mobile.twitter.com/' + user, function (status) {
-            if (status === 'fail') {
-                console.log(user + ': ?');
-            } else {
-                var data = page.evaluate(function () {
-                    return document.querySelector('div.profile td.stat.stat-last div.statnum').innerText;
-                });
-                console.log(user + ': ' + data);
-            }
+    "use strict";
+    var RenderUrlsToFile, arrayOfUrls, system;
+
+    system = require("system");
+
+    /*
+    Render given urls
+    @param array of URLs to render
+    @param callbackPerUrl Function called after finishing each URL, including the last URL
+    @param callbackFinal Function called after finishing everything
+    */
+    RenderUrlsToFile = function(urls, callbackPerUrl, callbackFinal) {
+        var getFilename, next, page, retrieve, urlIndex, webpage;
+        urlIndex = 0;
+        webpage = require("webpage");
+        page = null;
+        getFilename = function() {
+            return "rendermulti-" + urlIndex + ".png";
+        };
+        next = function(status, url, file) {
             page.close();
-            callback.apply();
-        });
-    }
-    function process() {
-        if (users.length > 0) {
-            var user = users[0];
-            users.splice(0, 1);
-            followers(user, process);
-        } else {
-            phantom.exit();
-        }
-    }
-    process();
+            callbackPerUrl(status, url, file);
+            return retrieve();
+        };
+        retrieve = function() {
+            var url;
+            if (urls.length > 0) {
+                url = urls.shift();
+                urlIndex++;
+                page = webpage.create();
+                page.viewportSize = {
+                    width: 800,
+                    height: 600
+                };
+                page.settings.userAgent = "Phantom.js bot";
+                return page.open("http://" + url, function(status) {
+                    var file;
+                    file = getFilename();
+                    if (status === "success") {
+                        return window.setTimeout((function() {
+                            page.render(file);
+                            return next(status, url, file);
+                        }), 200);
+                    } else {
+                        return next(status, url, file);
+                    }
+                });
+            } else {
+                return callbackFinal();
+            }
+        };
+        return retrieve();
+    };
 
-The code is (arguably) tricky: ``process`` function implements a loop
-by creating a chain of callbacks; ``followers`` function doesn't return a value
-(it would be more complex to implement) - the result is logged to the console
-instead.
+    arrayOfUrls = null;
+
+    if (system.args.length > 1) {
+        arrayOfUrls = Array.prototype.slice.call(system.args, 1);
+    } else {
+        console.log("Usage: phantomjs render_multi_url.js [domain.name1, domain.name2, ...]");
+        arrayOfUrls = ["www.google.com", "www.bbc.co.uk", "phantomjs.org"];
+    }
+
+    RenderUrlsToFile(arrayOfUrls, (function(status, url, file) {
+        if (status !== "success") {
+            return console.log("Unable to render '" + url + "'");
+        } else {
+            return console.log("Rendered '" + url + "' at '" + file + "'");
+        }
+    }), function() {
+        return phantom.exit();
+    });
+
+The code is (arguably) tricky: ``RenderUrlsToFile`` function implements a loop
+by creating a chain of callbacks; ``page.open`` callback doesn't return a value
+(it would be more complex to implement) - the result is saved on disk.
 
 A similar Splash script:
 
-.. literalinclude:: ../splash/examples/phantomjs-follow.lua
+.. literalinclude:: ../splash/examples/render-multiple.lua
    :language: lua
+
+It is not doing exactly the same work - instead of saving screenshots
+to files we're returning PNG data to the client via HTTP API.
 
 Observations:
 
-* some Lua knowledge is helpful to be productive in Splash Scripts:
-  ``ipairs``, ``[[multi-line strings]]`` or string concatenation via
-  ``..`` could be unfamiliar;
-* in Splash variant ``followers`` function can return a result
-  (a number of twitter followers); also, it doesn't need a "callback" argument;
 * instead of a ``page.open`` callback which receives "status" argument
   there is a "blocking" :ref:`splash-go` call which returns "ok" flag;
+* we're using a standard Lua ``for`` loop without a need to create
+  a recursive callback chain;
+* some Lua knowledge is helpful to be productive in Splash Scripts:
+  ``ipairs`` or string concatenation via ``..`` could be unfamiliar;
 * error handling is different: in case of an HTTP 4xx or 5xx error
   PhantomJS doesn't return an error code to ``page.open`` callback - example
-  script will try to get the followers nevertheless because "status" won't
-  be "fail"; in Splash this error will be detected and "?" will be returned;
-* ``process`` function can use a standard Lua ``for`` loop without
-  a need to create a recursive callback chain;
-* instead of console messages we've got a JSON HTTP API;
+  script will get a screenshot nevertheless because "status" won't
+  be "fail"; in Splash this error will be detected;
+* instead of console messages and local files we've created a JSON HTTP API;
 * apparently, PhantomJS allows to create multiple ``page`` objects and
   run several ``page.open`` requests in parallel (?); Splash only provides
   a single "browser tab" to a script via its ``splash`` parameter of ``main``
@@ -195,6 +246,9 @@ handling?). Splash scripts are standard Lua code.
     These tools are much more mature and feature complete than Splash.
     Splash tries to look at the problem from a different angle, but
     for each unique Splash feature there is an unique PhantomJS feature.
+
+To read more about Splash Lua API features
+check :ref:`splash-lua-api-overview`.
 
 .. _CasperJS: http://casperjs.org/
 .. _NightmareJS: http://www.nightmarejs.org/
@@ -304,7 +358,6 @@ if the assumption is wrong:
 
     -- a shortcut for the code above: use assert
     assert(splash:go("http://example.com"))
-
 
 .. _lua-sandbox:
 

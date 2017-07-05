@@ -1,6 +1,85 @@
 FAQ
 ===
 
+.. _using-http-api:
+
+How to send requests to Splash HTTP API?
+----------------------------------------
+
+The recommended way is to use ``application/json`` POST requests,
+because this way you can preserve data types, and there is no limit on
+request size.
+
+Python, using ``requests`` library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+requests_ library is a popular way to send HTTP requests in Python.
+It provides a shortcut for sending JSON POST requests. Let's send
+a simple Lua script to :ref:`run` endpoint:
+
+.. code-block:: python
+
+    import requests
+
+    script = """
+    splash:go(args.url)
+    return splash:png()
+    """
+    resp = requests.post('http://localhost:8050/run', json={
+        'lua_source': script,
+        'url': 'http://example.com'
+    })
+    png_data = resp.content
+
+.. _requests: http://docs.python-requests.org/en/master/
+
+Python + Scrapy
+~~~~~~~~~~~~~~~
+
+Scrapy_ is a popular web crawling and scraping framework.
+For Scrapy_ + Splash integration use scrapy-splash_ library.
+
+.. _Scrapy: https://scrapy.org/
+.. _scrapy-splash: https://github.com/scrapy-plugins/scrapy-splash
+
+R language
+~~~~~~~~~~
+
+There is a third-party library which makes it easy to use Splash
+in R language: https://github.com/hrbrmstr/splashr
+
+curl
+~~~~
+
+::
+
+    curl --header "Content-Type: application/json" \
+         -X POST \
+         --data '{"url":"http://example.com","wait":1.0}' \
+         'http://localhost:8050/render.html'
+
+httpie
+~~~~~~
+
+httpie_ is a command-line utility for sending HTTP requests; it has a nice
+API for sending for JSON POST requests::
+
+    http POST localhost:8050/render.png url=http://example.com width=200 > img.png
+
+.. _httpie: https://httpie.org
+
+HTML
+~~~~
+
+You can embed Splash results directly in HTML pages. This is not the best,
+as you'll be rendering the website each time this HTML page is opened.
+But still, you can do this:
+
+.. code-block:: html
+
+    <img src="http://splash-url:8050/render.jpeg?url=http://example.com&width=300"/>
+
+
 .. _timeouts:
 
 I'm getting lots of 504 Timeout errors, please help!

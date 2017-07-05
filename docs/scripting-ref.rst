@@ -3,6 +3,12 @@
 Splash Scripts Reference
 ========================
 
+.. note::
+
+    While this reference is comprehensive, it can be hard to navigate.
+    If you're just starting, or don't know what you're looking for exactly,
+    check :ref:`splash-lua-api-overview` first.
+
 ``splash`` object is passed to ``main`` function as a first argument;
 via this object a script can control the browser. Think of it as of an API to
 a single browser tab.
