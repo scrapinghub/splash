@@ -2327,10 +2327,12 @@ class LuaRender(RenderScript):
 
     @stop_on_error
     def start(self, lua_source, sandboxed, lua_package_path,
-              lua_sandbox_allowed_modules, strict=False):
+              lua_sandbox_allowed_modules, strict=False,
+              implicit_main=False):
         self.exceptions = StoredExceptions()
         self.log(lua_source)
         self.sandboxed = sandboxed
+        self.implicit_main = implicit_main
         self.lua = SplashLuaRuntime(
             sandboxed=sandboxed,
             lua_package_path=lua_package_path,
@@ -2355,6 +2357,7 @@ class LuaRender(RenderScript):
             strict=strict,
         )
 
+        lua_source = self._process_lua_source(lua_source)
         try:
             main_coro = self.get_main_coro(lua_source)
         except lupa.LuaSyntaxError as e:
@@ -2396,3 +2399,9 @@ class LuaRender(RenderScript):
     def close(self):
         self.splash.clear()
         super(LuaRender, self).close()
+
+    def _process_lua_source(self, lua_source):
+        if not self.implicit_main:
+            return lua_source
+        return "function main(splash, args) %s end" % lua_source
+

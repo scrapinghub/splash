@@ -271,12 +271,14 @@ class ExecuteLuaScriptResource(BaseRenderResource):
                  max_timeout,
                  argument_cache,
                  strict,
+                 implicit_main,
                  ):
         BaseRenderResource.__init__(self, pool, max_timeout, argument_cache)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
         self.strict = strict
+        self.implicit_main = implicit_main
 
     def _get_render(self, request, options):
         params = dict(
@@ -286,6 +288,7 @@ class ExecuteLuaScriptResource(BaseRenderResource):
             lua_package_path=self.lua_package_path,
             lua_sandbox_allowed_modules=self.lua_sandbox_allowed_modules,
             strict=self.strict,
+            implicit_main=self.implicit_main,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -582,7 +585,7 @@ class Root(Resource):
         self.putChild(b"debug", DebugResource(pool, self.argument_cache, warn=True))
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
-            self.putChild(b"execute", ExecuteLuaScriptResource(
+            lua_kwargs = dict(
                 pool=pool,
                 sandboxed=lua_sandbox_enabled,
                 lua_package_path=lua_package_path,
@@ -590,7 +593,11 @@ class Root(Resource):
                 max_timeout=max_timeout,
                 argument_cache=self.argument_cache,
                 strict=strict_lua_runner,
-            ))
+            )
+            self.putChild(b"execute", ExecuteLuaScriptResource(
+                implicit_main=False, **lua_kwargs))
+            self.putChild(b"run", ExecuteLuaScriptResource(
+                implicit_main=True, **lua_kwargs))
 
         if self.ui_enabled:
             root = os.path.dirname(__file__)
@@ -618,9 +625,8 @@ class Root(Resource):
 
     def get_example_script(self):
         return """
-function main(splash)
-  local url = splash.args.url
-  assert(splash:go(url))
+function main(splash, args)
+  assert(splash:go(args.url))
   assert(splash:wait(0.5))
   return {
     html = splash:html(),

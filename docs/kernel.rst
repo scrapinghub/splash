@@ -85,10 +85,20 @@ From Notebook to HTTP API
 
 After you finished developing the script using Splash Notebook,
 you may want to convert it to a form suitable for submitting
-to Splash HTTP API (see :ref:`execute`).
+to Splash HTTP API (see :ref:`execute` and :ref:`run`).
 
 To do that, copy-paste (or download using "File -> Download as -> .lua")
-all relevant code, then put it inside ``function main(splash)``:
+all relevant code. For :ref:`run` endpoint add ``return`` statement to
+return the final result:
+
+.. code-block:: lua
+
+    -- Script code goes here,
+    -- including all helper functions.
+    return {...}  -- return the result
+
+For :ref:`execute` add ``return`` statement and put the code
+inside ``function main(splash)``:
 
 .. code-block:: lua
 

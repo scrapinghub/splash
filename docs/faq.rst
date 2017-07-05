@@ -47,7 +47,7 @@ better not to wait for them forever.
 To abort resource loading after a timeout and give the whole page a chance to
 render use resource timeouts. For render.*** endpoints use
 :ref:`'resource_timeout' <arg-resource-timeout>` argument;
-for :ref:`execute` use either :ref:`splash-resource-timeout` or
+for :ref:`execute` or :ref:`run` use either :ref:`splash-resource-timeout` or
 ``request:set_timeout`` (see :ref:`splash-on-request`).
 
 It is a good practive to always set resource_timeout; something similar to

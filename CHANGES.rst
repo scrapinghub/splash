@@ -33,6 +33,9 @@ Other changes:
 * An alternative way to access :ref:`splash-args`: it can be received
   as a second argument of ``main`` function
   (i.e. ``function main(splash, args) ...``);
+* new :ref:`run` endpoint is an alternative to :ref:`execute` endpoint; it is
+  almost the same, but it doesn't require putting code into
+  ``function main(splash, args) ... end``;
 * new :ref:`splash-scroll-position` attribute allows to get and set
   window scroll position;
 * Qt is upgraded to 5.9.1, PyQT is upgraded to 5.9;

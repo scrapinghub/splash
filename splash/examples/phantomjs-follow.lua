@@ -19,6 +19,8 @@ function follow(splash, user)
   if not ok then
     return "Can't get followers of " .. user .. ': ' .. msg
   end
+  -- in practice it is easier to use splash:select(...):text(); evaljs
+  -- is just to make example closer to PhantomJS
   return splash:evaljs([[
     document.querySelector('div.profile td.stat.stat-last div.statnum').innerText;
   ]]);
@@ -32,8 +34,6 @@ function process(splash, users)
   return result
 end
 
-function main(splash)
-  return {
-    users=process(splash, USERS),
-  }
+function main(splash, args)
+  return {users=process(splash, USERS)}
 end
