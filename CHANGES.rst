@@ -28,7 +28,7 @@ Backwards incompatible changes:
   are now async; they wait for events to propagate
   (unlike :ref:`splash-mouse-click` and :ref:`splash-mouse-hover`).
 
-Other changes:
+Other changes, features and bug fixes:
 
 * An alternative way to access :ref:`splash-args`: it can be received
   as a second argument of ``main`` function
@@ -55,6 +55,11 @@ Other changes:
   ``splash:select('.my-element'):getAttribute('foo')`` instead of
   ``splash:select('.my-element').node:getAttribute('foo')``;
 * exposed ``element:scrollIntoViewIfNeeded()`` method;
+* improved validation of ``headers`` arguments in :ref:`splash-go`,
+  :ref:`splash-set-custom-headers`, :ref:`splash-http-get` and
+  :ref:`splash-http-post`;
+* Splash shouldn't crash if an exception happens while creating a request
+  in network manager;
 * cleanup of JS event handlers is improved;
 * documentation and testing improvements.
 
