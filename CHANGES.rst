@@ -1,8 +1,8 @@
 Changes
 =======
 
-3.0 (TBA)
----------
+3.0 (2017-07-06)
+----------------
 
 WebKit is upgraded in this Splash release - Splash now uses
 https://github.com/annulen/webkit instead of official (deprecated
