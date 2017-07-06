@@ -71,7 +71,12 @@ Extracting information from a page
   (see :ref:`splash-element`)
 * :ref:`splash-element-text` returns text content of a DOM element;
 * :ref:`splash-element-bounds` returns bounding box of an element;
+* :ref:`splash-element-styles` returns computed styles of an element;
 * :ref:`splash-element-form-values` return values of a ``<form>`` element;
+* many methods and attributes of DOM HTMLElement_ are supported - see
+  :ref:`splash-element-dom-methods` and :ref:`splash-element-dom-attributes`.
+
+.. _HTMLElement: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
 
 Screenshots
 ~~~~~~~~~~~
@@ -100,9 +105,13 @@ Interacting with a page
   events to a page;
 * :ref:`splash-element-send-keys` and :ref:`splash-element-send-text` allow to
   send keyboard events to particular DOM elements;
-* :ref:`splash-element-fill` fills a ``<form>`` with the provided values,
-  :ref:`splash-element-submit` submits a form;
-* :ref:`splash-scroll-position` allows to scroll the page.
+* you can get initial ``<form>`` values using :ref:`splash-element-form-values`,
+  change them in Lua code, fill the form with the updated values
+  using :ref:`splash-element-fill` and submit it using
+  :ref:`splash-element-submit`;
+* :ref:`splash-scroll-position` allows to scroll the page;
+* many methods and attributes of DOM HTMLElement_ are supported - see
+  :ref:`splash-element-dom-methods` and :ref:`splash-element-dom-attributes`.
 
 Making HTTP requests
 ~~~~~~~~~~~~~~~~~~~~

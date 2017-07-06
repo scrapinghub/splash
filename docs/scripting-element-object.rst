@@ -900,6 +900,8 @@ Example:
         -- ...
     end
 
+.. _splash-element-dom-attributes:
+
 DOM Attributes
 ~~~~~~~~~~~~~~
 
