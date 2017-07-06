@@ -266,7 +266,12 @@ Common reasons:
 * non-working localStorage in Private Mode. This is a common issue e.g. for
   websites based on AngularJS. If rendering doesn't work, try disabling
   Private mode (see :ref:`disable-private-mode`).
-* missing features in WebKit used by Splash. Splash now uses
+* Sometimes content is lazy-loaded, or loaded only in a response for user
+  actions (e.g. page scrolling). Try increasing viewport size to make
+  everything visible, and waiting a bit after that
+  (see :ref:`splash-set-viewport-full`). You may also have to simulate
+  mouse and keyboard events (see :ref:`splash-lua-api-interacting`).
+* Missing features in WebKit used by Splash. Splash now uses
   https://github.com/annulen/webkit, which is much more recent than WebKit
   provided by Qt; we'll be updating Splash WebKit as annulen's webkit
   develops.
@@ -276,6 +281,13 @@ Common reasons:
   (e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``),
   noting what resources are downloaded last, and filtering them out
   using :ref:`splash-on-request` or :ref:`request filters`.
+* Website may show a different content based on User-Agent header or based
+  on IP address. Use :ref:`splash-set-user-agent` to change the default
+  User-Agent header. If you're running Splash in a cloud and not getting good
+  results, try reproducing it locally as well, just in case results depend on
+  IP address.
+* Website requires Flash. You can enable it using
+  :ref:`splash-plugins-enabled`.
 
 If you have troubles making Splash work, consider asking a question
 at https://stackoverflow.com. If you think it is a Splash bug,

@@ -89,6 +89,8 @@ Screenshots
 * :ref:`splash-element-png` and :ref:`splash-element-jpeg` - take screenshots
   of individual DOM elements.
 
+.. _splash-lua-api-interacting:
+
 Interacting with a page
 ~~~~~~~~~~~~~~~~~~~~~~~
 
