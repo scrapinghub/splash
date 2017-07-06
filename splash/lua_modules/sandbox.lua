@@ -200,7 +200,7 @@ end
 
 -- Maximum number of instructions that can be executed.
 -- XXX: the slowdown only becomes percievable at ~5m instructions.
-sandbox.instruction_limit = 5e6
+sandbox.instruction_limit = 1e7
 sandbox.instruction_count = 0
 
 function sandbox.enable_per_instruction_limits()

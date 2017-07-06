@@ -46,6 +46,8 @@ Other changes and bug fixes:
 * default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
   is increased from 60s to 90s; default ``timeout`` **value**
   is still 30s.
+* Lua sandbox: instruction count limit is increased further
+  (10M instructions instead of 5M)
 * new docs section: :ref:`splash-lua-api-overview`;
 * new FAQ entries: :ref:`using-http-api`, :ref:`rendering-problems`;
 * Fixed an issue with :ref:`splash-runjs`: previously in case of an error
