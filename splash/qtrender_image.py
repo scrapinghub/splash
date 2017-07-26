@@ -4,7 +4,6 @@ import array
 from abc import ABCMeta, abstractmethod, abstractproperty
 from io import BytesIO
 from math import ceil, floor
-import six
 
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
@@ -73,13 +72,7 @@ class QtImageRenderer(object):
         buf = qimage.bits().asstring(qimage.byteCount())
         if sys.byteorder != "little":
             buf = self.swap_byte_order_i32(buf)
-        # PIL>2.0 doesn't have fromstring. But older ones don't have frombytes.
-        if hasattr(Image, 'frombytes'):
-            frombytes = Image.frombytes
-        else:
-            frombytes = Image.fromstring
-
-        return frombytes(
+        return Image.frombytes(
             self.pillow_image_format,
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
@@ -87,9 +80,9 @@ class QtImageRenderer(object):
     def swap_byte_order_i32(self, buf):
         """Swap order of bytes in each 32-bit word of given byte sequence."""
         arr = array.array('I')
-        arr.fromstring(buf)
+        arr.frombytes(buf)
         arr.byteswap()
-        return arr.tostring()
+        return arr.tobytes()
 
     def render_qwebpage(self):
         """
@@ -292,9 +285,9 @@ class QtImageRenderer(object):
             # which is not what we want.
             painter.setViewport(render_rect)
             # painter.setClipRect(web_rect)
-            for i in six.moves.range(tile_conf['horizontal_count']):
+            for i in range(tile_conf['horizontal_count']):
                 left = i * tile_qimage.width()
-                for j in six.moves.range(tile_conf['vertical_count']):
+                for j in range(tile_conf['vertical_count']):
                     top = j * tile_qimage.height()
                     painter.setViewport(render_rect.translated(-left, -top))
                     self.logger.log("Rendering with viewport=%s"
@@ -375,7 +368,7 @@ class _DummyLogger(object):
         pass
 
 
-class WrappedImage(six.with_metaclass(ABCMeta, object)):
+class WrappedImage(metaclass=ABCMeta):
     """
     Base interface for operations with images of rendered webpages.
 

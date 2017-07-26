@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import json
+from urllib.parse import urlencode, urljoin
 
 import requests
-from six.moves.urllib import parse as urlparse
-import six
 
 from . import test_render, test_har, test_request_filters, test_runjs
 
@@ -12,13 +10,10 @@ from . import test_render, test_har, test_request_filters, test_runjs
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
 
     def request(self, query, endpoint=None, headers=None):
-        assert not isinstance(query, six.string_types)
+        assert not isinstance(query, str)
         endpoint = endpoint or self.endpoint
-        url = "http://%s/%s" % (self.host, endpoint)
-        data = json.dumps(query)
-        _headers = {'content-type': 'application/json'}
-        _headers.update(headers or {})
-        return requests.post(url, data=data, headers=_headers)
+        url = urljoin("http://%s" % self.host, endpoint)
+        return requests.post(url, json=query, headers=headers)
 
     def post(self, query, endpoint=None, payload=None, headers=None):
         raise NotImplementedError()
@@ -86,14 +81,9 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
         for r in [r1, r2]:
             self.assertStatusCode(r, 200)
-            if six.PY3:
-                self.assertIn("b'x-custom-header1': b'some-val1'", r.text)
-                self.assertIn("b'custom-header2': b'some-val2'", r.text)
-                self.assertIn("b'user-agent': b'Mozilla'", r.text)
-            else:
-                self.assertIn("'x-custom-header1': 'some-val1'", r.text)
-                self.assertIn("'custom-header2': 'some-val2'", r.text)
-                self.assertIn("'user-agent': 'Mozilla'", r.text)
+            self.assertIn("b'x-custom-header1': b'some-val1'", r.text)
+            self.assertIn("b'custom-header2': b'some-val2'", r.text)
+            self.assertIn("b'user-agent': b'Mozilla'", r.text)
 
             # This is not a proxy request, so Splash shouldn't remove
             # "Connection" header.
@@ -129,10 +119,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
             "headers": headers,
         })
         self.assertStatusCode(r, 200)
-        if six.PY3:
-            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
-        else:
-            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("b'user-agent': b'Mozilla123'", r.text)
 
     def test_connection_user_agent(self):
         headers = {
@@ -146,25 +133,19 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         self.assertStatusCode(r, 200)
 
         # this is not a proxy request - don't remove headers
-        if six.PY3:
-            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
-        else:
-            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("b'user-agent': b'Mozilla123'", r.text)
         self.assertIn("mozilla123", r.text.lower())
 
     def test_user_agent_after_redirect(self):
         headers = {'User-Agent': 'Mozilla123'}
-        query = urlparse.urlencode({"url": self.mockurl("getrequest")})
+        query = urlencode({"url": self.mockurl("getrequest")})
         r = self.request({
             "url": self.mockurl("jsredirect-to?%s" % query),
             "headers": headers,
             "wait": 0.1,
         })
         self.assertStatusCode(r, 200)
-        if six.PY3:
-            self.assertIn("b'user-agent': b'Mozilla123'", r.text)
-        else:
-            self.assertIn("'user-agent': 'Mozilla123'", r.text)
+        self.assertIn("b'user-agent': b'Mozilla123'", r.text)
 
     def test_cookie(self):
         r = self.request({
@@ -179,7 +160,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
         r = self.request({
             "url": self.mockurl("postrequest"),
-            "body": six.moves.urllib.parse.urlencode(formbody),
+            "body": urlencode(formbody),
             "http_method": "POST"
         })
         self.assertStatusCode(r, 200)
@@ -192,7 +173,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
         formbody = {"param1": "one", "param2": "two"}
         r = self.request({
             "url": self.mockurl("postrequest"),
-            "body": six.moves.urllib.parse.urlencode(formbody),
+            "body": urlencode(formbody),
             "baseurl": "foo"
         })
         self.assertStatusCode(r, 400)
@@ -208,7 +189,7 @@ class HttpHeadersTest(test_render.BaseRenderTest):
 
     # def test_cookie_after_redirect(self):
     #     headers = {'Cookie': 'foo=bar'}
-    #     query = urlparse.urlencode({"url": self.mockurl("get-cookie?key=foo")})
+    #     query = urlencode({"url": self.mockurl("get-cookie?key=foo")})
     #     r = self.request({
     #         "url": self.mockurl("jsredirect-to?%s" % query),
     #         "headers": headers,

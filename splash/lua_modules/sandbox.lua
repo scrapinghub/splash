@@ -173,7 +173,7 @@ end
 --
 
 -- maximum memory (in KB) that can be used by Lua script
-sandbox.mem_limit = 50000
+sandbox.mem_limit = 100000
 sandbox.mem_limit_reached = false
 
 function sandbox.enable_memory_limit()
@@ -200,7 +200,7 @@ end
 
 -- Maximum number of instructions that can be executed.
 -- XXX: the slowdown only becomes percievable at ~5m instructions.
-sandbox.instruction_limit = 1e6
+sandbox.instruction_limit = 1e7
 sandbox.instruction_count = 0
 
 function sandbox.enable_per_instruction_limits()

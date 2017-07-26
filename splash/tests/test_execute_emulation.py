@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import unittest
 
 import pytest
@@ -27,6 +26,13 @@ class Base:
         def test_render_error(self):
             r = self.request({"url": "http://non-existent-host/"})
             err = self.assertJsonError(r, 400)
+
+        @pytest.mark.xfail(
+            run=False,
+            reason="wait time validation is not implemented in emulation scripts"
+        )
+        def test_invalid_wait(self):
+            super().test_invalid_wait()
 
         def test_self(self):
             # make sure mixin order is correct

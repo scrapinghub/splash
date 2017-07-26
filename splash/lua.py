@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, division
 import re
 import datetime
 
-from splash.utils import to_bytes, to_unicode
 from twisted.python import log
 try:
     import lupa
 except ImportError:
     lupa = None
-import six
 
+from splash.utils import to_bytes, to_unicode
 from splash.exceptions import ScriptError
+
 
 _supported = None
 _lua = None
@@ -148,7 +147,7 @@ def lua2python(lua, obj, encoding='utf-8', strict=True, max_depth=100, sparse_li
         if isinstance(obj, dict):
             return {
                 l2p(key, depth-1): l2p(value, depth-1)
-                for key, value in six.iteritems(obj)
+                for key, value in obj.items()
             }
 
         if isinstance(obj, list):
@@ -230,7 +229,7 @@ def python2lua(lua, obj, max_depth=100, encoding='utf8', keep_tuples=True):
         if isinstance(obj, dict):
             return lua.table_from({
                 p2l(key, depth-1): p2l(value, depth-1)
-                for key, value in six.iteritems(obj)
+                for key, value in obj.items()
             })
 
         if isinstance(obj, tuple) and keep_tuples:
@@ -240,7 +239,7 @@ def python2lua(lua, obj, max_depth=100, encoding='utf8', keep_tuples=True):
             tbl = lua.table_from([p2l(el, depth-1) for el in obj])
             return _mark_table_as_array(lua, tbl)
 
-        if isinstance(obj, six.text_type):
+        if isinstance(obj, str):
             return obj.encode(encoding)
 
         if isinstance(obj, datetime.datetime):

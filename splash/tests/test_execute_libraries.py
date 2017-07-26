@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import base64
 import json
 
@@ -144,7 +143,7 @@ class Base64Test(BaseLuaRenderTest):
                 b1, b2, b3, b4 = decoded:byte(1,4)
                 return {b1=b1, b2=b2, b3=b3, b4=b4}
             end
-            """, {'obj_b64': case})
+            """, {'obj_b64': case.decode()})
             self.assertStatusCode(resp, 200)
             expected = bytearray(base64.b64decode(case))
             data = resp.json()
@@ -288,7 +287,7 @@ class TreatAsBinaryTest(BaseLuaRenderTest):
         function main(splash)
             return treat.as_binary("привет")
         end
-        """.encode('utf8'))
+        """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.content, u"привет".encode('utf8'))
         self.assertEqual(resp.headers['content-type'], "application/octet-stream")

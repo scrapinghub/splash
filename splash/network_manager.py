@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import base64
 import itertools
 import functools
@@ -109,6 +108,19 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         reply.deleteLater()
 
     def createRequest(self, operation, request, outgoingData=None):
+        try:
+            return self._createRequest(operation, request, outgoingData=outgoingData)
+        except:
+            # There are too many errors that can happen in NAT, in case something happens
+            # splash will segfault. To avoid this in case of Splash NAT error we will just
+            # delegate to superclass (no splash intervention).
+            # WARNING: this can hide error from user (no more segfault on error, and response will be 200,
+            # but without intended splash behavior). This is not perfect but is better than crash.
+            self.log("internal error in _createRequest middleware", min_level=1)
+            self.log(traceback.format_exc(), min_level=1, format_msg=False)
+            return super(ProxiedQNetworkAccessManager, self).createRequest(operation, request, outgoingData)
+
+    def _createRequest(self, operation, request, outgoingData=None):
         """
         This method is called when a new request is sent;
         it must return a reply object to work with.
@@ -203,6 +215,8 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         return req, req_id
 
     def _handle_custom_proxies(self, request):
+        proxy = None
+
         # proxies set in proxy profiles or `proxy` HTTP argument
         splash_proxy_factory = self._get_webpage_attribute(request, 'splash_proxy_factory')
         if splash_proxy_factory:
@@ -212,12 +226,18 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
         # proxies set in on_request
         if hasattr(request, 'custom_proxy'):
-            self.setProxy(request.custom_proxy)
-            user, password = request.custom_proxy.user(), request.custom_proxy.password()
-            if not user and not password:
-                return
-            auth = b"Basic " + base64.b64encode("{}:{}".format(user, password).encode("utf-8"))
-            request.setRawHeader(b"Proxy-Authorization", auth)
+            proxy = request.custom_proxy
+            self.setProxy(proxy)
+
+        # Handle proxy auth. We're setting Proxy-Authorization header
+        # explicitly because Qt loves to cache proxy credentials.
+        if proxy is None:
+            return
+        user, password = proxy.user(), proxy.password()
+        if not user and not password:
+            return
+        auth = b"Basic " + base64.b64encode("{}:{}".format(user, password).encode("utf-8"))
+        request.setRawHeader(b"Proxy-Authorization", auth)
 
     def _handle_custom_headers(self, request):
         if self._get_webpage_attribute(request, "skip_custom_headers"):
@@ -235,7 +255,14 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
             headers = headers.items()
 
         for name, value in headers or []:
-            request.setRawHeader(to_bytes(name), to_bytes(value))
+            try:
+                if isinstance(value, (int, float)):
+                    value = str(value)
+                request.setRawHeader(to_bytes(name), to_bytes(value))
+            except TypeError:
+                msg = "invalid header {!r}: {!r}. Header keys and values must be strings or bytes"
+                self.log(msg.format(name, value), min_level=1, format_msg=False)
+                continue
 
     def _handle_request_cookies(self, request):
         self.cookiejar.update_cookie_header(request)

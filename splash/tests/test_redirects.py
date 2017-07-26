@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import unittest
-import six
+
 from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import NON_EXISTING_RESOLVABLE
 
@@ -11,10 +10,7 @@ class HttpRedirectTest(BaseRenderTest):
     def assertRedirectedResponse(self, resp, code):
         self.assertStatusCode(resp, 200)
         self.assertIn("GET request", resp.text)
-        if six.PY3:
-            self.assertIn("{b'http_code': [b'%s']}" % code, resp.text)
-        else:
-            self.assertIn("{'http_code': ['%s']}" % code, resp.text)
+        self.assertIn("{b'http_code': [b'%s']}" % code, resp.text)
 
     def assertHttpRedirectWorks(self, code):
         resp = self.request({"url": self.mockurl("http-redirect?code=%s" % code)})

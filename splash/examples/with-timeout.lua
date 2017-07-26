@@ -1,8 +1,8 @@
-function main(splash)
+function main(splash, args)
   local ok, result = splash:with_timeout(function()
-    local url = splash.args.url
+    -- try commenting out splash:wait(3)
     splash:wait(3)
-    assert(splash:go(url))
+    assert(splash:go(args.url))
   end, 2)
 
   if not ok then
@@ -12,6 +12,5 @@ function main(splash)
       return result
     end
   end
-
   return "Navigated to the url within 2 seconds"
 end

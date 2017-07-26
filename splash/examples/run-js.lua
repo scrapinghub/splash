@@ -1,4 +1,4 @@
-function main(splash)
+function main(splash, args)
   assert(splash:go("https://news.ycombinator.com/"))
   splash:runjs([[
     document.querySelector('table')

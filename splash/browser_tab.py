@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import base64
 import functools
 import os
@@ -7,8 +6,8 @@ import re
 import hashlib
 import weakref
 
-
-from PyQt5.QtCore import QObject, QSize, Qt, QTimer, pyqtSlot, QEvent, QPointF, pyqtSignal
+from PyQt5.QtCore import (QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
+                          QPointF, QPoint, pyqtSignal)
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
@@ -16,14 +15,21 @@ from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWidgets import QApplication
 from twisted.internet import defer
 from twisted.python import log
-import six
 
 from splash import defaults
 from splash.har.qt import cookies2har
 from splash.network_manager import SplashQNetworkAccessManager
 from splash.qtrender_image import QtImageRenderer
-from splash.qtutils import (OPERATION_QT_CONSTANTS, WrappedSignal, qt2py,
-                            qurl2ascii, to_qurl, qt_send_key, qt_send_text)
+from splash.qtutils import (
+    OPERATION_QT_CONSTANTS,
+    MediaSourceEnabled,
+    WrappedSignal,
+    qt2py,
+    qurl2ascii,
+    to_qurl,
+    qt_send_key,
+    qt_send_text,
+)
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
@@ -55,6 +61,22 @@ def skip_if_closing(meth):
 def escape_and_evaljs(frame, js_func):
     eval_expr = u"eval({})".format(escape_js(js_func))
     return frame.evaluateJavaScript(get_process_errors_js(eval_expr))
+
+
+def webpage_option_getter(attr):
+    def _getter(self):
+        settings = self.web_page.settings()
+        return settings.testAttribute(attr)
+    return _getter
+
+
+def webpage_option_setter(attr, type_=None):
+    def _setter(self, value):
+        if type_ is not None:
+            value = type_(value)
+        settings = self.web_page.settings()
+        settings.setAttribute(attr, value)
+    return _setter
 
 
 class BrowserTab(QObject):
@@ -210,6 +232,10 @@ class BrowserTab(QObject):
         frame.addToJavaScriptWindowObject(self._event_handlers_storage.name,
                                           self._event_handlers_storage)
 
+    def _clear_event_handlers_storage(self):
+        if hasattr(self, '_event_handlers_storage'):
+            self._event_handlers_storage.clear()
+
     def _init_events_storage(self):
         frame = self.web_page.mainFrame()
         self._events_storage = EventsStorage(self)
@@ -226,28 +252,21 @@ class BrowserTab(QObject):
         self._init_event_handlers_storage()
         self._js_storage_initiated = True
 
-    def set_js_enabled(self, val):
-        settings = self.web_page.settings()
-        settings.setAttribute(QWebSettings.JavascriptEnabled, val)
+    get_js_enabled = webpage_option_getter(QWebSettings.JavascriptEnabled)
+    set_js_enabled = webpage_option_setter(QWebSettings.JavascriptEnabled)
 
-    def get_js_enabled(self):
-        settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.JavascriptEnabled)
-
+    get_private_mode_enabled = webpage_option_getter(QWebSettings.PrivateBrowsingEnabled)
     def set_private_mode_enabled(self, val):
         settings = self.web_page.settings()
         settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, bool(val))
         settings.setAttribute(QWebSettings.LocalStorageEnabled, not bool(val))
 
-    def get_private_mode_enabled(self):
-        settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.PrivateBrowsingEnabled)
+    get_images_enabled = webpage_option_getter(QWebSettings.AutoLoadImages)
+    set_images_enabled = webpage_option_setter(QWebSettings.AutoLoadImages)
 
-    def get_response_body_enabled(self):
-        return self.web_page.response_body_enabled
+    get_plugins_enabled = webpage_option_getter(QWebSettings.PluginsEnabled)
+    set_plugins_enabled = webpage_option_setter(QWebSettings.PluginsEnabled, bool)
 
-    def set_response_body_enabled(self, val):
-        self.web_page.response_body_enabled = val
 
     def _set_default_webpage_options(self, web_page):
         """
@@ -257,6 +276,9 @@ class BrowserTab(QObject):
         settings = web_page.settings()
         settings.setAttribute(QWebSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
+
+        # enable Media Source by default, at least to make html5test.com work
+        settings.setAttribute(MediaSourceEnabled, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
         web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, scroll_bars)
@@ -304,6 +326,12 @@ class BrowserTab(QObject):
         """
         self.web_page.custom_headers = headers
 
+    def get_response_body_enabled(self):
+        return self.web_page.response_body_enabled
+
+    def set_response_body_enabled(self, val):
+        self.web_page.response_body_enabled = val
+
     def set_resource_timeout(self, timeout):
         """ Set a default timeout for HTTP requests, in seconds. """
         self.web_page.resource_timeout = timeout
@@ -312,21 +340,11 @@ class BrowserTab(QObject):
         """ Get a default timeout for HTTP requests, in seconds. """
         return self.web_page.resource_timeout
 
-    def set_images_enabled(self, enabled):
-        self.web_page.settings().setAttribute(QWebSettings.AutoLoadImages,
-                                              enabled)
+    def lock_navigation(self):
+        self.web_page.navigation_locked = True
 
-    def get_images_enabled(self):
-        settings = self.web_page.settings()
-        return settings.testAttribute(QWebSettings.AutoLoadImages)
-
-    def set_plugins_enabled(self, enabled):
-        self.web_page.settings().setAttribute(QWebSettings.PluginsEnabled,
-                                              bool(enabled))
-
-    def get_plugins_enabled(self):
-        settings = self.web_page.settings()
-        return bool(settings.testAttribute(QWebSettings.PluginsEnabled))
+    def unlock_navigation(self):
+        self.web_page.navigation_locked = False
 
     def set_viewport(self, size, raise_if_empty=False):
         """
@@ -372,12 +390,6 @@ class BrowserTab(QObject):
         # The side-effect of this operation is a forced synchronous relayout of
         # the page.
         self.web_page.setPreferredContentsSize(QSize())
-
-    def lock_navigation(self):
-        self.web_page.navigation_locked = True
-
-    def unlock_navigation(self):
-        self.web_page.navigation_locked = False
 
     def set_content(self, data, callback, errback, mime_type=None, baseurl=None):
         """
@@ -432,7 +444,7 @@ class BrowserTab(QObject):
     @property
     def url(self):
         """ Current URL """
-        return six.text_type(self.web_page.mainFrame().url().toString())
+        return str(self.web_page.mainFrame().url().toString())
 
     def go(self, url, callback, errback, baseurl=None, http_method='GET',
            body=None, headers=None):
@@ -512,6 +524,7 @@ class BrowserTab(QObject):
         self.logger.log("close is requested by a script", min_level=2)
         self._closing = True
         self._closing_normally = True
+        self._clear_event_handlers_storage()
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
         self.web_view.stop()
         self.web_view.close()
@@ -670,7 +683,7 @@ class BrowserTab(QObject):
             callback_proxy.use_up()
 
     def _on_url_changed(self, url):
-        self.web_page.har.store_redirect(six.text_type(url.toString()))
+        self.web_page.har.store_redirect(str(url.toString()))
         self._cancel_timers(self._timers_to_cancel_on_redirect)
 
     def _process_js_result(self, obj, allow_dom):
@@ -1015,20 +1028,20 @@ class BrowserTab(QObject):
     def _frame_to_dict(self, frame, children=True, html=True):
         g = frame.geometry()
         res = {
-            "url": six.text_type(frame.url().toString()),
-            "requestedUrl": six.text_type(frame.requestedUrl().toString()),
+            "url": str(frame.url().toString()),
+            "requestedUrl": str(frame.requestedUrl().toString()),
             "geometry": (g.x(), g.y(), g.width(), g.height()),
-            "title": six.text_type(frame.title())
+            "title": str(frame.title())
         }
         if html:
-            res["html"] = six.text_type(frame.toHtml())
+            res["html"] = str(frame.toHtml())
 
         if children:
             res["childFrames"] = [
                 self._frame_to_dict(f, True, html)
                 for f in frame.childFrames()
             ]
-            res["frameName"] = six.text_type(frame.frameName())
+            res["frameName"] = str(frame.frameName())
 
         return res
 
@@ -1106,6 +1119,14 @@ class BrowserTab(QObject):
         """
         js_query = u"document.querySelectorAll({})".format(escape_js(selector))
         return self.evaljs(js_query)
+
+    def get_scroll_position(self):
+        point = self.web_page.mainFrame().scrollPosition()
+        return {'x': point.x(), 'y': point.y()}
+
+    def set_scroll_position(self, x, y):
+        point = QPoint(x, y)
+        self.web_page.mainFrame().setScrollPosition(point)
 
 
 class _SplashHttpClient(QObject):
@@ -1262,7 +1283,7 @@ class _JavascriptConsole(QObject):
 
     @pyqtSlot(str)
     def log(self, message):
-        self.messages.append(six.text_type(message))
+        self.messages.append(str(message))
 
 
 class _BrowserTabLogger(object):
@@ -1295,7 +1316,6 @@ class _BrowserTabLogger(object):
     def on_frame_load_started(self):
         self.log("mainFrame().loadStarted")
 
-    @pyqtSlot('QSize')
     def on_contents_size_changed(self, sz):
         self.log("mainFrame().contentsSizeChanged: %s" % sz)
 
@@ -1312,7 +1332,7 @@ class _BrowserTabLogger(object):
         if min_level is not None and self.verbosity < min_level:
             return
 
-        if isinstance(message, six.text_type):
+        if isinstance(message, str):
             message = message.encode('unicode-escape').decode('ascii')
 
         message = "[%s] %s" % (self.uid, message)
@@ -1406,8 +1426,13 @@ class EventHandlersStorage(QObject):
         if self.storage.get(func_id, None) is not None:
             del self.storage[func_id]
 
+    def clear(self):
+        self.storage.clear()
+
     @pyqtSlot(str, str, 'QVariantMap', name="run")
     def run_function(self, func_id, event_id, event):
+        if func_id not in self.storage:
+            return
         wrapped_event = Event(self.events_storage, event_id, event)
         self.storage[func_id].on_call_after.append(wrapped_event.remove)
         self.storage[func_id](wrapped_event)
@@ -1542,11 +1567,15 @@ class OneShotCallbackProxy(QObject):
         self._errback(message, raise_)
 
     def cancel(self, reason):
+        if self._used_up:
+            return
         self.use_up()
         self._errback("One shot callback canceled due to: %s." % reason,
                       raise_=False)
 
     def _timed_out(self):
+        if self._used_up:
+            return
         self.use_up()
         self._errback("One shot callback timed out while waiting for"
                       " resume() or error().", raise_=False)

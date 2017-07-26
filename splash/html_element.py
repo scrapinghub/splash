@@ -1,5 +1,5 @@
-from __future__ import absolute_import
 from functools import wraps
+from contextlib import contextmanager
 
 from splash.exceptions import DOMError
 from splash.jsutils import escape_js
@@ -130,28 +130,52 @@ class HTMLElement(object):
 
     def node_method(self, method_name):
         """ Return function which calls the specified method of the element """
-
+        method_name = escape_js(method_name)
         @empty_strings_as_none
         def call(*args):
             return self.tab.evaljs(u"{element}[{method}]({args})".format(
                 element=self.element_js,
-                method=escape_js(method_name),
+                method=method_name,
                 args=escape_js_args(*args)
             ))
 
         return call
 
-    def mouse_click(self, x=0, y=0, button="left"):
+    @contextmanager
+    def _in_viewport(self, disable=False, scroll_back=True):
+        """ Ensure element is in a viewport; do nothing if disable is True """
+        if disable:
+            yield
+        else:
+            pos = self.tab.get_scroll_position()
+            try:
+                self.node_method('scrollIntoViewIfNeeded')()
+                yield
+            finally:
+                if scroll_back:
+                    self.tab.set_scroll_position(**pos)
+
+    def mouse_click(self, x=None, y=None, button="left"):
         """ Click on the element """
         self.assert_element_exists()
-        dimensions = self._get_dimensions()
-        self.tab.mouse_click(dimensions["x"] + x, dimensions["y"] + y, button)
+        with self._in_viewport(scroll_back=False):
+            x, y = self._relative_to_absolute_xy(x, y)
+            self.tab.mouse_click(x, y, button)
 
-    def mouse_hover(self, x=0, y=0):
+    def mouse_hover(self, x=None, y=None):
         """ Hover over the element """
         self.assert_element_exists()
+        with self._in_viewport(scroll_back=False):
+            x, y = self._relative_to_absolute_xy(x, y)
+            self.tab.mouse_hover(x, y)
+
+    def _relative_to_absolute_xy(self, dx=None, dy=None):
         dimensions = self._get_dimensions()
-        self.tab.mouse_hover(dimensions["x"] + x, dimensions["y"] + y)
+        if dx is None:
+            dx = dimensions['width'] // 2
+        if dy is None:
+            dy = dimensions['height'] // 2
+        return dimensions["x"] + dx, dimensions["y"] + dy
 
     def _get_dimensions(self):
         return self.tab.evaljs(DIMENSIONS_JS_FUNC % self.element_js)
@@ -173,13 +197,16 @@ class HTMLElement(object):
           - tuple with `left`, `top`, `right`, `bottom` integer
             values for padding
 
-        Padding value can be negative which means that the image will be cropped.
+        Padding value can be negative which means that the image will be
+        cropped.
         """
         if not self.exists() or not self.visible():
             return None
 
-        region = _bounds_to_region(self.bounds(), pad)
-        return self.tab.png(width, region=region, scale_method=scale_method)
+        with self._in_viewport():
+            region = _bounds_to_region(self.bounds(), pad)
+            return self.tab.png(width, region=region,
+                                scale_method=scale_method)
 
     def jpeg(self, width=None, scale_method=None, quality=None, pad=None):
         """ Return screenshot of the element in JPEG format.
@@ -190,13 +217,17 @@ class HTMLElement(object):
           - tuple with `left`, `top`, `right`, `bottom` integer
             values for padding
 
-        Padding value can be negative which means that the image will be cropped.
+        Padding value can be negative which means that the image will
+        be cropped.
         """
         if not self.exists() or not self.visible():
             return None
-        region = _bounds_to_region(self.bounds(), pad)
-        return self.tab.jpeg(width, region=region, scale_method=scale_method,
-                             quality=quality)
+
+        with self._in_viewport():
+            region = _bounds_to_region(self.bounds(), pad)
+            return self.tab.jpeg(width, region=region,
+                                 scale_method=scale_method,
+                                 quality=quality)
 
     def visible(self):
         """ Return flag indicating whether element is visible """
@@ -248,13 +279,13 @@ class HTMLElement(object):
     def send_keys(self, text):
         """ Send key events to the element separated by whitespaces """
         if not self.focused():
-            self.mouse_click()
+            self.mouse_click(0, 0)
         self.tab.send_keys(text)
 
     def send_text(self, text):
         """ Send text to the element """
         if not self.focused():
-            self.mouse_click()
+            self.mouse_click(0, 0)
         self.tab.send_text(text)
 
     def focused(self):

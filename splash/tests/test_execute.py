@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import base64
 import unittest
 from io import BytesIO
@@ -9,14 +7,13 @@ import time
 
 from PIL import Image
 import requests
-import six
 import pytest
 
 lupa = pytest.importorskip("lupa")
 
 from splash.exceptions import ScriptError
-from splash.qtutils import qt_551_plus
-from splash import __version__ as splash_version
+from splash.qtutils import has_min_qt_version
+from splash import version_info
 from splash.har_builder import HarBuilder
 from splash.har.utils import get_response_body_bytes
 
@@ -29,6 +26,7 @@ from .. import defaults
 
 class BaseLuaRenderTest(test_render.BaseRenderTest):
     endpoint = 'execute'
+    request_handler = JsonPostRequestHandler
 
     def request_lua(self, code, query=None, **kwargs):
         q = {"lua_source": code}
@@ -39,7 +37,7 @@ class BaseLuaRenderTest(test_render.BaseRenderTest):
         err = self.assertJsonError(resp, 400, 'ScriptError')
         self.assertEqual(err['info']['type'], subtype)
         if message is not None:
-            self.assertRegexpMatches(err['info']['message'], message)
+            self.assertRegex(err['info']['message'], message)
         return err
 
     def assertErrorLineNumber(self, resp, line_number):
@@ -611,7 +609,7 @@ class EvaljsTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
            local div = splash:evaljs("document.createElement('div')")
-           return div.node.nodeName:lower()
+           return div.nodeName:lower()
         end
         """)
 
@@ -669,8 +667,14 @@ class EvaljsTest(BaseLuaRenderTest):
         self.assertEqual(err['info']['js_error_message'], 'ABC')
 
 
+@pytest.mark.usefixtures("class_splash_strict_lua_runner")
 class WaitForResumeTest(BaseLuaRenderTest):
     maxDiff = 2000
+
+    def request_lua(self, code, query=None, **kwargs):
+        endpoint = self.splash_strict_lua_runner.url('execute')
+        kwargs.setdefault('endpoint', endpoint)
+        return super().request_lua(code, query, **kwargs)
 
     def _wait_for_resume_request(self, js, timeout=1.0):
         return self.request_lua("""
@@ -956,6 +960,38 @@ class WaitForResumeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 
+    def test_no_resume(self):
+        resp = self.request_lua("""
+        function main(splash)
+            return assert(splash:wait_for_resume("function main(splash){}"))
+        end
+        """, {'timeout': 1})
+        self.assertJsonError(resp, 504)
+
+    def test_no_out_of_order_results(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local script = [[
+                function main(splash){
+                    splash.resume('ok');
+                    setTimeout(function () {
+                        splash.resume('not ok');
+                    }, 1000);                
+                }            
+            ]]
+            assert(splash:go(splash.args.url))
+            local a = assert(splash:wait_for_resume(script))
+            assert(splash:go(splash.args.url))
+            local b = assert(splash:wait_for_resume(script))
+            return {a=a, b=b}
+        end
+        """, {'timeout': 1, 'url': self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"a": {"value": "ok"},
+                                       "b": {"value": "ok"}})
+        # XXX: there shouldn't be "skipping an out-of-order result"
+        # messages in Splash log.
+
 
 class RunjsTest(BaseLuaRenderTest):
     def test_define_variable(self):
@@ -998,9 +1034,7 @@ class RunjsTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         err = resp.json()['err']
-        self.assertEqual(err['type'], ScriptError.JS_ERROR)
-        self.assertEqual(err['js_error_type'], 'SyntaxError')
-        self.assertEqual(err['splash_method'], 'runjs')
+        self.assertEqual(err, "JS error: 'SyntaxError: Function statements must have a name.'")
 
     def test_runjs_exception(self):
         resp = self.request_lua("""
@@ -1011,10 +1045,17 @@ class RunjsTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         err = resp.json()['err']
-        self.assertEqual(err['type'], ScriptError.JS_ERROR)
-        self.assertEqual(err['js_error_type'], 'ReferenceError')
-        self.assertRegexpMatches(err['message'], "Can't find variable")
-        self.assertEqual(err['splash_method'], 'runjs')
+        self.assertEqual(err, 'JS error: "ReferenceError: Can\'t find variable: y"')
+
+    def test_runjs_assert(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:runjs("var x = y;"))
+            return "ok"
+        end
+        """)
+        self.assertScriptError(resp, ScriptError.LUA_ERROR,
+                               "ReferenceError: Can\'t find variable: y")
 
 
 class JsfuncTest(BaseLuaRenderTest):
@@ -1100,10 +1141,7 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'ABC'", data[u"res"])
-        else:
-            self.assertIn("error during JS function call: u'ABC'", data[u"res"])
+        self.assertIn("error during JS function call: 'ABC'", data[u"res"])
 
     def test_throw_error(self):
         resp = self.request_lua("""
@@ -1138,10 +1176,7 @@ class JsfuncTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         data = resp.json()
         self.assertEqual(data["ok"], False)
-        if six.PY3:
-            self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
-        else:
-            self.assertIn("error during JS function call: u'Error: ABC'", data[u"res"])
+        self.assertIn("error during JS function call: 'Error: ABC'", data[u"res"])
 
     def test_js_syntax_error(self):
         resp = self.request_lua("""
@@ -1238,7 +1273,7 @@ class JsfuncTest(BaseLuaRenderTest):
         treat = require("treat")
         function main(splash)
             local create_el = splash:jsfunc("function(type){return document.createElement(type)}")
-            return create_el('div').node.nodeName:lower();
+            return create_el('div').nodeName:lower();
         end
         """)
         self.assertStatusCode(resp, 200)
@@ -1379,18 +1414,25 @@ class ArgsTest(BaseLuaRenderTest):
         """
         return self.request_lua(func, query)
 
+    def args_param_request(self, query):
+        func = """
+        function main(splash, args)
+          return {args=args}
+        end
+        """
+        return self.request_lua(func, query)
+
     def assertArgs(self, query):
-        resp = self.args_request(query)
-        self.assertStatusCode(resp, 200)
-        data = resp.json()["args"]
-        data.pop('lua_source')
-        data.pop('uid')
-        return data
+        for resp in [self.args_request(query), self.args_param_request(query)]:
+            self.assertStatusCode(resp, 200)
+            data = resp.json()["args"]
+            data.pop('lua_source')
+            data.pop('uid')
+            yield data
 
     def assertArgsPassed(self, query):
-        args = self.assertArgs(query)
-        self.assertEqual(args, query)
-        return args
+        for args in self.assertArgs(query):
+            self.assertEqual(args, query)
 
     def test_known_args(self):
         self.assertArgsPassed({"wait": "1.0"})
@@ -1406,10 +1448,17 @@ class ArgsTest(BaseLuaRenderTest):
         err = self.assertJsonError(resp, 400, "BadOption")
         self.assertEqual(err['info']['argument'], 'filters')
 
+    def test_int_args_values(self):
+        self.assertArgsPassed({'egg': 59})
+
+    def test_list_args_values(self):
+        self.assertArgsPassed({'egg': ['foo', 'bar']})
+
+    def test_mixed_args_values(self):
+        self.assertArgsPassed({'egg': [{'foo': {'x': 1}}, 'bar']})
+
 
 class JsonPostUnicodeTest(BaseLuaRenderTest):
-    request_handler = JsonPostRequestHandler
-
     def test_unicode(self):
         resp = self.request_lua(u"""
         function main(splash) return {key="значение"} end
@@ -1537,12 +1586,8 @@ class GoTest(BaseLuaRenderTest):
         })
         self.assertStatusCode(resp, 200)
         data = resp.json()
-        if six.PY3:
-            self.assertIn("{b'foo': [b'1']}", data['html_1'])
-            self.assertIn("{b'bar': [b'2']}", data['html_2'])
-        else:
-            self.assertIn("{'foo': ['1']}", data['html_1'])
-            self.assertIn("{'bar': ['2']}", data['html_2'])
+        self.assertIn("{b'foo': [b'1']}", data['html_1'])
+        self.assertIn("{b'bar': [b'2']}", data['html_2'])
 
     def test_go_404_then_good(self):
         resp = self.request_lua("""
@@ -1611,6 +1656,29 @@ class GoTest(BaseLuaRenderTest):
         data = resp.json()
         self.assertIn("'Header Value'", data["res1"])
         self.assertNotIn("'Header Value'", data["res2"])
+
+    def test_go_headers_float(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Custom-Header"] = 23.3,
+            }})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("'23.3'", resp.text)
+
+    def test_go_headers_bad(self):
+        resp = self.request_lua("""
+        function main(splash)
+            assert(splash:go{splash.args.url, headers={
+                ["Custom-Header"] = {23.3},
+            }})
+            return splash:html()
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
 
     def test_set_custom_headers(self):
         resp = self.request_lua("""
@@ -1774,7 +1842,7 @@ class GoTest(BaseLuaRenderTest):
 
 
 class ResourceTimeoutTest(BaseLuaRenderTest):
-    if not qt_551_plus():
+    if not has_min_qt_version('5.5.1'):
         pytestmark = pytest.mark.xfail(
             run=False,
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. "
@@ -1860,7 +1928,7 @@ class ResultStatusCodeTest(BaseLuaRenderTest):
         for code in [200, 404, 500, 999]:
             resp = self.request_lua("""
             function main(splash)
-                splash:set_result_status_code(tonumber(splash.args.code))
+                splash:set_result_status_code(splash.args.code)
                 return "hello"
             end
             """, {'code': code})
@@ -1876,8 +1944,10 @@ class ResultStatusCodeTest(BaseLuaRenderTest):
             end
             """, {'code': code})
             err = self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
-            self.assertEqual(err['info']['splash_method'],
-                             'set_result_status_code')
+            assert 'set_result_status_code' in err['info']['message']
+            if 'unexpected keyword argument' not in err['info']['error']:
+                self.assertEqual(err['info']['splash_method'],
+                                 'set_result_status_code')
 
 
 class SetUserAgentTest(BaseLuaRenderTest):
@@ -1904,14 +1974,9 @@ class SetUserAgentTest(BaseLuaRenderTest):
         self.assertNotIn("Mozilla", data["res2"])
         self.assertNotIn("Mozilla", data["res3"])
 
-        if six.PY3:
-            self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
-            self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
-        else:
-            self.assertNotIn("'user-agent': 'Foozilla'", data["res1"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res2"])
-            self.assertIn("'user-agent': 'Foozilla'", data["res3"])
+        self.assertNotIn("b'user-agent': b'Foozilla'", data["res1"])
+        self.assertIn("b'user-agent': b'Foozilla'", data["res2"])
+        self.assertIn("b'user-agent': b'Foozilla'", data["res3"])
 
     def test_set_user_agent_base_url(self):
         resp = self.request_lua("""
@@ -2583,6 +2648,38 @@ class HttpGetTest(BaseLuaRenderTest):
         self.assertEqual(headers["Header-2"], "Value 2")
         self.assertIn("user-agent", headers)
 
+    def test_get_with_integer_headers(self):
+        # header with integer value should not crash splash
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = 2
+                })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        self.assertStatusCode(resp, 200)
+        headers = resp.json()
+        self.assertEqual(headers['Header-1'], 'Value 1')
+        self.assertEqual(headers['Header-2'], '2')
+
+    def test_get_with_invalid_headers(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_custom_headers({
+                ["Header-1"] = "Value 1",
+                ["Header-2"] = {"a"},
+            })
+            response = assert(splash:http_get(splash.args.url))
+            return response.request.headers
+        end
+        """, {"url": self.mockurl("jsrender")})
+        msg = "headers must be a table with strings as keys and values."
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR, msg)
+        self.assertErrorLineNumber(resp, 3)
+
     def test_get_with_custom_ua(self):
         resp = self.request_lua("""
         function main(splash)
@@ -2915,7 +3012,7 @@ class HttpPostTest(BaseLuaRenderTest):
             end
             """, {
             "url": self.mockurl("postrequest"),
-            "postbody": base64.b64encode(postbody)
+            "postbody": base64.b64encode(postbody).decode()
         })
         self.assertStatusCode(resp, 200)
         self.assertIn(repr(postbody), resp.text)
@@ -3039,9 +3136,9 @@ class GetPerfStatsTest(BaseLuaRenderTest):
         self.assertLess(out['cputime'], 1000.)
         self.assertLess(0., out['cputime'])
         # Should be safe to assume that splash process consumes between 1Mb
-        # and 1Gb of RAM, right?
+        # and 2Gb of RAM, right?
         self.assertLess(1E6, out['maxrss'])
-        self.assertLess(out['maxrss'], 1E9)
+        self.assertLess(out['maxrss'], 2E9)
         # I wonder if we could break this test...
         now = time.time()
         self.assertLess(now - 120, out['walltime'])
@@ -3071,6 +3168,12 @@ function alter_state(splash)
 end
 """
 
+    def _process_outer_size(self, size):
+        if not has_min_qt_version('5.8'):
+            return size
+        w, h = map(int, size.split('x'))
+        return "{}x{}".format(w - 1, h - 1)
+
     def return_json_from_lua(self, script, **kwargs):
         resp = self.request_lua(script, kwargs)
         if resp.ok:
@@ -3098,87 +3201,86 @@ end
         self.assertEqual(out, {'width': w, 'height': h})
 
     def test_default_dimensions(self):
-        self.assertSizeAfter("",
-                             {'inner': defaults.VIEWPORT_SIZE,
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': defaults.VIEWPORT_SIZE})
+        self.assertSizeAfter("", {
+            'inner': defaults.VIEWPORT_SIZE,
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': defaults.VIEWPORT_SIZE
+        })
 
     def test_set_sizes_as_table(self):
-        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}',
-                             {'inner': '111x222',
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': '111x222'})
-        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}',
-                             {'inner': '444x333',
-                              'outer': defaults.VIEWPORT_SIZE,
-                              'client': '444x333'})
+        self.assertSizeAfter('splash:set_viewport_size{width=111, height=222}', {
+            'inner': '111x222',
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': '111x222'
+        })
+        self.assertSizeAfter('splash:set_viewport_size{height=333, width=444}', {
+            'inner': '444x333',
+            'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
+            'client': '444x333'
+        })
 
     def test_viewport_size_roundtrips(self):
         self.assertSizeAfter(
             'splash:set_viewport_size(splash:get_viewport_size())',
             {'inner': defaults.VIEWPORT_SIZE,
-             'outer': defaults.VIEWPORT_SIZE,
+             'outer': self._process_outer_size(defaults.VIEWPORT_SIZE),
              'client': defaults.VIEWPORT_SIZE})
 
     def test_viewport_size(self):
         self.assertSizeAfter('splash:set_viewport_size(2000, 2000)',
                              {'inner': '2000x2000',
-                              'outer': defaults.VIEWPORT_SIZE,
+                              'outer': self._process_outer_size(
+                                  defaults.VIEWPORT_SIZE),
                               'client': '2000x2000'})
 
     def test_viewport_size_validation(self):
         cases = [
-            ('()', 'set_viewport_size.* takes exactly 3 arguments',
+            ('()',
              'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('{}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{}',
              'set_viewport_size.* missing 2 required positional arguments:*'),
-            ('(1)', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(1)',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(1, nil)', 'a number is required', None),
-            ('{1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(1, nil)', 'a number is required'),
+            ('{1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('(nil, 1)', 'a number is required', None),
-            ('{nil, 1}', 'a number is required', None),
-            ('{width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('(nil, 1)', 'a number is required'),
+            ('{nil, 1}', 'a number is required'),
+            ('{width=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{width=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{width=1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, width=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{nil, width=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{height=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{height=1, nil}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{height=1, nil}',
              'set_viewport_size.* missing 1 required positional argument:*'),
-            ('{nil, height=1}', 'set_viewport_size.* takes exactly 3 arguments',
+            ('{nil, height=1}',
              'set_viewport_size.* missing 1 required positional argument:*'),
 
-            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width', None),
+            ('{100, width=200}', 'set_viewport_size.* got multiple values.*width'),
             # This thing works.
             # ('{height=200, 100}', 'set_viewport_size.* got multiple values.*width'),
 
-            ('{100, "a"}', 'a number is required', None),
-            ('{100, {}}', 'a number is required', None),
+            ('{100, "a"}', 'a number is required'),
+            ('{100, {}}', 'a number is required'),
 
-            ('{100, -1}', 'Viewport is out of range', None),
-            ('{100, 0}', 'Viewport is out of range', None),
-            ('{100, 99999}', 'Viewport is out of range', None),
-            ('{1, -100}', 'Viewport is out of range', None),
-            ('{0, 100}', 'Viewport is out of range', None),
-            ('{99999, 100}', 'Viewport is out of range', None),
+            ('{100, -1}', 'Viewport is out of range'),
+            ('{100, 0}', 'Viewport is out of range'),
+            ('{100, 99999}', 'Viewport is out of range'),
+            ('{1, -100}', 'Viewport is out of range'),
+            ('{0, 100}', 'Viewport is out of range'),
+            ('{99999, 100}', 'Viewport is out of range'),
         ]
 
         def run_test(size_str):
             self.get_dims_after('splash:set_viewport_size%s' % size_str)
 
-        for size_str, errmsg_py2, errmsg_py3 in cases:
-            if not errmsg_py3:
-                errmsg_py3 = errmsg_py2
-            if six.PY3:
-                self.assertRaisesRegexp(RuntimeError, errmsg_py3, run_test, size_str)
-            else:
-                self.assertRaisesRegexp(RuntimeError, errmsg_py2, run_test, size_str)
+        for size_str, err_msg in cases:
+            self.assertRaisesRegex(RuntimeError, err_msg, run_test, size_str)
 
     def test_viewport_full(self):
         w = int(defaults.VIEWPORT_SIZE.split('x')[0])
@@ -3186,7 +3288,8 @@ end
                              'splash:wait(0.1);'
                              'splash:set_viewport_full();',
                              {'inner': '%dx2000' % w,
-                              'outer': defaults.VIEWPORT_SIZE,
+                              'outer': self._process_outer_size(
+                                  defaults.VIEWPORT_SIZE),
                               'client': '%dx2000' % w},
                              url=self.mockurl('tall'))
 
@@ -3250,12 +3353,12 @@ end
     def test_viewport_full_raises_error_if_fails_in_script(self):
         # XXX: for local resources loadFinished event generally arrives after
         # initialLayoutCompleted, so the error doesn't manifest itself.
-        self.assertRaisesRegexp(RuntimeError, "zyzzy",
-                                self.get_dims_after,
-                                """
-                                splash:go(splash.args.url)
-                                splash:set_viewport_full()
-                                """, url=self.mockurl('delay'))
+        self.assertRaisesRegex(RuntimeError, "zyzzy",
+                               self.get_dims_after,
+                               """
+                               splash:go(splash.args.url)
+                               splash:set_viewport_full()
+                               """, url=self.mockurl('delay'))
 
 
 class RenderRegionTest(BaseLuaRenderTest):
@@ -3388,8 +3491,67 @@ class VersionTest(BaseLuaRenderTest):
         end
         """)
         self.assertStatusCode(resp, 200)
-        version_min_maj = '.'.join(splash_version.split('.')[:2])
+        version_min_maj = '.'.join(map(str, version_info[:2]))
         self.assertEqual(resp.text, version_min_maj)
+
+
+class IsolationTest(BaseLuaRenderTest):
+    def test_cookies_isolated(self):
+        resp = self.request_lua("""
+        function main(splash)
+           assert(splash:go(splash.args.url))
+           return splash:get_cookies()
+        end
+        """, {'url': self.mockurl('set-cookie?key=foo&value=bar')})
+        cookies = resp.json()
+        assert len(cookies) == 1
+        assert cookies[0]['name'] == 'foo'
+        assert cookies[0]['value'] == 'bar'
+
+        for x in range(10):
+            resp2 = self.request_lua("""
+            function main(splash)
+                return splash:get_cookies()
+            end
+            """)
+            assert len(resp2.json()) == 0
+
+    def test_local_storage_isolated(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.private_mode_enabled = false
+            assert(splash:go(splash.args.url))            
+            splash:runjs([[localStorage.setItem("key", "value")]])        
+            return splash:evaljs([[localStorage.getItem("key")]]) 
+        end
+        """, {"url": self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "value")
+
+        for x in range(10):
+            resp = self.request_lua("""
+            function main(splash, args)
+                splash.private_mode_enabled = false
+                assert(splash:go(splash.args.url))
+                return splash:evaljs([[localStorage.getItem("key")]]) 
+            end
+            """, {"url": self.mockurl('jsrender')})
+            print(resp.text)
+            self.assertStatusCode(resp, 200)
+            assert resp.text == ""
+
+    @pytest.mark.xfail(reason="localStorage is not available before "
+                              "navigating to a page?")
+    def test_localstorage_nopage(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.private_mode_enabled = false
+            splash:runjs([[localStorage.setItem("key", "value")]])        
+            return splash:evaljs([[localStorage.getItem("key")]]) 
+        end
+        """, {"url": self.mockurl('jsrender')})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "value")
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):
@@ -3424,7 +3586,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertIn(u'world of splash', resp.text)
 
-    def test_private_mode_enabled(self):
+    def test_private_mode_enabled_local_storage_available(self):
         resp = self.request_lua("""
             function main(splash)
                 assert(splash.private_mode_enabled == true)
@@ -3441,7 +3603,7 @@ class EnableDisablePrivateModeTest(BaseLuaRenderTest):
             "TypeError: null is not an object (evaluating \'localStorage.setItem\')"
         )
 
-    def test_private_mode_disabled(self):
+    def test_private_mode_disabled_local_storage_available(self):
         resp = self.request_lua("""
             function main(splash)
                 splash.private_mode_enabled = False
@@ -3496,6 +3658,27 @@ class PluginsEnabledTest(BaseLuaRenderTest):
         """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {'enabled': defaults.PLUGINS_ENABLED})
+
+
+class WebGLTest(BaseLuaRenderTest):
+    def test_webgl(self):
+        # WebGL detection code is from
+        # https://developer.mozilla.org/en-US/docs/Learn/WebGL/By_example/Detect_WebGL
+        resp = self.request_lua("""
+        function main(splash)
+            webgl_supported = splash:jsfunc([[
+                function () {
+                    var canvas = document.createElement("canvas");
+                    var gl = canvas.getContext("webgl")
+                                || canvas.getContext("experimental-webgl");
+                    return (gl && gl instanceof WebGLRenderingContext);
+                }
+            ]])
+            return webgl_supported()
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, "True")
 
 
 class MouseEventsTest(BaseLuaRenderTest):
@@ -3967,3 +4150,187 @@ class KeyEventsTest(BaseLuaRenderTest):
         """)
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR,
                                message="Unknown key")
+
+
+class ScrollPositionTest(BaseLuaRenderTest):
+    PAGE_HTML = """
+<html>
+    <head>
+        <style>
+            div{font-size:32px; padding:32px}
+            #top {height: 200px; background-color: #7ea;}
+            #middle {height: 1500px; background-color: #517; color:white}
+            #bottom {height: 200px; background-color: #111; color:white}
+        </style>
+    </head>
+    <body>
+        <div id="top">Hello</div>
+        <div id="middle">World</div>
+        <div id="bottom">
+            Footer
+            <a id="clickme" href="javascript:setTopHtml('clicked');">
+                click me
+            </a>
+        </div>
+        <script>
+        window.setTopHtml = function(html){
+            document.querySelector('#top').innerHTML = html;
+        }
+        document.querySelector("#bottom").addEventListener(
+            "mousemove", 
+            function(event) {            
+                setTopHtml('hover');
+            }
+        );
+        </script>
+    </body>
+</html>
+"""
+
+    COLORS = {
+        'top': (0x77, 0xEE, 0xAA, 255),
+        'middle': (0x55, 0x11, 0x77, 255),
+        'bottom': (0x11, 0x11, 0x11, 255)
+    }
+
+    def test_scroll_position(self):
+        def request_scroll(x, y):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                splash.scroll_position = splash.args.pos
+                return splash:png()
+            end
+            """, {'html': self.PAGE_HTML, 'pos': {'x': x, 'y': y}})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = request_scroll(0, 0)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['top'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['middle'])
+
+        resp = request_scroll(0, 300)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['middle'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['middle'])
+
+        resp = request_scroll(0, 1600)
+        self.assertPixelColor(resp, 300, 50, self.COLORS['middle'])
+        self.assertPixelColor(resp, 300, 350, self.COLORS['bottom'])
+
+    def test_scroll_position_short(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {0, 200}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.json() == {'x': 0, 'y': 200}
+
+    def test_scroll_position_missing(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {y=200}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.json() == {'x': 0, 'y': 200}
+
+    def test_bad_scroll_position(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            splash.scroll_position = {0, 'foo'}
+            return splash.scroll_position
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)
+        self.assertErrorLineNumber(resp, 5)
+
+    def test_element_screenshot(self):
+        def _request(method):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                return splash:select('#bottom'):%s()
+            end
+            """ % method, {'html': self.PAGE_HTML})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = _request('png')
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'])
+
+        resp = _request('jpeg')  # no alpha channel
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
+
+    def test_element_screenshots(self):
+        def _request(method):
+            resp = self.request_lua("""
+            function main(splash)
+                splash:set_viewport_size(350, 400)
+                splash:set_content(splash.args.html)
+                local res = splash:select('#bottom'):%s()
+                splash:select('#top'):%s()                                        
+                return res
+            end
+            """ % (method, method), {'html': self.PAGE_HTML})
+            self.assertStatusCode(resp, 200)
+            return resp
+
+        resp = _request('png')
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'])
+
+        resp = _request('jpeg')  # no alpha channel
+        self.assertPixelColor(resp, 300, 50, self.COLORS['bottom'][:3])
+
+    def _request_get_top_text(self, script, params=None):
+        params = dict(html=self.PAGE_HTML, **(params or {}))
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            splash:set_content(splash.args.html)
+            %s
+            return splash:select('#top'):text()
+        end
+        """ % script, params)
+        self.assertStatusCode(resp, 200)
+        return resp
+
+    def test_element_mouse_click_viewport_full(self):
+        resp = self._request_get_top_text("""
+        splash:set_viewport_full()
+        splash:select("a#clickme"):mouse_click()
+        splash:wait(0.01)
+        """)
+        assert resp.text == "clicked"
+
+    def test_element_mouse_click_outside_viewport(self):
+        resp = self._request_get_top_text("""
+        local el = splash:select("a#clickme")
+        el:mouse_click()
+        -- splash:wait(0)
+        splash.scroll_position = {0, 0}
+        splash:wait(0.01)
+        """)
+        assert resp.text == "clicked"
+
+    def test_mouse_hover_outside_viewport(self):
+        resp = self.request_lua("""
+        function main(splash)
+            splash:set_viewport_size(350, 400)
+            assert(splash:set_content(splash.args.html))
+            assert(splash:select("#bottom").mouse_hover())
+            return splash:select("#top"):text()
+        end
+        """, {'html': self.PAGE_HTML})
+        self.assertStatusCode(resp, 200)
+        assert resp.text == "hover"

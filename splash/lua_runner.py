@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import abc
 import itertools
-import six
 
 import lupa
 
-from splash.exceptions import ScriptError
+from splash.exceptions import ScriptError, InternalError
 from splash.lua import parse_error_message, PyResult
 from splash.utils import truncated, ensure_tuple
 
@@ -35,13 +33,13 @@ class AsyncCommand(object):
         self.dispatcher.dispatch(self.id, PyResult.yield_(*args))
 
 
-class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
+class BaseScriptRunner(metaclass=abc.ABCMeta):
     """
     An utility class for running Lua coroutines.
     """
     _START_CMD = '__START__'
 
-    def __init__(self, lua, log, sandboxed):
+    def __init__(self, lua, log, sandboxed, strict):
         """
         :param splash.lua_runtime.SplashLuaRuntime lua: Lua runtime wrapper
         :param log: log function
@@ -52,6 +50,7 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
         self.lua = lua
         self.coro = None
         self.result = None
+        self.strict = strict
         self._command_ids = itertools.count()
         self._waiting_for_result_id = None
         self._is_stopped = False
@@ -107,8 +106,12 @@ class BaseScriptRunner(six.with_metaclass(abc.ABCMeta, object)):
             min_level=3,
         )
         if cmd_id != self._waiting_for_result_id:
-            self.log("[lua_runner] skipping an out-of-order result {}".format(truncated_repr(args)), min_level=1)
-            return
+            msg = "[lua_runner] skipping an out-of-order result {}".format(truncated_repr(args))
+            self.log(msg, min_level=1)
+            if self.strict:
+                raise InternalError(msg)
+            else:
+                return
 
         while True:
             self.log('[lua_runner] entering dispatch/loop body, args={}'.format(truncated_repr(args)))

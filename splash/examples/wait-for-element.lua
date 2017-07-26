@@ -26,8 +26,8 @@ function wait_for_element(splash, css, maxwait)
   ]], css, maxwait))
 end
 
-function main(splash)
-    splash:go("http://scrapinghub.com")
-    wait_for_element(splash, "#foo")
-    return {png=splash:png()}
+function main(splash, args)
+  splash:go("http://scrapinghub.com")
+  wait_for_element(splash, "#foo")
+  return {png=splash:png()}
 end

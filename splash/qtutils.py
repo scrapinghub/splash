@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """ Utils for working with QWebKit objects.
 """
-from __future__ import absolute_import
-
 import functools
 import itertools
 import re
@@ -17,7 +15,6 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWebKitWidgets import QWebFrame
 from twisted.python import log
-import six
 
 from splash.utils import truncated, to_bytes
 
@@ -102,6 +99,11 @@ QT_KEY_INPUTS = {
     Qt.Key_Delete: chr(127),
 }
 
+# Constant from https://github.com/annulen/webkit which is not available
+# in PyQT:
+MediaSourceEnabled = QWebSettings.Accelerated2dCanvasEnabled + 1
+
+
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault
 _qtapp = None
@@ -147,7 +149,7 @@ def get_qt_app():
 
 def qurl2ascii(url):
     """ Convert QUrl to ASCII text suitable for logging """
-    url = six.text_type(url.toString()).encode('unicode-escape').decode('ascii')
+    url = str(url.toString()).encode('unicode-escape').decode('ascii')
     if url.lower().startswith('data:'):
         return truncated(url, 80, '...[data uri truncated]')
     return url
@@ -294,11 +296,11 @@ def get_versions():
     }
 
 
-def qt_551_plus():
-    """ Return True if Qt version is 5.5.1+ """
+def has_min_qt_version(version):
+    """ Return True is Qt version is greater or equal to ``version`` """
     from distutils.version import LooseVersion
     from PyQt5.QtCore import QT_VERSION_STR
-    return LooseVersion(QT_VERSION_STR) >= LooseVersion("5.5.1")
+    return LooseVersion(QT_VERSION_STR) >= LooseVersion(version)
 
 
 def get_headers_dict(request_or_reply):

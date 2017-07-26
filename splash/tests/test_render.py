@@ -4,14 +4,14 @@ import unittest
 import base64
 from functools import wraps
 from io import BytesIO
+from urllib.parse import urlencode, urljoin
 
 import pytest
 import requests
 from PIL import Image, ImageChops
-from six.moves.urllib import parse as urlparse
 
 from splash import defaults
-from splash.qtutils import qt_551_plus
+from splash.qtutils import has_min_qt_version
 from splash.utils import truncated
 from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 
@@ -48,11 +48,11 @@ class DirectRequestHandler(object):
 
     def _url_and_params(self, endpoint, query):
         endpoint = endpoint if endpoint is not None else self.endpoint
+        url = urljoin("http://%s/" % self.host, endpoint)
         if isinstance(query, dict):
-            url = "http://%s/%s" % (self.host, endpoint)
             params = query
         else:
-            url = "http://%s/%s?%s" % (self.host, endpoint, query)
+            url = "%s?%s" % (url, query)
             params = None
         return url, params
 
@@ -86,7 +86,8 @@ class BaseRenderTest(unittest.TestCase):
         return self._get_handler().post(query, endpoint, payload, headers, **kwargs)
 
     def assertStatusCode(self, response, code):
-        msg = (response.status_code, truncated(response.text, 1000))
+        msg = (response.status_code, truncated(response.text, 1000),
+               response.url)
         self.assertEqual(response.status_code, code, msg)
 
     def assertJsonError(self, response, code, error_type=None):
@@ -204,13 +205,14 @@ class Base(object):
             self.assertStatusCode(r, 200)
 
         def test_invalid_wait(self):
-            for wait in ['foo', '11', '11.0']:
+            wait = defaults.TIMEOUT + 1
+            for wait in ['foo', "%d" % wait, '%0.1f' % wait]:
                 r = self.request({'url': self.mockurl("jsrender"),
                                   'wait': wait})
                 self.assertStatusCode(r, 400)
 
         @pytest.mark.skipif(
-            not qt_551_plus(),
+            not has_min_qt_version('5.5.1'),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
         )
         def test_resource_timeout(self):
@@ -222,7 +224,7 @@ class Base(object):
             self.assertStatusCode(resp, 200)
 
         @pytest.mark.skipif(
-            not qt_551_plus(),
+            not has_min_qt_version('5.5.1'),
             reason="resource_timeout doesn't work in Qt5 < 5.5.1. See issue #269 for details."
         )
         def test_resource_timeout_abort_first(self):
@@ -334,7 +336,7 @@ class RenderHtmlTest(Base.RenderTest):
     def assertCookiesPreserved(self, use_js):
         use_js = "true" if use_js else ""
         get_cookie_url = self.mockurl("get-cookie?key=foo")
-        q = urlparse.urlencode({
+        q = urlencode({
             "key": "foo",
             "value": "bar",
             "next": get_cookie_url,
@@ -895,6 +897,15 @@ class CommandLineOptionsTest(BaseRenderTest):
             )
             self.assertStatusCode(r4, 200)
 
+    def test_verbosity4_works(self):
+        with SplashServer(extra_args=['-v4']) as splash:
+            resp = requests.get(
+                url=splash.url("render.html"),
+                params={'url': self.mockurl("jsrender")},
+                timeout=3,
+            )
+            self.assertStatusCode(resp, 200)
+
 
 @pytest.mark.usefixtures("class_ts")
 class TestTestSetup(unittest.TestCase):
@@ -975,21 +986,21 @@ class RenderJpegTest(Base.RenderTest):
         img = self.assertJpeg(r, width=1500, height=500)
         # There's no way to detect exact quality number from the response, but
         # quality number is reflected in quantization tables, so we can check them
-        self.assertEqual(img.quantization[0].tostring(), array('b', [
+        self.assertEqual(img.quantization[0].tobytes(), array('b', [
             80, 55, 60, 70, 60, 50, 80, 70, 65, 70, 90, 85, 80, 95, 120, -56, -126, 120,
             110, 110, 120, -11, -81, -71, -111, -56, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-        ]).tostring())
+        ]).tobytes())
 
         # There's no way to detect exact quality number from the response, but
         # quality number is reflected in quantization tables, so we can check them
-        self.assertEqual(img.quantization[1].tostring(), array('b', [
+        self.assertEqual(img.quantization[1].tobytes(), array('b', [
             85, 90, 90, 120, 105, 120, -21, -126, -126, -21, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1
-        ]).tostring())
+        ]).tobytes())
 
     def test_range_checks(self):
         for arg in ('width', 'height'):

@@ -1,6 +1,85 @@
 FAQ
 ===
 
+.. _using-http-api:
+
+How to send requests to Splash HTTP API?
+----------------------------------------
+
+The recommended way is to use ``application/json`` POST requests,
+because this way you can preserve data types, and there is no limit on
+request size.
+
+Python, using ``requests`` library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+requests_ library is a popular way to send HTTP requests in Python.
+It provides a shortcut for sending JSON POST requests. Let's send
+a simple Lua script to :ref:`run` endpoint:
+
+.. code-block:: python
+
+    import requests
+
+    script = """
+    splash:go(args.url)
+    return splash:png()
+    """
+    resp = requests.post('http://localhost:8050/run', json={
+        'lua_source': script,
+        'url': 'http://example.com'
+    })
+    png_data = resp.content
+
+.. _requests: http://docs.python-requests.org/en/master/
+
+Python + Scrapy
+~~~~~~~~~~~~~~~
+
+Scrapy_ is a popular web crawling and scraping framework.
+For Scrapy_ + Splash integration use scrapy-splash_ library.
+
+.. _Scrapy: https://scrapy.org/
+.. _scrapy-splash: https://github.com/scrapy-plugins/scrapy-splash
+
+R language
+~~~~~~~~~~
+
+There is a third-party library which makes it easy to use Splash
+in R language: https://github.com/hrbrmstr/splashr
+
+curl
+~~~~
+
+::
+
+    curl --header "Content-Type: application/json" \
+         -X POST \
+         --data '{"url":"http://example.com","wait":1.0}' \
+         'http://localhost:8050/render.html'
+
+httpie
+~~~~~~
+
+httpie_ is a command-line utility for sending HTTP requests; it has a nice
+API for sending for JSON POST requests::
+
+    http POST localhost:8050/render.png url=http://example.com width=200 > img.png
+
+.. _httpie: https://httpie.org
+
+HTML
+~~~~
+
+You can embed Splash results directly in HTML pages. This is not the best,
+as you'll be rendering the website each time this HTML page is opened.
+But still, you can do this:
+
+.. code-block:: html
+
+    <img src="http://splash-url:8050/render.jpeg?url=http://example.com&width=300"/>
+
+
 .. _timeouts:
 
 I'm getting lots of 504 Timeout errors, please help!
@@ -18,14 +97,14 @@ by default you can't pass ``?timeout=300`` to run a long script - an
 error will be returned.
 
 Maximum allowed timeout can be increased by passing ``--max-timeout``
-option to Splash server on startup::
-
-    $ python -m splash.server --max-timeout 3600
-
-For Docker the command would be something like this
-(see :ref:`docker-custom-options`)::
+option to Splash server on startup (see :ref:`docker-custom-options`)::
 
     $ docker run -it -p 8050:8050 scrapinghub/splash --max-timeout 3600
+
+If you've installed Splash without Docker, use
+::
+
+    $ python3 -m splash.server --max-timeout 3600
 
 The next question is why a request can need 10 minutes to render.
 There are 3 common reasons:
@@ -47,7 +126,7 @@ better not to wait for them forever.
 To abort resource loading after a timeout and give the whole page a chance to
 render use resource timeouts. For render.*** endpoints use
 :ref:`'resource_timeout' <arg-resource-timeout>` argument;
-for :ref:`execute` use either :ref:`splash-resource-timeout` or
+for :ref:`execute` or :ref:`run` use either :ref:`splash-resource-timeout` or
 ``request:set_timeout`` (see :ref:`splash-on-request`).
 
 It is a good practive to always set resource_timeout; something similar to
@@ -175,6 +254,44 @@ https://github.com/nabilm/ansible-splash.
 
 .. _Ansible: https://www.ansible.com/
 
+.. _rendering-problems:
+
+Website is not rendered correctly
+---------------------------------
+
+Sometimes websites are not rendered correctly by Splash.
+Common reasons:
+
+* not enough wait time; solution - wait more (see e.g. :ref:`splash-wait`);
+* non-working localStorage in Private Mode. This is a common issue e.g. for
+  websites based on AngularJS. If rendering doesn't work, try disabling
+  Private mode (see :ref:`disable-private-mode`).
+* Sometimes content is lazy-loaded, or loaded only in a response for user
+  actions (e.g. page scrolling). Try increasing viewport size to make
+  everything visible, and waiting a bit after that
+  (see :ref:`splash-set-viewport-full`). You may also have to simulate
+  mouse and keyboard events (see :ref:`splash-lua-api-interacting`).
+* Missing features in WebKit used by Splash. Splash now uses
+  https://github.com/annulen/webkit, which is much more recent than WebKit
+  provided by Qt; we'll be updating Splash WebKit as annulen's webkit
+  develops.
+* Qt or WebKit bugs which cause Splash to hang. Often the whole website works,
+  but some specific .js (or other) file causes problems. In this case you
+  can try starting splash in verbose mode
+  (e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``),
+  noting what resources are downloaded last, and filtering them out
+  using :ref:`splash-on-request` or :ref:`request filters`.
+* Website may show a different content based on User-Agent header or based
+  on IP address. Use :ref:`splash-set-user-agent` to change the default
+  User-Agent header. If you're running Splash in a cloud and not getting good
+  results, try reproducing it locally as well, just in case results depend on
+  IP address.
+* Website requires Flash. You can enable it using
+  :ref:`splash-plugins-enabled`.
+
+If you have troubles making Splash work, consider asking a question
+at https://stackoverflow.com. If you think it is a Splash bug,
+raise an issue at https://github.com/scrapinghub/splash/issues.
 
 .. _disable-private-mode:
 
@@ -187,21 +304,21 @@ There are two ways to go about it:
 - at startup, with the ``--disable-private-mode`` argument, e.g., if you're
   using Docker::
 
-        $ sudo docker run -it -p 5023:5023 -p 8050:8050 -p 8051:8051 scrapinghub/splash --disable-private-mode
+        $ sudo docker run -it -p 8050:8050 scrapinghub/splash --disable-private-mode
 
 - at runtime when using the ``/execute`` endpoint and setting
   :ref:`splash-private-mode-enabled` attribute to ``false``
 
-Note that if you disable private mode then browsing data such as cookies or
-items kept in localStorage may persist between requests. If you're using
-Splash in a shared environment it could mean your cookies or local storage
-items can be accessed by other clients, or that you can occasionally access
-other client's cookies.
+Note that if you disable private mode then browsing data may persist
+between requests (cookies are not affected though). If you're using
+Splash in a shared environment it could mean some information about
+requests you're making can be accessible for other Splash users.
 
 You may still want to turn Private mode off because in WebKit localStorage
 doesn't work when Private mode is enabled, and it is not possible
-to provide a JavaScript shim for localStorage. So for some websites you may
-have to turn Private model off.
+to provide a JavaScript shim for localStorage. So for some websites
+(AngularJS websites are common offenders) you may have to turn
+Private model off.
 
 .. _why-splash:
 

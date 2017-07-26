@@ -1,6 +1,97 @@
 Changes
 =======
 
+3.0 (2017-07-06)
+----------------
+
+WebKit is upgraded in this Splash release - Splash now uses
+https://github.com/annulen/webkit instead of official (deprecated
+and unsupported) QtWebKit. Splash rendering engine
+is now similar to Safari from mid-2016. It fixes a lot of problems
+with compatibility, speed and quality of rendering.
+
+Backwards incompatible changes:
+
+* there are rendering changes, as WebKit is upgraded;
+* :ref:`wait <arg-wait>` argument for render.??? endpoints
+  no longer increases :ref:`timeout <arg-timeout>` automatically.
+  If you increase ``timeout`` by ``wait`` value requests to render.???
+  endpoints will work as before. Also, 30s limit (10s prior to Splash 2.3.3)
+  for wait argument is removed - you can set any ``wait`` value, as soon
+  as it is smaller than ``timeout``.
+* Python 2 support is removed. You can still use Python 2 to make requests
+  to Splash, but Splash server itself now runs on Python 3.4+.
+* :ref:`splash-element-mouse-click` and :ref:`splash-element-mouse-hover`
+  now click/hover element center by default, not element top-left corner.
+  Also, they scroll to the element being clicked/hovered if needed, to
+  make it work when an element is outside the current viewport. These methods
+  are now async; they wait for events to propagate
+  (unlike :ref:`splash-mouse-click` and :ref:`splash-mouse-hover`).
+
+New features:
+
+* An alternative way to access :ref:`splash-args`: it can be received
+  as a second argument of ``main`` function
+  (i.e. ``function main(splash, args) ...``);
+* new :ref:`run` endpoint is an alternative to :ref:`execute` endpoint; it is
+  almost the same, but it doesn't require putting code into
+  ``function main(splash, args) ... end``;
+* new :ref:`splash-scroll-position` attribute allows to get and set
+  window scroll position;
+* Qt is upgraded to 5.9.1, PyQT is upgraded to 5.9;
+* official Docker image now uses Ubuntu 16.04.
+
+Other changes and bug fixes:
+
+* default :ref:`timeout <arg-timeout>` **limit** (i.e. max allowed value)
+  is increased from 60s to 90s; default ``timeout`` **value**
+  is still 30s.
+* Lua sandbox: instruction count limit is increased further
+  (10M instructions instead of 5M)
+* new docs section: :ref:`splash-lua-api-overview`;
+* new FAQ entries: :ref:`using-http-api`, :ref:`rendering-problems`;
+* Fixed an issue with :ref:`splash-runjs`: previously in case of an error
+  it returned a table with error information. This approach didn't play well
+  with Lua ``assert``, so now a string with an error message is returned
+  instead. It was always documented that a string is returned by splash:runjs
+  as a second value when error happens.
+* Fixed :ref:`splash-element-png` and :ref:`splash-element-jpeg` for elements
+  outside curent viewport;
+* DOM attributes and methods are documented as accessible on
+  elements directly, without ``.node`` - i.e.
+  ``splash:select('.my-element'):getAttribute('foo')`` instead of
+  ``splash:select('.my-element').node:getAttribute('foo')``;
+* exposed ``element:scrollIntoViewIfNeeded()`` method;
+* improved validation of ``headers`` arguments in :ref:`splash-go`,
+  :ref:`splash-set-custom-headers`, :ref:`splash-http-get` and
+  :ref:`splash-http-post`;
+* Splash shouldn't crash if an exception happens while creating a request
+  in network manager;
+* cleanup of JS event handlers is improved;
+* documentation and testing improvements.
+
+
+2.3.3 (2017-06-07)
+------------------
+
+* WebGL support in default Docker image;
+* Maximum value for ``wait`` argument in render.??? endpoints
+  is increased from 10 seconds to 30 seconds;
+* Lua sandbox limits (RAM and CPU) are raised;
+* documentation and testing improvements.
+
+2.3.2 (2017-03-03)
+------------------
+
+* security fix: Xvfb shouldn't listen to tcp.
+
+2.3.1 (2017-01-24)
+------------------
+
+* Fixed proxy authentication for proxies set using :ref:`'proxy' <arg-proxy>`
+  HTTP argument;
+* minor documentation fixes.
+
 2.3 (2016-12-01)
 ----------------
 

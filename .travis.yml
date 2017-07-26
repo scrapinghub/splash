@@ -1,59 +1,20 @@
-language: python
-sudo: required
 dist: trusty
+sudo: required
+services:
+  - docker
 
 branches:
     only:
         - master
         - /^\d\.\d+$/
 
-matrix:
-    include:
-        - python: "2.7"
-          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
-        - python: "3.4"
-          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
-    allow_failures:
-        # Docker image uses Python 3.4; Python 2.x tests work,
-        # but hang at shutdown for some reason.
-        - python: "2.7"
-          env: SPLASH_PYTHON_VERSION="venv" SPLASH_BUILD_PARALLEL_JOBS=2
-
-
 before_install:
-    # install common packages
-    - sudo bash -x dockerfiles/splash/provision.sh prepare_install
-    - sudo apt-get install -y liblua5.2-dev zlib1g-dev libssl-dev python-openssl
-
-    # install QT5
-    - sudo -E bash -x dockerfiles/splash/provision.sh install_builddeps
-    - sudo -E bash -x dockerfiles/splash/provision.sh install_deps
-
-    # instal PyQT5
-    - sudo -E bash -x dockerfiles/splash/provision.sh install_pyqt5
-
-    # install Python packages
-    - sudo chmod -R 777 $VIRTUAL_ENV
-    - bash -x dockerfiles/splash/provision.sh install_python_deps
-    
-    # instal Flash
-    - sudo -E bash -x dockerfiles/splash/provision.sh install_flash
-
-    # install Python packages required for tests
-    - pip install -r requirements-dev.txt
-    - pip install -U pytest-cov coverage codecov pytest-xdist
-
-install:
-    # install Splash
-    - pip install .
+    - docker build -t splash .
+    - docker build -t splash-tests -f dockerfiles/tests/Dockerfile .
 
 script:
-    - py.test --version
-    - py.test --cov=splash --doctest-modules --duration=50 splash
+    - docker run `bash <(curl -s https://codecov.io/env)` -it splash-tests
 
-after_success:
-    - codecov
-
-cache:
-    directories:
-        - $HOME/.cache/pip
+#cache:
+#    directories:
+#        - $HOME/.cache/pip

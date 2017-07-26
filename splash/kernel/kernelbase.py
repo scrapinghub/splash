@@ -3,7 +3,6 @@
 Refactored from IPython.kernel.zmq.kernelbase.Kernel with async execution
 support. See https://github.com/ipython/ipython/pull/7713.
 """
-from __future__ import absolute_import
 import functools
 import time
 import sys

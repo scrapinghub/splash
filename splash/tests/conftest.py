@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import pytest
-from .utils import TestServers, SplashServer
+
+from .utils import MockServers, SplashServer
 
 
 @pytest.yield_fixture(scope="session")
 def test_servers():
-    with TestServers() as ts:
+    with MockServers() as ts:
         yield ts
 
 
@@ -29,6 +28,19 @@ def class_splash_unrestricted(request, splash_unrestricted):
     """ Non-sandboxed Splash server """
     request.cls.splash_unrestricted = splash_unrestricted
     yield splash_unrestricted
+
+
+@pytest.yield_fixture(scope="session")
+def splash_strict_lua_runner():
+    with SplashServer(extra_args=['--strict-lua-runner']) as splash:
+        yield splash
+
+
+@pytest.yield_fixture(scope="class")
+def class_splash_strict_lua_runner(request, splash_strict_lua_runner):
+    """ Splash server with additional internal checks for Lua scripts """
+    request.cls.splash_strict_lua_runner = splash_strict_lua_runner
+    yield splash_strict_lua_runner
 
 
 @pytest.fixture()

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import unittest
 
 from splash.utils import to_bytes, to_unicode

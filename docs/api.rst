@@ -7,8 +7,9 @@ Splash is controlled via HTTP API. For all endpoints below parameters
 may be sent either as GET arguments or encoded to JSON and
 POSTed with ``Content-Type: application/json`` header.
 
-The most versatile endpoint that provides all Splash features
-is :ref:`execute`; it allows to execute arbitrary Lua rendering scripts.
+Most versatile endpoints that provide all Splash features
+are :ref:`execute` and :ref:`run`; they allow to execute arbitrary Lua
+rendering scripts.
 
 Other endpoints may be easier to use in specific
 cases - for example, :ref:`render.png` returns a screenshot in PNG format
@@ -45,11 +46,11 @@ baseurl : string : optional
 timeout : float : optional
   A timeout (in seconds) for the render (defaults to 30).
 
-  By default, maximum allowed value for the timeout is 60 seconds.
+  By default, maximum allowed value for the timeout is 90 seconds.
   To override it start Splash with ``--max-timeout`` command line option.
-  For example, here Splash is configured to allow timeouts up to 2 minutes::
+  For example, here Splash is configured to allow timeouts up to 5 minutes::
 
-      $ python -m splash.server --max-timeout 120
+      $ docker run -it -p 8050:8050 scrapinghub/splash --max-timeout 300
 
 .. _arg-resource-timeout:
 
@@ -67,9 +68,10 @@ wait : float : optional
   (defaults to 0). Increase this value if you expect pages to contain
   setInterval/setTimeout javascript calls, because with wait=0
   callbacks of setInterval/setTimeout won't be executed. Non-zero
-  :ref:`wait <arg-wait>` is also required for PNG and JPEG rendering when doing
-  full-page rendering (see :ref:`render_all <arg-render-all>`). Maximum
-  allowed value for wait is 10 seconds.
+  :ref:`wait <arg-wait>` is also required for PNG and JPEG rendering when
+  doing full-page rendering (see :ref:`render_all <arg-render-all>`).
+
+  Wait time must be less than :ref:`timeout <arg-timeout>`.
 
 .. _arg-proxy:
 
@@ -111,7 +113,7 @@ allowed_content_types : string : optional
   Comma-separated list of allowed content types.
   If present, Splash will abort any request if the response's content type
   doesn't match any of the content types in this list.
-  Wildcards are supported using the `fnmatch <https://docs.python.org/2/library/fnmatch.html>`_
+  Wildcards are supported using the `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_
   syntax.
 
 .. _arg-forbidden-content-types:
@@ -120,7 +122,7 @@ forbidden_content_types : string : optional
   Comma-separated list of forbidden content types.
   If present, Splash will abort any request if the response's content type
   matches any of the content types in this list.
-  Wildcards are supported using the `fnmatch <https://docs.python.org/2/library/fnmatch.html>`_
+  Wildcards are supported using the `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_
   syntax.
 
 .. _arg-viewport:
@@ -620,6 +622,31 @@ load_args : JSON object or a string : optional
 You can pass any other arguments. All arguments passed to :ref:`execute`
 endpoint are available in a script in :ref:`splash.args <splash-args>` table.
 
+.. _run:
+
+run
+---
+
+This endpoint is the same as :ref:`execute`, but it wraps ``lua_source``
+in ``function main(splash, args) ... end`` automatically.
+For example, if you're sending this script to :ref:`execute`:
+
+.. code-block:: lua
+
+    funcion main(splash, args)
+        assert(splash:go(args.url))
+        assert(splash:wait(1.0))
+        return splash:html()
+    end
+
+equivalent script for :ref:`run` endpoint would be
+
+.. code-block:: lua
+
+    assert(splash:go(args.url))
+    assert(splash:wait(1.0))
+    return splash:html()
+
 .. _execute javascript:
 
 Executing custom Javascript code within page context
@@ -675,7 +702,7 @@ The preloaded files can be used in the user's POST'ed code.
 To enable javascript profiles support, run splash server with the
 ``--js-profiles-path=<path to a folder with js profiles>`` option::
 
-    python -m splash.server --js-profiles-path=/etc/splash/js-profiles
+    python3 -m splash.server --js-profiles-path=/etc/splash/js-profiles
 
 .. note::
 
@@ -707,7 +734,7 @@ If Splash is started with ``--js-cross-domain-access`` option
 
 ::
 
-    python -m splash.server --js-cross-domain-access
+    $ docker run -it -p 8050:8050 scrapinghub/splash --js-cross-domain-access
 
 then javascript code is allowed to access the content of iframes
 loaded from a security origin diferent to the original page (browsers usually
@@ -741,7 +768,7 @@ custom fonts, etc.)
 To activate request filtering support start splash with ``--filters-path``
 option::
 
-    python -m splash.server --filters-path=/etc/splash/filters
+    python3 -m splash.server --filters-path=/etc/splash/filters
 
 .. note::
 
@@ -829,7 +856,7 @@ per-request using ``proxy`` parameter.
 To enable proxy profiles support, run splash server with
 ``--proxy-profiles-path=<path to a folder with proxy profiles>`` option::
 
-    python -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
+    python3 -m splash.server --proxy-profiles-path=/etc/splash/proxy-profiles
 
 .. note::
 

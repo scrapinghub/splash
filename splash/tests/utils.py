@@ -62,6 +62,7 @@ class SplashServer(object):
         args = [sys.executable, '-u', '-m', 'splash.server']
         args += ['--port', str(self.portnum)]
         args += ['--verbosity', str(self.verbosity)]
+        args += ['--slots', '5']
         if self.logfile:
             args += ['-f', self.logfile]
         if self.proxy_profiles_path:
@@ -132,7 +133,7 @@ class MockServer(object):
         return "https://localhost:%s/%s" % (self.https_port, path.lstrip('/'))
 
 
-class TestServers(object):
+class MockServers(object):
 
     def __init__(self, logfile=None):
         self.logfile = logfile
@@ -158,7 +159,7 @@ class TestServers(object):
         self._fix_testproxy_port()
 
     def _copy_test_folder(self, src, dst=None):
-        src_path = test_path(src)
+        src_path = _test_path(src)
         dst_path = os.path.join(self.tmp_folder, dst or src)
         shutil.copytree(src_path, dst_path)
         return dst_path
@@ -200,5 +201,5 @@ class TestServers(object):
         shutil.rmtree(self.tmp_folder)
 
 
-def test_path(*args):
+def _test_path(*args):
     return os.path.join(os.path.dirname(__file__), *args)

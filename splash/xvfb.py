@@ -3,7 +3,6 @@
 Module for starting Xvfb automatically if it is available.
 Uses xvfbwrapper Python package.
 """
-from __future__ import absolute_import
 import sys
 from contextlib import contextmanager
 from splash import defaults
@@ -35,6 +34,6 @@ def _get_xvfb():
     try:
         from xvfbwrapper import Xvfb
         width, height = map(int, defaults.VIEWPORT_SIZE.split("x"))
-        return Xvfb(width, height)
+        return Xvfb(width, height, nolisten="tcp")
     except ImportError:
         return None

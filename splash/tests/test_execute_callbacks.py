@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import base64
 from io import BytesIO
+from urllib.parse import urlencode
 
 from PIL import Image
-import six
-from six.moves.urllib.parse import urlencode
 import pytest
 
 from splash.exceptions import ScriptError
@@ -66,13 +64,13 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         url = self.mockurl("http-redirect?code=302")
         new_url = self.mockurl("jsrender")
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             splash:on_request(function(request)
-                if request.url == splash.args.url then
-                    request:set_url(splash.args.new_url)
+                if request.url == args.url then
+                    request:set_url(args.new_url)
                 end
             end)
-            splash:go(splash.args.url)
+            splash:go(args.url)
             return splash:html()
         end
         """, {'url': url, 'new_url': new_url})
@@ -82,18 +80,18 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_set_proxy(self):
         proxy_port = self.ts.mock_proxy_port
         resp = self.request_lua("""
-        function main(splash)
-            assert(splash:go(splash.args.url))
+        function main(splash, args)
+            assert(splash:go(args.url))
             local html_1 = splash:html()
 
             splash:on_request(function(request)
                 request:set_proxy{
                     host="0.0.0.0",
-                    port=splash.args.proxy_port
+                    port=args.proxy_port
                 }
             end)
 
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             local html_2 = splash:html()
             return html_1, html_2
         end
@@ -106,35 +104,37 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_set_proxy_with_auth(self):
         proxy_port = self.ts.mock_auth_proxy_port
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             splash:on_request(function(request)
                 request:set_proxy{
                     host="0.0.0.0",
-                    port=splash.args.proxy_port,
+                    port=args.proxy_port,
                     username='%s',
                     password='splash'
                 }
             end)
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             return splash.html()
         end
-        """ % self.ts.mock_auth_proxy_user, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
+        """ % self.ts.mock_auth_proxy_user, {
+            'url': self.mockurl("jsrender"), 'proxy_port': proxy_port
+        })
         self.assertStatusCode(resp, 200)
         self.assertProxied(resp.text)
 
     def test_set_proxy_with_bad_auth(self):
         proxy_port = self.ts.mock_auth_proxy_port
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             splash:on_request(function(request)
                 request:set_proxy{
                     host="0.0.0.0",
-                    port=splash.args.proxy_port,
+                    port=args.proxy_port,
                     username='testar',
                     password='splash'
                 }
             end)
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             return splash.html()
         end
         """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
@@ -145,21 +145,21 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
     def test_set_proxy_twice(self):
         proxy_port = self.ts.mock_proxy_port
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             local first = true
             splash:on_request(function(request)
                 if first then
                     request:set_proxy{
                         host="0.0.0.0",
-                        port=splash.args.proxy_port
+                        port=args.proxy_port
                     }
                     first = false
                 end
             end)
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             local html_1 = splash:html()
 
-            assert(splash:go(splash.args.url))
+            assert(splash:go(args.url))
             local html_2 = splash:html()
             return html_1, html_2
         end
@@ -215,12 +215,8 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         """, {'url': self.mockurl("getrequest")})
         self.assertStatusCode(resp, 200)
 
-        if six.PY3:
-            self.assertIn("b'custom-header': b'some-val'", resp.text)
-            self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
-        else:
-            self.assertIn("'custom-header': 'some-val'", resp.text)
-            self.assertIn("'user-agent': 'Fooozilla'", resp.text)
+        self.assertIn("b'custom-header': b'some-val'", resp.text)
+        self.assertIn("b'user-agent': b'Fooozilla'", resp.text)
 
     def test_bad_callback(self):
         for arg in '', '"foo"', '123':
@@ -233,12 +229,12 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
 
     def test_on_request_reset(self):
         resp = self.request_lua("""
-        function main(splash)
+        function main(splash, args)
             x = 0
             splash:on_request(function(req) x = x + 1 end)
-            splash:go(splash.args.url)
+            splash:go(args.url)
             splash:on_request_reset()
-            splash:go(splash.args.url)
+            splash:go(args.url)
             return x
         end
         """, {'url': self.mockurl('jsrender')})
@@ -405,7 +401,7 @@ class OnResponseHeadersTest(BaseLuaRenderTest, BaseHtmlProxyTest):
         }
         mocked_url = self.mockurl("set-header?" + urlencode(headers))
         some_attrs = {
-            "url": (six.text_type, mocked_url),
+            "url": (str, mocked_url),
             "status": (int, 200),
             "info": (dict, {}),
             "ok": (bool, True),

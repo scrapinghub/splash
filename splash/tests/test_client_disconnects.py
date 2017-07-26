@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-
 import os
 import random
 import unittest
 import time
-import six
-from six.moves.http_client import HTTPConnection
+from http.client import HTTPConnection
+from urllib.parse import urlencode
 
 import pytest
 lupa = pytest.importorskip("lupa")
@@ -47,7 +45,7 @@ class StopProcessingTest(unittest.TestCase):
         q = {"lua_source": self.CREATE_FILE + "\n" + code}
         q.update(query or {})
         conn = HTTPConnection('localhost', self.splash_unrestricted.portnum)
-        conn.request(method, "/execute/?" + six.moves.urllib.parse.urlencode(q))
+        conn.request(method, "/execute/?" + urlencode(q))
         return conn
 
     def assertScriptStopped(self, script, min_time=0.1, max_time=1.5):

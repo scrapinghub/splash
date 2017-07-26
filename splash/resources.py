@@ -2,7 +2,6 @@
 This module contains Splash twisted.web Resources (HTTP API endpoints
 exposed to the user).
 """
-from __future__ import absolute_import
 import os
 import gc
 import time
@@ -14,7 +13,6 @@ from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet import reactor, defer
 from twisted.python import log
-import six
 
 import splash
 from splash.argument_cache import ArgumentCache
@@ -117,10 +115,8 @@ class BaseRenderResource(_ValidatingResource):
         render_options.get_filters(self.pool)
 
         timeout = render_options.get_timeout()
-        wait_time = render_options.get_wait()
-
         pool_d = self._get_render(request, render_options)
-        timer = reactor.callLater(timeout+wait_time, pool_d.cancel)
+        timer = reactor.callLater(timeout, pool_d.cancel)
         request.notifyFinish().addErrback(self._request_failed, pool_d, timer)
 
         pool_d.addCallback(self._cancel_timer, timer)
@@ -175,7 +171,7 @@ class BaseRenderResource(_ValidatingResource):
                 request.setHeader(name, value)
             return self._write_output(data, request, content_type)
 
-        if data is None or isinstance(data, (bool, six.integer_types, float)):
+        if data is None or isinstance(data, (bool, int, float)):
             return self._write_output(str(data), request, content_type)
 
         if isinstance(data, BinaryCapsule):
@@ -274,11 +270,15 @@ class ExecuteLuaScriptResource(BaseRenderResource):
                  lua_sandbox_allowed_modules,
                  max_timeout,
                  argument_cache,
+                 strict,
+                 implicit_main,
                  ):
         BaseRenderResource.__init__(self, pool, max_timeout, argument_cache)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
+        self.strict = strict
+        self.implicit_main = implicit_main
 
     def _get_render(self, request, options):
         params = dict(
@@ -287,6 +287,8 @@ class ExecuteLuaScriptResource(BaseRenderResource):
             sandboxed=self.sandboxed,
             lua_package_path=self.lua_package_path,
             lua_sandbox_allowed_modules=self.lua_sandbox_allowed_modules,
+            strict=self.strict,
+            implicit_main=self.implicit_main,
         )
         return self.pool.render(LuaRender, options, **params)
 
@@ -561,6 +563,7 @@ class Root(Resource):
                  lua_sandbox_allowed_modules,
                  max_timeout,
                  argument_cache_max_entries,
+                 strict_lua_runner,
                  ):
         Resource.__init__(self)
         self.argument_cache = ArgumentCache(argument_cache_max_entries)
@@ -582,14 +585,19 @@ class Root(Resource):
         self.putChild(b"debug", DebugResource(pool, self.argument_cache, warn=True))
 
         if self.lua_enabled and ExecuteLuaScriptResource is not None:
-            self.putChild(b"execute", ExecuteLuaScriptResource(
+            lua_kwargs = dict(
                 pool=pool,
                 sandboxed=lua_sandbox_enabled,
                 lua_package_path=lua_package_path,
                 lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
                 max_timeout=max_timeout,
                 argument_cache=self.argument_cache,
-            ))
+                strict=strict_lua_runner,
+            )
+            self.putChild(b"execute", ExecuteLuaScriptResource(
+                implicit_main=False, **lua_kwargs))
+            self.putChild(b"run", ExecuteLuaScriptResource(
+                implicit_main=True, **lua_kwargs))
 
         if self.ui_enabled:
             root = os.path.dirname(__file__)
@@ -617,9 +625,8 @@ class Root(Resource):
 
     def get_example_script(self):
         return """
-function main(splash)
-  local url = splash.args.url
-  assert(splash:go(url))
+function main(splash, args)
+  assert(splash:go(args.url))
   assert(splash:wait(0.5))
   return {
     html = splash:html(),
@@ -676,7 +683,7 @@ end
                             <div class="dropdown examples-dropdown">
                                 <a class="btn btn-info if-lua dropdown-toggle" data-toggle="dropdown" href="#">Examples&nbsp;<b class="caret"></b></a>
                                 <ul class="dropdown-menu panel panel-default if-lua">
-                                    <li><a href="#" onclick="splash.loadExample('phantomjs-follow', '')">Count twitter followers</a></li>
+                                    <li><a href="#" onclick="splash.loadExample('render-multiple', '')">Take screenshots of multiple pages</a></li>
                                     <li><a href="#" onclick="splash.loadExample('wait-for-element')">Wait for element</a></li>
                                     <li><a href="#" onclick="splash.loadExample('scroll', 'http://scrapinghub.com')">Scroll page</a></li>
                                     <li><a href="#" onclick="splash.loadExample('preload-jquery')">Preload jQuery</a></li>

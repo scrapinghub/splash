@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import os
 import shutil
 import unittest
 
+import pytest
 import requests
 
 from splash.proxy import (
@@ -14,7 +14,7 @@ from splash.proxy import (
 from splash.qtutils import PROXY_TYPES
 from splash.render_options import BadOption
 from splash.tests.test_render import BaseRenderTest
-from splash.tests.utils import TestServers
+from splash.tests.utils import MockServers
 
 
 class BlackWhiteProxyFactoryTest(unittest.TestCase):
@@ -160,7 +160,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
         os.unlink(dst)
 
     def test_ts_setup(self):
-        with TestServers() as ts2:
+        with MockServers() as ts2:
             r1 = self.ts2_request(ts2, {'url': ts2.mockserver.url('jsrender', gzip=False)})
             self.assertNotProxied(r1.text)
 
@@ -171,7 +171,7 @@ class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
             self.assertProxied(r2.text)
 
     def test_default_profile_works(self):
-        with TestServers() as ts2:
+        with MockServers() as ts2:
             self.create_default_ini(ts2)
             try:
                 # default.ini present, proxy is used by default
@@ -233,3 +233,45 @@ class ProxyInParameterTest(BaseHtmlProxyTest):
         })
         self.assertProxied(r2.text)
         self.assertIn('application/x-www-form-urlencoded', r2.text)
+
+    @pytest.mark.skip(reason="testing proxy server doesn't support CONNECT")
+    def test_proxy_https(self):
+        url = self.ts.mockserver.https_url('jsrender')
+        r1 = self.request({'url': url})
+        self.assertNotProxied(r1.text)
+
+        r2 = self.request({
+            'url': url,
+            'proxy': 'http://0.0.0.0:%s' % self.ts.mock_proxy_port
+        })
+        self.assertProxied(r2.text)
+
+    def test_proxy_auth(self):
+        resp = self.request({
+            'url': self.mockurl('jsrender'),
+            'proxy': self._proxy_url(self.ts.mock_auth_proxy_user, 'splash'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertProxied(resp.text)
+
+    @pytest.mark.skip(reason="testing proxy server doesn't support CONNECT")
+    def test_proxy_auth_https(self):
+        resp = self.request({
+            'url': self.ts.mockserver.https_url('jsrender'),
+            'proxy': self._proxy_url(self.ts.mock_auth_proxy_user, 'splash'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertProxied(resp.text)
+
+    def test_proxy_bad_auth(self):
+        resp = self.request({
+            'url': self.mockurl('jsrender'),
+            'proxy': self._proxy_url('foobar', 'splash'),
+        })
+        self.assertStatusCode(resp, 200)
+        self.assertNotProxied(resp.text)
+        # self.assertIn("407", resp.text)
+
+    def _proxy_url(self, user, password):
+        proxy_port = self.ts.mock_auth_proxy_port
+        return "http://{}:{}@0.0.0.0:{}".format(user, password, proxy_port)
