@@ -633,7 +633,7 @@ For example, if you're sending this script to :ref:`execute`:
 
 .. code-block:: lua
 
-    funcion main(splash, args)
+    function main(splash, args)
         assert(splash:go(args.url))
         assert(splash:wait(1.0))
         return splash:html()
