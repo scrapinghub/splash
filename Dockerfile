@@ -9,7 +9,9 @@ ENV PATH="/opt/qt59/5.9.1/gcc_64/bin:${PATH}"
 ADD dockerfiles/splash/provision.sh /tmp/provision.sh
 ADD dockerfiles/splash/qt-installer-noninteractive.qs /tmp/script.qs
 
-RUN /tmp/provision.sh \
+RUN chmod +x /tmp/provision.sh && \
+    cd /tmp && \
+    ./provision.sh \
     prepare_install \
     install_deps \
     install_qtwebkit_deps \
