@@ -364,9 +364,11 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
         if opts.manhole:
             manhole_server()
 
+        ipnum = opts.ip if hasattr(opts, 'ip') else '0.0.0.0'
+
         default_splash_server(
             portnum=opts.port,
-            ip=opts.ip,
+            ip=ipnum,
             slots=opts.slots,
             proxy_profiles_path=opts.proxy_profiles_path,
             js_profiles_path=opts.js_profiles_path,
