@@ -36,7 +36,7 @@ url : string : required
 baseurl : string : optional
   The base url to render the page with.
 
-  Base HTML content will be feched from the URL given in the url
+  Base HTML content will be fetched from the URL given in the url
   argument, while relative referenced resources in the HTML-text used to
   render the page are fetched using the URL given in the baseurl argument
   as base. See also: :ref:`render-html-doesnt-work`.
@@ -236,7 +236,7 @@ in the result.
 render.png
 ----------
 
-Return a image (in PNG format) of the javascript-rendered page.
+Return an image (in PNG format) of the javascript-rendered page.
 
 Arguments:
 
@@ -251,7 +251,7 @@ width : integer : optional
 .. _arg-height:
 
 height : integer : optional
-  Crop the renderd image to the given height (in pixels). Often used in
+  Crop the rendered image to the given height (in pixels). Often used in
   conjunction with the width argument to generate fixed-size thumbnails.
 
 .. _arg-render-all:
@@ -298,7 +298,7 @@ Curl examples::
 render.jpeg
 -----------
 
-Return a image (in JPEG format) of the javascript-rendered page.
+Return an image (in JPEG format) of the javascript-rendered page.
 
 Arguments:
 
@@ -480,7 +480,7 @@ Add 'png=1' to request to add base64-encoded PNG screenshot to the result::
 Setting both 'html=1' and 'png=1' allows to get HTML and a screenshot
 at the same time - this guarantees that the screenshot matches the HTML.
 
-By adding "iframes=1" information about iframes could be obtained::
+By adding "iframes=1" information about iframes can be obtained::
 
     {
         "geometry": [0, 0, 640, 480],
@@ -658,13 +658,13 @@ Executing custom Javascript code within page context
 
 Splash supports executing JavaScript code within the context of the page.
 The JavaScript code is executed after the page finished loading (including
-any delay defined by 'wait') but before the page is rendered. This allow to
+any delay defined by 'wait') but before the page is rendered. This allows to
 use the javascript code to modify the page being rendered.
 
 To execute JavaScript code use :ref:`js_source <arg-js-source>` parameter.
 It should contain JavaScript code to be executed.
 
-Note that browsers and proxies limit the amount of data can be sent using GET,
+Note that browsers and proxies limit the amount of data that can be sent using GET,
 so it is a good idea to use ``content-type: application/json`` POST request.
 
 Curl example::
@@ -737,7 +737,7 @@ If Splash is started with ``--js-cross-domain-access`` option
     $ docker run -it -p 8050:8050 scrapinghub/splash --js-cross-domain-access
 
 then javascript code is allowed to access the content of iframes
-loaded from a security origin diferent to the original page (browsers usually
+loaded from a security origin different to the original page (browsers usually
 disallow that). This feature is useful for scraping, e.g. to extract the
 html of a iframe page. An example of its usage::
 
