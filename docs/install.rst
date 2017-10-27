@@ -55,7 +55,7 @@ Ubuntu 16.04 (manual way)
 
       $ cd splash/dockerfiles/splash
 
-      $ sudo provision.sh \
+      $ sudo ./provision.sh \
                  prepare_install \
                  install_msfonts \
                  install_extra_fonts \
