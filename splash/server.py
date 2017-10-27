@@ -65,6 +65,8 @@ def parse_opts(jupyter=False, argv=sys.argv):
         # This options are specific of splash server and not used in splash-jupyter
         op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
             help="port to listen to (default: %default)")
+        op.add_option("-i", "--ip", type="string", default=defaults.SPLASH_IP,
+            help="binded ip listen to (default: %default)")
         op.add_option("-s", "--slots", type="int", default=defaults.SLOTS,
             help="number of render slots (default: %default)")
         op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
@@ -164,7 +166,7 @@ def manhole_server(portnum=None, username=None, password=None):
     reactor.listenTCP(portnum, f)
 
 
-def splash_server(portnum, slots, network_manager_factory, max_timeout,
+def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
                   splash_proxy_factory_cls=None,
                   js_profiles_path=None,
                   ui_enabled=True,
@@ -213,6 +215,10 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
         )
     )
 
+    log.msg(
+        "Server listening on %s:%s" % (ip,portnum)
+    )
+
     root = Root(
         pool=pool,
         ui_enabled=ui_enabled,
@@ -225,7 +231,7 @@ def splash_server(portnum, slots, network_manager_factory, max_timeout,
         strict_lua_runner=strict_lua_runner,
     )
     factory = Site(root)
-    reactor.listenTCP(portnum, factory)
+    reactor.listenTCP(portnum, factory, interface=ip)
 
 
 def monitor_maxrss(maxrss):
@@ -256,7 +262,7 @@ def monitor_maxrss(maxrss):
         t.start(60, now=False)
 
 
-def default_splash_server(portnum, max_timeout, slots=None,
+def default_splash_server(portnum, ip, max_timeout, slots=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
                           filters_path=None, allowed_schemes=None,
@@ -281,6 +287,7 @@ def default_splash_server(portnum, max_timeout, slots=None,
     _set_global_render_settings(js_disable_cross_domain_access, private_mode)
     return server_factory(
         portnum=portnum,
+        ip=ip,
         slots=slots,
         network_manager_factory=network_manager_factory,
         splash_proxy_factory_cls=splash_proxy_factory_cls,
@@ -357,8 +364,11 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
         if opts.manhole:
             manhole_server()
 
+        ipnum = opts.ip if hasattr(opts, 'ip') else '0.0.0.0'
+
         default_splash_server(
             portnum=opts.port,
+            ip=ipnum,
             slots=opts.slots,
             proxy_profiles_path=opts.proxy_profiles_path,
             js_profiles_path=opts.js_profiles_path,
