@@ -54,7 +54,7 @@ Ubuntu 16.04 (manual way)
 2. Install dependencies::
 
       $ cd splash/dockerfiles/splash
-
+      $ sudo cp ./qt-installer-noninteractive.qs /tmp/script.qs
       $ sudo ./provision.sh \
                  prepare_install \
                  install_msfonts \
