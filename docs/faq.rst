@@ -288,10 +288,15 @@ Common reasons:
   IP address.
 * Website requires Flash. You can enable it using
   :ref:`splash-plugins-enabled`.
+* Website requires IndexedDB_. Enable it using :ref:`splash-indexeddb-enabled`.
+* Website has compatibility issues with Webkit version Splash is using.
+  A quick way to check it is to try opening a page in Safari.
 
 If you have troubles making Splash work, consider asking a question
 at https://stackoverflow.com. If you think it is a Splash bug,
 raise an issue at https://github.com/scrapinghub/splash/issues.
+
+.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 
 .. _disable-private-mode:
 

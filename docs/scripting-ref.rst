@@ -208,8 +208,13 @@ Enable or disable IndexedDB_.
 
 **Signature:** ``splash.indexeddb_enabled = true/false``
 
-IndexedDB is enabled by default. Use ``splash.indexeddb_enabled = false``
-to disable it.
+IndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``
+to enable it.
+
+.. note::
+   Currently IndexedDB is disabled by default because there are issues
+   with Splash WebKit's implementation. Default value for this option may
+   change to ``true`` in future.
 
 .. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 
