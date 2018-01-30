@@ -219,7 +219,8 @@ install_extra_fonts() {
         fonts-arphic-gbsn00lp \
         fonts-arphic-bsmi00lp \
         fonts-arphic-gkai00mp \
-        fonts-arphic-bkai00mp
+        fonts-arphic-bkai00mp \
+        fonts-beng
 }
 
 install_flash () {
