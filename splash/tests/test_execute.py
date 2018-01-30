@@ -2580,6 +2580,16 @@ class AutoloadTest(BaseLuaRenderTest):
         self.assertNotIn("ok", resp.json())
         self.assertIn("404", resp.json()["reason"])
 
+    def test_autoload_bad_script(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local ok, reason = splash:autoload("throw 123;")
+            assert(splash:go(splash.args.url))
+            return {ok=ok, reason=reason}
+        end
+        """, {"url": self.mockurl("getrequest")})
+        self.assertStatusCode(resp, 200)
+
     def test_noargs(self):
         resp = self.request_lua("""
         function main(splash)
