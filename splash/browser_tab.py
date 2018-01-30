@@ -3,6 +3,7 @@ import base64
 import functools
 import os
 import weakref
+import traceback
 
 from PyQt5.QtCore import (QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
                           QPointF, QPoint, pyqtSignal)
@@ -660,13 +661,18 @@ class BrowserTab(QObject):
     def _on_javascript_window_object_cleared(self):
         self._js_storage_initiated = False
 
-        for script in self._autoload_scripts:
+        for idx, script in enumerate(self._autoload_scripts):
             # XXX: handle_errors=False is used to execute autoload scripts
             # in a global context (not inside a closure).
             # One difference is how are `function foo(){}` statements handled:
             # if executed globally, `foo` becomes an attribute of window;
             # if executed in a closure, `foo` is a name local to this closure.
-            self.runjs(script, handle_errors=False)
+            try:
+                self.runjs(script, handle_errors=False)
+            except Exception as e:
+                msg = "Error in autoload script #{}:".format(idx, e)
+                self.logger.log(msg, min_level=1)
+                self.logger.log(traceback.format_exc(), min_level=1)
 
     def http_get(self, url, callback, headers=None, follow_redirects=True):
         """
@@ -757,7 +763,7 @@ class BrowserTab(QObject):
         # a result - it could be costly. So the original JS code
         # is adjusted to make sure it doesn't return anything.
         self.evaljs(
-            js_source="%s;undefined" % js_source,
+            js_source="%s\n;undefined" % js_source,
             handle_errors=handle_errors,
             result_protection=False,
             dom_elements=False,
