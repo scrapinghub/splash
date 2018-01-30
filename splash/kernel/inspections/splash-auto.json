@@ -79,12 +79,23 @@
   "splash.scroll_position": {
     "name": null,
     "header": "splash.scroll_position",
-    "content": "Get or set current scroll position.\n\n**Signature:** ``splash.scroll_position = {x=..., y=...}``\n\nThis property allows to get and set current scroll position of the\nmain window.\n\nScrolling outside window content has no effect. For example, if you set\n``splash.scroll_position`` to ``{x=-100, y=-100}``, then\n``splash.scroll_position`` will likely still be equal to the default\n``{x=0, y=0}``.\n\nTo set scroll position instead of the full form\n(e.g. ``splash.scroll_position = {x=100, y=200}``) you can also use the\nshort form ``splash.scroll_position = {100, 200}``. Attribute\nvalue is always a table with ``x`` and ``y`` keys, even if you set it using\nthe short form.\n\nIt is also possible to omit coordinates which you don't want to change.\nFor example, ``splash.scroll_position = {y=200}`` sets y to 200 and keeps\nprevious x value.\n\n\nMethods\n~~~~~~~",
+    "content": "Get or set current scroll position.\n\n**Signature:** ``splash.scroll_position = {x=..., y=...}``\n\nThis property allows to get and set current scroll position of the\nmain window.\n\nScrolling outside window content has no effect. For example, if you set\n``splash.scroll_position`` to ``{x=-100, y=-100}``, then\n``splash.scroll_position`` will likely still be equal to the default\n``{x=0, y=0}``.\n\nTo set scroll position instead of the full form\n(e.g. ``splash.scroll_position = {x=100, y=200}``) you can also use the\nshort form ``splash.scroll_position = {100, 200}``. Attribute\nvalue is always a table with ``x`` and ``y`` keys, even if you set it using\nthe short form.\n\nIt is also possible to omit coordinates which you don't want to change.\nFor example, ``splash.scroll_position = {y=200}`` sets y to 200 and keeps\nprevious x value.",
     "short": "Get or set current scroll position.",
     "signature": "splash.scroll_position = {x=..., y=...}",
     "returns": null,
     "async": null,
-    "details": "This property allows to get and set current scroll position of the\nmain window.\n\nScrolling outside window content has no effect. For example, if you set\n``splash.scroll_position`` to ``{x=-100, y=-100}``, then\n``splash.scroll_position`` will likely still be equal to the default\n``{x=0, y=0}``.\n\nTo set scroll position instead of the full form\n(e.g. ``splash.scroll_position = {x=100, y=200}``) you can also use the\nshort form ``splash.scroll_position = {100, 200}``. Attribute\nvalue is always a table with ``x`` and ``y`` keys, even if you set it using\nthe short form.\n\nIt is also possible to omit coordinates which you don't want to change.\nFor example, ``splash.scroll_position = {y=200}`` sets y to 200 and keeps\nprevious x value.\n\n\nMethods\n~~~~~~~",
+    "details": "This property allows to get and set current scroll position of the\nmain window.\n\nScrolling outside window content has no effect. For example, if you set\n``splash.scroll_position`` to ``{x=-100, y=-100}``, then\n``splash.scroll_position`` will likely still be equal to the default\n``{x=0, y=0}``.\n\nTo set scroll position instead of the full form\n(e.g. ``splash.scroll_position = {x=100, y=200}``) you can also use the\nshort form ``splash.scroll_position = {100, 200}``. Attribute\nvalue is always a table with ``x`` and ``y`` keys, even if you set it using\nthe short form.\n\nIt is also possible to omit coordinates which you don't want to change.\nFor example, ``splash.scroll_position = {y=200}`` sets y to 200 and keeps\nprevious x value.",
+    "params": null
+  },
+  "splash.indexeddb_enabled": {
+    "name": null,
+    "header": "splash.indexeddb_enabled",
+    "content": "Enable or disable IndexedDB_.\n\n**Signature:** ``splash.indexeddb_enabled = true/false``\n\nIndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``\nto enable it.\n\n.. note::\n   Currently IndexedDB is disabled by default because there are issues\n   with Splash WebKit's implementation. Default value for this option may\n   change to ``true`` in future.\n\n.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API\n\nMethods\n~~~~~~~",
+    "short": "Enable or disable IndexedDB_.",
+    "signature": "splash.indexeddb_enabled = true/false",
+    "returns": null,
+    "async": null,
+    "details": "IndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``\nto enable it.\n\n.. note::\n   Currently IndexedDB is disabled by default because there are issues\n   with Splash WebKit's implementation. Default value for this option may\n   change to ``true`` in future.\n\n.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API\n\nMethods\n~~~~~~~",
     "params": null
   },
   "splash:go": {

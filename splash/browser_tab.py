@@ -185,6 +185,8 @@ class BrowserTab(QObject):
     get_plugins_enabled = webpage_option_getter(QWebSettings.PluginsEnabled)
     set_plugins_enabled = webpage_option_setter(QWebSettings.PluginsEnabled, bool)
 
+    get_indexeddb_enabled = webpage_option_getter(QWebSettings.OfflineStorageDatabaseEnabled)
+    set_indexeddb_enabled = webpage_option_setter(QWebSettings.OfflineStorageDatabaseEnabled)
 
     def _set_default_webpage_options(self, web_page):
         """
@@ -207,6 +209,7 @@ class BrowserTab(QObject):
 
         self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
         self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
+        self.set_indexeddb_enabled(defaults.INDEXEDDB_ENABLED)
 
     def _setup_webpage_events(self):
         main_frame = self.web_page.mainFrame()

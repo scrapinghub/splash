@@ -4,6 +4,7 @@ import unittest
 from io import BytesIO
 import numbers
 import time
+import random
 
 from PIL import Image
 import requests
@@ -3572,6 +3573,101 @@ class IsolationTest(BaseLuaRenderTest):
         """, {"url": self.mockurl('jsrender')})
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.text, "value")
+
+
+class IndexedDBTest(BaseLuaRenderTest):
+    def _get_detect_indexeddb_js(self, db_name=None):
+        if db_name is None:
+            db_name = "DB-{}".format(random.random())
+
+        return """
+        function main(splash) {
+            console.log("start");
+            if (!window.indexedDB) {
+                console.log("no indexed db");
+                splash.resume("no indexed DB");
+                return;
+            }
+            var dbName = "%s";
+            var request = window.indexedDB.open(dbName, 3);
+            console.log("request created");
+            request.onerror = function(event) {
+                console.log("onerror");
+                splash.resume("can't open IndexedDB database");
+            };
+            request.onsuccess = function(event) {
+                console.log("onsuccess");
+                var db = event.target.result;        
+                // db.close();
+                splash.resume("onsuccess");
+            };
+            request.onupgradeneeded = function(event) { 
+                console.log("onupgradeneeded");
+                var db = event.target.result;        
+    //            var objectStore = db.createObjectStore("name", { keyPath: "myKey" });
+                // db.close();
+                splash.resume("db created");
+            };
+            request.onversionchange = function(err) {
+                console.log("onversionchange", err);
+                splash.resume("versionchange");
+            };         
+            request.onblocked = function(event) {
+                console.log("onblocked");
+                splash.resume("blocked");            
+            }; 
+            console.log("end");
+        }
+        """ % db_name
+
+    def test_indexeddb_available(self, db_name='TestDB'):
+        resp = self.request_lua("""
+        function main(splash)
+            splash.indexeddb_enabled = true
+            assert(splash:go(splash.args.url))
+            return assert(splash:wait_for_resume(splash.args.js))
+        end
+        """, {'url': self.mockurl('jsrender'),
+              'js': self._get_detect_indexeddb_js(db_name),
+              'timeout': 3})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {'value': 'db created'})
+
+    @pytest.mark.xfail
+    def test_indexeddb_available2(self):
+        # For some reason IndexedDB hangs when a DB with the same name
+        # is used. Is it an issue with JS script?
+        self.test_indexeddb_available()
+
+    def test_indexeddb_available3(self):
+        self.test_indexeddb_available(None)
+
+    def test_indexeddb_enable_disable(self):
+        resp = self.request_lua("""
+        treat = require('treat')
+        function main(splash)
+            splash.indexeddb_enabled = false
+            assert(splash:go(splash.args.url))
+            local res1 = assert(splash:wait_for_resume(splash.args.js))
+            local val1 = splash.indexeddb_enabled
+
+            splash.indexeddb_enabled = true
+            assert(splash:go(splash.args.url))
+            assert(splash:wait(1.0))
+            local res2 = assert(splash:wait_for_resume(splash.args.js))
+            local val2 = splash.indexeddb_enabled
+            return treat.as_array({res1, val1, res2, val2})
+        end
+        """, {'url': self.mockurl('jsrender'),
+              'js': self._get_detect_indexeddb_js(),
+              'timeout': 5})
+        self.assertStatusCode(resp, 200)
+        res1, val1, res2, val2 = resp.json()
+        assert res1 == {'value': 'no indexed DB'}
+        assert val1 is False
+
+        assert res2 == {'value': 'db created'}
+        assert val2 is True
 
 
 class EnableDisablePrivateModeTest(BaseLuaRenderTest):

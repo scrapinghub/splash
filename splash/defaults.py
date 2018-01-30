@@ -87,3 +87,6 @@ PLUGINS_ENABLED = False
 
 # response content
 RESPONSE_BODY_ENABLED = False
+
+# IndexedDB
+INDEXEDDB_ENABLED = False

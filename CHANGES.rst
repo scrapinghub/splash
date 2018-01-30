@@ -1,6 +1,16 @@
 Changes
 =======
 
+3.1 (TBA)
+---------
+
+* IndexedDB can be enabled by setting :ref:`splash-indexeddb-enabled`
+  attribute to ``true`` in a Lua script;
+* Bengali and Assamese fonts are added to the default Docker image;
+* :ref:`splash-runjs` and :ref:`splash-autoload` are fixed for scripts
+  which end with a line comment (``//``);
+* Documentation and testing improvements.
+
 3.0 (2017-07-06)
 ----------------
 
