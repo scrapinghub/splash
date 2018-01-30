@@ -763,7 +763,7 @@ class BrowserTab(QObject):
         # a result - it could be costly. So the original JS code
         # is adjusted to make sure it doesn't return anything.
         self.evaljs(
-            js_source="%s;undefined" % js_source,
+            js_source="%s\n;undefined" % js_source,
             handle_errors=handle_errors,
             result_protection=False,
             dom_elements=False,

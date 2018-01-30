@@ -1047,6 +1047,16 @@ class RunjsTest(BaseLuaRenderTest):
         err = resp.json()['err']
         self.assertEqual(err, 'JS error: "ReferenceError: Can\'t find variable: y"')
 
+    def test_runjs_nowrap(self):
+        resp = self.request_lua("""
+        function main(splash)
+            local res, err = splash:runjs("true;//")
+            return {res=res, err=err}
+        end
+        """)
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {"res": True})
+
     def test_runjs_assert(self):
         resp = self.request_lua("""
         function main(splash)
