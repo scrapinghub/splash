@@ -9,10 +9,10 @@ from splash import defaults
 from twisted.python import log
 
 
-def autostart(disable=False):
+def autostart(disable=False, screen_size=None):
     if disable:
         return _dummy()
-    return _get_xvfb() or _dummy()
+    return _get_xvfb(screen_size=screen_size) or _dummy()
 
 
 def log_options(xvfb):
@@ -27,13 +27,14 @@ def _dummy():
     yield
 
 
-def _get_xvfb():
+def _get_xvfb(screen_size=None):
     if not sys.platform.startswith('linux'):
         return None
 
     try:
         from xvfbwrapper import Xvfb
-        width, height = map(int, defaults.VIEWPORT_SIZE.split("x"))
+        screen_size = screen_size or defaults.VIEWPORT_SIZE
+        width, height = map(int, screen_size.split("x"))
         return Xvfb(width, height, nolisten="tcp")
     except ImportError:
         return None
