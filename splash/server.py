@@ -43,6 +43,8 @@ def parse_opts(jupyter=False, argv=sys.argv):
         help="comma-separated list of allowed URI schemes (defaut: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
+    op.add_option('--xvfb-screen-size',
+        help="screen size for xvfb (default: %default)", default=defaults.VIEWPORT_SIZE)
     op.add_option("--disable-private-mode", action="store_true", default=not defaults.PRIVATE_MODE,
         help="disable private mode (WARNING: data may leak between requests)" + _bool_default[not defaults.PRIVATE_MODE])
     op.add_option("--disable-xvfb", action="store_true", default=False,
@@ -355,7 +357,7 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
     log_splash_version()
     bump_nofile_limit()
 
-    with xvfb.autostart(opts.disable_xvfb) as x:
+    with xvfb.autostart(opts.disable_xvfb, opts.xvfb_screen_size) as x:
         xvfb.log_options(x)
 
         install_qtreactor(opts.verbosity >= 5)
