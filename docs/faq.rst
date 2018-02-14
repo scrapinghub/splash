@@ -241,7 +241,7 @@ In production it is a good idea to pin Splash version - instead of
 A command for starting a long-running Splash server which uses
 up to 4GB RAM and daemonizes & restarts itself could look like this::
 
-    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:2.0 --maxrss 4000
+    $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:3.1 --maxrss 4000
 
 You also need a load balancer; for example configs check Aquarium_ or
 an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.

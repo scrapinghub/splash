@@ -114,8 +114,8 @@ Customizing Dockerized Splash
 Passing Custom Options
 ~~~~~~~~~~~~~~~~~~~~~~
 
-To run Splash with custom options pass them to ``docker run``.
-For example, let's increase log verbosity::
+To run Splash with custom options pass them to ``docker run``, after
+the image name. For example, let's increase log verbosity::
 
    $ docker run -p 8050:8050 scrapinghub/splash -v3
 
@@ -155,8 +155,9 @@ To setup :ref:`custom-lua-modules` mount a folder to
 
    $ docker run -p 8050:8050 \
          -v <my-lua-modules-dir>:/etc/splash/lua_modules \
-         --lua-sandbox-allowed-modules 'module1;module2' \
-         scrapinghub/splash
+         scrapinghub/splash \
+         --lua-sandbox-allowed-modules 'module1;module2'
+
 
 .. warning::
 
