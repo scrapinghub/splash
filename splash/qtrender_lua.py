@@ -136,13 +136,13 @@ def _command_result_to_pyresult(res):
 def lua_property(name):
     """ Decorator for marking methods that make attributes available to Lua """
     def decorator(meth):
-        def setter(method):
+        def lua_setter(method):
             meth._setter_method = method.__name__
             return method
 
         meth._is_lua_property = True
         meth._name = name
-        meth.lua_setter = setter
+        meth.lua_setter = lua_setter
         return meth
 
     return decorator
@@ -1154,6 +1154,16 @@ class Splash(BaseExposedObject):
     @command()
     def set_indexeddb_enabled(self, value):
         self.tab.set_indexeddb_enabled(bool(value))
+
+    @lua_property('media_source_enabled')
+    @command()
+    def get_media_source_enabled(self):
+        return self.tab.get_media_source_enabled()
+
+    @get_media_source_enabled.lua_setter
+    @command()
+    def set_media_source_enabled(self, enabled):
+        self.tab.set_media_source_enabled(bool(enabled))
 
     @lua_property('html5_media_enabled')
     @command()

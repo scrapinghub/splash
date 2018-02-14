@@ -247,6 +247,18 @@ to disable it.
 
 .. _splash-media-source-enabled:
 
+splash.media_source_enabled
+---------------------------
+
+Enable or disable `Media Source Extensions API`_.
+
+**Signature:** ``splash.media_source_enabled = true/false``
+
+Media Source is enabled by default. Use ``splash.media_source_enabled = false``
+to disable it.
+
+.. _Media Source Extensions API: https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API
+
 Methods
 ~~~~~~~
 

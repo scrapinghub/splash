@@ -3852,6 +3852,46 @@ class Html5MediaTest(BaseLuaRenderTest):
             self.assertEqual(resp.json(), {'enabled': enabled})
 
 
+class MediaSourceTest(BaseLuaRenderTest):
+    # detection code is adapted from
+    # https://github.com/nickdesaulniers/netfix/blob/gh-pages/demo/bufferAll.html
+    DETECT_MSE_JS = """
+    function() { 
+        var mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'; 
+        return !!('MediaSource' in window && 
+                   window.MediaSource && 
+                   MediaSource.isTypeSupported(mimeCodec));
+    }    
+    """
+    def test_defaults(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            local mse_supported = splash:jsfunc(args.js)
+            return {
+                supported = mse_supported(),
+                enabled = splash.media_source_enabled
+            }
+        end
+        """, {'js': self.DETECT_MSE_JS})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'supported': defaults.MEDIA_SOURCE_ENABLED,
+            'enabled': defaults.MEDIA_SOURCE_ENABLED,
+        })
+
+    def test_enable_disable(self):
+        for enabled in [False, True]:
+            resp = self.request_lua("""
+            function main(splash, args)
+                splash.media_source_enabled = args.enabled
+                local mse_supported = splash:jsfunc(args.js)
+                return {enabled=mse_supported()}
+            end
+            """, {'js': self.DETECT_MSE_JS, 'enabled': enabled})
+            self.assertStatusCode(resp, 200)
+            self.assertEqual(resp.json(), {'enabled': enabled})
+
+
 class MouseEventsTest(BaseLuaRenderTest):
     def _assert_event_property(self, name, value, resp):
         self.assertIn("{}:{}".format(name, value), resp.text)
