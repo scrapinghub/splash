@@ -242,8 +242,14 @@ Enable or disable HTML5 media, including HTML5 video and audio
 
 **Signature:** ``splash.html5_media_enabled = true/false``
 
-HTML5 media is enabled by default. Use ``splash.html5_media_enabled = false``
-to disable it.
+HTML5 media is disabled by default. Use ``splash.html5_media_enabled = true``
+to enable it.
+
+.. note::
+   Currently HTML5 media is disabled by default, because it makes WebKit
+   crash on some websites in some environments. Default value for this
+   option may change to ``true`` in future. Set it to ``false`` explicitly
+   in a script if you don't want HTML5 media.
 
 .. _splash-media-source-enabled:
 
