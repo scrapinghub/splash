@@ -714,6 +714,28 @@ class RenderJsonTest(Base.RenderTest):
         self.assertTrue(u'проверка' in html)
         self.assertTrue(u'1251' in html)
 
+    def test_html5_enabled_default(self):
+        self.assertEqual(self._video_is_enabled({}),
+                         defaults.HTML5_MEDIA_ENABLED)
+
+    def test_html5_enabled_on_off(self):
+        self.assertFalse(self._video_is_enabled({'html5_media': 0}))
+        self.assertTrue(self._video_is_enabled({'html5_media': 1}))
+
+    def _video_is_enabled(self, query):
+        HTML5_VIDEO_SUPPORTED_JS = """
+        !!document.createElement('video').canPlayType
+        """.strip()
+        _query = {
+            'url': self.mockurl('jsrender'),
+            'script': 1,
+            'js_source': HTML5_VIDEO_SUPPORTED_JS
+        }
+        _query.update(query)
+        r = self.request(_query)
+        self.assertStatusCode(r, 200)
+        return bool(r.json().get('script', False))
+
     def assertFieldsInResponse(self, res, fields):
         for key in fields:
             self.assertTrue(key in res, "%s is not in response" % key)

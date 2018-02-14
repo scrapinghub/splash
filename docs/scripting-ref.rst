@@ -251,6 +251,8 @@ to enable it.
    option may change to ``true`` in future. Set it to ``false`` explicitly
    in a script if you don't want HTML5 media.
 
+See also: :ref:`html5_media <arg-html5-media>` HTTP API argument.
+
 .. _splash-media-source-enabled:
 
 splash.media_source_enabled

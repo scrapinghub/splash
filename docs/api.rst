@@ -215,6 +215,19 @@ load_args : JSON object or a string : optional
     and cache is cleared after each Splash restart. In other words, storage
     is not persistent; client should be ready to re-send the arguments.
 
+.. _arg-html5-media:
+
+html5_media : integer : optional
+    Whether to enable HTML5 media (e.g. ``<video>`` tags playback).
+    Possible values are ``1`` (enable) and ``0`` (disable). Default is 0.
+
+    HTML5 media is currently disabled by default because it may cause
+    instability. Splash may enable it by default in future, so pass
+    ``html5_media=0`` explicitly if you don't want HTML5 media.
+
+    See also: :ref:`splash-html5-media-enabled`.
+
+
 Examples
 ~~~~~~~~
 
