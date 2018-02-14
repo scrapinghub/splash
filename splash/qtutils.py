@@ -102,7 +102,7 @@ QT_KEY_INPUTS = {
 # Constant from https://github.com/annulen/webkit which is not available
 # in PyQT:
 MediaSourceEnabled = QWebSettings.Accelerated2dCanvasEnabled + 1
-
+MediaEnabled = QWebSettings.Accelerated2dCanvasEnabled + 2
 
 # A global reference must be kept to QApplication, otherwise the process will
 # segfault

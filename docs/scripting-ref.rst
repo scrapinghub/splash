@@ -218,6 +218,47 @@ to enable it.
 
 .. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 
+.. _splash-webgl-enabled:
+
+splash.webgl_enabled
+--------------------
+
+Enable or disable WebGL_.
+
+**Signature:** ``splash.webgl_enabled = true/false``
+
+WebGL is enabled by default. Use ``splash.webgl_enabled = false``
+to disable it.
+
+.. _WebGL: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+
+.. _splash-html5-media-enabled:
+
+splash.html5_media_enabled
+--------------------------
+
+Enable or disable HTML5 media, including HTML5 video and audio
+(e.g. ``<video>`` elements playback).
+
+**Signature:** ``splash.html5_media_enabled = true/false``
+
+HTML5 media is enabled by default. Use ``splash.html5_media_enabled = false``
+to disable it.
+
+.. _splash-media-source-enabled:
+
+splash.media_source_enabled
+---------------------------
+
+Enable or disable `Media Source Extensions API`_.
+
+**Signature:** ``splash.media_source_enabled = true/false``
+
+Media Source is enabled by default. Use ``splash.media_source_enabled = false``
+to disable it.
+
+.. _Media Source Extensions API: https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API
+
 Methods
 ~~~~~~~
 

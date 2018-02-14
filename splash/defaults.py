@@ -90,3 +90,13 @@ RESPONSE_BODY_ENABLED = False
 
 # IndexedDB
 INDEXEDDB_ENABLED = False
+
+# HTML5 media
+HTML5_MEDIA_ENABLED = True
+
+# WebGL
+WEBGL_ENABLED = True
+
+# Media Source Extension API
+# it is enabled by default at least to make html5test.com work
+MEDIA_SOURCE_ENABLED = True

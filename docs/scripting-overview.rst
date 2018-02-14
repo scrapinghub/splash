@@ -150,8 +150,13 @@ Browsing Options
   (it is requird for some websites because Webkit doesn't have localStorage
   available in Private Mode);
 * :ref:`splash-images-enabled` allows to turn OFF downloading of images;
-* :ref:`splash-plugins-enabled` allows to enable plugins (in default DOcker image
-  it enables Flash);
+* :ref:`splash-plugins-enabled` allows to enable plugins (in the default
+  Docker image it enables Flash);
 * :ref:`splash-resource-timeout` allows to drop slow or hanging requests
   to related resources after a timeout
-
+* :ref:`splash-indexeddb-enabled` allows to turn IndexedDB ON
+* :ref:`splash-webgl-enabled` allows to turn WebGL OFF
+* :ref:`splash-html5-media-enabled` allows to turn off HTML5 media
+  (e.g. playback of ``<video>`` tags).
+* :ref:`splash-media-source-enabled` allows to turn off Media Source Extension
+  API support

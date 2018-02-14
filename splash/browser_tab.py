@@ -22,6 +22,7 @@ from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (
     OPERATION_QT_CONSTANTS,
     MediaSourceEnabled,
+    MediaEnabled,
     WrappedSignal,
     qt2py,
     qurl2ascii,
@@ -32,7 +33,7 @@ from splash.qtutils import (
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
-from splash.utils import to_bytes, get_id, traverse_data
+from splash.utils import to_bytes, get_id
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -188,17 +189,19 @@ class BrowserTab(QObject):
     get_indexeddb_enabled = webpage_option_getter(QWebSettings.OfflineStorageDatabaseEnabled)
     set_indexeddb_enabled = webpage_option_setter(QWebSettings.OfflineStorageDatabaseEnabled)
 
-    def _set_default_webpage_options(self, web_page):
-        """
-        Set QWebPage options.
-        TODO: allow to customize them.
-        """
-        settings = web_page.settings()
-        settings.setAttribute(QWebSettings.JavascriptEnabled, True)
-        settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
+    get_media_source_enabled = webpage_option_getter(MediaSourceEnabled)
+    set_media_source_enabled = webpage_option_setter(MediaSourceEnabled)
 
-        # enable Media Source by default, at least to make html5test.com work
-        settings.setAttribute(MediaSourceEnabled, True)
+    get_html5_media_enabled = webpage_option_getter(MediaEnabled)
+    set_html5_media_enabled = webpage_option_setter(MediaEnabled)
+
+    get_webgl_enabled = webpage_option_getter(QWebSettings.WebGLEnabled)
+    set_webgl_enabled = webpage_option_setter(QWebSettings.WebGLEnabled)
+
+    def _set_default_webpage_options(self, web_page):
+        """ Set QWebPage options. TODO: allow to customize defaults. """
+        settings = web_page.settings()
+        settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 
         scroll_bars = Qt.ScrollBarAsNeeded if self.visible else Qt.ScrollBarAlwaysOff
         web_page.mainFrame().setScrollBarPolicy(Qt.Vertical, scroll_bars)
@@ -207,9 +210,13 @@ class BrowserTab(QObject):
         if self.visible:
             settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 
+        self.set_js_enabled(True)
         self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
         self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
         self.set_indexeddb_enabled(defaults.INDEXEDDB_ENABLED)
+        self.set_webgl_enabled(defaults.WEBGL_ENABLED)
+        self.set_html5_media_enabled(defaults.HTML5_MEDIA_ENABLED)
+        self.set_media_source_enabled(defaults.MEDIA_SOURCE_ENABLED)
 
     def _setup_webpage_events(self):
         main_frame = self.web_page.mainFrame()
