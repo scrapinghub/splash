@@ -275,12 +275,16 @@ Common reasons:
   https://github.com/annulen/webkit, which is much more recent than WebKit
   provided by Qt; we'll be updating Splash WebKit as annulen's webkit
   develops.
-* Qt or WebKit bugs which cause Splash to hang. Often the whole website works,
-  but some specific .js (or other) file causes problems. In this case you
-  can try starting splash in verbose mode
+* Qt or WebKit bugs which cause Splash to hang or crash. Often the whole
+  website works, but some specific .js (or other) file causes problems.
+  In this case you can try starting splash in verbose mode
   (e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``),
   noting what resources are downloaded last, and filtering them out
   using :ref:`splash-on-request` or :ref:`request filters`.
+* Some of the crashes can be solved by disabling HTML 5 media
+  (:ref:`splash-html5-media-enabled` property or
+  :ref:`html5_media <arg-html5-media>` HTTP API argument) - note it is
+  disabled by default.
 * Website may show a different content based on User-Agent header or based
   on IP address. Use :ref:`splash-set-user-agent` to change the default
   User-Agent header. If you're running Splash in a cloud and not getting good
@@ -289,8 +293,12 @@ Common reasons:
 * Website requires Flash. You can enable it using
   :ref:`splash-plugins-enabled`.
 * Website requires IndexedDB_. Enable it using :ref:`splash-indexeddb-enabled`.
+* If there is no video or other media, use :ref:`html5_media <arg-html5-media>`
+  Splash HTTP argument or :ref:`splash-html5-media-enabled` property to enable
+  HTML5 media, or :ref:`splash-plugins-enabled` to enable Flash.
 * Website has compatibility issues with Webkit version Splash is using.
-  A quick way to check it is to try opening a page in Safari.
+  A quick (though not precise) way to check it is to try opening a page
+  in Safari.
 
 If you have troubles making Splash work, consider asking a question
 at https://stackoverflow.com. If you think it is a Splash bug,

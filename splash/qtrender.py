@@ -75,7 +75,8 @@ class DefaultRenderScript(RenderScript):
     def start(self, url, baseurl=None, wait=None, viewport=None,
               js_source=None, js_profile=None, images=None, console=False,
               headers=None, http_method='GET', body=None,
-              render_all=False, resource_timeout=None, response_body=False):
+              render_all=False, resource_timeout=None, response_body=False,
+              html5_media=False):
 
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
@@ -95,6 +96,7 @@ class DefaultRenderScript(RenderScript):
             self.tab.set_viewport(self.viewport)
 
         self.tab.set_response_body_enabled(response_body)
+        self.tab.set_html5_media_enabled(html5_media)
 
         self.tab.go(
             url=url,
