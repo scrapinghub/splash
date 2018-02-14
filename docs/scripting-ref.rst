@@ -232,6 +232,21 @@ to disable it.
 
 .. _WebGL: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
 
+.. _splash-html5-media-enabled:
+
+splash.html5_media_enabled
+--------------------------
+
+Enable or disable HTML5 media, including HTML5 video and audio
+(e.g. ``<video>`` elements playback).
+
+**Signature:** ``splash.html5_media_enabled = true/false``
+
+HTML5 media is enabled by default. Use ``splash.html5_media_enabled = false``
+to disable it.
+
+.. _splash-media-source-enabled:
+
 Methods
 ~~~~~~~
 

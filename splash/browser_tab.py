@@ -22,6 +22,7 @@ from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (
     OPERATION_QT_CONSTANTS,
     MediaSourceEnabled,
+    MediaEnabled,
     WrappedSignal,
     qt2py,
     qurl2ascii,
@@ -32,7 +33,7 @@ from splash.qtutils import (
 from splash.render_options import validate_size_str
 from splash.qwebpage import SplashQWebPage, SplashQWebView
 from splash.exceptions import JsError, OneShotCallbackError, ScriptError
-from splash.utils import to_bytes, get_id, traverse_data
+from splash.utils import to_bytes, get_id
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -188,6 +189,9 @@ class BrowserTab(QObject):
     get_indexeddb_enabled = webpage_option_getter(QWebSettings.OfflineStorageDatabaseEnabled)
     set_indexeddb_enabled = webpage_option_setter(QWebSettings.OfflineStorageDatabaseEnabled)
 
+    get_html5_media_enabled = webpage_option_getter(MediaEnabled)
+    set_html5_media_enabled = webpage_option_setter(MediaEnabled)
+
     get_webgl_enabled = webpage_option_getter(QWebSettings.WebGLEnabled)
     set_webgl_enabled = webpage_option_setter(QWebSettings.WebGLEnabled)
 
@@ -214,6 +218,7 @@ class BrowserTab(QObject):
         self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
         self.set_indexeddb_enabled(defaults.INDEXEDDB_ENABLED)
         self.set_webgl_enabled(defaults.WEBGL_ENABLED)
+        self.set_html5_media_enabled(defaults.HTML5_MEDIA_ENABLED)
 
     def _setup_webpage_events(self):
         main_frame = self.web_page.mainFrame()

@@ -3817,6 +3817,41 @@ class WebGLTest(BaseLuaRenderTest):
             self.assertEqual(resp.json(), enabled)
 
 
+class Html5MediaTest(BaseLuaRenderTest):
+    # from https://stackoverflow.com/questions/3570502/how-to-check-for-html5-video-support
+    HTML5_VIDEO_SUPPORTED_JS = """
+    function() {return !!document.createElement('video').canPlayType}
+    """
+
+    def test_defaults(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            local html5_video_supported = splash:jsfunc(args.js)
+            return {
+                supported = html5_video_supported(),
+                enabled = splash.html5_media_enabled
+            }
+        end
+        """, {'js': self.HTML5_VIDEO_SUPPORTED_JS})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.json(), {
+            'supported': defaults.HTML5_MEDIA_ENABLED,
+            'enabled': defaults.HTML5_MEDIA_ENABLED,
+        })
+
+    def test_enable_disable(self):
+        for enabled in [False, True]:
+            resp = self.request_lua("""
+            function main(splash, args)
+                splash.html5_media_enabled = args.enabled
+                local html5_video_supported = splash:jsfunc(args.js)
+                return {enabled=html5_video_supported()}
+            end
+            """, {'js': self.HTML5_VIDEO_SUPPORTED_JS, 'enabled': enabled})
+            self.assertStatusCode(resp, 200)
+            self.assertEqual(resp.json(), {'enabled': enabled})
+
+
 class MouseEventsTest(BaseLuaRenderTest):
     def _assert_event_property(self, name, value, resp):
         self.assertIn("{}:{}".format(name, value), resp.text)

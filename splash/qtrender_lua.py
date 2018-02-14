@@ -1155,6 +1155,16 @@ class Splash(BaseExposedObject):
     def set_indexeddb_enabled(self, value):
         self.tab.set_indexeddb_enabled(bool(value))
 
+    @lua_property('html5_media_enabled')
+    @command()
+    def get_html5_media_enabled(self):
+        return self.tab.get_html5_media_enabled()
+
+    @get_html5_media_enabled.lua_setter
+    @command()
+    def set_html5_media_enabled(self, enabled):
+        self.tab.set_html5_media_enabled(bool(enabled))
+
     @lua_property('webgl_enabled')
     @command()
     def get_webgl_enabled(self):

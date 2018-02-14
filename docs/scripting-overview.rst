@@ -156,3 +156,5 @@ Browsing Options
   to related resources after a timeout
 * :ref:`splash-indexeddb-enabled` allows to turn IndexedDB ON
 * :ref:`splash-webgl-enabled` allows to turn WebGL OFF
+* :ref:`splash-html5-media-enabled` allows to turn off HTML5 media
+  (e.g. playback of ``<video>`` tags).
