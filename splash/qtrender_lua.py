@@ -1155,6 +1155,16 @@ class Splash(BaseExposedObject):
     def set_indexeddb_enabled(self, value):
         self.tab.set_indexeddb_enabled(bool(value))
 
+    @lua_property('webgl_enabled')
+    @command()
+    def get_webgl_enabled(self):
+        return self.tab.get_webgl_enabled()
+
+    @get_webgl_enabled.lua_setter
+    @command()
+    def set_webgl_enabled(self, enabled):
+        self.tab.set_webgl_enabled(bool(enabled))
+
     @lua_property('resource_timeout')
     @command()
     def get_resource_timeout(self):

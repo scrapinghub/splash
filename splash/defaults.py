@@ -90,3 +90,7 @@ RESPONSE_BODY_ENABLED = False
 
 # IndexedDB
 INDEXEDDB_ENABLED = False
+
+# WebGL
+WEBGL_ENABLED = True
+

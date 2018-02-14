@@ -218,6 +218,20 @@ to enable it.
 
 .. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 
+.. _splash-webgl-enabled:
+
+splash.webgl_enabled
+--------------------
+
+Enable or disable WebGL_.
+
+**Signature:** ``splash.webgl_enabled = true/false``
+
+WebGL is enabled by default. Use ``splash.webgl_enabled = false``
+to disable it.
+
+.. _WebGL: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+
 Methods
 ~~~~~~~
 

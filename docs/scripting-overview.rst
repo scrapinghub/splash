@@ -155,3 +155,4 @@ Browsing Options
 * :ref:`splash-resource-timeout` allows to drop slow or hanging requests
   to related resources after a timeout
 * :ref:`splash-indexeddb-enabled` allows to turn IndexedDB ON
+* :ref:`splash-webgl-enabled` allows to turn WebGL OFF

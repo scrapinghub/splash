@@ -3777,24 +3777,44 @@ class PluginsEnabledTest(BaseLuaRenderTest):
 
 
 class WebGLTest(BaseLuaRenderTest):
+    # WebGL detection code is from
+    # https://developer.mozilla.org/en-US/docs/Learn/WebGL/By_example/Detect_WebGL
+    DETECT_WEBGL_JS = """
+    function () {
+        var canvas = document.createElement("canvas");
+        var gl = canvas.getContext("webgl")
+                    || canvas.getContext("experimental-webgl");
+        return ~~(gl && gl instanceof WebGLRenderingContext);
+    }    
+    """
+
     def test_webgl(self):
-        # WebGL detection code is from
-        # https://developer.mozilla.org/en-US/docs/Learn/WebGL/By_example/Detect_WebGL
         resp = self.request_lua("""
-        function main(splash)
-            webgl_supported = splash:jsfunc([[
-                function () {
-                    var canvas = document.createElement("canvas");
-                    var gl = canvas.getContext("webgl")
-                                || canvas.getContext("experimental-webgl");
-                    return (gl && gl instanceof WebGLRenderingContext);
-                }
-            ]])
-            return webgl_supported()
+        function main(splash, args)
+            local webgl_supported = splash:jsfunc(args.js)
+            return {
+                supported = webgl_supported(),
+                enabled = splash.webgl_enabled
+            }
         end
-        """)
+        """, {'js': self.DETECT_WEBGL_JS})
         self.assertStatusCode(resp, 200)
-        self.assertEqual(resp.text, "True")
+        self.assertEqual(resp.json(), {
+            'supported': defaults.WEBGL_ENABLED,
+            'enabled': defaults.WEBGL_ENABLED,
+        })
+
+    def test_webgl_enable_disable(self):
+        for enabled in [False, True]:
+            resp = self.request_lua("""
+            function main(splash, args)
+                splash.webgl_enabled = args.enabled
+                local webgl_supported = splash:jsfunc(args.js)
+                return webgl_supported()
+            end
+            """, {'js': self.DETECT_WEBGL_JS, 'enabled': enabled})
+            self.assertStatusCode(resp, 200)
+            self.assertEqual(resp.json(), enabled)
 
 
 class MouseEventsTest(BaseLuaRenderTest):
