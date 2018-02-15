@@ -1,8 +1,8 @@
 Changes
 =======
 
-3.2 (TBA)
----------
+3.2 (2018-02-15)
+----------------
 
 HTML5 media (e.g. ``<video>`` tags playback) is disabled by default in this
 release, because it was a source of some of Splash crashes. This is
