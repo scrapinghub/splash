@@ -90,12 +90,45 @@
   "splash.indexeddb_enabled": {
     "name": null,
     "header": "splash.indexeddb_enabled",
-    "content": "Enable or disable IndexedDB_.\n\n**Signature:** ``splash.indexeddb_enabled = true/false``\n\nIndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``\nto enable it.\n\n.. note::\n   Currently IndexedDB is disabled by default because there are issues\n   with Splash WebKit's implementation. Default value for this option may\n   change to ``true`` in future.\n\n.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API\n\nMethods\n~~~~~~~",
+    "content": "Enable or disable IndexedDB_.\n\n**Signature:** ``splash.indexeddb_enabled = true/false``\n\nIndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``\nto enable it.\n\n.. note::\n   Currently IndexedDB is disabled by default because there are issues\n   with Splash WebKit's implementation. Default value for this option may\n   change to ``true`` in future.\n\n.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API",
     "short": "Enable or disable IndexedDB_.",
     "signature": "splash.indexeddb_enabled = true/false",
     "returns": null,
     "async": null,
-    "details": "IndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``\nto enable it.\n\n.. note::\n   Currently IndexedDB is disabled by default because there are issues\n   with Splash WebKit's implementation. Default value for this option may\n   change to ``true`` in future.\n\n.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API\n\nMethods\n~~~~~~~",
+    "details": "IndexedDB is disabled by default. Use ``splash.indexeddb_enabled = true``\nto enable it.\n\n.. note::\n   Currently IndexedDB is disabled by default because there are issues\n   with Splash WebKit's implementation. Default value for this option may\n   change to ``true`` in future.\n\n.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API",
+    "params": null
+  },
+  "splash.webgl_enabled": {
+    "name": null,
+    "header": "splash.webgl_enabled",
+    "content": "Enable or disable WebGL_.\n\n**Signature:** ``splash.webgl_enabled = true/false``\n\nWebGL is enabled by default. Use ``splash.webgl_enabled = false``\nto disable it.\n\n.. _WebGL: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API",
+    "short": "Enable or disable WebGL_.",
+    "signature": "splash.webgl_enabled = true/false",
+    "returns": null,
+    "async": null,
+    "details": "WebGL is enabled by default. Use ``splash.webgl_enabled = false``\nto disable it.\n\n.. _WebGL: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API",
+    "params": null
+  },
+  "splash.html5_media_enabled": {
+    "name": null,
+    "header": "splash.html5_media_enabled",
+    "content": "Enable or disable HTML5 media, including HTML5 video and audio\n(e.g. ``<video>`` elements playback).\n\n**Signature:** ``splash.html5_media_enabled = true/false``\n\nHTML5 media is disabled by default. Use ``splash.html5_media_enabled = true``\nto enable it.\n\n.. note::\n   Currently HTML5 media is disabled by default, because it makes WebKit\n   crash on some websites in some environments. Default value for this\n   option may change to ``true`` in future. Set it to ``false`` explicitly\n   in a script if you don't want HTML5 media.\n\nSee also: :ref:`html5_media <arg-html5-media>` HTTP API argument.",
+    "short": "Enable or disable HTML5 media, including HTML5 video and audio\n(e.g. ``<video>`` elements playback).",
+    "signature": "splash.html5_media_enabled = true/false",
+    "returns": null,
+    "async": null,
+    "details": "HTML5 media is disabled by default. Use ``splash.html5_media_enabled = true``\nto enable it.\n\n.. note::\n   Currently HTML5 media is disabled by default, because it makes WebKit\n   crash on some websites in some environments. Default value for this\n   option may change to ``true`` in future. Set it to ``false`` explicitly\n   in a script if you don't want HTML5 media.\n\nSee also: :ref:`html5_media <arg-html5-media>` HTTP API argument.",
+    "params": null
+  },
+  "splash.media_source_enabled": {
+    "name": null,
+    "header": "splash.media_source_enabled",
+    "content": "Enable or disable `Media Source Extensions API`_.\n\n**Signature:** ``splash.media_source_enabled = true/false``\n\nMedia Source is enabled by default. Use ``splash.media_source_enabled = false``\nto disable it.\n\n.. _Media Source Extensions API: https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API\n\nMethods\n~~~~~~~",
+    "short": "Enable or disable `Media Source Extensions API`_.",
+    "signature": "splash.media_source_enabled = true/false",
+    "returns": null,
+    "async": null,
+    "details": "Media Source is enabled by default. Use ``splash.media_source_enabled = false``\nto disable it.\n\n.. _Media Source Extensions API: https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API\n\nMethods\n~~~~~~~",
     "params": null
   },
   "splash:go": {
