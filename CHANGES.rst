@@ -1,6 +1,29 @@
 Changes
 =======
 
+3.2 (TBA)
+---------
+
+HTML5 media (e.g. ``<video>`` tags playback) is disabled by default in this
+release, because it was a source of some of Splash crashes. This is
+**backwards incompatible**, as it can affect rendering. If you need old
+behavior (it was working on sites you're crawling), use either
+``html5_media=1 <arg-html5-media>`` HTTP API argument
+or :ref:`splash-html5-media-enabled` attribute to re-enable HTML5 media.
+
+Other changes:
+
+* ``html5_media <arg-html5-media>`` HTTP API argument and
+  :ref:`splash-html5-media-enabled` attribute allow to enable/disable HTML5
+  media;
+* :ref:`splash-webgl-enabled` attribute allows to enable/disable WebGL;
+* :ref:`splash-media-source-enabled` attribute allows to enable/disable
+  Media Source Extension API;
+* ``--xvbf_screen_size`` Splash startup argument allows to customize
+  xvfb screen size (it could be helpful sometimes to have it matching with
+  a viewport size you're using in a crawl);
+* documentation and test improvements.
+
 3.1 (2018-01-31)
 ----------------
 
