@@ -21,7 +21,7 @@ This field is read-only.
 
 .. _splash-response-status:
 
-response.status
+response.status_code
 ---------------
 
 HTTP status code of the response.
