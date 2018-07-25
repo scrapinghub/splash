@@ -2222,6 +2222,28 @@ By default, this ``response`` object doesn't have :ref:`splash-response-body`
 attribute. To enable it, use :ref:`splash-response-body-enabled` option
 or :ref:`splash-request-enable-response-body` method.
 
+Example 1 - to log a response body only when requested url match a desired pattern:
+
+.. code-block:: lua
+
+    treat = require('treat')
+    function main(splash, args)
+        splash.resource_timeout = 10.0
+        splash:on_request(function(request)
+            if string.find(request.url, "hello") ~= nil then
+                request.enable_response_body()
+            end
+        end)
+        splash:on_response(function(response)
+            if string.find(response.url, "hello") ~= nil then
+                s, content_type = treat.as_string(response.body)
+            end
+        end)
+    
+        assert(splash:go(splash.args.url))
+        return s
+    end
+
 .. note::
 
     :ref:`splash-on-response` doesn't support named arguments.
