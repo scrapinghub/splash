@@ -61,6 +61,16 @@ function Splash:on_response(cb)
   end)
 end
 
+function Splash:on_navigation_locked(cb)
+  if type(cb) ~= 'function' then
+    error("splash:on_navigation_locked callback is not a function", 2)
+  end
+  self:_on_navigation_locked(function(py_request)
+    local req = Request._create(py_request)
+    return cb(req)
+  end)
+end
+
 
 --
 -- Timer Lua wrapper

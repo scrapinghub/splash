@@ -1221,6 +1221,21 @@ class Splash(BaseExposedObject):
                 'walltime': time.time()}
 
     @command(sets_callback=True, decode_arguments=False)
+    def _on_navigation_locked(self, callback):
+        """
+        Register a Lua callback to be called when navigation happens but it is locked.
+        """
+        def _callback(request):
+            if self.destroyed:
+                return
+            exceptions = StoredExceptions()  # FIXME: exceptions are discarded
+            req = _ExposedBoundRequest(self.lua, exceptions, request, None, None)
+            with req.allowed():
+                callback(req)
+        self.tab.register_callback("on_navigation_locked", _callback)
+        return True
+
+    @command(sets_callback=True, decode_arguments=False)
     def _on_request(self, callback):
         """
         Register a Lua callback to be called when a resource is requested.
@@ -1345,6 +1360,10 @@ class Splash(BaseExposedObject):
     @command()
     def on_response_headers_reset(self):
         self.tab.clear_callbacks("on_response_headers")
+
+    @command()
+    def on_navigation_locked_reset(self):
+        self.tab.clear_callbacks("on_navigation_locked")
 
     @command()
     def get_version(self):

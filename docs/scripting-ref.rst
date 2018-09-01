@@ -2783,3 +2783,49 @@ Example: select all ``<img />`` elements and get their ``src`` attributes
 
         return treat.as_array(srcs)
     end
+
+
+.. _splash-on-navigation-locked:
+
+splash:on_navigation_locked
+---------------------------
+
+Register a function to be called before a request is discarded when navigation is locked.
+
+**Signature:** ``splash:on_navigation_locked(callback)``
+
+**Parameters:**
+
+* callback - Lua function to call before a request is discarded.
+
+**Returns:** nil.
+
+**Async:** no.
+
+:ref:`splash-on-navigation-locked` callback receives a single ``request`` argument
+(a :ref:`splash-request`).
+
+To get information about a request use request
+:ref:`attributes <splash-request-attributes>`;
+
+A callback passed to :ref:`splash-on-navigation-locked` can't call Splash
+async methods like :ref:`splash-wait` or :ref:`splash-go`.
+
+Example 1 - log all URLs discarded using :ref:`splash-request-url` attribute:
+
+.. literalinclude:: ../splash/examples/log-locked-requests.lua
+   :language: lua
+
+
+.. _splash-on-navigation-locked-reset:
+
+splash:on_navigation_locked_reset
+---------------------------------
+
+Remove all callbacks registered by :ref:`splash-on-navigation-locked`.
+
+**Signature:** ``splash:on_navigation_locked_reset()``
+
+**Returns:** nil
+
+**Async:** no.
