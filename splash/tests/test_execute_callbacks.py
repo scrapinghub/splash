@@ -1039,3 +1039,43 @@ class WithTimeoutTest(BaseLuaRenderTest):
             """)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), [1, 2, 3])
+
+
+class OnNavigationLockedTest(BaseLuaRenderTest, BaseHtmlProxyTest):
+    def test_navigation_locked(self):
+        url = self.mockurl("jsredirect")
+        resp = self.request_lua("""
+        treat = require("treat")
+        function main(splash)
+            local urls = treat.as_array({})
+            local requests = treat.as_array({})
+            splash:on_navigation_locked(function(request)
+                requests[#requests+1] = request.info
+                urls[#urls+1] = request.url
+            end)
+            splash:go(splash.args.url)
+            splash:lock_navigation()
+            splash:wait(0.3)
+            return requests, urls
+        end
+        """, {'url': url})
+        self.assertStatusCode(resp, 200)
+        requests, urls = resp.json()
+        self.assertNotIn(url, urls)
+        self.assertEqual(len(requests), 1, requests)
+        self.assertEqual(requests[0]['url'], urls[0])
+
+    def test_on_navigation_locked_reset(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            x = 0
+            splash:on_navigation_locked(function(req) x = x + 1 end)
+            splash:go(args.url)
+            splash:lock_navigation()
+            splash:on_navigation_locked_reset()
+            splash:wait(0.3)
+            return x
+        end
+        """, {'url': self.mockurl("jsredirect")})
+        self.assertStatusCode(resp, 200)
+        self.assertEqual(resp.text, '0')

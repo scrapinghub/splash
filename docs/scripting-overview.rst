@@ -35,6 +35,8 @@ Navigation
   to the browser;
 * :ref:`splash-lock-navigation` and :ref:`splash-unlock-navigation` -
   lock/unlock navigation;
+* :ref:`splash-on-navigation-locked` allows to inspect requests
+  discarded after navigation was locked;
 * :ref:`splash-set-user-agent` allows to change User-Agent header used
   for requests;
 * :ref:`splash-set-custom-headers` allows to set default HTTP headers

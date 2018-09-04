@@ -691,5 +691,27 @@
     "async": "no.",
     "details": "This method differs from :ref:`splash-select` by returning the *all*\nelements in a table that match the specified selector.\n\nIf no elements can be found using the specified selector ``{}`` is\nreturned. If the selector is not a valid CSS selector an error is raised.\n\nExample: select all ``<img />`` elements and get their ``src`` attributes\n\n.. code-block:: lua\n\n    local treat = require('treat')\n\n    function main(splash)\n        assert(splash:go(splash.args.url))\n        assert(splash:wait(0.5))\n\n        local imgs = splash:select_all('img')\n        local srcs = {}\n\n        for _, img in ipairs(imgs) do\n          srcs[#srcs+1] = img.node.attributes.src\n        end\n\n        return treat.as_array(srcs)\n    end",
     "params": "* selector - valid CSS selector"
+  },
+  "splash:on_navigation_locked": {
+    "name": "on_navigation_locked",
+    "header": "splash:on_navigation_locked",
+    "content": "Register a function to be called before a request is discarded when navigation is locked.\n\n**Signature:** ``splash:on_navigation_locked(callback)``\n\n**Parameters:**\n\n* callback - Lua function to call before a request is discarded.\n\n**Returns:** nil.\n\n**Async:** no.\n\n:ref:`splash-on-navigation-locked` callback receives a single ``request`` argument\n(a :ref:`splash-request`).\n\nTo get information about a request use request\n:ref:`attributes <splash-request-attributes>`;\n\nA callback passed to :ref:`splash-on-navigation-locked` can't call Splash\nasync methods like :ref:`splash-wait` or :ref:`splash-go`.\n\nExample 1 - log all URLs discarded using :ref:`splash-request-url` attribute:\n\ntreat = require(\"treat\")\n\nfunction main(splash, args)\n  local urls = {}\n  splash:on_navigation_locked(function(request)\n    table.insert(urls, request.url)\n  end)\n\n  assert(splash:go(splash.args.url))\n  splash:lock_navigation()\n  splash:select(\"a\"):mouse_click()\n  return treat.as_array(urls)\nend",
+    "short": "Register a function to be called before a request is discarded when navigation is locked.",
+    "signature": "splash:on_navigation_locked(callback)",
+    "returns": "nil.",
+    "async": "no.",
+    "details": ":ref:`splash-on-navigation-locked` callback receives a single ``request`` argument\n(a :ref:`splash-request`).\n\nTo get information about a request use request\n:ref:`attributes <splash-request-attributes>`;\n\nA callback passed to :ref:`splash-on-navigation-locked` can't call Splash\nasync methods like :ref:`splash-wait` or :ref:`splash-go`.\n\nExample 1 - log all URLs discarded using :ref:`splash-request-url` attribute:\n\ntreat = require(\"treat\")\n\nfunction main(splash, args)\n  local urls = {}\n  splash:on_navigation_locked(function(request)\n    table.insert(urls, request.url)\n  end)\n\n  assert(splash:go(splash.args.url))\n  splash:lock_navigation()\n  splash:select(\"a\"):mouse_click()\n  return treat.as_array(urls)\nend",
+    "params": "* callback - Lua function to call before a request is discarded."
+  },
+  "splash:on_navigation_locked_reset": {
+    "name": "on_navigation_locked_reset",
+    "header": "splash:on_navigation_locked_reset",
+    "content": "Remove all callbacks registered by :ref:`splash-on-navigation-locked`.\n\n**Signature:** ``splash:on_navigation_locked_reset()``\n\n**Returns:** nil\n\n**Async:** no.",
+    "short": "Remove all callbacks registered by :ref:`splash-on-navigation-locked`.",
+    "signature": "splash:on_navigation_locked_reset()",
+    "returns": "nil",
+    "async": null,
+    "details": "**Async:** no.",
+    "params": null
   }
 }

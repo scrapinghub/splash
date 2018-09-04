@@ -389,18 +389,9 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         return self._get_webpage_attribute(request, 'render_options')
 
     def _run_webpage_callbacks(self, request, event_name, *args):
-        callbacks = self._get_webpage_attribute(request, "callbacks")
-        if not callbacks:
-            return
-        for cb in callbacks.get(event_name, []):
-            try:
-                cb(*args)
-            except:
-                # TODO unhandled exceptions in lua callbacks
-                # should we raise errors here?
-                # https://github.com/scrapinghub/splash/issues/161
-                self.log("error in %s callback" % event_name, min_level=1)
-                self.log(traceback.format_exc(), min_level=1, format_msg=False)
+        run_callbacks = self._get_webpage_attribute(request, "run_callbacks")
+        if run_callbacks:
+            run_callbacks(event_name, *args)
 
     def log(self, msg, reply=None, min_level=2, format_msg=True):
         if self.verbosity < min_level:
