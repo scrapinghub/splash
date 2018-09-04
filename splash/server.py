@@ -40,7 +40,7 @@ def parse_opts(jupyter=False, argv=sys.argv):
         help="enable support for cross domain access when executing custom javascript "
              "(WARNING: it could break rendering for some of the websites)" + _bool_default[defaults.JS_CROSS_DOMAIN_ENABLED])
     op.add_option('--allowed-schemes', default=",".join(defaults.ALLOWED_SCHEMES),
-        help="comma-separated list of allowed URI schemes (defaut: %default)")
+        help="comma-separated list of allowed URI schemes (default: %default)")
     op.add_option("--filters-path",
         help="path to a folder with network request filters")
     op.add_option('--xvfb-screen-size',
