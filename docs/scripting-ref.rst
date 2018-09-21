@@ -149,6 +149,24 @@ Enable or disable browser plugins (e.g. Flash).
 Plugins are disabled by default.
 
 
+.. _splash-request-body-enabled:
+
+splash.request_body_enabled
+----------------------------
+
+Enable or disable storage of request content.
+
+**Signature:** ``splash.request_body_enabled = true/false``
+
+By default Splash doesn't keep bodies of each request in memory. It means that
+request content is not available in :ref:`splash-request-info` and in HAR_
+exports. To make request content available to a Lua script set
+``splash.request_body_enabled = true``.
+
+Note that request data in :ref:`splash-request-info` is not available in the
+callback :ref:`splash-on-response-headers` or in the request of the response
+returned by :ref:`splash-http-get` and :ref:`splash-http-post`.
+
 .. _splash-response-body-enabled:
 
 splash.response_body_enabled
@@ -1453,12 +1471,14 @@ all existing logs and start recording from scratch:
          return {har1=har1, har2=har2}
      end
 
-By default, response content is not returned in HAR data. To enable it, use
-:ref:`splash-response-body-enabled` option or
+By default, request and response contents are not included in HAR data. To
+enable request contents, use :ref:`splash-request-body-enabled` option. To
+enable response contents, use :ref:`splash-response-body-enabled` option or
 :ref:`splash-request-enable-response-body` method.
 
 See also: :ref:`splash-har-reset`, :ref:`splash-on-response`,
-:ref:`splash-response-body-enabled`, :ref:`splash-request-enable-response-body`.
+:ref:`splash-request-body-enabled`, :ref:`splash-response-body-enabled`,
+:ref:`splash-request-enable-response-body`.
 
 .. _HAR: http://www.softwareishard.com/blog/har-12-spec/
 

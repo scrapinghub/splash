@@ -75,8 +75,8 @@ class DefaultRenderScript(RenderScript):
     def start(self, url, baseurl=None, wait=None, viewport=None,
               js_source=None, js_profile=None, images=None, console=False,
               headers=None, http_method='GET', body=None,
-              render_all=False, resource_timeout=None, response_body=False,
-              html5_media=False):
+              render_all=False, resource_timeout=None, request_body=False,
+              response_body=False, html5_media=False):
 
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
@@ -95,6 +95,7 @@ class DefaultRenderScript(RenderScript):
         if self.viewport != 'full':
             self.tab.set_viewport(self.viewport)
 
+        self.tab.set_request_body_enabled(request_body)
         self.tab.set_response_body_enabled(response_body)
         self.tab.set_html5_media_enabled(html5_media)
 
@@ -220,6 +221,7 @@ class JsonRender(JpegRender):
         self.include = {inc: kwargs.pop(inc) for inc in include_options}
         self.include['console'] = kwargs.get('console')
         if not self.include['har'] and not self.include['history']:
+            kwargs['request_body'] = False
             kwargs['response_body'] = False
         super(JsonRender, self).start(**kwargs)
 

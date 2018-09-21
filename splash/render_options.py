@@ -136,6 +136,9 @@ class RenderOptions(object):
     def get_response_body(self):
         return self._get_bool("response_body", defaults.RESPONSE_BODY_ENABLED)
 
+    def get_request_body(self):
+        return self._get_bool("request_body", defaults.REQUEST_BODY_ENABLED)
+
     def get_images(self):
         return self._get_bool("images", defaults.AUTOLOAD_IMAGES)
 

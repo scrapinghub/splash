@@ -467,10 +467,25 @@ JsPostResource = _html_resource("""
 <html>
 <body>
 <form action="/postrequest" method="POST">
-    <input type="hidden" value="i-am-hidden"/>
+    <input type="hidden" name="hidden-field" value="i-am-hidden"/>
+    <input type="text" name="a-field" value="field value"/>
     <input type="submit" value="go"/>
 </form>
 <script>document.querySelector('form').submit();</script>
+</body>
+</html>
+""")
+
+
+BinaryPostResource = _html_resource("""
+<html>
+<body>
+<script>
+var xhr = new XMLHttpRequest(); 
+xhr.open("POST", "/postrequest");
+xhr.setRequestHeader("Content-Type", "application/octet-stream");
+xhr.send("Hello world!");
+</script>
 </body>
 </html>
 """)
@@ -1070,6 +1085,8 @@ class Root(Resource):
         self.putChild(b"meta-redirect1", MetaRedirect1())
         self.putChild(b"meta-redirect-target", MetaRedirectTarget())
         self.putChild(b"http-redirect", HttpRedirectResource())
+
+        self.putChild(b"binary-postdata", BinaryPostResource())
 
         self.putChild(b"", Index(self.children))
 

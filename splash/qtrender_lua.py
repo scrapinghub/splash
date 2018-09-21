@@ -530,6 +530,16 @@ class Splash(BaseExposedObject):
     def set_private_mode_enabled(self, value):
         self.tab.set_private_mode_enabled(bool(value))
 
+    @lua_property('request_body_enabled')
+    @command()
+    def get_request_body_enabled(self):
+        return self.tab.get_request_body_enabled()
+
+    @get_request_body_enabled.lua_setter
+    @command()
+    def set_request_body_enabled(self, value):
+        self.tab.set_request_body_enabled(bool(value))
+
     @lua_property('response_body_enabled')
     @command()
     def get_response_body_enabled(self):
@@ -1240,12 +1250,12 @@ class Splash(BaseExposedObject):
         """
         Register a Lua callback to be called when a resource is requested.
         """
-        def _callback(request, operation, outgoing_data):
+        def _callback(request, operation, content):
             if self.destroyed:
                 return
             exceptions = StoredExceptions()  # FIXME: exceptions are discarded
             req = _ExposedBoundRequest(self.lua, exceptions, request, operation,
-                                       outgoing_data)
+                                       content)
             with req.allowed():
                 callback(req)
 
@@ -2058,11 +2068,11 @@ class _ExposedBoundRequest(BaseExposedObject):
     """ QNetworkRequest wrapper for Lua """
     _attribute_whitelist = ['url', 'method', 'headers', 'info']
 
-    def __init__(self, lua, exceptions, request, operation, outgoing_data):
+    def __init__(self, lua, exceptions, request, operation, content):
         super(_ExposedBoundRequest, self).__init__(lua, exceptions)
         self.request = request
 
-        har_request = request2har(request, operation, outgoing_data)
+        har_request = request2har(request, operation, content)
         self.url = self.lua.python2lua(har_request['url'])
         self.method = self.lua.python2lua(har_request['method'])
         # TODO: make info and headers attributes lazy

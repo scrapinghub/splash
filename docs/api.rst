@@ -355,13 +355,25 @@ You can use online `HAR viewer`_ to visualize information returned from
 this endpoint; it will be very similar to "Network" tabs in Firefox and Chrome
 developer tools.
 
-Currently this endpoint doesn't expose raw request contents;
-only meta-information like headers and timings is available.
-Response contents is included when
-:ref:`'response_body' <arg-response-body-0>` option is set to 1.
+Request and response contents are included when
+:ref:`'request_body' <arg-request-body-0>` and
+:ref:`'response_body' <arg-response-body-0>` options are set to 1,
+respectively.
+
+Due to the HAR_ format specification lacking a method of encoding binary
+request data, a non-standard ``encoding`` field is included in ``postData``,
+which, similarly to the field of same name in HAR responses, has the value
+``base64`` when the request body has been encoded as such.
 
 Arguments for this endpoint are the same as for `render.html`_, plus the
 following:
+
+.. _arg-request-body-0:
+
+request_body : int : optional
+  Possible values are ``1`` and ``0``.  When ``request_body=1``,
+  request content is included in HAR records. Default is ``request_body=0``.
+
 
 .. _arg-response-body-0:
 
@@ -446,8 +458,17 @@ har : integer : optional
     If this option is ON the result will contain the same data
     as `render.har`_ provides under 'har' key.
 
-    By default, response content is not included. To enable it use
-    :ref:`'response_body' <arg-response-body>` option.
+    By default, request and response contents are not included. To enable each,
+    use :ref:`'request_body' <arg-request-body>` and
+    :ref:`'response_body' <arg-response-body>` options respectively.
+
+.. _arg-request-body:
+
+request_body : int : optional
+    Possible values are ``1`` and ``0``.  When ``request_body=1``,
+    request content is included in HAR records. Default is
+    ``request_body=0``. This option has no effect when
+    both :ref:`'har' <arg-har>` and :ref:`'history' <arg-history>` are 0.
 
 .. _arg-response-body:
 

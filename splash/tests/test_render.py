@@ -818,6 +818,17 @@ class RenderJsonHistoryTest(BaseRenderTest):
             url = self.mockurl('getrequest') + '?code=%d' % code
             self.assertHistoryUrls({'url': url}, [(url, code)], full_urls=True)
 
+    def test_history_request_body(self):
+        history = self.assertHistoryUrls(
+            {'url': self.mockurl('jspost'), 'wait': 0.1, 'request_body': 1},
+            [('jspost', 200), ('postrequest', 200)]
+        )
+        post_data = history[1]['request']['postData']
+        assert 'encoding' not in post_data
+        assert post_data['mimeType'] == "application/x-www-form-urlencoded"
+        assert post_data['text'] == ("hidden-field=i-am-hidden&"
+                                     "a-field=field+value")
+
     def assertHistoryUrls(self, query, urls_and_codes, full_urls=False):
         query['history'] = 1
         resp = self.request(query)

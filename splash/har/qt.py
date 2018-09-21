@@ -134,13 +134,39 @@ def reply2har(reply, content=None):
         res["content"]["size"] = len(content)
         res["content"]["text"] = base64.b64encode(content).decode('latin1')
         res["content"]["encoding"] = 'base64'
-                
+
     return res
 
 
-def request2har(request, operation, outgoing_data=None):
+def _har_postdata(body, content_type):
+    """
+
+    Build the postData value for HAR, from a binary body and a content type.
+
+    """
+
+    postdata = {"mimeType": content_type or "?"}
+
+    if content_type == "application/x-www-form-urlencoded":
+        # application/x-www-form-urlencoded is valid ASCII, see
+        # <https://url.spec.whatwg.org/#concept-urlencoded-serializer>.
+        try:
+            postdata["text"] = body.decode('ascii')
+        except UnicodeDecodeError:
+            pass
+
+    # This is non-standard. The HAR format does not specify how to handle
+    # binary request data.
+    if "text" not in postdata:
+        postdata["encoding"] = "base64"
+        postdata["text"] = base64.b64encode(body).decode('ascii')
+
+    return postdata
+
+
+def request2har(request, operation, content=None):
     """ Serialize QNetworkRequest to HAR. """
-    return {
+    har = {
         "method": OPERATION_NAMES.get(operation, '?'),
         "url": str(request.url().toString()),
         "httpVersion": "HTTP/1.1",
@@ -148,5 +174,14 @@ def request2har(request, operation, outgoing_data=None):
         "queryString": querystring2har(request.url()),
         "headers": headers2har(request),
         "headersSize": headers_size(request),
-        "bodySize": outgoing_data.size() if outgoing_data is not None else -1,
+        "bodySize": -1
     }
+    if content is not None:
+        har["bodySize"] = len(content)
+        content_type = request.header(QNetworkRequest.ContentTypeHeader)
+        har["postData"] = _har_postdata(content, content_type)
+    else:
+        content_length = request.header(QNetworkRequest.ContentLengthHeader)
+        if content_length is not None:
+            har["bodySize"] = content_length
+    return har

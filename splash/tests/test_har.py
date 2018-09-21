@@ -179,6 +179,33 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('jsredirect-chain'), 200),
         ])
 
+    def test_request_body(self):
+        url = self.mockurl('jspost')
+        data = self.assertValidHar(url, wait=0.1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        for entry in entries:
+            assert 'postData' not in entry['request']
+
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert 'encoding' not in post_data
+        assert post_data['mimeType'] == "application/x-www-form-urlencoded"
+        assert post_data['text'] == ("hidden-field=i-am-hidden&"
+                                     "a-field=field+value")
+
+    def test_request_body_binary(self):
+        url = self.mockurl('binary-postdata')
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert post_data['encoding'] == 'base64'
+        assert post_data['mimeType'] == "application/octet-stream"
+        assert base64.b64decode(post_data['text']) == b"Hello world!"
+
     def test_response_body(self):
         url = self.mockurl('show-image')
         data = self.assertValidHar(url)

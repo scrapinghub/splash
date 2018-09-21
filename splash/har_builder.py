@@ -52,7 +52,7 @@ class HarBuilder(object):
         entry = self.log.get_mutable_entry(req_id)
         return entry
 
-    def _initial_entry_data(self, start_time, operation, request, outgoingData):
+    def _initial_entry_data(self, start_time, operation, request, content):
         """
         Return initial values for a new HAR entry.
         """
@@ -62,14 +62,13 @@ class HarBuilder(object):
                 'start_time': start_time,
                 'request_start_sending_time': start_time,
                 'request_sent_time': start_time,
-                'response_start_time': start_time,
-                # 'outgoingData': outgoingData,
+                'response_start_time': start_time
             },
             '_splash_processing_state': self.REQUEST_CREATED,
 
             # standard fields
             "startedDateTime": format_datetime(start_time),
-            "request": request2har(request, operation, outgoingData),
+            "request": request2har(request, operation, content),
             "response": {
                 "bodySize": -1,
             },
@@ -98,7 +97,8 @@ class HarBuilder(object):
     def store_timing(self, name):
         self.log.store_timing(name)
 
-    def store_new_request(self, req_id, start_time, operation, request, outgoingData):
+    def store_new_request(self, req_id, start_time, operation, request,
+                          content):
         """
         Store information about a new QNetworkRequest.
         """
@@ -107,7 +107,7 @@ class HarBuilder(object):
             start_time=start_time,
             operation=operation,
             request=request,
-            outgoingData=outgoingData
+            content=content
         ))
 
     def store_new_reply(self, req_id, reply):
