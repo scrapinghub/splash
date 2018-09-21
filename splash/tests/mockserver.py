@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import json
 import os
 import optparse
 import base64
@@ -477,18 +478,28 @@ JsPostResource = _html_resource("""
 """)
 
 
-BinaryPostResource = _html_resource("""
-<html>
-<body>
-<script>
-var xhr = new XMLHttpRequest(); 
-xhr.open("POST", "/postrequest");
-xhr.setRequestHeader("Content-Type", "application/octet-stream");
-xhr.send("Hello world!");
-</script>
-</body>
-</html>
-""")
+class XHRPostPage(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        content_type = getarg(request, "content_type",
+                              "application/octet-stream")
+        body = getarg(request, "body", "Hello world!")
+
+        res = """
+            <html>
+                <body>
+                <script>
+                    var xhr = new XMLHttpRequest(); 
+                    xhr.open("POST", "/postrequest");
+                    xhr.setRequestHeader("Content-Type", %s);
+                    xhr.send(%s);
+                    </script>
+                </body>
+            </html>
+        """ % (json.dumps(content_type), json.dumps(body))
+
+        return res.encode('utf-8')
 
 
 ExternalIFrameResource = _html_resource("""
@@ -1086,7 +1097,7 @@ class Root(Resource):
         self.putChild(b"meta-redirect-target", MetaRedirectTarget())
         self.putChild(b"http-redirect", HttpRedirectResource())
 
-        self.putChild(b"binary-postdata", BinaryPostResource())
+        self.putChild(b"do-post", XHRPostPage())
 
         self.putChild(b"", Index(self.children))
 

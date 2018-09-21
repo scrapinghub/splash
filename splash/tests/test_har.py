@@ -197,7 +197,8 @@ class HarRenderTest(BaseHarRenderTest):
                                      "a-field=field+value")
 
     def test_request_body_binary(self):
-        url = self.mockurl('binary-postdata')
+        url = self.mockurl('do-post?content_type=application%2Foctet-stream&'
+                           'body=Hello+world%21')
         data = self.assertValidHar(url, wait=0.1, request_body=1)
         entries = data['log']['entries']
         assert len(entries) == 2
@@ -205,6 +206,21 @@ class HarRenderTest(BaseHarRenderTest):
         assert post_data['encoding'] == 'base64'
         assert post_data['mimeType'] == "application/octet-stream"
         assert base64.b64decode(post_data['text']) == b"Hello world!"
+
+    def test_request_body_non_ascii_urlencoded(self):
+        # "á" must not be encoded in this URL because it will also not be
+        # encoded in the URL from HAR data (as the default behaviour of
+        # QUrl.toString()) and assertValidHar() will compare them.
+        url = self.mockurl('do-post?'
+                           'content_type=application%2Fx-www-form-urlencoded&'
+                           'body=á')
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert post_data['encoding'] == 'base64'
+        assert post_data['mimeType'] == "application/x-www-form-urlencoded"
+        assert base64.b64decode(post_data['text']) == "á".encode('utf-8')
 
     def test_response_body(self):
         url = self.mockurl('show-image')
