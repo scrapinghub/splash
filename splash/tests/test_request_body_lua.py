@@ -13,17 +13,24 @@ class RequestBodyLuaTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
             splash:wait(0.1)
             local har1 = splash:har{reset=true}
+            local enabled1 = splash.request_body_enabled
             splash.request_body_enabled = false
             assert(splash:go(splash.args.url))
             splash:wait(0.1)
             local har2 = splash:har()
+            local enabled2 = splash.request_body_enabled
             return {
                 har = treat.as_array({har1, har2}),
+                enabled1 = enabled1,
+                enabled2 = enabled2
             }
         end
         """, {'url': url})
         self.assertStatusCode(resp, 200)
         data = resp.json()
+
+        assert data['enabled1']
+        assert not data['enabled2']
 
         har1 = data['har'][0]['log']['entries']
         assert 'postData' in har1[1]['request']
