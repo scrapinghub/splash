@@ -180,9 +180,7 @@ install_pyqt5 () {
         -e QtWebKit \
         -e QtWebKitWidgets \
         -e QtSvg \
-        -e QtPrintSupport
-#        -e QtPrintSupport && \
-    echo beforemake
+        -e QtPrintSupport && \
     make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
     make install && \
     popd  && \
