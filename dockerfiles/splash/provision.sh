@@ -151,6 +151,7 @@ install_pyqt5 () {
     curl -L -o /downloads/pyqt5.tar.gz https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-${SPLASH_PYQT_VERSION}/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
 #    curl -L -o /downloads/sip.tar.gz https://www.riverbankcomputing.com/static/Downloads/sip/sip-${SPLASH_SIP_VERSION}.tar.gz && \
 #    curl -L -o /downloads/pyqt5.tar.gz https://www.riverbankcomputing.com/static/Downloads/PyQt5/PyQt5_gpl-${SPLASH_PYQT_VERSION}.tar.gz && \
+    apt-get install -y --no-install-recommends libqt5svg5-dev libqt5webkit5-dev sip-dev && \
     ls -lh /downloads && \
     # TODO: check downloads
     pushd /builds && \
@@ -162,6 +163,7 @@ install_pyqt5 () {
     make install  && \
     popd  && \
     # PyQt5
+    echo beforelast
     tar xzf /downloads/pyqt5.tar.gz --keep-newer-files  && \
     pushd PyQt5_gpl-${SPLASH_PYQT_VERSION}  && \
 #        --qmake "${SPLASH_QT_PATH}/bin/qmake" \
@@ -178,7 +180,9 @@ install_pyqt5 () {
         -e QtWebKit \
         -e QtWebKitWidgets \
         -e QtSvg \
-        -e QtPrintSupport && \
+        -e QtPrintSupport
+#        -e QtPrintSupport && \
+    echo beforemake
     make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
     make install && \
     popd  && \
