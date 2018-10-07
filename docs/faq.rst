@@ -343,6 +343,19 @@ Please refer to `this great answer from kmike on reddit.
 
 .. _why-lua:
 
+Why are CSS styling and images missing from the .har archive?
+-------------------------------------------------------------
+
+Webkit has an in-memory cache (also `called page-cache <https://webkit.org/blog/427/webkit-page-cache-i-the-basics/>`)
+and a `network cache <http://doc.qt.io/qt-5/qnetworkrequest.html#CacheLoadControl-enum>`. 
+
+If you tell splash to load two pages that share some common resources,
+the second page's .har file will not contain the shared resources because
+they were cached through the page cache.
+
+If you want the .har file to contain all the resources for that page,
+run splasy with the command-line option ``--disable-browser-caches``.
+
 Why does Splash use Lua for scripting, not Python or JavaScript?
 ----------------------------------------------------------------
 
