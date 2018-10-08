@@ -341,7 +341,7 @@ Why was Splash created in the first place?
 Please refer to `this great answer from kmike on reddit.
 <https://www.reddit.com/r/Python/comments/2xp5mr/handling_javascript_in_scrapy_with_splash/cp2vgd6>`__
 
-.. _why-lua:
+.. _why-css-images:
 
 Why are CSS styling and images missing from the .har archive?
 -------------------------------------------------------------
@@ -354,7 +354,9 @@ the second page's .har file will not contain the shared resources because
 they were cached through the page cache.
 
 If you want the .har file to contain all the resources for that page,
-run splasy with the command-line option ``--disable-browser-caches``.
+run splash with the command-line option ``--disable-browser-caches``.
+
+.. _why-lua:
 
 Why does Splash use Lua for scripting, not Python or JavaScript?
 ----------------------------------------------------------------

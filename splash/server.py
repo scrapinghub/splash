@@ -355,7 +355,7 @@ def _set_global_render_settings(js_disable_cross_domain_access, private_mode, di
     if disable_browser_caches is True:
         # disables the page cache (also known as the in-memory webkit cache)
         # see https://webkit.org/blog/427/webkit-page-cache-i-the-basics/
-        settings.setObjectCacheCapacities(0,0,0)
+        settings.setObjectCacheCapacities(0, 0, 0)
         settings.setMaximumPagesInCache(0)
 
 
