@@ -502,7 +502,11 @@ class OnResponseTest(BaseLuaRenderTest):
                         info=response.request.info,
                         headers = response.request.headers,
                         url = response.request.url,
+                        url_comparison = (
+                            response.request.url == splash.args.url
+                        ),
                         method = response.request.method,
+                        method_comparison = (response.request.method == "GET")
                     }
                 }
                 result[#result+1] = resp_info
@@ -540,6 +544,7 @@ class OnResponseTest(BaseLuaRenderTest):
 
         self.assertEqual(e1['request']['info']['url'], url)
         self.assertEqual(e1['request']['url'], url)
+        self.assertEqual(e1['request']['url_comparison'], True)
 
         self.assertEqual(e1['request']['info']['headers'], h1['request']['headers'])
         self.assertEqual(e1['request']['headers'], {
@@ -551,6 +556,7 @@ class OnResponseTest(BaseLuaRenderTest):
             self.assertIn('User-Agent', entry['request']['headers'])
 
         self.assertEqual(e1['request']['method'], 'GET')
+        self.assertEqual(e1['request']['method_comparison'], True)
         self.assertEqual(e1['request']['info']['method'], 'GET')
 
         self.assertEqual(e1['request']['info']['cookies'], h1['request']['cookies'])

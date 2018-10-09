@@ -2032,8 +2032,8 @@ class _ExposedRequest(BaseExposedObject):
 
     def __init__(self, lua, exceptions, url, method, headers, info):
         super(_ExposedRequest, self).__init__(lua, exceptions)
-        self.url = url
-        self.method = method
+        self.url = self.lua.python2lua(url)
+        self.method = self.lua.python2lua(method)
         # TODO: make info and headers attributes lazy
         self.headers = self.lua.python2lua(headers, encoding='latin1')
         self.info = self.lua.python2lua(info)
