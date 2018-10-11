@@ -64,7 +64,7 @@ def parse_opts(jupyter=False, argv=sys.argv):
         help="print Splash version number and exit")
 
     if not jupyter:
-        # This options are specific of splash server and not used in splash-jupyter
+        # These options are specific to splash server and not used in splash-jupyter
         op.add_option("-p", "--port", type="int", default=defaults.SPLASH_PORT,
             help="port to listen to (default: %default)")
         op.add_option("-i", "--ip", type="string", default=defaults.SPLASH_IP,
@@ -82,6 +82,10 @@ def parse_opts(jupyter=False, argv=sys.argv):
         op.add_option("--argument-cache-max-entries", type="int",
             default=defaults.ARGUMENT_CACHE_MAX_ENTRIES,
             help="maximum number of entries in arguments cache (default: %default)")
+        op.add_option("--hide_passed_json_and_lua_source",
+            action="store_true",
+            default=False,
+            help="Hides `posted_json` and `lua_source` from final logs. Added security measure as you're not logging passwords, emails, etc.")
 
     opts, args = op.parse_args(argv)
 

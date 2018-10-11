@@ -196,6 +196,13 @@ class BaseRenderResource(_ValidatingResource):
         return self._write_error(request, 498, ex)
 
     def _log_stats(self, request, options, error=None):
+
+        if self.hide_passed_json_and_lua_source:
+            if 'posted_json' in options:
+                del options['posted_json']
+            if 'lua_source' in options:
+                del options['lua_source']
+
         msg = {
             # Anything we retrieve from Twisted request object contains bytes.
             # We have to convert it to unicode first for json.dump to succeed.
@@ -279,6 +286,9 @@ class ExecuteLuaScriptResource(BaseRenderResource):
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
         self.strict = strict
         self.implicit_main = implicit_main
+
+        # This is hardcoded, but should be set via the command line arg. Not sure where that would be...
+        self.hide_passed_json_and_lua_source = True
 
     def _get_render(self, request, options):
         params = dict(
