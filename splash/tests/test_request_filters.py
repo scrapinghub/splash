@@ -196,9 +196,21 @@ class AllowedSchemesTest(BaseRenderTest):
     # pytest -s --verbosity=6 ./splash/tests/test_request_filters.py -k test_disable_browser_caches
     def test_disable_browser_caches(self):
         # entries if run with caches enabled
-        # in this case we should have  [[content,content,content],[content,no content,no content]]
+        # in this case we should have  [[content,content,content],[content,content,no content]]
         ce = self.run_with_extra_args([])
+        self.assertIsNotNone(ce[0][0])
+        self.assertIsNotNone(ce[0][1])
+        self.assertIsNotNone(ce[0][2])
+        self.assertIsNotNone(ce[1][0])
+        self.assertIsNotNone(ce[1][1])
+        self.assertIsNone(ce[1][2])
+
         # entries if run with caches disabled 
         # in this case we should have  [[content,content,content],[content,content,content]]
         cd = self.run_with_extra_args(['--disable-browser-caches'])
-        print(json.dumps(ce))
+        self.assertIsNotNone(cd[0][0])
+        self.assertIsNotNone(cd[0][1])
+        self.assertIsNotNone(cd[0][2])
+        self.assertIsNotNone(cd[1][0])
+        self.assertIsNotNone(cd[1][1])
+        self.assertIsNotNone(cd[1][2])

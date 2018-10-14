@@ -901,8 +901,37 @@ class Subresources(Resource):
             return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
-class SubresourcesWithCaching(Subresources):
-    """ Embedded css and image """
+class SubresourcesWithCaching(Resource):
+    """
+        Embedded css and image.
+        Allows caching of the css and the image by setting the Cache-Control header.
+
+        Very similar to the /subresources/ endpoint.
+    """
+
+    def getChild(self, name, request):
+        if name == b"style.css":
+            return self.StyleSheet()
+        if name == b"img.gif":
+            return self.Image()
+        return self
+
+    class StyleSheet(Resource):
+
+        @use_chunked_encoding
+        def render_GET(self, request):
+            request.setHeader(b"Content-Type", b"text/css; charset=utf-8")
+            request.setHeader(b"Cache-Control", b"public, max-age=999999, s-maxage=999999")
+            print("Request Style!")
+            return b"body { background-color: red; }"
+
+    class Image(Resource):
+
+        @use_chunked_encoding
+        def render_GET(self, request):
+            request.setHeader(b"Content-Type", b"image/gif")
+            request.setHeader(b"Cache-Control", b"public, max-age=999999, s-maxage=999999")
+            return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
     @use_chunked_encoding
     def render_GET(self, request):
