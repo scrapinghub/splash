@@ -901,6 +901,22 @@ class Subresources(Resource):
             return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
+class SubresourcesWithCaching(Subresources):
+    """ Embedded css and image """
+
+    @use_chunked_encoding
+    def render_GET(self, request):
+        return ("""<html><head>
+                <link rel="stylesheet" href="subresources-with-caching/style.css" />
+            </head>
+            <body>
+            <img id="image" src="subresources-with-caching/img.gif"
+                 onload="window.imageLoaded = true;"
+                 onerror="window.imageLoaded = false;"/>
+            </body>
+        </html>""").encode('utf-8')
+
+
 class SetHeadersResource(Resource):
 
     @use_chunked_encoding
@@ -1006,6 +1022,7 @@ class Root(Resource):
         self.putChild(b"very-long-green-page", VeryLongGreenPage())
         self.putChild(b"rgb-stripes", RgbStripesPage())
         self.putChild(b"subresources", Subresources())
+        self.putChild(b"subresources-with-caching", SubresourcesWithCaching())
         self.putChild(b"set-header", SetHeadersResource())
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())
