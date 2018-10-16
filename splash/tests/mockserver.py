@@ -910,20 +910,9 @@ class SubresourcesWithCaching(Resource):
     """
 
     def getChild(self, name, request):
-        if name == b"style.css":
-            return self.StyleSheet()
         if name == b"img.gif":
             return self.Image()
         return self
-
-    class StyleSheet(Resource):
-
-        @use_chunked_encoding
-        def render_GET(self, request):
-            request.setHeader(b"Content-Type", b"text/css; charset=utf-8")
-            request.setHeader(b"Cache-Control", b"public, max-age=999999, s-maxage=999999")
-            print("Request Style!")
-            return b"body { background-color: red; }"
 
     class Image(Resource):
 
@@ -936,7 +925,6 @@ class SubresourcesWithCaching(Resource):
     @use_chunked_encoding
     def render_GET(self, request):
         return ("""<html><head>
-                <link rel="stylesheet" href="subresources-with-caching/style.css" />
             </head>
             <body>
             <img id="image" src="subresources-with-caching/img.gif"
