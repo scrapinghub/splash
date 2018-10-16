@@ -903,8 +903,8 @@ class Subresources(Resource):
 
 class SubresourcesWithCaching(Resource):
     """
-        Embedded css and image.
-        Allows caching of the css and the image by setting the Cache-Control header.
+        Embedded css.
+        Allows caching of the image by setting the Cache-Control header.
 
         Very similar to the /subresources/ endpoint.
     """
@@ -924,8 +924,7 @@ class SubresourcesWithCaching(Resource):
 
     @use_chunked_encoding
     def render_GET(self, request):
-        return ("""<html><head>
-            </head>
+        return ("""<html>
             <body>
             <img id="image" src="subresources-with-caching/img.gif"
                  onload="window.imageLoaded = true;"
