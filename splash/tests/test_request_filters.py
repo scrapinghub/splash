@@ -180,37 +180,31 @@ class AllowedSchemesTest(BaseRenderTest):
             r = requests.get(render_url, params={'url': test_url, 'response_body': 1})
             self.assertStatusCode(r, 200)
             entry11 = self.findHAREntry(r.json(),r"^.*subresources-with-caching$")
-            entry12 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/style.css$")
-            entry13 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/img.gif$")
+            entry12 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/img.gif$")
 
             # 2nd page fetch
             r = requests.get(render_url, params={'url': test_url, 'response_body': 1})
             self.assertStatusCode(r, 200)
             entry21 = self.findHAREntry(r.json(),r"^.*subresources-with-caching$")
-            entry22 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/style.css$")
-            entry23 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/img.gif$")
+            entry22 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/img.gif$")
 
-            return [[entry11,entry12,entry13],[entry21,entry22,entry23]]
+            return [[entry11,entry12],[entry21,entry22]]
 
     # run just this test using
     # pytest -s --verbosity=6 ./splash/tests/test_request_filters.py -k test_disable_browser_caches
     def test_disable_browser_caches(self):
         # entries if run with caches enabled
-        # in this case we should have  [[content,content,content],[content,content,no content]]
+        # in this case we should have  [[content,content],[content,no content]]
         ce = self.run_with_extra_args([])
         self.assertIsNotNone(ce[0][0])
         self.assertIsNotNone(ce[0][1])
-        self.assertIsNotNone(ce[0][2])
         self.assertIsNotNone(ce[1][0])
-        self.assertIsNotNone(ce[1][1])
-        self.assertIsNone(ce[1][2])
+        self.assertIsNone(ce[1][1])
 
         # entries if run with caches disabled 
-        # in this case we should have  [[content,content,content],[content,content,content]]
+        # in this case we should have  [[content,content],[content,content]]
         cd = self.run_with_extra_args(['--disable-browser-caches'])
         self.assertIsNotNone(cd[0][0])
         self.assertIsNotNone(cd[0][1])
-        self.assertIsNotNone(cd[0][2])
         self.assertIsNotNone(cd[1][0])
         self.assertIsNotNone(cd[1][1])
-        self.assertIsNotNone(cd[1][2])
