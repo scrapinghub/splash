@@ -51,6 +51,8 @@ def parse_opts(jupyter=False, argv=sys.argv):
         help="disable Xvfb auto start")
     op.add_option("--disable-lua-sandbox", action="store_true", default=False,
         help="disable Lua sandbox")
+    op.add_option("--disable-browser-caches", action="store_true", default=False,
+        help="disables in-memory and network caches used by webkit")
     op.add_option("--lua-package-path", default="",
         help="semicolon-separated places to add to Lua package.path. "
              "Each place can have a ? in it that's replaced with the module name.")
@@ -178,6 +180,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
                   lua_sandbox_allowed_modules=(),
                   strict_lua_runner=False,
                   argument_cache_max_entries=None,
+                  disable_browser_caches=False,
                   verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
@@ -277,16 +280,19 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
                           strict_lua_runner=False,
                           argument_cache_max_entries=None,
                           verbosity=None,
-                          server_factory=splash_server):
+                          server_factory=splash_server,
+                          disable_browser_caches=False,
+                          ):
     from splash import network_manager
     network_manager_factory = network_manager.NetworkManagerFactory(
         filters_path=filters_path,
         verbosity=verbosity,
         allowed_schemes=allowed_schemes,
+        disable_browser_caches=disable_browser_caches,
     )
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
-    _set_global_render_settings(js_disable_cross_domain_access, private_mode)
+    _set_global_render_settings(js_disable_cross_domain_access, private_mode, disable_browser_caches)
     return server_factory(
         portnum=portnum,
         ip=ip,
@@ -300,6 +306,7 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
         lua_package_path=lua_package_path,
         lua_sandbox_allowed_modules=lua_sandbox_allowed_modules,
         strict_lua_runner=strict_lua_runner,
+        disable_browser_caches=disable_browser_caches,
         verbosity=verbosity,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
@@ -331,7 +338,7 @@ def _check_js_profiles_path(js_profiles_path):
     return js_profiles_path
 
 
-def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
+def _set_global_render_settings(js_disable_cross_domain_access, private_mode, disable_browser_caches):
     from PyQt5.QtWebKit import QWebSecurityOrigin, QWebSettings
 
     if js_disable_cross_domain_access is False:
@@ -344,6 +351,12 @@ def _set_global_render_settings(js_disable_cross_domain_access, private_mode):
     settings = QWebSettings.globalSettings()
     settings.setAttribute(QWebSettings.PrivateBrowsingEnabled, private_mode)
     settings.setAttribute(QWebSettings.LocalStorageEnabled, not private_mode)
+
+    if disable_browser_caches is True:
+        # disables the page cache (also known as the in-memory webkit cache)
+        # see https://webkit.org/blog/427/webkit-page-cache-i-the-basics/
+        settings.setObjectCacheCapacities(0, 0, 0)
+        settings.setMaximumPagesInCache(0)
 
 
 def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
@@ -388,6 +401,7 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
             max_timeout=opts.max_timeout,
             argument_cache_max_entries=opts.argument_cache_max_entries,
             server_factory=server_factory,
+            disable_browser_caches=opts.disable_browser_caches
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 

@@ -901,6 +901,38 @@ class Subresources(Resource):
             return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
 
 
+class SubresourcesWithCaching(Resource):
+    """
+        Embedded css.
+        Allows caching of the image by setting the Cache-Control header.
+
+        Very similar to the /subresources/ endpoint.
+    """
+
+    def getChild(self, name, request):
+        if name == b"img.gif":
+            return self.Image()
+        return self
+
+    class Image(Resource):
+
+        @use_chunked_encoding
+        def render_GET(self, request):
+            request.setHeader(b"Content-Type", b"image/gif")
+            request.setHeader(b"Cache-Control", b"public, max-age=999999, s-maxage=999999")
+            return base64.decodebytes(b'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')
+
+    @use_chunked_encoding
+    def render_GET(self, request):
+        return ("""<html>
+            <body>
+            <img id="image" src="subresources-with-caching/img.gif"
+                 onload="window.imageLoaded = true;"
+                 onerror="window.imageLoaded = false;"/>
+            </body>
+        </html>""").encode('utf-8')
+
+
 class SetHeadersResource(Resource):
 
     @use_chunked_encoding
@@ -1006,6 +1038,7 @@ class Root(Resource):
         self.putChild(b"very-long-green-page", VeryLongGreenPage())
         self.putChild(b"rgb-stripes", RgbStripesPage())
         self.putChild(b"subresources", Subresources())
+        self.putChild(b"subresources-with-caching", SubresourcesWithCaching())
         self.putChild(b"set-header", SetHeadersResource())
         self.putChild(b"echourl", EchoUrl())
         self.putChild(b"bad-content-type", InvalidContentTypeResource())

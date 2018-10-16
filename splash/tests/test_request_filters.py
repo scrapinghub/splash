@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
+import re
+import json
 
 import requests
 import pytest
@@ -140,6 +142,19 @@ class AllowedSchemesTest(BaseRenderTest):
     )
     FILE_URL = 'file://' + FILE_PATH
 
+    def findHAREntry(self, har, url_pattern):
+        """
+        Searches through the existing resources in the HAR contents for
+        the one that matches the request url agains the given url pattern.
+
+        Returns the first entry that matches the url pattern.
+        """
+        for e in har['log']['entries']:
+            if re.match(url_pattern,e['request']['url']):
+                return e
+        return None
+
+
     def test_file_scheme_disabled_by_default(self):
         assert os.path.isfile(self.FILE_PATH)
         r = self.request({'url': self.FILE_URL})
@@ -155,3 +170,41 @@ class AllowedSchemesTest(BaseRenderTest):
 
         self.assertStatusCode(r, 200)
         self.assertIn('script.js', r.text)
+
+    def run_with_extra_args(self, extra_args): 
+        with SplashServer(extra_args=extra_args) as splash:
+            test_url = self.mockurl('subresources-with-caching')
+            render_url = splash.url('render.har')
+
+            # 1st page fetch
+            r = requests.get(render_url, params={'url': test_url, 'response_body': 1})
+            self.assertStatusCode(r, 200)
+            entry11 = self.findHAREntry(r.json(),r"^.*subresources-with-caching$")
+            entry12 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/img.gif$")
+
+            # 2nd page fetch
+            r = requests.get(render_url, params={'url': test_url, 'response_body': 1})
+            self.assertStatusCode(r, 200)
+            entry21 = self.findHAREntry(r.json(),r"^.*subresources-with-caching$")
+            entry22 = self.findHAREntry(r.json(),r"^.*subresources-with-caching/img.gif$")
+
+            return [[entry11,entry12],[entry21,entry22]]
+
+    # run just this test using
+    # pytest -s --verbosity=6 ./splash/tests/test_request_filters.py -k test_disable_browser_caches
+    def test_disable_browser_caches(self):
+        # entries if run with caches enabled
+        # in this case we should have  [[content,content],[content,no content]]
+        ce = self.run_with_extra_args([])
+        self.assertIsNotNone(ce[0][0])
+        self.assertIsNotNone(ce[0][1])
+        self.assertIsNotNone(ce[1][0])
+        self.assertIsNone(ce[1][1])
+
+        # entries if run with caches disabled 
+        # in this case we should have  [[content,content],[content,content]]
+        cd = self.run_with_extra_args(['--disable-browser-caches'])
+        self.assertIsNotNone(cd[0][0])
+        self.assertIsNotNone(cd[0][1])
+        self.assertIsNotNone(cd[1][0])
+        self.assertIsNotNone(cd[1][1])

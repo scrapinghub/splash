@@ -31,9 +31,10 @@ from splash.cookies import SplashCookieJar
 
 
 class NetworkManagerFactory(object):
-    def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None):
+    def __init__(self, filters_path=None, verbosity=None, allowed_schemes=None, disable_browser_caches=None):
         verbosity = defaults.VERBOSITY if verbosity is None else verbosity
         self.verbosity = verbosity
+        self.disable_browser_caches = disable_browser_caches
         self.request_middlewares = []
         self.response_middlewares = []
         self.adblock_rules = None
@@ -66,6 +67,7 @@ class NetworkManagerFactory(object):
             request_middlewares=self.request_middlewares,
             response_middlewares=self.response_middlewares,
             verbosity=self.verbosity,
+            disable_browser_caches=self.disable_browser_caches,
         )
         manager.setCache(None)
         return manager
@@ -88,11 +90,12 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     _REQUEST_ID = QNetworkRequest.User + 1
     _SHOULD_TRACK = QNetworkRequest.User + 2
 
-    def __init__(self, verbosity):
+    def __init__(self, verbosity, disable_browser_caches):
         super(ProxiedQNetworkAccessManager, self).__init__()
         self.sslErrors.connect(self._on_ssl_errors)
         self.finished.connect(self._on_finished)
         self.verbosity = verbosity
+        self.disable_browser_caches = disable_browser_caches
         self._reply_timeout_timers = {}  # requestId => timer
         self._default_proxy = self.proxy()
         self.cookiejar = SplashCookieJar(self)
@@ -209,6 +212,13 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         req = QNetworkRequest(request)
         req_id = next(self._request_ids)
         req.setAttribute(self._REQUEST_ID, req_id)
+
+        if self.disable_browser_caches:
+            # disables the network cache
+            # see http://doc.qt.io/qt-5/qnetworkrequest.html#CacheLoadControl-enum
+            req.setAttribute(QNetworkRequest.CacheLoadControlAttribute, QNetworkRequest.AlwaysNetwork)
+            req.setAttribute(QNetworkRequest.CacheSaveControlAttribute, False)
+
         for attr in ['timeout', 'track_response_body']:
             if hasattr(request, attr):
                 setattr(req, attr, getattr(request, attr))
@@ -418,10 +428,11 @@ class SplashQNetworkAccessManager(ProxiedQNetworkAccessManager):
     * additional logging.
 
     """
-    def __init__(self, request_middlewares, response_middlewares, verbosity):
-        super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity)
+    def __init__(self, request_middlewares, response_middlewares, verbosity, disable_browser_caches=None):
+        super(SplashQNetworkAccessManager, self).__init__(verbosity=verbosity, disable_browser_caches=disable_browser_caches)
         self.request_middlewares = request_middlewares
         self.response_middlewares = response_middlewares
+        self.disable_browser_caches = disable_browser_caches
 
     def run_response_middlewares(self):
         reply = self.sender()
