@@ -46,7 +46,9 @@ Aforementioned libraries are pre-imported; there is no need to ``require`` them.
 .. note::
 
     Not all functions from these libraries are currently exposed
-    when :ref:`Sandbox <lua-sandbox>` is enabled.
+    when :ref:`Sandbox <lua-sandbox>` is enabled. Check `the code
+    <https://github.com/scrapinghub/splash/blob/master/splash/lua_modules/sandbox.lua>`_
+    for detailed list of functions available.
 
 
 .. _lib-json:
