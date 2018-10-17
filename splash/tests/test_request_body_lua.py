@@ -38,7 +38,7 @@ class RequestBodyLuaTest(BaseLuaRenderTest):
         har2 = data['har'][1]['log']['entries']
         assert 'postData' not in har2[1]['request']
 
-    def test_request_info_postdata(self):
+    def test_request_info_on_request_postdata(self):
         url = self.mockurl('jspost')
         resp = self.request_lua("""
         function main(splash)
@@ -55,6 +55,36 @@ class RequestBodyLuaTest(BaseLuaRenderTest):
             assert(splash:go(splash.args.url))
             splash:wait(0.1)
             
+            local post_data = request_info["postData"]
+            return {
+                text = post_data["text"],
+                mime_type = post_data["mimeType"]
+            }
+        end
+        """, {'url': url})
+        self.assertStatusCode(resp, 200)
+        data = resp.json()
+
+        assert data['text'] == "hidden-field=i-am-hidden&a-field=field+value"
+        assert data['mime_type'] == "application/x-www-form-urlencoded"
+
+    def test_request_info_on_response_postdata(self):
+        url = self.mockurl('jspost')
+        resp = self.request_lua("""
+        function main(splash)
+            splash.request_body_enabled = true
+
+            local request_info = nil
+
+            splash:on_response(function(response)
+                if response.request.method == "POST" then
+                    request_info = response.request.info
+                end
+            end)
+
+            assert(splash:go(splash.args.url))
+            splash:wait(0.1)
+
             local post_data = request_info["postData"]
             return {
                 text = post_data["text"],
