@@ -419,6 +419,51 @@ time after each page load in case of redirects:
         return nil, "too_many_redirects"
     end
 
+It's also common practice to wait for a specific condition, other than a fixed
+amount of time:
+
+.. code-block:: lua
+
+    function wait_until(splash, timeout, polling_interval, check_func, ...)
+        -- XXX: polling_interval shall not be too small
+        local ok, result1, result2 = splash:with_timeout(function()
+            while true do
+               local ok, reason = splash:wait(polling_interval)
+               if not ok then
+                   return ok, string.format('wait failed: %s', reason)
+               end
+               local check_result = check_func(...)
+               if check_result then
+                   return true, check_result
+               end
+            end
+        end, timeout)
+        if not ok then
+            return nil, string.format('timeout exceeded: %s', result1)
+        end
+        return result1, result2
+    end
+
+    function main(splash)
+        -- Goto example.com and wait for a specific node to be loaded in the DOM
+        splash:go('http://example.com')
+        wait_until(splash, 10, 0.1, splash.select, splash, 'div#example_selector')
+
+        -- Goto example.com and wait for a specific response to be downloaded
+        local example_response_downloaded = false
+        splash:on_response(function (response)
+            if string.find(response.url, 'specific_url_pattern_here') then
+                example_response_downloaded = true
+            end
+        end)
+        splash:go('http://example.com')
+        wait_until(
+            splash, 10, 0.1,
+            function ()
+                return example_response_downloaded
+            end
+        )
+    end
 
 .. _splash-jsfunc:
 
