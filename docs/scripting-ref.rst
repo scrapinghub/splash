@@ -163,7 +163,7 @@ request content is not available in :ref:`splash-request-info` and in HAR_
 exports. To make request content available to a Lua script set
 ``splash.request_body_enabled = true``.
 
-Note that request data in :ref:`splash-request-info` is not available in the
+Note that request body in :ref:`splash-request-info` is not available in the
 callback :ref:`splash-on-response-headers` or in the request of the response
 returned by :ref:`splash-http-get` and :ref:`splash-http-post`.
 
