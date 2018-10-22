@@ -486,6 +486,10 @@ class XHRPostPage(Resource):
                               "application/octet-stream")
         body = getarg(request, "body", "Hello world!")
 
+        # Used to test large requests.
+        body_repeat = int(getarg(request, "body_repeat", 1))
+        body *= body_repeat
+
         res = """
             <html>
                 <body>
