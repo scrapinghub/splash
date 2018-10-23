@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import json
 import os
 import optparse
 import base64
@@ -467,13 +468,42 @@ JsPostResource = _html_resource("""
 <html>
 <body>
 <form action="/postrequest" method="POST">
-    <input type="hidden" value="i-am-hidden"/>
+    <input type="hidden" name="hidden-field" value="i-am-hidden"/>
+    <input type="text" name="a-field" value="field value"/>
     <input type="submit" value="go"/>
 </form>
 <script>document.querySelector('form').submit();</script>
 </body>
 </html>
 """)
+
+
+class XHRPostPage(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        content_type = getarg(request, "content_type",
+                              "application/octet-stream")
+        body = getarg(request, "body", "Hello world!")
+
+        # Used to test large requests.
+        body_repeat = int(getarg(request, "body_repeat", 1))
+        body *= body_repeat
+
+        res = """
+            <html>
+                <body>
+                <script>
+                    var xhr = new XMLHttpRequest(); 
+                    xhr.open("POST", "/postrequest");
+                    xhr.setRequestHeader("Content-Type", %s);
+                    xhr.send(%s);
+                    </script>
+                </body>
+            </html>
+        """ % (json.dumps(content_type), json.dumps(body))
+
+        return res.encode('utf-8')
 
 
 ExternalIFrameResource = _html_resource("""
@@ -1070,6 +1100,8 @@ class Root(Resource):
         self.putChild(b"meta-redirect1", MetaRedirect1())
         self.putChild(b"meta-redirect-target", MetaRedirectTarget())
         self.putChild(b"http-redirect", HttpRedirectResource())
+
+        self.putChild(b"do-post", XHRPostPage())
 
         self.putChild(b"", Index(self.children))
 

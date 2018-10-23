@@ -46,6 +46,7 @@ class SplashQWebPage(QWebPage):
     skip_custom_headers = False
     navigation_locked = False
     resource_timeout = 0
+    request_body_enabled = False
     response_body_enabled = False
 
     def __init__(self, verbosity=0):

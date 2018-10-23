@@ -179,6 +179,66 @@ class HarRenderTest(BaseHarRenderTest):
             (self.mockurl('jsredirect-chain'), 200),
         ])
 
+    def test_request_body(self):
+        url = self.mockurl('jspost')
+        data = self.assertValidHar(url, wait=0.1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        for entry in entries:
+            assert 'postData' not in entry['request']
+
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert 'encoding' not in post_data
+        assert post_data['mimeType'] == "application/x-www-form-urlencoded"
+        assert post_data['text'] == ("hidden-field=i-am-hidden&"
+                                     "a-field=field+value")
+
+    def test_request_body_binary(self):
+        url = self.mockurl('do-post?content_type=application%2Foctet-stream&'
+                           'body=Hello+world%21')
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert post_data['encoding'] == 'base64'
+        assert post_data['mimeType'] == "application/octet-stream"
+        assert base64.b64decode(post_data['text']) == b"Hello world!"
+
+    def test_request_body_non_ascii_urlencoded(self):
+        # "á" must not be encoded in this URL because it will also not be
+        # encoded in the URL from HAR data (as the default behaviour of
+        # QUrl.toString()) and assertValidHar() will compare them.
+        url = self.mockurl('do-post?'
+                           'content_type=application%2Fx-www-form-urlencoded&'
+                           'body=á')
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert post_data['encoding'] == 'base64'
+        assert post_data['mimeType'] == "application/x-www-form-urlencoded"
+        assert base64.b64decode(post_data['text']) == "á".encode('utf-8')
+
+    def test_large_request_body(self):
+        # Test with something larger than the QIODevice buffer, which is 16 KiB
+        # (see QIODEVICE_BUFFERSIZE in qiodevice_p.h).
+        KiB = 2 ** 10
+        body_size = 100 * KiB
+        url = self.mockurl(('do-post?'
+                            'content_type=application%2Foctet-stream&'
+                            'body=A&'
+                            'body_repeat={}').format(body_size))
+        data = self.assertValidHar(url, wait=0.1, request_body=1)
+        entries = data['log']['entries']
+        assert len(entries) == 2
+        post_data = entries[1]['request']['postData']
+        assert post_data['encoding'] == 'base64'
+        assert post_data['mimeType'] == "application/octet-stream"
+        assert base64.b64decode(post_data['text']) == b'A' * body_size
+
     def test_response_body(self):
         url = self.mockurl('show-image')
         data = self.assertValidHar(url)

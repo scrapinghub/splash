@@ -212,6 +212,7 @@ class BrowserTab(QObject):
 
         self.set_js_enabled(True)
         self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
+        self.set_request_body_enabled(defaults.REQUEST_BODY_ENABLED)
         self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
         self.set_indexeddb_enabled(defaults.INDEXEDDB_ENABLED)
         self.set_webgl_enabled(defaults.WEBGL_ENABLED)
@@ -253,6 +254,12 @@ class BrowserTab(QObject):
         in case of conflicts.
         """
         self.web_page.custom_headers = headers
+
+    def get_request_body_enabled(self):
+        return self.web_page.request_body_enabled
+
+    def set_request_body_enabled(self, val):
+        self.web_page.request_body_enabled = val
 
     def get_response_body_enabled(self):
         return self.web_page.response_body_enabled

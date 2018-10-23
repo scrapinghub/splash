@@ -87,17 +87,20 @@ class ResourceTimeoutMiddleware(object):
         return request
 
 
-class ResponseBodyTrackingMiddleware(object):
+class RequestResponseBodyTrackingMiddleware(object):
     """
-    Request middleware which enables/disables response body tracking based on
-    ``response_body_enabled`` attribute of QWebPage.
+    Request middleware which enables/disables request and response body
+    tracking based on ``request_body_enabled`` and ``response_body_enabled``
+    attributes of QWebPage.
     """
     def process(self, request, render_options, operation, data):
         web_frame = get_request_webframe(request)
         if not web_frame:
             return request
-        track = getattr(web_frame.page(), 'response_body_enabled', False)
-        request.track_response_body = track
+        request.track_request_body = getattr(web_frame.page(),
+                                             'request_body_enabled', False)
+        request.track_response_body = getattr(web_frame.page(),
+                                              'response_body_enabled', False)
         return request
 
 
