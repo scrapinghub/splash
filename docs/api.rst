@@ -79,7 +79,7 @@ proxy : string : optional
   Proxy profile name or proxy URL. See :ref:`Proxy Profiles`.
 
   A proxy URL should have the following format:
-  ``[protocol://][user:password@]proxyhost[:port])``
+  ``[protocol://][user:password@]proxyhost[:port]``
 
   Where protocol is either ``http`` or ``socks5``. If port is not specified,
   the port 1080 is used by default.
