@@ -62,19 +62,19 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
 class DirectSplashProxyFactoryTest(unittest.TestCase):
     def test_parse(self):
         factory = DirectSplashProxyFactory('http://pepe:hunter2@proxy.com:1234')
-        self.assertEquals(factory.proxy.port(), 1234)
-        self.assertEquals(factory.proxy.user(), 'pepe')
-        self.assertEquals(factory.proxy.password(), 'hunter2')
-        self.assertEquals(factory.proxy.hostName(), 'proxy.com')
-        self.assertEquals(factory.proxy.type(), PROXY_TYPES['HTTP'])
+        self.assertEqual(factory.proxy.port(), 1234)
+        self.assertEqual(factory.proxy.user(), 'pepe')
+        self.assertEqual(factory.proxy.password(), 'hunter2')
+        self.assertEqual(factory.proxy.hostName(), 'proxy.com')
+        self.assertEqual(factory.proxy.type(), PROXY_TYPES['HTTP'])
 
     def test_default_port(self):
         factory = DirectSplashProxyFactory('http://proxy.com')
-        self.assertEquals(factory.proxy.port(), 1080)
+        self.assertEqual(factory.proxy.port(), 1080)
 
     def test_socks5(self):
         factory = DirectSplashProxyFactory('socks5://proxy.com')
-        self.assertEquals(factory.proxy.type(), PROXY_TYPES['SOCKS5'])
+        self.assertEqual(factory.proxy.type(), PROXY_TYPES['SOCKS5'])
 
     def test_invalid(self):
         with self.assertRaises(BadOption):
