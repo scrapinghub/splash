@@ -66,9 +66,10 @@ def inspect_parse(inspector):
     ["foo['go", ObjectAttributeIndexed(["go", "'", "foo"])],
     ["foo['bar']['go", ObjectAttributeIndexed(["go", "'", "bar", "foo"])],
     ["foo.bar['go", ObjectAttributeIndexed(["go", "'", "bar", "foo"])],
-    pytest.mark.xfail(["foo.bar:['go", None]),  # parsed as "Standalone"
-    pytest.mark.xfail(["x.['go", None]),
-    pytest.mark.xfail(["['go", None]),
+
+    pytest.param("foo.bar:['go", None, marks=pytest.mark.xfail()),  # parsed as "Standalone"
+    pytest.param("x.['go", None, marks=pytest.mark.xfail()),
+    pytest.param("['go", None, marks=pytest.mark.xfail()),
 
     # finished ["foo"] lookups
     ["foo['go']", ObjectIndexedComplete(["go", "foo"])],
