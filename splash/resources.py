@@ -8,6 +8,7 @@ import time
 import json
 import resource
 
+from twisted.python.failure import Failure
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web.static import File
@@ -244,7 +245,15 @@ class BaseRenderResource(_ValidatingResource):
         return self._write_error(request, 400, failure.value)
 
     def _finish_request(self, failure, request, options):
-        self._log_stats(request, options, error=failure)
+        if isinstance(failure, Failure):
+            # usually failure should be None or dict,
+            # but if _on_internal_error fails (?),
+            # we may get a Failure instance here
+            error = self._format_error(0, failure.value)
+        else:
+            error = failure
+
+        self._log_stats(request, options, error=error)
         if not request._disconnected:
             request.finish()
 
