@@ -13,10 +13,12 @@ RUN apt-get update -q && \
         python3-openssl \
         libsqlite3-dev
 
-RUN pip3 install ipython[notebook]==5.4.0 notebook==5.0.0
+# ADD . /app
+RUN pip3 install -r /app/requirements-jupyter.txt
+# RUN pip3 freeze
 
 RUN python3 -m splash.kernel install && \
-    echo '#!/bin/bash\nSPLASH_ARGS="$@" jupyter notebook --allow-root --no-browser --NotebookApp.iopub_data_rate_limit=10000000000 --port=8888 --ip=*' > start-notebook.sh && \
+    echo '#!/bin/bash\nSPLASH_ARGS="$@" jupyter notebook --allow-root --no-browser --NotebookApp.iopub_data_rate_limit=10000000000 --port=8888 --ip=0.0.0.0' > start-notebook.sh && \
     chmod +x start-notebook.sh
 
 VOLUME /notebooks
