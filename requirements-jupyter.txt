@@ -1,0 +1,11 @@
+ipykernel==5.1.0
+ipython==7.2.0
+ipython-genutils==0.2.0
+ipywidgets==7.4.2
+jupyter==1.0.0
+jupyter-client==5.2.4
+jupyter-console==6.0.0
+jupyter-core==4.4.0
+nbconvert==5.4.0
+nbformat==4.4.0
+notebook==5.7.4

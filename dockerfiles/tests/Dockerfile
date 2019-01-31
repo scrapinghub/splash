@@ -19,8 +19,9 @@ RUN apt-get update -q && \
         libsqlite3-dev \
         git
 
-RUN pip install -r /app/requirements-dev.txt
-RUN pip install -U pytest-cov coverage codecov pytest-xdist
+# ADD . /app
+RUN pip3 install -r /app/requirements-dev.txt
+RUN pip3 install -U pytest-cov coverage codecov pytest-xdist
 
 ADD . /app
 RUN pip3 install /app
