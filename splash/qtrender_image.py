@@ -48,15 +48,19 @@ class QtImageRenderer(object):
         if self.region is not None and self.height:
             raise ValueError("'height' argument is not supported when "
                              "'region' is argument is passed")
-        # For JPEG it's okay to use this format as well, but canvas should be
-        # white to remove black areas from image where it was transparent
-        self.qt_image_format = QImage.Format_ARGB32
+
         # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for
-        # Pillow, hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGR'.
-        self.pillow_image_format = 'RGBA'
-        # mapping is taken from
+        # Pillow, hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGRX'.
+        # mapping for self.pillow_image_decoder is taken from
         # https://github.com/python-pillow/Pillow/blob/2.9.0/libImaging/Pack.c#L526
-        self.pillow_decoder_format = 'BGRA'
+        if self.is_jpeg():
+            self.qt_image_format = QImage.Format_ARGB32
+            self.pillow_image_format = "RGB"
+            self.pillow_decoder_format = "BGRX"
+        else:
+            self.qt_image_format = QImage.Format_ARGB32
+            self.pillow_image_format = 'RGBA'
+            self.pillow_decoder_format = 'BGRA'
 
     def is_jpeg(self):
         return self.image_format == 'JPEG'
@@ -264,13 +268,8 @@ class QtImageRenderer(object):
         tile_conf = self._calculate_tiling(
             to_paint=render_rect.intersected(QRect(QPoint(0, 0), canvas_size)))
 
-        canvas = Image.new(self.pillow_image_format, self._qsize_to_tuple(canvas_size))
-        if self.is_jpeg():
-            # Fill canvas with white color. Without this transparent parts of
-            # a web page would be rendered as black.
-            # Browser canvas is white as well, so this will produce the same result
-            # as we can see in browser.
-            canvas.paste('white')
+        canvas = Image.new(self.pillow_image_format,
+                           size=self._qsize_to_tuple(canvas_size))
         ratio = render_rect.width() / float(web_rect.width())
         tile_qimage = QImage(tile_conf['tile_size'], self.qt_image_format)
         painter = QPainter(tile_qimage)

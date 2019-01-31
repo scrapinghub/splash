@@ -64,7 +64,7 @@ setup_args = {
         'adblockparser',
         'xvfbwrapper',
         'funcparserlib',
-        'Pillow > 2.0',
+        'Pillow >= 3.4.2',
     ],
     'classifiers': [
         'Programming Language :: Python',
