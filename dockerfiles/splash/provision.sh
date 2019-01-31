@@ -191,7 +191,7 @@ install_python_deps () {
     _activate_venv && \
     ${_PYTHON} -m pip install -U pip setuptools six && \
     ${_PYTHON} -m pip install \
-        qt5reactor==0.4 \
+        qt5reactor==0.5 \
         psutil==5.0.0 \
         Twisted==18.7.0 \
         adblockparser==0.7 \
