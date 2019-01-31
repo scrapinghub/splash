@@ -27,6 +27,8 @@ testing Docker container.
       docker build -t splash .
 
    It can take a while (maybe half an hour).
+   Alternatively, you can temporarily change ``dockerfiles/tests/Dockerfile``
+    or ``setup.py`` to install new dependencies.
 
 2. Create a testing Docker image::
 
