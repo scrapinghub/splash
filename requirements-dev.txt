@@ -1,8 +1,10 @@
 # the following libraries are only required by tests
 pytest >= 4.1.1
-pyOpenSSL
-cryptography
-requests >= 1.0
+pyasn-modules >= 0.2.4
+service-identity >= 18.1.0
+pyOpenSSL >= 19.0.0
+cryptography >= 2.5
+requests >= 2.21
 jsonschema >= 2.0
 strict-rfc3339
 jupyter_kernel_test
