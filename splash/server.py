@@ -221,7 +221,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
     )
 
     log.msg(
-        "Server listening on %s:%s" % (ip,portnum)
+        "Server listening on http://%s:%s" % (ip, portnum)
     )
 
     root = Root(
