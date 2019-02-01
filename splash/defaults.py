@@ -66,7 +66,7 @@ SPLASH_PORT = 8050
 SPLASH_IP = '0.0.0.0'
 
 # pool options
-SLOTS = 50
+SLOTS = 20
 
 # argument cache option
 ARGUMENT_CACHE_MAX_ENTRIES = 500
