@@ -64,9 +64,6 @@ SHOW_HAR = 0
 # servers
 SPLASH_PORT = 8050
 SPLASH_IP = '0.0.0.0'
-MANHOLE_PORT = 5023
-MANHOLE_USERNAME = 'admin'
-MANHOLE_PASSWORD = 'admin'
 
 # pool options
 SLOTS = 50

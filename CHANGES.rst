@@ -4,6 +4,10 @@ Changes
 3.3 (TBA)
 ---------
 
+Backwards incompatible:
+
+* ``--manhole`` support is dropped for now.
+
 New features:
 
 * :ref:`splash-on-navigation-locked` allows to register a function to

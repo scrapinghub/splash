@@ -75,8 +75,6 @@ def parse_opts(jupyter=False, argv=sys.argv):
             help="number of render slots (default: %default)")
         op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
             help="maximum allowed value for timeout (default: %default)")
-        op.add_option("--manhole", action="store_true",
-            help="enable manhole server")
         op.add_option("--disable-ui", action="store_true", default=False,
             help="disable web UI")
         op.add_option("--disable-lua", action="store_true", default=False,
@@ -88,7 +86,6 @@ def parse_opts(jupyter=False, argv=sys.argv):
     opts, args = op.parse_args(argv)
 
     if jupyter:
-        opts.manhole = False
         opts.disable_ui = True
         opts.disable_lua = False
         opts.port = None
@@ -157,17 +154,6 @@ def log_splash_version():
 
     log.msg(", ".join(versions))
     log.msg("Python %s" % sys.version.replace("\n", ""))
-
-
-def manhole_server(portnum=None, username=None, password=None):
-    from twisted.internet import reactor
-    from twisted.manhole import telnet
-
-    f = telnet.ShellFactory()
-    f.username = defaults.MANHOLE_USERNAME if username is None else username
-    f.password = defaults.MANHOLE_PASSWORD if password is None else password
-    portnum = defaults.MANHOLE_PORT if portnum is None else portnum
-    reactor.listenTCP(portnum, f)
 
 
 def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
@@ -374,10 +360,7 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
         xvfb.log_options(x)
 
         install_qtreactor(opts.verbosity >= 5)
-
         monitor_maxrss(opts.maxrss)
-        if opts.manhole:
-            manhole_server()
 
         ipnum = opts.ip if hasattr(opts, 'ip') else '0.0.0.0'
 
