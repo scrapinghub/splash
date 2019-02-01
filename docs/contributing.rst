@@ -28,7 +28,7 @@ testing Docker container.
 
    It can take a while (maybe half an hour).
    Alternatively, you can temporarily change ``dockerfiles/tests/Dockerfile``
-    or ``setup.py`` to install new dependencies.
+   or ``setup.py`` to install new dependencies.
 
 2. Create a testing Docker image::
 
