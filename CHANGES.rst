@@ -4,23 +4,32 @@ Changes
 3.3 (TBA)
 ---------
 
+New features:
+
 * :ref:`splash-on-navigation-locked` allows to register a function to
   be called before a request is discarded when navigation is locked.
 * new ``--disable-browser-caches`` command-line option allows to disable
   browser caching. See :ref:`why-css-images` for an use case.
-* fixed ``response.request.method`` and ``respobse.request.url`` in
-  :ref:`splash-on-response` callbacks.
 * :ref:`request_body <arg-request-body>` and :ref:`splash-request-body-enabled`
-  allow to enable request bodies in HAR output and `splash-on-response`
+  allow to enable request bodies in HAR output and :ref:`splash-on-response`
   callbacks.
-* Twisted is upgraded from 16.1.0 to 18.7.0.
-* qt5reactor is upgraded to 0.5; this should slightly reduce idle CPU usage.
-* Pillow is upgraded to 5.4.1; as a side effect, taking JPEG screenshots
-  should take slightly less RAM.
-* A workaround for JPEG+transparency on a web page is removed, as it seems
-  to do nothing.
-* Splash-Jupyter is updated to ipykernel==5.1.0.
-* fixed an edge case with logging causing an exception;
+
+Bug fixes:
+
+* fixed ``response.request.method`` and ``response.request.url`` in
+  :ref:`splash-on-response` callbacks;
+* fixed an edge case with logging causing an exception.
+
+Other improvements:
+
+* qt5reactor is upgraded to 0.5 - this should slightly reduce idle CPU usage;
+* Pillow is upgraded to 5.4.1 - as a side effect, taking large JPEG screenshots
+  should use slightly less RAM;
+* Twisted is upgraded from 16.1.0 to 18.7.0;
+* a workaround for JPEG + transparency on a web page is removed, as it seems
+  to do nothing;
+* Splash-Jupyter is updated to latest jupyter (ipykernel==5.1.0,
+  notebook==5.7.4);
 * testing improvements;
 * typo fixes and documentation improvements.
 
