@@ -11,6 +11,9 @@ from splash import xvfb
 from splash.qtutils import init_qt_app
 
 
+ONOFF = {True: "enabled", False: "disabled"}
+
+
 def install_qtreactor(verbose):
     init_qt_app(verbose)
     import qt5reactor
@@ -176,13 +179,11 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
     from splash import lua
 
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
-    log.msg("verbosity=%d" % verbosity)
-
     slots = defaults.SLOTS if slots is None else slots
-    log.msg("slots=%s" % slots)
 
-    if argument_cache_max_entries:
-        log.msg("argument_cache_max_entries=%s" % argument_cache_max_entries)
+    log.msg("verbosity={}, slots={}, argument_cache_max_entries={}, max-timeout={}".format(
+        verbosity, slots, argument_cache_max_entries, max_timeout
+    ))
 
     pool = RenderPool(
         slots=slots,
@@ -197,19 +198,13 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
         log.msg("WARNING: Lua is not available, but --disable-lua option is not passed")
 
     # HTTP API
-    onoff = {True: "enabled", False: "disabled"}
     log.msg(
         "Web UI: %s, Lua: %s (sandbox: %s)" % (
-            onoff[ui_enabled],
-            onoff[lua_enabled],
-            onoff[lua_sandbox_enabled],
+            ONOFF[ui_enabled],
+            ONOFF[lua_enabled],
+            ONOFF[lua_sandbox_enabled],
         )
     )
-
-    log.msg(
-        "Server listening on http://%s:%s" % (ip, portnum)
-    )
-
     root = Root(
         pool=pool,
         ui_enabled=ui_enabled,
@@ -223,6 +218,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory, interface=ip)
+    log.msg("Server listening on http://%s:%s" % (ip, portnum))
 
 
 def monitor_maxrss(maxrss):
@@ -278,7 +274,8 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
     )
     splash_proxy_factory_cls = _default_proxy_factory(proxy_profiles_path)
     js_profiles_path = _check_js_profiles_path(js_profiles_path)
-    _set_global_render_settings(js_disable_cross_domain_access, private_mode, disable_browser_caches)
+    _set_global_render_settings(js_disable_cross_domain_access, private_mode,
+                                disable_browser_caches)
     return server_factory(
         portnum=portnum,
         ip=ip,
@@ -324,8 +321,18 @@ def _check_js_profiles_path(js_profiles_path):
     return js_profiles_path
 
 
-def _set_global_render_settings(js_disable_cross_domain_access, private_mode, disable_browser_caches):
+def _set_global_render_settings(js_disable_cross_domain_access, private_mode,
+                                disable_browser_caches):
     from PyQt5.QtWebKit import QWebSecurityOrigin, QWebSettings
+    from twisted.python import log
+
+    log.msg(
+        "memory cache: %s, private mode: %s, js cross-domain access: %s" % (
+            ONOFF[not disable_browser_caches],
+            ONOFF[private_mode],
+            ONOFF[not js_disable_cross_domain_access]
+        )
+    )
 
     if js_disable_cross_domain_access is False:
         # In order to enable cross domain requests it is necessary to add
