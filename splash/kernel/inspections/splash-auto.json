@@ -68,12 +68,12 @@
   "splash.request_body_enabled": {
     "name": null,
     "header": "splash.request_body_enabled",
-    "content": "Enable or disable storage of request content.\n\n**Signature:** ``splash.request_body_enabled = true/false``\n\nBy default Splash doesn't keep bodies of each request in memory. It means that\nrequest content is not available in :ref:`splash-request-info` and in HAR_\nexports. To make request content available to a Lua script set\n``splash.request_body_enabled = true``.\n\nNote that request data in :ref:`splash-request-info` is not available in the\ncallback :ref:`splash-on-response-headers` or in the request of the response\nreturned by :ref:`splash-http-get` and :ref:`splash-http-post`.",
+    "content": "Enable or disable storage of request content.\n\n**Signature:** ``splash.request_body_enabled = true/false``\n\nBy default Splash doesn't keep bodies of each request in memory. It means that\nrequest content is not available in :ref:`splash-request-info` and in HAR_\nexports. To make request content available to a Lua script set\n``splash.request_body_enabled = true``.\n\nNote that request body in :ref:`splash-request-info` is not available in the\ncallback :ref:`splash-on-response-headers` or in the request of the response\nreturned by :ref:`splash-http-get` and :ref:`splash-http-post`.",
     "short": "Enable or disable storage of request content.",
     "signature": "splash.request_body_enabled = true/false",
     "returns": null,
     "async": null,
-    "details": "By default Splash doesn't keep bodies of each request in memory. It means that\nrequest content is not available in :ref:`splash-request-info` and in HAR_\nexports. To make request content available to a Lua script set\n``splash.request_body_enabled = true``.\n\nNote that request data in :ref:`splash-request-info` is not available in the\ncallback :ref:`splash-on-response-headers` or in the request of the response\nreturned by :ref:`splash-http-get` and :ref:`splash-http-post`.",
+    "details": "By default Splash doesn't keep bodies of each request in memory. It means that\nrequest content is not available in :ref:`splash-request-info` and in HAR_\nexports. To make request content available to a Lua script set\n``splash.request_body_enabled = true``.\n\nNote that request body in :ref:`splash-request-info` is not available in the\ncallback :ref:`splash-on-response-headers` or in the request of the response\nreturned by :ref:`splash-http-get` and :ref:`splash-http-post`.",
     "params": null
   },
   "splash.response_body_enabled": {
