@@ -13,6 +13,8 @@ RUN /tmp/provision.sh \
     prepare_install \
     install_deps \
     install_qtwebkit_deps \
+    install_qtwebengine_deps \
+    download_official_qt \
     install_official_qt \
     install_qtwebkit \
     install_pyqt5 \

@@ -148,6 +148,7 @@ def log_splash_version():
         "Qt %s" % verdict['qt'],
         "PyQt %s" % verdict['pyqt'],
         "WebKit %s" % verdict['webkit'],
+        "Chromium %s" % verdict['chromium'],
         "sip %s" % verdict['sip'],
         "Twisted %s" % twisted.version.short(),
     ]
@@ -360,13 +361,12 @@ def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
 
     if not jupyter:
         start_logging(opts)
-    log_splash_version()
-    bump_nofile_limit()
 
     with xvfb.autostart(opts.disable_xvfb, opts.xvfb_screen_size) as x:
         xvfb.log_options(x)
-
         install_qtreactor(opts.verbosity >= 5)
+        log_splash_version()
+        bump_nofile_limit()
         monitor_maxrss(opts.maxrss)
 
         ipnum = opts.ip if hasattr(opts, 'ip') else '0.0.0.0'

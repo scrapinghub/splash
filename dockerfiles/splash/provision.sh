@@ -11,6 +11,8 @@ usage -- print this message
 prepare_install -- prepare image for installation
 install_deps -- install general system-level dependencies
 install_qtwebkit_deps -- install Qt and WebKit dependencies
+install_qtwebengine_deps -- install QtWebEngine dependencies
+download_official_qt - download official Qt installer
 install_official_qt -- install Qt using official installer
 install_qtwebkit -- install updated WebKit for QT
 install_pyqt5 -- install PyQT5 from sources
@@ -26,8 +28,8 @@ EOF
 
 env | grep SPLASH
 
-SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.3"}
-SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.9"}
+SPLASH_SIP_VERSION=${SPLASH_SIP_VERSION:-"4.19.4"}
+SPLASH_PYQT_VERSION=${SPLASH_PYQT_VERSION:-"5.9.2"}
 SPLASH_BUILD_PARALLEL_JOBS=${SPLASH_BUILD_PARALLEL_JOBS:-"2"}
 
 # '2' is not supported by this script; allowed values are "3" and "venv" (?).
@@ -110,6 +112,42 @@ install_qtwebkit_deps () {
         rsync
 }
 
+install_qtwebengine_deps () {
+    # Lists are from https://wiki.qt.io/QtWebEngine/How_to_Try,
+    # but non-development versions, and with some packages removed
+    apt-get install -y --no-install-recommends \
+        libasound2 \
+        libbz2-dev \
+        libcap-dev \
+        libcups2 \
+        libdrm-dev \
+        libegl1-mesa \
+        libgcrypt11-dev \
+        libnss3 \
+        libpci-dev \
+        libpulse-dev \
+        libudev-dev \
+        libxtst-dev
+
+    apt-get install -y --no-install-recommends \
+        libssl-dev \
+        libxcursor-dev \
+        libxcomposite-dev \
+        libxdamage-dev \
+        libxrandr-dev \
+        libfontconfig1 \
+        libxss-dev \
+        libsrtp0 \
+        libwebp-dev \
+        libjsoncpp-dev \
+        libopus-dev \
+        libminizip-dev \
+        libavutil-dev \
+        libavformat-dev \
+        libavcodec-dev \
+        libevent-dev
+}
+
 _ensure_folders () {
     mkdir -p /downloads && \
     mkdir -p /builds && \
@@ -117,13 +155,18 @@ _ensure_folders () {
     chmod a+rw /builds
 }
 
-install_official_qt () {
+download_official_qt () {
     # XXX: if qt version is changed, Dockerfile should be updated,
     # as well as qt-installer-noninteractive.qs script.
     _ensure_folders && \
     curl -L -o /downloads/qt-installer.run \
                http://download.qt.io/official_releases/qt/5.9/5.9.1/qt-opensource-linux-x64-5.9.1.run && \
-    chmod +x /downloads/qt-installer.run && \
+    chmod +x /downloads/qt-installer.run
+}
+
+install_official_qt () {
+    # XXX: if qt version is changed, Dockerfile should be updated,
+    # as well as qt-installer-noninteractive.qs script.
     xvfb-run /downloads/qt-installer.run \
         --script /tmp/script.qs \
         | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))' && \
@@ -177,6 +220,10 @@ install_pyqt5 () {
         -e QtNetwork \
         -e QtWebKit \
         -e QtWebKitWidgets \
+        -e QtWebEngine \
+        -e QtWebEngineCore \
+        -e QtWebEngineWidgets \
+        -e QtWebChannel \
         -e QtSvg \
         -e QtPrintSupport && \
     make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \

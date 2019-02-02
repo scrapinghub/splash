@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWebKitWidgets import QWebFrame
+from PyQt5.QtWebEngineWidgets import QWebEngineProfile
 from twisted.python import log
 
 from splash.utils import truncated, to_bytes
@@ -292,8 +293,44 @@ def get_versions():
         'qt': QT_VERSION_STR,
         'pyqt': PYQT_VERSION_STR,
         'webkit': qWebKitVersion(),
+        'chromium': _chromium_version(),
         'sip': SIP_VERSION_STR
     }
+
+
+# copied from https://github.com/qutebrowser/qutebrowser/blob/master/qutebrowser/utils/version.py
+def _chromium_version():
+    """Get the Chromium version for QtWebEngine.
+    This can also be checked by looking at this file with the right Qt tag:
+    http://code.qt.io/cgit/qt/qtwebengine.git/tree/tools/scripts/version_resolver.py#n41
+    Quick reference:
+    Qt 5.7:  Chromium 49
+             49.0.2623.111 (2016-03-31)
+             5.7.1: Security fixes up to 54.0.2840.87 (2016-11-01)
+    Qt 5.8:  Chromium 53
+             53.0.2785.148 (2016-08-31)
+             5.8.0: Security fixes up to 55.0.2883.75 (2016-12-01)
+    Qt 5.9:  Chromium 56
+    (LTS)    56.0.2924.122 (2017-01-25)
+             5.9.6: Security fixes up to 66.0.3359.170 (2018-05-10)
+    Qt 5.10: Chromium 61
+             61.0.3163.140 (2017-09-05)
+             5.10.1: Security fixes up to 64.0.3282.140 (2018-02-01)
+    Qt 5.11: Chromium 65
+             65.0.3325.151 (.1: .230) (2018-03-06)
+             5.11.2: Security fixes up to 68.0.3440.75 (2018-07-24)
+    Qt 5.12: Chromium 69
+             69.0.3497.128 (~2018-09-17)
+             5.12.0: Security fixes up to 70.0.3538.67 (2018-10-16)
+    Also see https://www.chromium.org/developers/calendar
+    and https://chromereleases.googleblog.com/
+    """
+    profile = QWebEngineProfile()
+    ua = profile.httpUserAgent()
+    match = re.search(r' Chrome/([^ ]*) ', ua)
+    if not match:
+        return 'unknown'
+    return match.group(1)
 
 
 def has_min_qt_version(version):
