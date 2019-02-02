@@ -18,7 +18,8 @@ from twisted.python import log
 import splash
 from splash.argument_cache import ArgumentCache
 from splash.qtrender import (
-    HtmlRender, PngRender, JsonRender, HarRender, JpegRender
+    HtmlRender, PngRender, JsonRender, HarRender, JpegRender,
+    WebEngineRenderScript
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import (
@@ -268,7 +269,9 @@ class RenderHtmlResource(BaseRenderResource):
 
     def _get_render(self, request, options):
         params = options.get_common_params(self.js_profiles_path)
-        return self.pool.render(HtmlRender, options, **params)
+        engine = options.get_engine()
+        script = HtmlRender if engine == "webkit" else WebEngineRenderScript
+        return self.pool.render(script, options, **params)
 
 
 class ExecuteLuaScriptResource(BaseRenderResource):

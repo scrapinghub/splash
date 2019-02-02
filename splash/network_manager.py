@@ -292,7 +292,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     def _handle_custom_headers(self, request):
         if self._get_webpage_attribute(request, "skip_custom_headers"):
             # XXX: this hack assumes that new requests between
-            # BrowserTab._create_request and this function are not possible,
+            # WebkitBrowserTab._create_request and this function are not possible,
             # i.e. we don't give control to the event loop in between.
             # Unfortunately we can't store this flag on a request itself
             # because a new QNetworkRequest instance is created by QWebKit.

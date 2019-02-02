@@ -6,7 +6,11 @@ class RenderPool(object):
     """A pool of renders. The number of slots determines how many
     renders will be run in parallel, at the most."""
 
-    def __init__(self, slots, network_manager_factory, splash_proxy_factory_cls, js_profiles_path, verbosity=1):
+    def __init__(self, slots,
+                 network_manager_factory,
+                 splash_proxy_factory_cls,
+                 js_profiles_path,
+                 verbosity=1):
         self.network_manager_factory = network_manager_factory
         self.splash_proxy_factory_cls = splash_proxy_factory_cls or (lambda profile_name: None)
         self.js_profiles_path = js_profiles_path
@@ -33,13 +37,14 @@ class RenderPool(object):
 
     def _start_render(self, slot_args, slot):
         self.log("initializing SLOT %d" % (slot, ))
+        # FIXME: refactor. network manager only works for webkit.
         (rendercls, render_options, splash_proxy_factory, kwargs,
          pool_d) = slot_args
         render = rendercls(
-            network_manager=self.network_manager_factory(),
-            splash_proxy_factory=splash_proxy_factory,
             render_options=render_options,
             verbosity=self.verbosity,
+            network_manager=self.network_manager_factory(),
+            splash_proxy_factory=splash_proxy_factory,
         )
         self.active.add(render)
         render.deferred.chainDeferred(pool_d)

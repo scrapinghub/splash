@@ -4,7 +4,7 @@ import functools
 import pprint
 
 from splash import defaults
-from splash.browser_tab import BrowserTab
+from splash.browser_tab import WebkitBrowserTab, ChromiumBrowserTab
 from splash.exceptions import RenderError
 
 
@@ -18,27 +18,26 @@ def stop_on_error(meth):
     return stop_on_error_wrapper
 
 
-class RenderScript(metaclass=abc.ABCMeta):
+class BaseRenderScript(metaclass=abc.ABCMeta):
     """
     Interface that all render scripts must implement.
     """
     default_min_log_level = 2
+    tab = None  # create self.tab in __init__ method
 
-    def __init__(self, network_manager, splash_proxy_factory, render_options, verbosity):
-        self.tab = BrowserTab(
-            network_manager=network_manager,
-            splash_proxy_factory=splash_proxy_factory,
-            verbosity=verbosity,
-            render_options=render_options,
-        )
+    @abc.abstractmethod
+    def __init__(self, render_options, verbosity, **kwargs):
         self.render_options = render_options
         self.verbosity = verbosity
-        self.deferred = self.tab.deferred
 
     @abc.abstractmethod
     def start(self, **kwargs):
         """ This method is called by Pool when script should begin """
         pass
+
+    @property
+    def deferred(self):
+        return self.tab.deferred
 
     def log(self, text, min_level=None):
         if min_level is None:
@@ -59,7 +58,77 @@ class RenderScript(metaclass=abc.ABCMeta):
         self.tab.close()
 
 
-class DefaultRenderScript(RenderScript):
+class WebEngineRenderScript(BaseRenderScript):
+
+    def __init__(self, render_options, verbosity, **kwargs):
+        super().__init__(render_options, verbosity)
+        self.tab = ChromiumBrowserTab(
+            render_options=render_options,
+            verbosity=verbosity,
+        )
+
+    def start(self, url, wait=None, **kwargs):
+        print(kwargs)
+        self.url = url
+        self.wait_time = defaults.WAIT_TIME if wait is None else wait
+        self.tab.go(
+            url=url,
+            callback=self.on_goto_load_finished,
+            errback=self.on_goto_load_error,
+        )
+
+    def on_goto_load_finished(self):
+        if self.wait_time == 0:
+            self.log("loadFinished; not waiting")
+            self._load_finished_ok()
+        else:
+            time_ms = int(self.wait_time * 1000)
+            self.log("loadFinished; waiting %sms" % time_ms)
+            self.tab.wait(
+                time_ms=time_ms,
+                callback=self._load_finished_ok,
+                onerror=self.on_goto_load_error,
+            )
+
+    def on_goto_load_error(self, error_info):
+        ex = RenderError({
+            'type': error_info.type,
+            'code': error_info.code,
+            'text': error_info.text,
+            'url': error_info.url
+        })
+        self.return_error(ex)
+
+    @stop_on_error
+    def _load_finished_ok(self):
+        self.log("_loadFinishedOK")
+
+        if self.tab.closing:
+            self.log("loadFinishedOK is ignored because RenderScript is closing", min_level=3)
+            return
+
+        self.tab.stop_loading()
+        # self.tab.store_har_timing("_onPrepareStart")
+        # self._prepare_render()
+        self.return_result(self.get_result())
+
+    def get_result(self):
+        return self.tab.html()
+
+
+class WebkitRenderScript(BaseRenderScript):
+
+    def __init__(self, render_options, verbosity, network_manager, splash_proxy_factory):
+        super().__init__(render_options, verbosity)
+        self.tab = WebkitBrowserTab(
+            render_options=render_options,
+            verbosity=verbosity,
+            network_manager=network_manager,
+            splash_proxy_factory=splash_proxy_factory,
+        )
+
+
+class DefaultRenderScript(WebkitRenderScript):
     """
     DefaultRenderScript object renders a webpage using "standard" render
     scenario:
@@ -121,13 +190,13 @@ class DefaultRenderScript(RenderScript):
     def on_goto_load_finished(self):
         if self.wait_time == 0:
             self.log("loadFinished; not waiting")
-            self._loadFinishedOK()
+            self._load_finished_ok()
         else:
             time_ms = int(self.wait_time * 1000)
             self.log("loadFinished; waiting %sms" % time_ms)
             self.tab.wait(
                 time_ms=time_ms,
-                callback=self._loadFinishedOK,
+                callback=self._load_finished_ok,
                 onerror=self.on_goto_load_error,
             )
 
@@ -141,10 +210,10 @@ class DefaultRenderScript(RenderScript):
         self.return_error(ex)
 
     @stop_on_error
-    def _loadFinishedOK(self):
+    def _load_finished_ok(self):
         self.log("_loadFinishedOK")
 
-        if self.tab._closing:
+        if self.tab.closing:
             self.log("loadFinishedOK is ignored because RenderScript is closing", min_level=3)
             return
 

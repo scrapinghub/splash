@@ -5,13 +5,16 @@ import os
 import weakref
 import traceback
 
-from PyQt5.QtCore import (QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
-                          QPointF, QPoint, pyqtSignal)
+from PyQt5.QtCore import (
+    QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
+    QPointF, QPoint, pyqtSignal, QUrl,
+)
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 from twisted.internet import defer
 from twisted.python import log
 
@@ -47,7 +50,7 @@ from splash.html_element import HTMLElement
 def skip_if_closing(meth):
     @functools.wraps(meth)
     def wrapped(self, *args, **kwargs):
-        if self._closing:
+        if self.closing:
             self.logger.log("%s is not called because BrowserTab "
                             "is closing" % meth.__name__, min_level=2)
             return
@@ -78,37 +81,196 @@ def webpage_option_setter(attr, type_=None):
 
 
 class BrowserTab(QObject):
+    def __init__(self, render_options, verbosity, **kwargs):
+        QObject.__init__(self)
+        self.deferred = defer.Deferred()
+        self.verbosity = verbosity
+        self.closing = False
+        self._uid = render_options.get_uid()
+        self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
+        self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
+        self._active_timers = set()
+
+        # FIXME: _BrowserTabLogger shouldn't be webkit-specific
+        self.logger = _BrowserTabLogger(self._uid, self.verbosity)
+
+    def return_result(self, result):
+        """ Return a result to the Pool. """
+        if self._result_already_returned():
+            self.logger.log("error: result is already returned", min_level=1)
+
+        self.deferred.callback(result)
+        # self.deferred = None
+
+    def return_error(self, error):
+        """ Return an error to the Pool. """
+        if self._result_already_returned():
+            self.logger.log("error: result is already returned", min_level=1)
+        self.deferred.errback(error)
+        # self.deferred = None
+
+    def _result_already_returned(self):
+        """ Return True if an error or a result is already returned to Pool """
+        return self.deferred.called
+
+    @skip_if_closing
+    def close(self):
+        """ Destroy this tab """
+        self.logger.log("close is requested by a script", min_level=2)
+        self.closing = True
+
+    def wait(self, time_ms, callback, onredirect=None, onerror=None):
+        """
+        Wait for time_ms, then run callback.
+
+        If onredirect is True then the timer is cancelled if redirect happens.
+        If onredirect is callable then in case of redirect the timer is
+        cancelled and this callable is called.
+
+        If onerror is True then the timer is cancelled if a render error
+        happens. If onerror is callable then in case of a render error the
+        timer is cancelled and this callable is called.
+        """
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer_callback = functools.partial(self._on_wait_timeout,
+            timer=timer,
+            callback=callback,
+        )
+        timer.timeout.connect(timer_callback)
+
+        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)),
+                        min_level=2)
+
+        timer.start(time_ms)
+        self._active_timers.add(timer)
+        if onredirect:
+            self._timers_to_cancel_on_redirect[timer] = onredirect
+        if onerror:
+            self._timers_to_cancel_on_error[timer] = onerror
+
+    def _on_wait_timeout(self, timer, callback):
+        self.logger.log("wait timeout for %s" % id(timer), min_level=2)
+        if timer in self._active_timers:
+            self._active_timers.remove(timer)
+        self._timers_to_cancel_on_redirect.pop(timer, None)
+        self._timers_to_cancel_on_error.pop(timer, None)
+        callback()
+
+    def _cancel_timer(self, timer, errback=None):
+        self.logger.log("cancelling timer %s" % id(timer), min_level=2)
+        if timer in self._active_timers:
+            self._active_timers.remove(timer)
+        try:
+            timer.stop()
+            if callable(errback):
+                self.logger.log("calling timer errback", min_level=2)
+                errback(self.web_page.error_info)
+        finally:
+            timer.deleteLater()
+
+    def _cancel_timers(self, timers):
+        for timer, oncancel in list(timers.items()):
+            self._cancel_timer(timer, oncancel)
+            timers.pop(timer, None)
+
+
+class ChromiumBrowserTab(BrowserTab):
+    def __init__(self, render_options, verbosity):
+        super().__init__(render_options, verbosity)
+        self.web_view = QWebEngineView()
+        self._setup_webpage_events()
+
+    def _setup_webpage_events(self):
+        self._load_finished = WrappedSignal(self.web_view.loadFinished)
+        self._render_terminated = WrappedSignal(self.web_view.renderProcessTerminated)
+
+        self.web_view.renderProcessTerminated.connect(self._on_render_terminated)
+        self.web_view.loadFinished.connect(self._on_load_finished)
+        # main_frame.loadFinished.connect(self._on_load_finished)
+        # main_frame.urlChanged.connect(self._on_url_changed)
+        # main_frame.javaScriptWindowObjectCleared.connect(
+        #     self._on_javascript_window_object_cleared)
+        # self.logger.add_web_page(self.web_page)
+
+    def go(self, url, callback, errback):
+        callback_id = self._load_finished.connect(
+            self._on_content_ready,
+            callback=callback,
+            errback=errback,
+        )
+        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
+        self.web_view.load(QUrl(url))
+
+    @skip_if_closing
+    def _on_content_ready(self, ok, callback, errback, callback_id):
+        """
+        This method is called when a QWebEnginePage finishes loading.
+        """
+        self.logger.log("loadFinished: disconnecting callback %s" % callback_id,
+                        min_level=3)
+        self._load_finished.disconnect(callback_id)
+        if ok:
+            callback()
+        else:
+            from .qwebpage import RenderErrorInfo
+            error_info = RenderErrorInfo('Unknown', 0, "loadFinished ok=False",
+                                         self.web_view.url().toString())
+            errback(error_info)
+
+    def _on_load_finished(self, ok):
+        self.logger.log("loadFinished, ok=%s" % ok)
+
+    def _on_render_terminated(self, status, code):
+        self.logger.log("renderProcessTerminated: %s, code=%s" % (status, code))
+
+    def html(self):
+        """ Return HTML of the current main frame """
+        # TODO
+        self.logger.log("getting HTML", min_level=2)
+        return self.web_view.title()
+
+    def stop_loading(self):
+        # TODO
+        pass
+
+    @skip_if_closing
+    def close(self):
+        """ Destroy this tab """
+        super().close()
+        self.web_view.stop()
+        self.web_view.close()
+        self.web_view.deleteLater()
+
+        # TODO
+        # self._cancel_all_timers()
+
+
+class WebkitBrowserTab(BrowserTab):
     """
     An object for controlling a single browser tab (QWebView).
 
     It is created by splash.pool.Pool. Pool attaches to tab's deferred
     and waits until either a callback or an errback is called, then destroys
-    a BrowserTab.
+    a WebkitBrowserTab.
 
     XXX: are cookies shared between "browser tabs"? In real browsers they are,
     but maybe this is not what we want.
     """
 
-    def __init__(self, network_manager, splash_proxy_factory, verbosity,
-                 render_options, visible=False):
+    def __init__(self, render_options, verbosity,
+                 network_manager, splash_proxy_factory,
+                 visible=False):
         """ Create a new browser tab. """
-        QObject.__init__(self)
-        self.deferred = defer.Deferred()
+        super().__init__(render_options, verbosity)
         self.network_manager = network_manager
-        self.verbosity = verbosity
         self.visible = visible
-        self._uid = render_options.get_uid()
-        self._closing = False
         self._closing_normally = False
-        self._active_timers = set()
-        self._timers_to_cancel_on_redirect = weakref.WeakKeyDictionary()  # timer: callback
-        self._timers_to_cancel_on_error = weakref.WeakKeyDictionary()  # timer: callback
         self._callback_proxies_to_cancel = weakref.WeakSet()
         self._js_console = None
         self._autoload_scripts = []
         self._js_storage_initiated = False
 
-        self.logger = _BrowserTabLogger(uid=self._uid, verbosity=verbosity)
         self._init_webpage(verbosity, network_manager, splash_proxy_factory,
                            render_options)
         self.http_client = _SplashHttpClient(self.web_page)
@@ -227,25 +389,6 @@ class BrowserTab(QObject):
         main_frame.javaScriptWindowObjectCleared.connect(
             self._on_javascript_window_object_cleared)
         self.logger.add_web_page(self.web_page)
-
-    def return_result(self, result):
-        """ Return a result to the Pool. """
-        if self._result_already_returned():
-            self.logger.log("error: result is already returned", min_level=1)
-
-        self.deferred.callback(result)
-        # self.deferred = None
-
-    def return_error(self, error):
-        """ Return an error to the Pool. """
-        if self._result_already_returned():
-            self.logger.log("error: result is already returned", min_level=1)
-        self.deferred.errback(error)
-        # self.deferred = None
-
-    def _result_already_returned(self):
-        """ Return True if an error or a result is already returned to Pool """
-        return self.deferred.called
 
     def set_custom_headers(self, headers):
         """
@@ -456,8 +599,7 @@ class BrowserTab(QObject):
     @skip_if_closing
     def close(self):
         """ Destroy this tab """
-        self.logger.log("close is requested by a script", min_level=2)
-        self._closing = True
+        super().close()
         self._closing_normally = True
         self._clear_event_handlers_storage()
         self.web_view.pageAction(QWebPage.StopScheduledPageRefresh)
@@ -552,61 +694,6 @@ class BrowserTab(QObject):
         else:
             # XXX: it means ok=False. When does it happen?
             errback(self.web_page.error_info)
-
-    def wait(self, time_ms, callback, onredirect=None, onerror=None):
-        """
-        Wait for time_ms, then run callback.
-
-        If onredirect is True then the timer is cancelled if redirect happens.
-        If onredirect is callable then in case of redirect the timer is
-        cancelled and this callable is called.
-
-        If onerror is True then the timer is cancelled if a render error
-        happens. If onerror is callable then in case of a render error the
-        timer is cancelled and this callable is called.
-        """
-        timer = QTimer()
-        timer.setSingleShot(True)
-        timer_callback = functools.partial(self._on_wait_timeout,
-            timer=timer,
-            callback=callback,
-        )
-        timer.timeout.connect(timer_callback)
-
-        self.logger.log("waiting %sms; timer %s" % (time_ms, id(timer)),
-                        min_level=2)
-
-        timer.start(time_ms)
-        self._active_timers.add(timer)
-        if onredirect:
-            self._timers_to_cancel_on_redirect[timer] = onredirect
-        if onerror:
-            self._timers_to_cancel_on_error[timer] = onerror
-
-    def _on_wait_timeout(self, timer, callback):
-        self.logger.log("wait timeout for %s" % id(timer), min_level=2)
-        if timer in self._active_timers:
-            self._active_timers.remove(timer)
-        self._timers_to_cancel_on_redirect.pop(timer, None)
-        self._timers_to_cancel_on_error.pop(timer, None)
-        callback()
-
-    def _cancel_timer(self, timer, errback=None):
-        self.logger.log("cancelling timer %s" % id(timer), min_level=2)
-        if timer in self._active_timers:
-            self._active_timers.remove(timer)
-        try:
-            timer.stop()
-            if callable(errback):
-                self.logger.log("calling timer errback", min_level=2)
-                errback(self.web_page.error_info)
-        finally:
-            timer.deleteLater()
-
-    def _cancel_timers(self, timers):
-        for timer, oncancel in list(timers.items()):
-            self._cancel_timer(timer, oncancel)
-            timers.pop(timer, None)
 
     def _cancel_all_timers(self):
         total_len = len(self._active_timers) + len(self._callback_proxies_to_cancel)

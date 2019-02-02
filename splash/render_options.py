@@ -353,6 +353,12 @@ class RenderOptions(object):
     def get_html5_media(self):
         return self._get_bool("html5_media", defaults.HTML5_MEDIA_ENABLED)
 
+    def get_engine(self):
+        engine = self.get("engine", default="webkit", type=str)
+        if engine not in {"webkit", "chromium"}:
+            self.raise_error("get_engine", "Unsupported render engine {}".format(engine))
+        return engine
+
     def get_common_params(self, js_profiles_path):
         wait = self.get_wait()
         return {

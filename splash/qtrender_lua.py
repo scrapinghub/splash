@@ -14,12 +14,12 @@ from PyQt5.QtCore import QTimer
 import lupa
 
 import splash
-from splash.browser_tab import BrowserTab, JsError
+from splash.browser_tab import WebkitBrowserTab, JsError
 from splash.lua_runner import (
     BaseScriptRunner,
     AsyncCommand,
 )
-from splash.qtrender import RenderScript, stop_on_error
+from splash.qtrender import WebkitRenderScript, stop_on_error
 from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
                         PyResult, _mark_table_as_array)
 from splash.har.qt import reply2har, request2har
@@ -354,7 +354,7 @@ class _WrappedJavascriptFunction(object):
 
     def __init__(self, splash, source):
         """
-        :param splash.browser_tab.BrowserTab tab: BrowserTab object
+        :param splash.browser_tab.WebkitBrowserTab tab: BrowserTab object
         :param str source: function source code
         """
         self.lua = splash.lua
@@ -473,7 +473,7 @@ class Splash(BaseExposedObject):
                  strict_lua_runner=False):
         """
         :param SplashLuaRuntime lua: Lua wrapper
-        :param splash.browser_tab.BrowserTab tab: BrowserTab object
+        :param splash.browser_tab.WebkitBrowserTab tab: BrowserTab object
         :param splash.render_options.RenderOptions render_options: arguments
         """
         if isinstance(render_options, RenderOptions):
@@ -2413,7 +2413,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         })
 
 
-class LuaRender(RenderScript):
+class LuaRender(WebkitRenderScript):
     default_min_log_level = 2
 
     @stop_on_error
