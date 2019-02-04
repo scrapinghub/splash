@@ -35,7 +35,7 @@ class SplashQWebPage(QWebPage):
 
     * changes user agent;
     * logs JS console messages;
-    * handles alert and confirm windows;
+    * handles alert, confirm and prompt windows;
     * returns additional info about render errors;
     * logs HAR events;
     * stores options for various Splash components.
@@ -114,6 +114,12 @@ class SplashQWebPage(QWebPage):
 
     def javaScriptConfirm(self, frame, msg):
         return False
+
+    def javaScriptPrompt(self, frame, msg, default=None):
+        if self.verbosity >= 2:
+            log.msg("javaScriptPrompt, url=%s, msg=%r, default=%r" % (
+                    frame.url().toString(), msg, default))
+        return False, ""  # thanks qutebrowser
 
     def javaScriptConsoleMessage(self, msg, line_number, source_id):
         if self.verbosity >= 2:
