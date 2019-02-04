@@ -3,6 +3,8 @@ import json
 import functools
 import pprint
 
+from twisted.internet import defer
+
 from splash import defaults
 from splash.browser_tab import WebkitBrowserTab, ChromiumBrowserTab
 from splash.exceptions import RenderError
@@ -29,15 +31,12 @@ class BaseRenderScript(metaclass=abc.ABCMeta):
     def __init__(self, render_options, verbosity, **kwargs):
         self.render_options = render_options
         self.verbosity = verbosity
+        self.deferred = defer.Deferred()
 
     @abc.abstractmethod
     def start(self, **kwargs):
         """ This method is called by Pool when script should begin """
         pass
-
-    @property
-    def deferred(self):
-        return self.tab.deferred
 
     def log(self, text, min_level=None):
         if min_level is None:
@@ -45,10 +44,23 @@ class BaseRenderScript(metaclass=abc.ABCMeta):
         self.tab.logger.log(text, min_level=min_level)
 
     def return_result(self, result):
-        self.tab.return_result(result)
+        """ Return a result to the Pool. """
+        if self._result_already_returned():
+            self.tab.logger.log("error: result is already returned", min_level=1)
 
-    def return_error(self, error=None):
-        self.tab.return_error(error)
+        self.deferred.callback(result)
+        # self.deferred = None
+
+    def return_error(self, error):
+        """ Return an error to the Pool. """
+        if self._result_already_returned():
+            self.tab.logger.log("error: result is already returned", min_level=1)
+        self.deferred.errback(error)
+        # self.deferred = None
+
+    def _result_already_returned(self):
+        """ Return True if an error or a result is already returned to Pool """
+        return self.deferred.called
 
     def close(self):
         """

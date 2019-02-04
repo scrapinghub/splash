@@ -83,7 +83,6 @@ def webpage_option_setter(attr, type_=None):
 class BrowserTab(QObject):
     def __init__(self, render_options, verbosity, **kwargs):
         QObject.__init__(self)
-        self.deferred = defer.Deferred()
         self.verbosity = verbosity
         self.closing = False
         self._uid = render_options.get_uid()
@@ -93,25 +92,6 @@ class BrowserTab(QObject):
 
         # FIXME: _BrowserTabLogger shouldn't be webkit-specific
         self.logger = _BrowserTabLogger(self._uid, self.verbosity)
-
-    def return_result(self, result):
-        """ Return a result to the Pool. """
-        if self._result_already_returned():
-            self.logger.log("error: result is already returned", min_level=1)
-
-        self.deferred.callback(result)
-        # self.deferred = None
-
-    def return_error(self, error):
-        """ Return an error to the Pool. """
-        if self._result_already_returned():
-            self.logger.log("error: result is already returned", min_level=1)
-        self.deferred.errback(error)
-        # self.deferred = None
-
-    def _result_already_returned(self):
-        """ Return True if an error or a result is already returned to Pool """
-        return self.deferred.called
 
     @skip_if_closing
     def close(self):
