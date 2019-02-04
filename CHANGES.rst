@@ -29,7 +29,7 @@ Other improvements:
 * qt5reactor is upgraded to 0.5 - this should slightly reduce idle CPU usage;
 * Pillow is upgraded to 5.4.1 - as a side effect, taking large JPEG screenshots
   should use slightly less RAM;
-* Twisted is upgraded from 16.1.0 to 18.7.0;
+* Twisted is upgraded from 16.1.0 to 18.9.0;
 * a workaround for JPEG + transparency on a web page is removed, as it seems
   to do nothing;
 * Splash-Jupyter is updated to latest jupyter (ipykernel==5.1.0,
