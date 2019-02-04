@@ -179,6 +179,10 @@ class Base(object):
             r = self.request({"url": self.mockurl("jsconfirm"), "timeout": "3"})
             self.assertStatusCode(r, 200)
 
+        def test_jsprompt(self):
+            r = self.request({"url": self.mockurl("jsprompt"), "timeout": "3"})
+            self.assertStatusCode(r, 200)
+
         def test_iframes(self):
             r = self.request({"url": self.mockurl("iframes"), "timeout": "3"})
             self.assertStatusCode(r, 200)
