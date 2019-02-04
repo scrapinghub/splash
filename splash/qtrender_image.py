@@ -403,7 +403,7 @@ class WrappedImage(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def to_png(self, complevel):
+    def to_png(self, complevel=defaults.PNG_COMPRESSION_LEVEL):
         """
         Serialize image as PNG and return the result as a byte sequence.
 
