@@ -19,10 +19,8 @@ from splash.tests.utils import NON_EXISTING_RESOLVABLE, SplashServer
 def https_only(func):
     @wraps(func)
     def wrapper(self, *args, **kwargs):
-        try:
-            if self.__class__.https_supported:
-                func(self, *args, **kwargs)
-        except AttributeError:
+        https_supported = getattr(self.__class__, 'https_supported', True)
+        if https_supported:
             func(self, *args, **kwargs)
     return wrapper
 
