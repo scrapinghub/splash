@@ -186,9 +186,9 @@ class Base(object):
             self.assertStatusCode(r, 200)
 
         def test_wait(self):
-            r1 = self.request({"url": self.mockurl("jsinterval")})
-            r2 = self.request({"url": self.mockurl("jsinterval")})
-            r3 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.2"})
+            r1 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.01"})
+            r2 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.01"})
+            r3 = self.request({"url": self.mockurl("jsinterval"), "wait": "0.5"})
             self.assertStatusCode(r1, 200)
             self.assertStatusCode(r2, 200)
             self.assertStatusCode(r3, 200)
@@ -690,9 +690,9 @@ class RenderJsonTest(Base.RenderTest):
 
     def test_wait(self):
         # override parent's test to make it aware of render.json endpoint
-        r1 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
-        r2 = self.request({"url": self.mockurl("jsinterval"), 'html': 1})
-        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': '0.2', 'html': 1})
+        r1 = self.request({"url": self.mockurl("jsinterval"), 'html': 1, "wait": "0.01"})
+        r2 = self.request({"url": self.mockurl("jsinterval"), 'html': 1, "wait": "0.01"})
+        r3 = self.request({"url": self.mockurl("jsinterval"), 'wait': '0.5', 'html': 1})
         self.assertStatusCode(r1, 200)
         self.assertStatusCode(r2, 200)
         self.assertStatusCode(r3, 200)
