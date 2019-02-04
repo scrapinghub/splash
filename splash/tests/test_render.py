@@ -39,22 +39,16 @@ class DirectRequestHandler(object):
         return "localhost:%s" % self.ts.splashserver.portnum
 
     def request(self, query, endpoint=None, headers=None):
-        url, params = self._url_and_params(endpoint, query)
-        return requests.get(url, params=params, headers=headers)
+        url = self._absolute_url(endpoint)
+        return requests.get(url, params=query, headers=headers)
 
     def post(self, query, endpoint=None, payload=None, headers=None):
-        url, params = self._url_and_params(endpoint, query)
-        return requests.post(url, params=params, data=payload, headers=headers)
+        url = self._absolute_url(endpoint)
+        return requests.post(url, params=query, data=payload, headers=headers)
 
-    def _url_and_params(self, endpoint, query):
+    def _absolute_url(self, endpoint):
         endpoint = endpoint if endpoint is not None else self.endpoint
-        url = urljoin("http://%s/" % self.host, endpoint)
-        if isinstance(query, dict):
-            params = query
-        else:
-            url = "%s?%s" % (url, query)
-            params = None
-        return url, params
+        return urljoin("http://%s/" % self.host, endpoint)
 
 
 @pytest.mark.usefixtures("class_ts")

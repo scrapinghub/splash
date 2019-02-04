@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-import json
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode
 
 import requests
 
@@ -10,9 +9,7 @@ from . import test_render, test_har, test_request_filters, test_runjs
 class JsonPostRequestHandler(test_render.DirectRequestHandler):
 
     def request(self, query, endpoint=None, headers=None):
-        assert not isinstance(query, str)
-        endpoint = endpoint or self.endpoint
-        url = urljoin("http://%s" % self.host, endpoint)
+        url = self._absolute_url(endpoint)
         return requests.post(url, json=query, headers=headers)
 
     def post(self, query, endpoint=None, payload=None, headers=None):

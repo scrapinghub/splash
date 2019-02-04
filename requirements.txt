@@ -1,6 +1,6 @@
 # install PyQt5 (Splash is tested on PyQT 5.9)
 # and the following packages:
-twisted == 18.7.0
+twisted == 18.9.0
 qt5reactor
 psutil
 adblockparser >= 0.5
