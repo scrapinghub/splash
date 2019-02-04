@@ -28,8 +28,8 @@ def https_only(func):
 
 
 class DirectRequestHandler(object):
-
     endpoint = "render.html"
+    engine = "webkit"
 
     def __init__(self, ts):
         self.ts = ts
@@ -39,10 +39,12 @@ class DirectRequestHandler(object):
         return "localhost:%s" % self.ts.splashserver.portnum
 
     def request(self, query, endpoint=None, headers=None):
+        query.setdefault("engine", self.engine)
         url = self._absolute_url(endpoint)
         return requests.get(url, params=query, headers=headers)
 
     def post(self, query, endpoint=None, payload=None, headers=None):
+        query.setdefault("engine", self.engine)
         url = self._absolute_url(endpoint)
         return requests.post(url, params=query, data=payload, headers=headers)
 

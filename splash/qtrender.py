@@ -6,7 +6,8 @@ import pprint
 from twisted.internet import defer
 
 from splash import defaults
-from splash.browser_tab import WebkitBrowserTab, ChromiumBrowserTab
+from splash.browser_tab import WebkitBrowserTab
+from splash.chromium.browser_tab import ChromiumBrowserTab
 from splash.exceptions import RenderError
 
 
@@ -31,6 +32,9 @@ class BaseRenderScript(metaclass=abc.ABCMeta):
     def __init__(self, render_options, verbosity, **kwargs):
         self.render_options = render_options
         self.verbosity = verbosity
+
+        # this deferred is fired with the render result when
+        # the result is ready
         self.deferred = defer.Deferred()
 
     @abc.abstractmethod
@@ -70,8 +74,7 @@ class BaseRenderScript(metaclass=abc.ABCMeta):
         self.tab.close()
 
 
-class WebEngineRenderScript(BaseRenderScript):
-
+class ChromiumRenderScript(BaseRenderScript):
     def __init__(self, render_options, verbosity, **kwargs):
         super().__init__(render_options, verbosity)
         self.tab = ChromiumBrowserTab(
@@ -80,7 +83,6 @@ class WebEngineRenderScript(BaseRenderScript):
         )
 
     def start(self, url, wait=None, **kwargs):
-        print(kwargs)
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.tab.go(
@@ -122,7 +124,8 @@ class WebEngineRenderScript(BaseRenderScript):
         self.tab.stop_loading()
         # self.tab.store_har_timing("_onPrepareStart")
         # self._prepare_render()
-        self.return_result(self.get_result())
+        d = defer.maybeDeferred(self.get_result)
+        d.addCallback(self.return_result)
 
     def get_result(self):
         return self.tab.html()

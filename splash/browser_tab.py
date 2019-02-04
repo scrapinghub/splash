@@ -7,15 +7,13 @@ import traceback
 
 from PyQt5.QtCore import (
     QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
-    QPointF, QPoint, pyqtSignal, QUrl,
+    QPointF, QPoint, pyqtSignal,
 )
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtNetwork import QNetworkRequest
 from PyQt5.QtWebKitWidgets import QWebPage
 from PyQt5.QtWebKit import QWebSettings
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from twisted.internet import defer
 from twisted.python import log
 
 from splash import defaults
@@ -153,77 +151,6 @@ class BrowserTab(QObject):
         for timer, oncancel in list(timers.items()):
             self._cancel_timer(timer, oncancel)
             timers.pop(timer, None)
-
-
-class ChromiumBrowserTab(BrowserTab):
-    def __init__(self, render_options, verbosity):
-        super().__init__(render_options, verbosity)
-        self.web_view = QWebEngineView()
-        self._setup_webpage_events()
-
-    def _setup_webpage_events(self):
-        self._load_finished = WrappedSignal(self.web_view.loadFinished)
-        self._render_terminated = WrappedSignal(self.web_view.renderProcessTerminated)
-
-        self.web_view.renderProcessTerminated.connect(self._on_render_terminated)
-        self.web_view.loadFinished.connect(self._on_load_finished)
-        # main_frame.loadFinished.connect(self._on_load_finished)
-        # main_frame.urlChanged.connect(self._on_url_changed)
-        # main_frame.javaScriptWindowObjectCleared.connect(
-        #     self._on_javascript_window_object_cleared)
-        # self.logger.add_web_page(self.web_page)
-
-    def go(self, url, callback, errback):
-        callback_id = self._load_finished.connect(
-            self._on_content_ready,
-            callback=callback,
-            errback=errback,
-        )
-        self.logger.log("callback %s is connected to loadFinished" % callback_id, min_level=3)
-        self.web_view.load(QUrl(url))
-
-    @skip_if_closing
-    def _on_content_ready(self, ok, callback, errback, callback_id):
-        """
-        This method is called when a QWebEnginePage finishes loading.
-        """
-        self.logger.log("loadFinished: disconnecting callback %s" % callback_id,
-                        min_level=3)
-        self._load_finished.disconnect(callback_id)
-        if ok:
-            callback()
-        else:
-            from .qwebpage import RenderErrorInfo
-            error_info = RenderErrorInfo('Unknown', 0, "loadFinished ok=False",
-                                         self.web_view.url().toString())
-            errback(error_info)
-
-    def _on_load_finished(self, ok):
-        self.logger.log("loadFinished, ok=%s" % ok)
-
-    def _on_render_terminated(self, status, code):
-        self.logger.log("renderProcessTerminated: %s, code=%s" % (status, code))
-
-    def html(self):
-        """ Return HTML of the current main frame """
-        # TODO
-        self.logger.log("getting HTML", min_level=2)
-        return self.web_view.title()
-
-    def stop_loading(self):
-        # TODO
-        pass
-
-    @skip_if_closing
-    def close(self):
-        """ Destroy this tab """
-        super().close()
-        self.web_view.stop()
-        self.web_view.close()
-        self.web_view.deleteLater()
-
-        # TODO
-        # self._cancel_all_timers()
 
 
 class WebkitBrowserTab(BrowserTab):
