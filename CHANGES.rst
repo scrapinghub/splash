@@ -1,12 +1,15 @@
 Changes
 =======
 
-3.3 (TBA)
----------
+3.3 (2019-02-06)
+----------------
 
 Backwards incompatible:
 
-* ``--manhole`` support is dropped for now.
+* ``--manhole`` support is dropped for now: it was untested and
+  not really documented, and it stopped working after software upgrades;
+* default ``--slots`` value is now 20 instead of 50
+  (which is still too high for most practical tasks).
 
 New features:
 
@@ -20,16 +23,19 @@ New features:
 
 Bug fixes:
 
+* fixed crash on pages which call ``window.prompt``, prompts are discarded now;
 * fixed ``response.request.method`` and ``response.request.url`` in
   :ref:`splash-on-response` callbacks;
-* fixed an edge case with logging causing an exception.
+* fixed an edge case with logging causing an exception;
+* proper log level is used for "image is trimmed vertically" message.
 
 Other improvements:
 
 * qt5reactor is upgraded to 0.5 - this should slightly reduce idle CPU usage;
+* Twisted is upgraded from 16.1.0 to 18.9.0;
+* PyQT5 is upgraded from 5.9 to 5.9.2;
 * Pillow is upgraded to 5.4.1 - as a side effect, taking large JPEG screenshots
   should use slightly less RAM;
-* Twisted is upgraded from 16.1.0 to 18.9.0;
 * a workaround for JPEG + transparency on a web page is removed, as it seems
   to do nothing;
 * Splash-Jupyter is updated to latest jupyter (ipykernel==5.1.0,
