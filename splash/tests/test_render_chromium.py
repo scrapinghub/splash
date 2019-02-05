@@ -10,6 +10,9 @@ class ChromiumRequestHandler(test_render.DirectRequestHandler):
 class RenderHtmlTest(test_render.RenderHtmlTest):
     request_handler = ChromiumRequestHandler
 
+    # FIXME: default certificate validation is too strict for tests
+    https_supported = False
+
     @pytest.mark.xfail(reason="not implemented yet")
     def test_allowed_domains(self):
         super().test_allowed_domains()
