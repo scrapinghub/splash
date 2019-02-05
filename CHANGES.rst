@@ -1,8 +1,8 @@
 Changes
 =======
 
-3.3 (TBA)
----------
+3.3 (2019-02-06)
+----------------
 
 Backwards incompatible:
 
