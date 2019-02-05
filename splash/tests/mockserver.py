@@ -107,6 +107,18 @@ document.getElementById("p1").innerHTML="After";
 </html>
 """)
 
+JsPrompt = _html_resource("""
+<html>
+<body>
+<p id="p1">Before</p>
+<script>
+var result = prompt("are you sure?");
+document.getElementById("p1").innerHTML = "After " + result;
+</script>
+</body>
+</html>
+""")
+
 JsInterval = _html_resource("""
 <html><body>
 <div id='num'>not started</div>
@@ -1046,6 +1058,7 @@ class Root(Resource):
         self.putChild(b"jsrender", JsRender())
         self.putChild(b"jsalert", JsAlert())
         self.putChild(b"jsconfirm", JsConfirm())
+        self.putChild(b"jsprompt", JsPrompt())
         self.putChild(b"jsinterval", JsInterval())
         self.putChild(b"jsviewport", JsViewport())
         self.putChild(b"jspost", JsPostResource())
