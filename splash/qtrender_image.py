@@ -186,7 +186,8 @@ class QtImageRenderer(object):
             canvas_size = QSize(in_viewport.size())
 
         if image_size.height() < out_viewport.height():
-            self.logger.log("image render: image is trimmed vertically")
+            self.logger.log("image render: image is trimmed vertically",
+                            min_level=2)
             hcut = image_size.height()
             if in_viewport.size() == out_viewport.size():
                 # If no resizing then we need to render exactly the requested
