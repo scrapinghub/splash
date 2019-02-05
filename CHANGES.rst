@@ -26,7 +26,8 @@ Bug fixes:
 * fixed crash on pages which call ``window.prompt``, prompts are discarded now;
 * fixed ``response.request.method`` and ``response.request.url`` in
   :ref:`splash-on-response` callbacks;
-* fixed an edge case with logging causing an exception.
+* fixed an edge case with logging causing an exception;
+* proper log level is used for "image is trimmed vertically" message.
 
 Other improvements:
 
