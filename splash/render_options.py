@@ -4,7 +4,7 @@ import json
 
 from splash import defaults
 from splash.utils import to_bytes, path_join_secure
-from splash.exceptions import BadOption
+from splash.errors import BadOption
 
 
 class RenderOptions(object):

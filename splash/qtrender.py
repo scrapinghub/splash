@@ -1,14 +1,13 @@
 import abc
 import json
 import functools
-import pprint
 
 from twisted.internet import defer
 
 from splash import defaults
-from splash.browser_tab import WebkitBrowserTab
-from splash.chromium.browser_tab import ChromiumBrowserTab
-from splash.exceptions import RenderError
+from splash.engines.webkit import WebkitBrowserTab
+from splash.engines.chromium import ChromiumBrowserTab
+from splash.errors import RenderError
 
 
 def stop_on_error(meth):

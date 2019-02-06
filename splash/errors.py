@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+from collections import namedtuple
+
+RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
+
+
 class BadOption(Exception):
     """ Incorrect HTTP API arguments """
     pass
@@ -56,3 +61,5 @@ class DOMError(Exception):
     """ Error occurred during DOM operations"""
     NOT_IN_DOM_ERROR = 'NOT_IN_DOM_ERROR'
     NOT_COMPATIBLE_NODE_ERROR = 'NOT_COMPATIBLE_NODE_ERROR'
+
+

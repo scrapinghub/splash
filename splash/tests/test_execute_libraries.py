@@ -2,7 +2,7 @@
 import base64
 import json
 
-from splash.exceptions import ScriptError
+from splash.errors import ScriptError
 from splash.utils import to_bytes, to_unicode
 
 from .test_execute import BaseLuaRenderTest

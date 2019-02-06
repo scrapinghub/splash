@@ -79,7 +79,7 @@ def get_num_fds():
 def get_alive():
     """ Return counts of alive objects. """
     relevant_types = {
-        'SplashQWebPage', 'SplashQNetworkAccessManager',
+        'WebkitWebPage', 'SplashQNetworkAccessManager',
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
         'QWebView', 'QWebPage', 'QWebFrame',
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
@@ -93,7 +93,7 @@ def get_alive():
         'WebkitBrowserTab',
         'ChromiumBrowserTab', 'ChromiumWebPage',
         'QWebEngineProfile', 'QWebEnginePage', 'QWebEngineView',
-        '_SplashHttpClient', 'JavascriptConsole',
+        'SplashWebkitHttpClient', 'JavascriptConsole',
         'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',

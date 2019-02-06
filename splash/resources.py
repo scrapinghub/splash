@@ -32,7 +32,7 @@ from splash.utils import (
 from splash import sentry
 from splash.render_options import RenderOptions
 from splash.qtutils import clear_caches
-from splash.exceptions import (
+from splash.errors import (
     BadOption, RenderError, InternalError,
     GlobalTimeoutError, UnsupportedContentType,
     ExpiredArguments,

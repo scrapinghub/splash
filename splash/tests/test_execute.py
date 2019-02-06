@@ -12,7 +12,7 @@ import pytest
 
 lupa = pytest.importorskip("lupa")
 
-from splash.exceptions import ScriptError
+from splash.errors import ScriptError
 from splash.qtutils import has_min_qt_version
 from splash import version_info
 from splash.har_builder import HarBuilder

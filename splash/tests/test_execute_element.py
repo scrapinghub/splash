@@ -8,7 +8,7 @@ import pytest
 lupa = pytest.importorskip("lupa")
 
 from splash import defaults
-from splash.exceptions import ScriptError
+from splash.errors import ScriptError
 from .test_execute import BaseLuaRenderTest
 
 

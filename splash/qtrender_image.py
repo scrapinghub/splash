@@ -23,7 +23,7 @@ class QtImageRenderer(object):
         """ Initialize renderer.
 
         :type web_page: PyQt5.QtWebKit.QWebPage
-        :type logger: splash.browser_tab._BrowserTabLogger
+        :type logger: splash.log.SplashLogger
         :type image_format: str {'PNG', 'JPEG'}
         :type width: int
         :type height: int

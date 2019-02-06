@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import lupa
 
-from splash.exceptions import ScriptError
+from splash.errors import ScriptError
 from splash.lua import parse_error_message
 
 

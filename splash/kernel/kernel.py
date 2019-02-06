@@ -10,7 +10,7 @@ from twisted.internet import defer
 
 import splash
 from splash.lua import get_version, get_main_sandboxed, get_main
-from splash.browser_tab import WebkitBrowserTab
+from splash.engines.webkit import WebkitBrowserTab
 from splash.lua_runtime import SplashLuaRuntime
 from splash.qtrender_lua import (
     Splash, MainCoroutineRunner, StoredExceptions, Extras

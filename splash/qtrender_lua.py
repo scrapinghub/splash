@@ -14,7 +14,8 @@ from PyQt5.QtCore import QTimer
 import lupa
 
 import splash
-from splash.browser_tab import WebkitBrowserTab, JsError
+from splash.browser_tab import BrowserTab
+from splash.errors import JsError
 from splash.lua_runner import (
     BaseScriptRunner,
     AsyncCommand,
@@ -43,7 +44,7 @@ from splash.qtutils import (
     get_versions,
     get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
-from splash.exceptions import ScriptError, DOMError
+from splash.errors import ScriptError, DOMError
 from splash.html_element import HTMLElement, escape_js_args
 
 
@@ -352,10 +353,10 @@ class _WrappedJavascriptFunction(object):
     with arguments.
     """
 
-    def __init__(self, splash, source):
+    def __init__(self, splash: BrowserTab, source: str) -> None:
         """
-        :param splash.browser_tab.WebkitBrowserTab tab: BrowserTab object
-        :param str source: function source code
+        :param tab: BrowserTab object
+        :param source: function source code
         """
         self.lua = splash.lua
         self.tab = splash.tab

@@ -9,6 +9,8 @@ from twisted.internet import defer
 
 from splash.browser_tab import BrowserTab, skip_if_closing
 from splash.qtutils import WrappedSignal
+from splash.errors import RenderErrorInfo
+
 from .webpage import ChromiumWebPage
 
 
@@ -54,7 +56,6 @@ class ChromiumBrowserTab(BrowserTab):
         if ok:
             callback()
         else:
-            from splash.qwebpage import RenderErrorInfo
             error_info = RenderErrorInfo('Unknown', 0, "loadFinished ok=False",
                                          self.web_view.url().toString())
             errback(error_info)
