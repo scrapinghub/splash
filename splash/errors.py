@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
-from collections import namedtuple
+import attr
 
-RenderErrorInfo = namedtuple('RenderErrorInfo', 'type code text url')
+
+@attr.s
+class RenderErrorInfo:
+    type = attr.ib()
+    code = attr.ib()
+    text = attr.ib()
+    url = attr.ib()
 
 
 class BadOption(Exception):

@@ -136,10 +136,10 @@ class WebkitWebPage(QWebPage):
                 domain = 'WebKit'
 
             self.error_info = RenderErrorInfo(
-                domain,
-                int(info.error),
-                str(info.errorString),
-                str(info.url.toString())
+                type=domain,
+                code=int(info.error),
+                text=str(info.errorString),
+                url=str(info.url.toString())
             )
 
             # XXX: this page currently goes nowhere

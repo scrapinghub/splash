@@ -1,5 +1,19 @@
+from typing import Dict
+
+import attr
 from twisted.internet import defer
 from twisted.python import log
+
+from splash.render_options import RenderOptions
+
+
+@attr.s
+class SlotArguments:
+    rendercls = attr.ib()
+    render_options = attr.ib()  # type: RenderOptions
+    splash_proxy_factory = attr.ib()
+    kwargs = attr.ib()  # type: Dict
+    pool_d = attr.ib()  # type: defer.Deferred
 
 
 class RenderPool(object):
@@ -23,7 +37,14 @@ class RenderPool(object):
     def render(self, rendercls, render_options, proxy, **kwargs):
         splash_proxy_factory = self.splash_proxy_factory_cls(proxy)
         pool_d = defer.Deferred()
-        self.queue.put((rendercls, render_options, splash_proxy_factory, kwargs, pool_d))
+        slot = SlotArguments(
+            rendercls=rendercls,
+            render_options=render_options,
+            splash_proxy_factory=splash_proxy_factory,
+            kwargs=kwargs,
+            pool_d = pool_d,
+        )
+        self.queue.put(slot)
         self.log("[%s] queued" % render_options.get_uid())
         return pool_d
 
@@ -35,29 +56,29 @@ class RenderPool(object):
         d.addBoth(self._wait_for_render, slot)
         return _
 
-    def _start_render(self, slot_args, slot):
+    def _start_render(self, slot_args: SlotArguments, slot):
         self.log("initializing SLOT %d" % (slot, ))
         # FIXME: refactor. network manager only works for webkit.
-        (rendercls, render_options, splash_proxy_factory, kwargs,
-         pool_d) = slot_args
-        render = rendercls(
-            render_options=render_options,
+        render = slot_args.rendercls(
+            render_options=slot_args.render_options,
             verbosity=self.verbosity,
             network_manager=self.network_manager_factory(),
-            splash_proxy_factory=splash_proxy_factory,
+            splash_proxy_factory=slot_args.splash_proxy_factory,
         )
         self.active.add(render)
-        render.deferred.chainDeferred(pool_d)
-        pool_d.addErrback(self._error, render, slot)
-        pool_d.addBoth(self._close_render, render, slot)
+        render.deferred.chainDeferred(slot_args.pool_d)
+        slot_args.pool_d.addErrback(self._error, render, slot)
+        slot_args.pool_d.addBoth(self._close_render, render, slot)
 
-        self.log("[%s] SLOT %d is starting" % (render_options.get_uid(), slot))
+        self.log("[%s] SLOT %d is starting" % (
+            slot_args.render_options.get_uid(), slot))
         try:
-            render.start(**kwargs)
+            render.start(**slot_args.kwargs)
         except:
             render.deferred.errback()
             raise
-        self.log("[%s] SLOT %d is working" % (render_options.get_uid(), slot))
+        self.log("[%s] SLOT %d is working" % (
+            slot_args.render_options.get_uid(), slot))
 
         return render.deferred
 

@@ -56,8 +56,12 @@ class ChromiumBrowserTab(BrowserTab):
         if ok:
             callback()
         else:
-            error_info = RenderErrorInfo('Unknown', 0, "loadFinished ok=False",
-                                         self.web_view.url().toString())
+            error_info = RenderErrorInfo(
+                type='Unknown',
+                code=0,
+                text="loadFinished ok=False",
+                url=self.web_view.url().toString()
+            )
             errback(error_info)
 
     def _on_load_finished(self, ok):

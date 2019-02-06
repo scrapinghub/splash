@@ -66,6 +66,7 @@ setup_args = {
         'xvfbwrapper',
         'funcparserlib',
         'Pillow >= 3.4.2',
+        'attrs >= 18.2.0',
     ],
     'classifiers': [
         'Programming Language :: Python',
