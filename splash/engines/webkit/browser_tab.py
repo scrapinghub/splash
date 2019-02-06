@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import QApplication
 
 from splash import defaults
 from splash.har.qt import cookies2har
-from splash.network_manager import SplashQNetworkAccessManager
 from splash.qtrender_image import QtImageRenderer
 from splash.qtutils import (
     OPERATION_QT_CONSTANTS,
@@ -25,14 +24,13 @@ from splash.qtutils import (
     MediaEnabled,
     WrappedSignal,
     qt2py,
-    qurl2ascii,
     to_qurl,
     qt_send_key,
     qt_send_text,
 )
 from splash.render_options import validate_size_str
-from splash.errors import JsError, OneShotCallbackError, ScriptError
-from splash.utils import to_bytes, get_id
+from splash.errors import JsError, ScriptError
+from splash.utils import to_bytes
 from splash.jsutils import (
     get_sanitized_result_js,
     SANITIZE_FUNC_JS,
@@ -41,9 +39,8 @@ from splash.jsutils import (
     store_dom_elements,
 )
 from splash.html_element import HTMLElement
-from splash.log import SplashLogger
 from splash.browser_tab import (
-    WebpageEventLogger, BrowserTab,
+    BrowserTab,
     OneShotCallbackProxy,
     skip_if_closing,
     webpage_option_getter,
@@ -53,7 +50,7 @@ from splash.browser_tab import (
     ElementsStorage,
 )
 from .http_client import SplashWebkitHttpClient, get_header_value
-from .webpage import WebkitWebPage
+from .webpage import WebkitWebPage, WebkitEventLogger
 from .webview import SplashQWebView
 
 
@@ -198,7 +195,7 @@ class WebkitBrowserTab(BrowserTab):
         main_frame.urlChanged.connect(self._on_url_changed)
         main_frame.javaScriptWindowObjectCleared.connect(
             self._on_javascript_window_object_cleared)
-        self._webpage_logger = WebpageEventLogger(self.logger)
+        self._webpage_logger = WebkitEventLogger(self.logger)
 
     def set_custom_headers(self, headers):
         """
@@ -964,45 +961,6 @@ class WebkitBrowserTab(BrowserTab):
     def set_scroll_position(self, x, y):
         point = QPoint(x, y)
         self.web_page.mainFrame().setScrollPosition(point)
-
-
-class WebkitEventLogger(WebpageEventLogger):
-    """ This class logs various events that happen with QWebPage """
-    def add_web_page(self, web_page) -> None:
-        frame = web_page.mainFrame()
-        # setup logging
-        if self.logger.verbosity >= 4:
-            web_page.loadStarted.connect(self.on_load_started)
-            frame.loadFinished.connect(self.on_frame_load_finished)
-            frame.loadStarted.connect(self.on_frame_load_started)
-            frame.contentsSizeChanged.connect(self.on_contents_size_changed)
-            # TODO: on_repaint
-
-        if self.logger.verbosity >= 3:
-            frame.javaScriptWindowObjectCleared.connect(self.on_javascript_window_object_cleared)
-            frame.initialLayoutCompleted.connect(self.on_initial_layout_completed)
-            frame.urlChanged.connect(self.on_url_changed)
-
-    def on_load_started(self):
-        self.logger.log("loadStarted")
-
-    def on_frame_load_finished(self, ok):
-        self.logger.log("mainFrame().LoadFinished %s" % ok)
-
-    def on_frame_load_started(self):
-        self.logger.log("mainFrame().loadStarted")
-
-    def on_contents_size_changed(self, sz):
-        self.logger.log("mainFrame().contentsSizeChanged: %s" % sz)
-
-    def on_javascript_window_object_cleared(self):
-        self.logger.log("mainFrame().javaScriptWindowObjectCleared")
-
-    def on_initial_layout_completed(self):
-        self.logger.log("mainFrame().initialLayoutCompleted")
-
-    def on_url_changed(self, url):
-        self.logger.log("mainFrame().urlChanged %s" % qurl2ascii(url))
 
 
 class _JavascriptConsole(QObject):

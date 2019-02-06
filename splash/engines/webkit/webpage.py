@@ -9,6 +9,7 @@ import traceback
 from splash.browser_tab import WebpageEventLogger
 from splash.har_builder import HarBuilder
 from splash.errors import RenderErrorInfo
+from splash.qtutils import qurl2ascii
 
 
 class WebkitWebPage(QWebPage):
