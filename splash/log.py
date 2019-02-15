@@ -8,11 +8,11 @@ class SplashLogger:
 
     XXX: should we just switch to stdlib logging?
     """
-    def __init__(self, uid, verbosity):
+    def __init__(self, uid, verbosity: int) -> None:
         self.uid = uid
         self.verbosity = verbosity
 
-    def log(self, message, min_level=None):
+    def log(self, message, min_level: int = None) -> None:
         if min_level is not None and self.verbosity < min_level:
             return
 

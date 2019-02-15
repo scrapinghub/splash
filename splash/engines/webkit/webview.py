@@ -5,7 +5,8 @@ from PyQt5.QtWebKitWidgets import QWebView
 class SplashQWebView(QWebView):
     """
     QWebView subclass that handles 'close' requests. By default,
-    it prevents closing.
+    it doesn't prevent closing, but an user can assign web_view.onBeforeClose
+    function which can prevent it.
     """
     onBeforeClose = None
 
