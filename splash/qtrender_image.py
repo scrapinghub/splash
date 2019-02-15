@@ -4,12 +4,21 @@ import array
 from abc import ABCMeta, abstractmethod, abstractproperty
 from io import BytesIO
 from math import ceil, floor
+from typing import Optional, Tuple
 
+import attr
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QImage, QPainter, QRegion
 
 from splash import defaults
+
+
+@attr.s
+class _TilingOptions:
+    horizontal_count = attr.ib()  # type: int
+    vertical_count = attr.ib()  # type: int
+    tile_size = attr.ib()  # type: QSize
 
 
 class QtImageRenderer(object):
@@ -68,20 +77,20 @@ class QtImageRenderer(object):
     def is_png(self):
         return self.image_format == 'PNG'
 
-    def qimage_to_pil_image(self, qimage):
+    def _qimage_to_pil_image(self, qimage: QImage) -> Image:
         """ Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode). """
         # In our case QImage uses 0xAARRGGBB format stored in host endian
         # order, we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences
         # used by Pillow.
         buf = qimage.bits().asstring(qimage.byteCount())
         if sys.byteorder != "little":
-            buf = self.swap_byte_order_i32(buf)
+            buf = self._swap_byte_order_i32(buf)
         return Image.frombytes(
             self.pillow_image_format,
             self._qsize_to_tuple(qimage.size()),
             buf, 'raw', self.pillow_decoder_format)
 
-    def swap_byte_order_i32(self, buf):
+    def _swap_byte_order_i32(self, buf):
         """ Swap order of bytes in each 32-bit word of given byte sequence. """
         arr = array.array('I')
         arr.frombytes(buf)
@@ -93,14 +102,13 @@ class QtImageRenderer(object):
         # Overall rendering pipeline looks as follows:
         # 1. render_qwebpage
         # 2. render_qwebpage_raster/-vector
-        # 3. render_qwebpage_impl
-        # 4. render_qwebpage_full/-tiled
+        # 3. render_qwebpage_full/-tiled
         if self.region is None:
             web_viewport = QRect(QPoint(0, 0), self.web_page.viewportSize())
         else:
             left, top, right, bottom = self.region
             web_viewport = QRect(QPoint(left, top), QPoint(right - 1, bottom - 1))
-        img_viewport, img_size = self._calculate_image_parameters(
+        img_viewport, img_size = self._calculate_output_image_parameters(
             web_viewport, self.width, self.height)
         if img_viewport.isEmpty() or img_size.isEmpty():
             self.logger.log("requested image is empty", min_level=1)
@@ -109,29 +117,28 @@ class QtImageRenderer(object):
         self.logger.log("image render: output size=%s, viewport=%s" %
                         (img_size, img_viewport), min_level=2)
 
+        if self.scale_method not in ('vector', 'raster'):
+            raise ValueError(
+                "Invalid scale method (must be 'vector' or 'raster'): %s" %
+                str(self.scale_method))
+
         if self.scale_method == 'vector':
             return self._render_qwebpage_vector(
                 in_viewport=web_viewport, out_viewport=img_viewport, image_size=img_size)
         elif self.scale_method == 'raster':
             return self._render_qwebpage_raster(
                 in_viewport=web_viewport, out_viewport=img_viewport, image_size=img_size)
-        else:
-            raise ValueError(
-                "Invalid scale method (must be 'vector' or 'raster'): %s" %
-                str(self.scale_method))
 
-    def _render_qwebpage_vector(self, in_viewport, out_viewport, image_size):
+    def _render_qwebpage_vector(self,
+                                in_viewport: QRect,
+                                out_viewport: QRect,
+                                image_size: QSize) -> 'WrappedImage':
         """
         Render a webpage using vector rescale method.
 
         :param in_viewport: region of the webpage to render from
         :param out_viewport: region of the image to render to
         :param image_size: size of the resulting image
-
-        :type in_viewport: QRect
-        :type out_viewport: QRect
-        :type image_size: QSize
-
         """
         web_rect = QRect(in_viewport)
         render_rect = QRect(out_viewport)
@@ -267,7 +274,7 @@ class QtImageRenderer(object):
         canvas = Image.new(self.pillow_image_format,
                            size=self._qsize_to_tuple(canvas_size))
         ratio = render_rect.width() / float(web_rect.width())
-        tile_qimage = QImage(tile_conf['tile_size'], self.qt_image_format)
+        tile_qimage = QImage(tile_conf.tile_size, self.qt_image_format)
         painter = QPainter(tile_qimage)
         try:
             painter.setRenderHint(QPainter.Antialiasing, True)
@@ -280,9 +287,9 @@ class QtImageRenderer(object):
             # clipping rectangle is adjusted, which is not what we want.
             painter.setViewport(render_rect)
             # painter.setClipRect(web_rect)
-            for i in range(tile_conf['horizontal_count']):
+            for i in range(tile_conf.horizontal_count):
                 left = i * tile_qimage.width()
-                for j in range(tile_conf['vertical_count']):
+                for j in range(tile_conf.vertical_count):
                     top = j * tile_qimage.height()
                     painter.setViewport(render_rect.translated(-left, -top))
                     self.logger.log("Rendering with viewport=%s"
@@ -318,9 +325,17 @@ class QtImageRenderer(object):
             painter.end()
         return WrappedPillowImage(canvas)
 
-    def _calculate_image_parameters(self, web_viewport, img_width, img_height):
+    def _calculate_output_image_parameters(self,
+                                           web_viewport: QRect,
+                                           img_width: Optional[int],
+                                           img_height: Optional[int]
+                                           ) -> Tuple[QRect, QSize]:
         """
-        :return: (image_viewport, image_size)
+        Calculate parameters of the resulting image to render - coordinates
+        and size of rescaled and truncated image. Return
+        ``(image_viewport, image_size)`` tuple.
+
+        ``web_viewport`` is a QRect to render, in webpage coordinates.
         """
         if img_width is None:
             img_width = web_viewport.width()
@@ -338,16 +353,18 @@ class QtImageRenderer(object):
         image_size = QSize(img_width, img_height)
         return image_viewport, image_size
 
-    def _calculate_tiling(self, to_paint):
+    def _calculate_tiling(self, to_paint) -> _TilingOptions:
         tile_maxsize = defaults.TILE_MAXSIZE
         tile_hsize = min(tile_maxsize, to_paint.width())
         tile_vsize = min(tile_maxsize, to_paint.height())
         htiles = 1 + (to_paint.width() - 1) // tile_hsize
         vtiles = 1 + (to_paint.height() - 1) // tile_vsize
         tile_size = QSize(tile_hsize, tile_vsize)
-        return {'horizontal_count': htiles,
-                'vertical_count': vtiles,
-                'tile_size': tile_size}
+        return _TilingOptions(
+            horizontal_count=htiles,
+            vertical_count=vtiles,
+            tile_size=tile_size
+        )
 
     def _qsize_to_tuple(self, sz):
         return sz.width(), sz.height()
