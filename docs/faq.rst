@@ -258,8 +258,10 @@ https://github.com/nabilm/ansible-splash.
 
 Website is not rendered correctly
 ---------------------------------
+In this case we have two types of issues: wrong rendering and Splash crashing. 
 
-Sometimes websites are not rendered correctly by Splash.
+**Wrong rendering by Splash**
+
 Common reasons:
 
 * not enough wait time; solution - wait more (see e.g. :ref:`splash-wait`);
@@ -275,16 +277,6 @@ Common reasons:
   https://github.com/annulen/webkit, which is much more recent than WebKit
   provided by Qt; we'll be updating Splash WebKit as annulen's webkit
   develops.
-* Qt or WebKit bugs which cause Splash to hang or crash. Often the whole
-  website works, but some specific .js (or other) file causes problems.
-  In this case you can try starting splash in verbose mode
-  (e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``),
-  noting what resources are downloaded last, and filtering them out
-  using :ref:`splash-on-request` or :ref:`request filters`.
-* Some of the crashes can be solved by disabling HTML 5 media
-  (:ref:`splash-html5-media-enabled` property or
-  :ref:`html5_media <arg-html5-media>` HTTP API argument) - note it is
-  disabled by default.
 * Website may show a different content based on User-Agent header or based
   on IP address. Use :ref:`splash-set-user-agent` to change the default
   User-Agent header. If you're running Splash in a cloud and not getting good
@@ -299,6 +291,43 @@ Common reasons:
 * Website has compatibility issues with Webkit version Splash is using.
   A quick (though not precise) way to check it is to try opening a page
   in Safari.
+
+**Splash crashes.**
+
+Common reasons:
+
+* Qt or WebKit bugs which cause Splash to hang or crash. Often the whole
+  website works, but some specific .js (or other) file causes problems.
+  In this case you can try this steps:
+  
+  * Run Splash locally with v2 verbosity, e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``
+  * Go to ``http://0.0.0.0:8050`` and paste your url (with default lua)
+  * Look at the log in terminal.
+  * If Splash instance failed and stopped - go to the next steps. For example the last request was to the url like ``https://.../static/tagtag.min.js`` with JS,  and we can suspect that probably it caused the issue.
+  * Try to filter out this script with using :ref:`splash-on-request` with this template (or use use :ref:`request filters` to filter it out) :
+  
+    .. code-block:: lua
+
+     function main(splash, args)
+     splash:on_request(function(request)
+       if request.url:find('tagtag') ~= nil then
+             request:abort()
+         end
+     end)
+     assert(splash:go(args.url))
+     assert(splash:wait(0.5))
+     return {
+       html = splash:html(),
+       png = splash:png(),
+       har = splash:har(),
+     }
+     end
+  
+* Some of the crashes can be solved by disabling HTML 5 media
+  (:ref:`splash-html5-media-enabled` property or
+  :ref:`html5_media <arg-html5-media>` HTTP API argument) - note it is
+  disabled by default.
+
 
 If you have troubles making Splash work, consider asking a question
 at https://stackoverflow.com. If you think it is a Splash bug,
