@@ -309,21 +309,20 @@ Common reasons:
   * Try to filter out this script with using :ref:`splash-on-request` with this template (or use use :ref:`request filters` to filter it out) :
   
     .. code-block:: lua
-
-     function main(splash, args)
-         splash:on_request(function(request)
+    function main(splash, args)
+        splash:on_request(function(request)
             if request.url:find('tagtag') ~= nil then
                 request:abort()
             end
-         end)
-         assert(splash:go(args.url))
-         assert(splash:wait(0.5))
-         return {
+        end)
+        assert(splash:go(args.url))
+        assert(splash:wait(0.5))
+        return {
             html = splash:html(),
             png = splash:png(),
             har = splash:har(),
-         }
-     end
+        }
+    end
   
 * Some of the crashes can be solved by disabling HTML 5 media
   (:ref:`splash-html5-media-enabled` property or
