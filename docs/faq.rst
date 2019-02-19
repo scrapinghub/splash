@@ -256,11 +256,11 @@ https://github.com/nabilm/ansible-splash.
 
 .. _rendering-problems:
 
+
 Website is not rendered correctly
 ---------------------------------
-In this case we have two types of issues: wrong rendering and Splash crashing. 
 
-**Wrong rendering by Splash**
+Sometimes websites are not rendered correctly by Splash.
 
 Common reasons:
 
@@ -292,13 +292,15 @@ Common reasons:
   A quick (though not precise) way to check it is to try opening a page
   in Safari.
 
-**Splash crashes.**
+
+Splash crashes
+---------------
 
 Common reasons:
 
 * Qt or WebKit bugs which cause Splash to hang or crash. Often the whole
   website works, but some specific .js (or other) file causes problems.
-  In this case you can try this steps:
+  In this case you can try these steps:
   
   * Run Splash locally with v2 verbosity, e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``
   * Go to ``http://0.0.0.0:8050`` and paste your url (with default lua)
