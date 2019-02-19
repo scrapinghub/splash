@@ -311,18 +311,18 @@ Common reasons:
     .. code-block:: lua
 
      function main(splash, args)
-     splash:on_request(function(request)
-       if request.url:find('tagtag') ~= nil then
-             request:abort()
-         end
-     end)
-     assert(splash:go(args.url))
-     assert(splash:wait(0.5))
-     return {
-       html = splash:html(),
-       png = splash:png(),
-       har = splash:har(),
-     }
+         splash:on_request(function(request)
+            if request.url:find('tagtag') ~= nil then
+                request:abort()
+            end
+         end)
+         assert(splash:go(args.url))
+         assert(splash:wait(0.5))
+         return {
+            html = splash:html(),
+            png = splash:png(),
+            har = splash:har(),
+         }
      end
   
 * Some of the crashes can be solved by disabling HTML 5 media
