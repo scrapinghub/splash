@@ -12,6 +12,7 @@ from splash.qtutils import WrappedSignal
 from splash.errors import RenderErrorInfo
 
 from .webpage import ChromiumWebPage
+from .constants import RenderProcessTerminationStatus
 
 
 class ChromiumBrowserTab(BrowserTab):
@@ -68,7 +69,9 @@ class ChromiumBrowserTab(BrowserTab):
         self.logger.log("loadFinished, ok=%s" % ok)
 
     def _on_render_terminated(self, status, code):
-        self.logger.log("renderProcessTerminated: %s, code=%s" % (status, code))
+        status_details = RenderProcessTerminationStatus.get(status, 'unknown')
+        self.logger.log("renderProcessTerminated: %s (%s), exit_code=%s" % (
+            status, status_details, code), min_level=1)
 
     def html(self):
         """ Return HTML of the current main frame """
