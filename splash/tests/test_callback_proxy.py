@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from splash.browser_tab import OneShotCallbackError, OneShotCallbackProxy
+from splash.browser_tab import OneShotCallbackProxy, _BrowserTabLogger
 
 
 class OneShotCallbackProxyTest(unittest.TestCase):
@@ -28,7 +28,20 @@ class OneShotCallbackProxyTest(unittest.TestCase):
             if raise_:
                 raise Exception()
 
-        return OneShotCallbackProxy(None, callback, errback, timeout=0)
+        class Logger(_BrowserTabLogger):
+            def __init__(self, uid, verbosity):
+                self.messages = []
+                super().__init__(uid, verbosity)
+
+            def log(self, message, min_level=None):
+                self.messages.append((message, min_level))
+                super().log(message, min_level)
+
+        logger = Logger(uid=0, verbosity=2)
+        return OneShotCallbackProxy(None, callback, errback, logger, timeout=0)
+
+    def _assertLastMessageWarns(self, cb_proxy: OneShotCallbackProxy):
+        assert cb_proxy.logger.messages[-1][1] == 1
 
     def test_can_resume_once(self):
         cb_proxy = self._make_proxy()
@@ -55,23 +68,23 @@ class OneShotCallbackProxyTest(unittest.TestCase):
         cb_proxy = self._make_proxy()
         cb_proxy.resume('ok')
 
-        with self.assertRaises(OneShotCallbackError):
-            cb_proxy.resume('still ok?')
+        cb_proxy.resume('still ok?')
+        self._assertLastMessageWarns(cb_proxy)
 
     def test_cannot_resume_and_error(self):
         cb_proxy = self._make_proxy()
         cb_proxy.resume('ok')
-
-        with self.assertRaises(OneShotCallbackError):
-            cb_proxy.error('still ok?')
+        cb_proxy.error('still ok?')
+        self._assertLastMessageWarns(cb_proxy)
 
     def test_cannot_resume_after_cancel(self):
         cb_proxy = self._make_proxy()
         cb_proxy.cancel('changed my mind')
-
-        with self.assertRaises(OneShotCallbackError):
-            cb_proxy.resume('ok')
+        cb_proxy.resume('ok')
+        self._assertLastMessageWarns(cb_proxy)
 
     def test_negative_timeout_is_invalid(self):
         with self.assertRaises(ValueError):
-            cb_proxy = OneShotCallbackProxy(None, lambda a: a, lambda b: b, -1)
+            logger = _BrowserTabLogger(uid=0, verbosity=2)
+            cb_proxy = OneShotCallbackProxy(None, lambda a: a, lambda b: b,
+                                            logger, -1)
