@@ -27,6 +27,7 @@ from splash.qtutils import (
     to_qurl,
     qt_send_key,
     qt_send_text,
+    parse_size,
 )
 from splash.render_options import validate_size_str
 from splash.errors import JsError, ScriptError
@@ -104,8 +105,7 @@ class WebkitBrowserTab(BrowserTab):
 
         self.set_viewport(defaults.VIEWPORT_SIZE)
         # XXX: hack to ensure that default window size is not 640x480.
-        self.web_view.resize(
-            QSize(*map(int, defaults.VIEWPORT_SIZE.split('x'))))
+        self.web_view.resize(parse_size(defaults.VIEWPORT_SIZE))
 
     def _init_elements_storage(self):
         frame = self.web_page.mainFrame()
@@ -257,8 +257,7 @@ class WebkitBrowserTab(BrowserTab):
 
         if not isinstance(size, QSize):
             validate_size_str(size)
-            w, h = map(int, size.split('x'))
-            size = QSize(w, h)
+            size = parse_size(size)
         self.web_page.setViewportSize(size)
         self._force_relayout()
         w, h = int(size.width()), int(size.height())

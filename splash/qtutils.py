@@ -8,7 +8,7 @@ import sys
 import time
 
 from PyQt5.QtCore import (QAbstractEventDispatcher, QDateTime, QObject,
-                          QUrl, QVariant, QEvent, Qt, QByteArray)
+                          QUrl, QVariant, QEvent, Qt, QByteArray, QSize)
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkProxy
@@ -160,6 +160,12 @@ def to_qurl(s):
     if isinstance(s, QUrl):
         return s
     return QUrl.fromEncoded(to_bytes(s, encoding='utf8'))
+
+
+def parse_size(size: str) -> QSize:
+    """ Parse size string which looks like 'WxH', e.g. '640x480' """
+    w, h = map(int, size.split('x'))
+    return QSize(w, h)
 
 
 def qt_to_bytes(value):
