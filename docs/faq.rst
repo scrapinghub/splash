@@ -256,11 +256,11 @@ https://github.com/nabilm/ansible-splash.
 
 .. _rendering-problems:
 
+
 Website is not rendered correctly
 ---------------------------------
 
-Sometimes websites are not rendered correctly by Splash.
-Common reasons:
+Sometimes websites are not rendered correctly by Splash. Common reasons:
 
 * not enough wait time; solution - wait more (see e.g. :ref:`splash-wait`);
 * non-working localStorage in Private Mode. This is a common issue e.g. for
@@ -275,16 +275,6 @@ Common reasons:
   https://github.com/annulen/webkit, which is much more recent than WebKit
   provided by Qt; we'll be updating Splash WebKit as annulen's webkit
   develops.
-* Qt or WebKit bugs which cause Splash to hang or crash. Often the whole
-  website works, but some specific .js (or other) file causes problems.
-  In this case you can try starting splash in verbose mode
-  (e.g. ``docker run -it -p8050:8050 scrapinghub/splash -v2``),
-  noting what resources are downloaded last, and filtering them out
-  using :ref:`splash-on-request` or :ref:`request filters`.
-* Some of the crashes can be solved by disabling HTML 5 media
-  (:ref:`splash-html5-media-enabled` property or
-  :ref:`html5_media <arg-html5-media>` HTTP API argument) - note it is
-  disabled by default.
 * Website may show a different content based on User-Agent header or based
   on IP address. Use :ref:`splash-set-user-agent` to change the default
   User-Agent header. If you're running Splash in a cloud and not getting good
@@ -300,11 +290,64 @@ Common reasons:
   A quick (though not precise) way to check it is to try opening a page
   in Safari.
 
+.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
+
+Splash crashes
+--------------
+
+Common reasons:
+
+* Qt or WebKit bugs which cause Splash to hang or crash. Unfortunately,
+  they can be hard to fix in Splash, as Splash is relying on these projects.
+  That said, often the whole website works, but some specific .js (or other)
+  file causes problems. In this case you can try these steps:
+  
+  * Run Splash locally with v2 verbosity, e.g.
+    ``docker run -it -p8050:8050 scrapinghub/splash -v2``
+  * Go to ``http://0.0.0.0:8050`` and paste your url (with the default Lua
+    script), or try to reproduce the issue otherwise, using this Splash
+    instance.
+  * If Splash instance failed and stopped (you reproduced the issue),
+    check the log in terminal. Pay special attention to network activity.
+    For example, if the last response was for an url like
+    ``https://example.com/static/myscript123.min.js`` with JS, we may suspect
+    that this particular JavaScript file contains some code which makes
+    Splash crash.
+  * Filter out this .js file using :ref:`splash-on-request`:
+  
+    .. code-block:: lua
+
+        function main(splash, args)
+            splash:on_request(function(request)
+                if request.url:find('myscript123') ~= nil then
+                    request:abort()
+                end
+            end)
+            assert(splash:go(args.url))
+            assert(splash:wait(0.5))
+            return {
+                html = splash:html(),
+                png = splash:png(),
+                har = splash:har(),
+            }
+        end
+
+    Alternatively, use :ref:`request filters` to filter it out.
+
+* Some of the crashes can be solved by disabling HTML 5 media
+  (:ref:`splash-html5-media-enabled` property or
+  :ref:`html5_media <arg-html5-media>` HTTP API argument) - note it is
+  disabled by default.
+
+* Sometimes Splash may crash, and you get a Python traceback in the log.
+  In this case it is likely to be a Splash bug which can be fixed in Splash.
+  Please report it at https://github.com/scrapinghub/splash/issues, pasting
+  the whole traceback and parameters of the request you're making, if possible
+  (URL, endpoint or Lua script used).
+
 If you have troubles making Splash work, consider asking a question
 at https://stackoverflow.com. If you think it is a Splash bug,
 raise an issue at https://github.com/scrapinghub/splash/issues.
-
-.. _IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 
 .. _disable-private-mode:
 

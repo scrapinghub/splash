@@ -1,6 +1,14 @@
 Changes
 =======
 
+3.3.1 (2019-02-21)
+------------------
+
+* Fix a crash in :ref:`splash-wait-for-resume` - Splash used to crash when
+  ``resume()`` or ``error()`` are called more than once, e.g. by delayed JS
+  code;
+* new FAQ section about debugging Splash crashes.
+
 3.3 (2019-02-06)
 ----------------
 
