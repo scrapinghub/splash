@@ -1,4 +1,4 @@
-FROM scrapinghub/splash:3.3
+FROM scrapinghub/splash:3.3.1
 
 RUN apt-get update -q && \
     apt-get install --no-install-recommends -y \
