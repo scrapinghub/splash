@@ -690,7 +690,8 @@ class WebkitBrowserTab(BrowserTab):
         """
 
         frame = self.web_page.mainFrame()
-        callback_proxy = OneShotCallbackProxy(self, callback, errback, timeout)
+        callback_proxy = OneShotCallbackProxy(self, callback, errback,
+                                              self.logger, timeout)
         self._callback_proxies_to_cancel.add(callback_proxy)
         frame.addToJavaScriptWindowObject(callback_proxy.name, callback_proxy)
 

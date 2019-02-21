@@ -28,7 +28,7 @@ from splash.qtutils import (
     qt_send_text,
 )
 from splash.render_options import validate_size_str
-from splash.errors import JsError, OneShotCallbackError, ScriptError
+from splash.errors import JsError, ScriptError
 from splash.utils import to_bytes, get_id
 from splash.jsutils import (
     get_sanitized_result_js,
@@ -351,17 +351,20 @@ class OneShotCallbackProxy(QObject):
     Python callbacks.
 
     It is "one shot" because either `resume()` or `error()` should be called
-    exactly _once_. It raises an exception if the combined number of calls
-    to these methods is greater than 1.
+    exactly _once_. It logs an error if the combined number of calls
+    to these methods is greater than 1 (exception is not raised because
+    calls may happen from JS, and Qt ends a process in such cases).
 
     If timeout is zero, then the timeout is disabled.
     """
 
-    def __init__(self, parent, callback, errback, timeout=0):
+    def __init__(self, parent, callback, errback, logger: SplashLogger,
+                 timeout=0):
         self.name = get_id()
         self._used_up = False
         self._callback = callback
         self._errback = errback
+        self.logger = logger
 
         if timeout < 0:
             raise ValueError('OneShotCallbackProxy timeout must be >= 0.')
@@ -378,8 +381,9 @@ class OneShotCallbackProxy(QObject):
     @pyqtSlot('QVariantMap')
     def resume(self, value=None):
         if self._used_up:
-            raise OneShotCallbackError("resume() called on a one shot"
-                                       " callback that was already used up.")
+            self.logger.log("warning: resume() called on a one shot callback "
+                             "that was already used up.", min_level=1)
+            return
 
         self.use_up()
         self._callback(qt2py(value))
@@ -387,8 +391,9 @@ class OneShotCallbackProxy(QObject):
     @pyqtSlot(str, bool)
     def error(self, message, raise_=False):
         if self._used_up:
-            raise OneShotCallbackError("error() called on a one shot"
-                                       " callback that was already used up.")
+            self.logger.log("warning: error() called on a one shot callback "
+                             "that was already used up.", min_level=1)
+            return
 
         self.use_up()
         self._errback(message, raise_)

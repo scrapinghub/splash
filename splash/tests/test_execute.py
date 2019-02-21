@@ -677,10 +677,16 @@ class WaitForResumeTest(BaseLuaRenderTest):
         kwargs.setdefault('endpoint', endpoint)
         return super().request_lua(code, query, **kwargs)
 
-    def _wait_for_resume_request(self, js, timeout=1.0):
+    def _wait_for_resume_request(self, js, timeout=1.0, wait=0):
         return self.request_lua("""
         function main(splash)
-            local result, error = splash:wait_for_resume([[%s]], %.1f)
+            local result, error = splash:wait_for_resume(
+                splash.args.wfr_js, splash.args.wfr_timeout
+            )            
+            
+            if splash.args.wait ~= 0 then
+                assert(splash:wait(splash.args.wait))
+            end
             local response = {}
 
             if result ~= nil then
@@ -692,7 +698,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
 
             return response
         end
-        """ % (js, timeout))
+        """, query={"wfr_js": js, "wfr_timeout": timeout, "wait": wait})
 
     def test_return_undefined(self):
         resp = self._wait_for_resume_request("""
@@ -957,7 +963,7 @@ class WaitForResumeTest(BaseLuaRenderTest):
                     splash.resume('not ok');
                 }, 500);
             }
-        """)
+        """, wait=1)
         self.assertStatusCode(resp, 200)
         self.assertEqual(resp.json(), {"value": "ok", "value_type": "string"})
 

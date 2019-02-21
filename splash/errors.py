@@ -58,11 +58,6 @@ class JsError(Exception):
     pass
 
 
-class OneShotCallbackError(Exception):
-    """ A one shot callback was called more than once. """
-    pass
-
-
 class DOMError(Exception):
     """ Error occurred during DOM operations"""
     NOT_IN_DOM_ERROR = 'NOT_IN_DOM_ERROR'
