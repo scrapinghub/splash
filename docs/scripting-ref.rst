@@ -426,13 +426,14 @@ amount of time:
 
     function wait_until(splash, timeout, polling_interval, check_func, ...)
         -- XXX: polling_interval shall not be too small
+        local vargs = ...
         local ok, result1, result2 = splash:with_timeout(function()
             while true do
                local ok, reason = splash:wait(polling_interval)
                if not ok then
                    return ok, string.format('wait failed: %s', reason)
                end
-               local check_result = check_func(...)
+               local check_result = check_func(vargs)
                if check_result then
                    return true, check_result
                end
