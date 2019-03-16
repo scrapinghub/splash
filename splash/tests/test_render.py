@@ -1103,3 +1103,17 @@ class RenderJpegTest(Base.RenderTest):
             r = self.request({'url': self.mockurl("jsrender"),
                               'scale_method': method})
             self.assertStatusCode(r, 400)
+
+
+class InvalidEngineRequestHandler(DirectRequestHandler):
+    engine = 'invalid'
+
+
+class InvalidEngineNameTest(BaseRenderTest):
+    request_handler = InvalidEngineRequestHandler
+
+    def test_invalid_engine(self):
+        url = self.mockurl('getrequest') + '?code=200'
+        r = self.request({'url': url})
+        self.assertStatusCode(r, 400)
+        self.assertIn("Unsupported render engine", r.text)
