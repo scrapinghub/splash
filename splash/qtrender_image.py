@@ -301,7 +301,7 @@ class QtImageRenderer(object):
                         QPoint(ceil((left + tile_qimage.width()) / ratio),
                                ceil((top + tile_qimage.height()) / ratio)))
                     self.web_page.mainFrame().render(painter, QRegion(clip_rect))
-                    tile_image = self.qimage_to_pil_image(tile_qimage)
+                    tile_image = self._qimage_to_pil_image(tile_qimage)
 
                     # If this is the bottommost tile, its bottom may have stuff
                     # left over from rendering the previous tile.  Make sure
