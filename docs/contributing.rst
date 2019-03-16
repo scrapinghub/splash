@@ -39,13 +39,13 @@ testing Docker container.
 
 3. Run tests inside this testing image::
 
-      docker run -it splash-tests
+      docker run --rm -it splash-tests
 
    You can also pass pytest command-line arguments in the command above.
    For example, you can select only a subset of tests to execute
    (SandboxTest test case in this example)::
 
-      docker run -it splash-tests -k SandboxTest
+      docker run --rm -it splash-tests -k SandboxTest
 
 If you've changed Splash source code and want to re-run tests, repeat steps
 (2) and (3). Step (2) should take much less time now.
