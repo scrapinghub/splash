@@ -1105,12 +1105,12 @@ class RenderJpegTest(Base.RenderTest):
             self.assertStatusCode(r, 400)
 
 
-class InvalidEngineRequestHandler(DirectRequestHandler):
+class InvalidEngineNameRequestHandler(DirectRequestHandler):
     engine = 'invalid'
 
 
 class InvalidEngineNameTest(BaseRenderTest):
-    request_handler = InvalidEngineRequestHandler
+    request_handler = InvalidEngineNameRequestHandler
 
     def test_invalid_engine(self):
         url = self.mockurl('getrequest') + '?code=200'
