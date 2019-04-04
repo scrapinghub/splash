@@ -429,14 +429,14 @@ amount of time:
         local vargs = {...}
         local ok, result1, result2 = splash:with_timeout(function()
             while true do
-               local ok, reason = splash:wait(polling_interval)
-               if not ok then
-                   return ok, string.format('wait failed: %s', reason)
-               end
-               local check_result = check_func(table.unpack(vargs))
-               if check_result then
-                   return true, check_result
-               end
+                local ok, reason = splash:wait(polling_interval)
+                if not ok then
+                    return ok, string.format('wait failed: %s', reason)
+                end
+                local check_result = check_func(table.unpack(vargs))
+                if check_result then
+                    return true, check_result
+                end
             end
         end, timeout)
         if not ok then
