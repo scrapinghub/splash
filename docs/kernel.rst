@@ -66,8 +66,14 @@ Live Webkit window
 
 To view Live Webkit window with web inspector when Splash-Jupyter is executed
 from Docker, you will need to pass additional docker parameters to share the
-host system's X server with the docker container, and use the ``--disable-xvfb``
-command line flag::
+host system's X server with the docker container
+
+First you need allow docker to connect to the X server, using::
+
+    $ xhost +local:docker
+
+And then use the ``--disable-xvfb``
+command line flag to run Splash-Jupyter::
 
     $ docker run -e DISPLAY=unix$DISPLAY \
                  -v /tmp/.X11-unix:/tmp/.X11-unix \
@@ -78,7 +84,7 @@ command line flag::
 
 .. note::
 
-    The command above is tested on Linux.
+    The command above is tested on Linux.    
 
 From Notebook to HTTP API
 -------------------------
