@@ -14,8 +14,9 @@ class RenderOptions(object):
 
     _REQUIRED = object()
 
-    def __init__(self, data, max_timeout):
+    def __init__(self, data, max_timeout, max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT):
         self.data = data
+        self.max_response_size_limit = max_response_size_limit
         self.max_timeout = max_timeout
 
     @classmethod
@@ -29,7 +30,7 @@ class RenderOptions(object):
         raise BadOption(params)
 
     @classmethod
-    def fromrequest(cls, request, max_timeout):
+    def fromrequest(cls, request, max_timeout, max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT):
         """
         Initialize options from a Twisted Request.
         """
@@ -60,7 +61,7 @@ class RenderOptions(object):
                 request.content.seek(0)
 
         data['uid'] = id(request)
-        return cls(data, max_timeout)
+        return cls(data, max_timeout, max_response_size_limit=max_response_size_limit)
 
     def get_expired_args(self, cache):
         """
