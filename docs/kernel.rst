@@ -80,7 +80,7 @@ command line flag::
 
     The command above is tested on Linux.
 
-On Windows you can use VcXsrv as described here https://dev.to/darksmile92/run-gui-app-in-linux-docker-container-on-windows-host-4kde and run::
+On Windows you can `use VcXsrv <https://dev.to/darksmile92/run-gui-app-in-linux-docker-container-on-windows-host-4kde>`_::
 
     $ docker run -e DISPLAY=$DISPLAY \
                  -p 8888:8888 \
