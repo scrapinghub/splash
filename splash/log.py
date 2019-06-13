@@ -21,3 +21,9 @@ class SplashLogger:
 
         message = "[%s] %s" % (self.uid, message)
         log.msg(message, system='render')
+
+
+class DummyLogger:
+    """ Logger to use when no logger is passed into rendering functions. """
+    def log(self, *args, **kwargs):
+        pass

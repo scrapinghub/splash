@@ -15,7 +15,6 @@ from PyQt5.QtNetwork import QNetworkRequest
 from splash import defaults
 from splash.har.qt import cookies2har
 from splash.network_manager import SplashQNetworkAccessManager
-from splash.qtrender_image import QtWebkitImageRenderer
 from splash.qtutils import (
     OPERATION_QT_CONSTANTS,
     MediaSourceEnabled,

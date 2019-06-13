@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import QApplication
 
 from splash import defaults
 from splash.har.qt import cookies2har
-from splash.qtrender_image import QtWebkitImageRenderer
 from splash.qtutils import (
     OPERATION_QT_CONSTANTS,
     MediaSourceEnabled,
@@ -53,6 +52,7 @@ from splash.browser_tab import (
 from .http_client import SplashWebkitHttpClient, get_header_value
 from .webpage import WebkitWebPage, WebkitEventLogger
 from .webview import SplashQWebView
+from .image_renderer import QtWebkitImageRenderer
 
 
 class WebkitBrowserTab(BrowserTab):
