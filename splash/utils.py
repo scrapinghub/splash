@@ -1,3 +1,5 @@
+import array
+
 import os
 import gc
 import sys
@@ -245,3 +247,11 @@ def traverse_data(obj, predicate, convert, max_depth=100):
         }
 
     return obj
+
+
+def swap_byte_order_i32(buf: bytes) -> bytes:
+    """ Swap order of bytes in each 32-bit word of given byte sequence. """
+    arr = array.array('I')
+    arr.frombytes(buf)
+    arr.byteswap()
+    return arr.tobytes()
