@@ -26,7 +26,7 @@ class QImagePillowConverter:
     """ Object for managing Pillow and QImages """
     def __init__(self, tagret_format: str) -> None:
         self.target_format = tagret_format.upper()
-        if not self.target_format not in ('JPEG', 'PNG'):
+        if self.target_format not in ('JPEG', 'PNG'):
             raise ValueError('Invalid image format %s, must be PNG or JPEG' %
                              self.target_format)
 
