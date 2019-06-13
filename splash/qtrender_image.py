@@ -8,10 +8,11 @@ from typing import Optional, Tuple
 
 import attr
 from PIL import Image
-from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt
+from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt, QSizeF
 from PyQt5.QtGui import QImage, QPainter, QRegion
 
 from splash import defaults
+from splash.qtutils import qsize_to_tuple
 
 
 @attr.s
@@ -21,7 +22,79 @@ class _TilingOptions:
     tile_size = attr.ib()  # type: QSize
 
 
-class QtImageRenderer(object):
+class QImagePillowConverter:
+    """ Object for managing Pillow and QImages """
+    def __init__(self, tagret_format: str) -> None:
+        self.target_format = tagret_format.upper()
+        if not self.target_format not in ('JPEG', 'PNG'):
+            raise ValueError('Invalid image format %s, must be PNG or JPEG' %
+                             self.target_format)
+
+        # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for
+        # Pillow, hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGRX'.
+        # mapping for self.pillow_image_decoder is taken from
+        # https://github.com/python-pillow/Pillow/blob/2.9.0/libImaging/Pack.c#L526
+        if self.target_format == 'JPEG':
+            self.qt_image_format = QImage.Format_ARGB32
+            self.pillow_image_format = "RGB"
+            self.pillow_decoder_format = "BGRX"
+        else:
+            self.qt_image_format = QImage.Format_ARGB32
+            self.pillow_image_format = "RGBA"
+            self.pillow_decoder_format = "BGRA"
+
+    def qimage_to_pil(self, qimage: QImage) -> Image:
+        """ Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode). """
+        # In our case QImage uses 0xAARRGGBB format stored in host endian
+        # order, we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences
+        # used by Pillow.
+        buf = qimage.bits().asstring(qimage.byteCount())
+        if sys.byteorder != "little":
+            buf = _swap_byte_order_i32(buf)
+        return Image.frombytes(
+            self.pillow_image_format,
+            qsize_to_tuple(qimage.size()),
+            buf, 'raw', self.pillow_decoder_format)
+
+    def new_pillow_image(self, size) -> Image:
+        """ Return a new blank Pillow image """
+        if isinstance(size, (QSize, QSizeF)):
+            size = qsize_to_tuple(size)
+        return Image.new(self.pillow_image_format, size=size)
+
+    def new_qimage(self, size, fill=True) -> QImage:
+        img = QImage(size, self.qt_image_format)
+        if fill:
+            if self.target_format == "JPEG":
+                # White background for JPEG images, same as in all browsers.
+                img.fill(Qt.white)
+            else:
+                # Preserve old behaviour for PNG format.
+                img.fill(0)
+        return img
+
+
+class BaseQtImageRenderer:
+    """ Object for rendering web page (or its parts) as an image """
+    def __init__(self, web_page, logger=None, image_format=None,
+                 width=None, height=None, scale_method=None, region=None):
+        self.web_page = web_page
+        if logger is None:
+            logger = _DummyLogger()
+        self.logger = logger
+        self.width = width
+        self.height = height
+        if scale_method is None:
+            scale_method = defaults.IMAGE_SCALE_METHOD
+        self.scale_method = scale_method
+        self.region = region
+        if self.region is not None and self.height:
+            raise ValueError("'height' argument is not supported when "
+                             "'region' is argument is passed")
+        self.img_converter = QImagePillowConverter(image_format)
+
+
+class QtWebkitImageRenderer(BaseQtImageRenderer):
 
     # QPainter cannot render a region with any dimension greater than
     # this value.
@@ -38,64 +111,11 @@ class QtImageRenderer(object):
         :type height: int
         :type scale_method: str {'raster', 'vector'}
         :type region: (int, int, int, int)
-
         """
-        self.web_page = web_page
-        if logger is None:
-            logger = _DummyLogger()
-        self.logger = logger
-        self.width = width
-        self.height = height
-        if scale_method is None:
-            scale_method = defaults.IMAGE_SCALE_METHOD
-        self.scale_method = scale_method
-        self.region = region
-        self.image_format = image_format.upper()
-        if not (self.is_png() or self.is_jpeg()):
-            raise ValueError('Unexpected image format %s, should be PNG or JPEG' %
-                             self.image_format)
-        if self.region is not None and self.height:
-            raise ValueError("'height' argument is not supported when "
-                             "'region' is argument is passed")
-
-        # QImage's 0xARGB in little-endian becomes [0xB, 0xG, 0xR, 0xA] for
-        # Pillow, hence the 'BGRA' decoder argument. Same for 'RGB' - 'BGRX'.
-        # mapping for self.pillow_image_decoder is taken from
-        # https://github.com/python-pillow/Pillow/blob/2.9.0/libImaging/Pack.c#L526
-        if self.is_jpeg():
-            self.qt_image_format = QImage.Format_ARGB32
-            self.pillow_image_format = "RGB"
-            self.pillow_decoder_format = "BGRX"
-        else:
-            self.qt_image_format = QImage.Format_ARGB32
-            self.pillow_image_format = 'RGBA'
-            self.pillow_decoder_format = 'BGRA'
-
-    def is_jpeg(self):
-        return self.image_format == 'JPEG'
-
-    def is_png(self):
-        return self.image_format == 'PNG'
-
-    def _qimage_to_pil_image(self, qimage: QImage) -> Image:
-        """ Convert QImage (in ARGB32 format) to PIL.Image (in RGBA mode). """
-        # In our case QImage uses 0xAARRGGBB format stored in host endian
-        # order, we must convert it to [0xRR, 0xGG, 0xBB, 0xAA] sequences
-        # used by Pillow.
-        buf = qimage.bits().asstring(qimage.byteCount())
-        if sys.byteorder != "little":
-            buf = self._swap_byte_order_i32(buf)
-        return Image.frombytes(
-            self.pillow_image_format,
-            self._qsize_to_tuple(qimage.size()),
-            buf, 'raw', self.pillow_decoder_format)
-
-    def _swap_byte_order_i32(self, buf):
-        """ Swap order of bytes in each 32-bit word of given byte sequence. """
-        arr = array.array('I')
-        arr.frombytes(buf)
-        arr.byteswap()
-        return arr.tobytes()
+        super().__init__(web_page=web_page, logger=logger,
+                         image_format=image_format, width=width,
+                         height=height, scale_method=scale_method,
+                         region=region)
 
     def render_qwebpage(self) -> 'WrappedImage':
         """ Render QWebPage into a WrappedImage. """
@@ -229,13 +249,7 @@ class QtImageRenderer(object):
             # If this condition is true, this function may get stuck.
             raise ValueError("Rendering region is too large to be drawn"
                              " in one step, use tile-by-tile renderer instead")
-        canvas = QImage(canvas_size, self.qt_image_format)
-        if self.is_jpeg():
-            # White background for JPEG images, same as in all browsers.
-            canvas.fill(Qt.white)
-        else:
-            # Preserve old behaviour for PNG format.
-            canvas.fill(0)
+        canvas = self.img_converter.new_qimage(canvas_size)
         painter = QPainter(canvas)
         try:
             painter.setRenderHint(QPainter.Antialiasing, True)
@@ -271,10 +285,9 @@ class QtImageRenderer(object):
         tile_conf = self._calculate_tiling(
             to_paint=render_rect.intersected(QRect(QPoint(0, 0), canvas_size)))
 
-        canvas = Image.new(self.pillow_image_format,
-                           size=self._qsize_to_tuple(canvas_size))
+        canvas = self.img_converter.new_pillow_image(canvas_size)
         ratio = render_rect.width() / float(web_rect.width())
-        tile_qimage = QImage(tile_conf.tile_size, self.qt_image_format)
+        tile_qimage = self.img_converter.new_qimage(tile_conf.tile_size, fill=False)
         painter = QPainter(tile_qimage)
         try:
             painter.setRenderHint(QPainter.Antialiasing, True)
@@ -305,7 +318,7 @@ class QtImageRenderer(object):
                         QPoint(ceil((left + tile_qimage.width()) / ratio),
                                ceil((top + tile_qimage.height()) / ratio)))
                     self.web_page.mainFrame().render(painter, QRegion(clip_rect))
-                    tile_image = self._qimage_to_pil_image(tile_qimage)
+                    tile_image = self.img_converter.qimage_to_pil(tile_qimage)
 
                     # If this is the bottommost tile, its bottom may have stuff
                     # left over from rendering the previous tile.  Make sure
@@ -357,7 +370,7 @@ class QtImageRenderer(object):
         image_size = QSize(img_width, img_height)
         return image_viewport, image_size
 
-    def _calculate_tiling(self, to_paint) -> _TilingOptions:
+    def _calculate_tiling(self, to_paint: QRect) -> _TilingOptions:
         tile_maxsize = defaults.TILE_MAXSIZE
         tile_hsize = min(tile_maxsize, to_paint.width())
         tile_vsize = min(tile_maxsize, to_paint.height())
@@ -370,14 +383,19 @@ class QtImageRenderer(object):
             tile_size=tile_size
         )
 
-    def _qsize_to_tuple(self, sz):
-        return sz.width(), sz.height()
-
     def _qpainter_needs_tiling(self, render_rect, canvas_size):
         """ Return True if QPainter cannot perform given render
         without tiling. """
         to_paint = render_rect.intersected(QRect(QPoint(0, 0), canvas_size))
         return max(to_paint.width(), to_paint.height()) > self.QPAINTER_MAXSIZE
+
+
+def _swap_byte_order_i32(buf):
+    """ Swap order of bytes in each 32-bit word of given byte sequence. """
+    arr = array.array('I')
+    arr.frombytes(buf)
+    arr.byteswap()
+    return arr.tobytes()
 
 
 class _DummyLogger(object):

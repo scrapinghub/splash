@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import QApplication
 
 from splash import defaults
 from splash.har.qt import cookies2har
-from splash.qtrender_image import QtImageRenderer
+from splash.qtrender_image import QtWebkitImageRenderer
 from splash.qtutils import (
     OPERATION_QT_CONSTANTS,
     MediaSourceEnabled,
@@ -783,7 +783,7 @@ class WebkitBrowserTab(BrowserTab):
                 self.logger.log("Rendering whole page contents (RENDER_ALL)",
                                 min_level=2)
                 self.set_viewport('full')
-            renderer = QtImageRenderer(
+            renderer = QtWebkitImageRenderer(
                 self.web_page, self.logger, image_format,
                 width=width, height=height, scale_method=scale_method,
                 region=region)

@@ -405,3 +405,9 @@ def qt_send_text(text, target, key_type=0):
         # Key release does not generate any input
         event = QKeyEvent(QEvent.KeyRelease, key_type, modifiers, '')
         QApplication.postEvent(target, event)
+
+
+def qsize_to_tuple(sz):
+    """ Convert QSize (or its variants) to (width, height) tuple """
+    return sz.width(), sz.height()
+
