@@ -13,6 +13,7 @@ from PyQt5.QtGui import QImage, QPainter, QRegion
 
 from splash import defaults
 from splash.qtutils import qsize_to_tuple
+from splash.utils import swap_byte_order_i32
 
 
 @attr.s
@@ -50,7 +51,7 @@ class QImagePillowConverter:
         # used by Pillow.
         buf = qimage.bits().asstring(qimage.byteCount())
         if sys.byteorder != "little":
-            buf = _swap_byte_order_i32(buf)
+            buf = swap_byte_order_i32(buf)
         return Image.frombytes(
             self.pillow_image_format,
             qsize_to_tuple(qimage.size()),
@@ -388,14 +389,6 @@ class QtWebkitImageRenderer(BaseQtImageRenderer):
         without tiling. """
         to_paint = render_rect.intersected(QRect(QPoint(0, 0), canvas_size))
         return max(to_paint.width(), to_paint.height()) > self.QPAINTER_MAXSIZE
-
-
-def _swap_byte_order_i32(buf):
-    """ Swap order of bytes in each 32-bit word of given byte sequence. """
-    arr = array.array('I')
-    arr.frombytes(buf)
-    arr.byteswap()
-    return arr.tobytes()
 
 
 class _DummyLogger(object):

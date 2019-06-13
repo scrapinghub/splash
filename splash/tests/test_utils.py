@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+import pytest
+
 from splash.utils import to_bytes, to_unicode
+from splash.utils import swap_byte_order_i32
 
 
 class ToUnicodeTest(unittest.TestCase):
@@ -42,3 +45,14 @@ class ToBytesTest(unittest.TestCase):
             to_bytes(u'a\ufffdb', 'latin-1', errors='replace'),
             b'a?b'
         )
+
+
+def test_swap_byte_order_i32():
+    assert swap_byte_order_i32(b"") == b""
+    assert swap_byte_order_i32(b"abcd") == b"dcba"
+    assert swap_byte_order_i32(b"abcdefgh") == b"dcbahgfe"
+
+    with pytest.raises(ValueError):
+        swap_byte_order_i32(b"abcdef")
+    with pytest.raises(ValueError):
+        swap_byte_order_i32(b"abc")
