@@ -287,6 +287,10 @@ class QtImageRenderer(object):
             # clipping rectangle is adjusted, which is not what we want.
             painter.setViewport(render_rect)
             # painter.setClipRect(web_rect)
+            self.logger.log(
+                "Tiled rendering. tile_conf=%s; web_rect=%s, render_rect=%s, "
+                "canvas_size=%s" % (tile_conf, web_rect, render_rect, canvas_size),
+                min_level=2)
             for i in range(tile_conf.horizontal_count):
                 left = i * tile_qimage.width()
                 for j in range(tile_conf.vertical_count):

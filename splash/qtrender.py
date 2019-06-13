@@ -8,6 +8,7 @@ from splash import defaults
 from splash.engines.webkit import WebkitBrowserTab
 from splash.engines.chromium import ChromiumBrowserTab
 from splash.errors import RenderError
+from splash.render_options import RenderOptions
 
 
 def stop_on_error(meth):
@@ -28,7 +29,11 @@ class BaseRenderScript(metaclass=abc.ABCMeta):
     tab = None  # create self.tab in __init__ method
 
     @abc.abstractmethod
-    def __init__(self, render_options, verbosity, **kwargs):
+    def __init__(self, render_options: RenderOptions,
+                 verbosity: int, **kwargs) -> None:
+        """
+        BaseRenderScript.__init__ is called by Pool.
+        """
         self.render_options = render_options
         self.verbosity = verbosity
 

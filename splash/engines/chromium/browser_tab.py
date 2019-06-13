@@ -66,7 +66,7 @@ class ChromiumBrowserTab(BrowserTab):
             errback(error_info)
 
     def _on_load_finished(self, ok):
-        self.logger.log("loadFinished, ok=%s" % ok)
+        self.logger.log("loadFinished, ok=%s" % ok, min_level=2)
 
     def _on_render_terminated(self, status, code):
         status_details = RenderProcessTerminationStatus.get(status, 'unknown')
