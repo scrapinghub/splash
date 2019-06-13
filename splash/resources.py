@@ -127,6 +127,7 @@ class BaseRenderResource(_ValidatingResource):
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
+        pool_d.addErrback(self._on_unhandled_internal_error, request)
         pool_d.addBoth(self._finish_request, request,
                        options=original_options)
         return NOT_DONE_YET
@@ -233,7 +234,11 @@ class BaseRenderResource(_ValidatingResource):
         return self._write_error(request, 502, failure.value)
 
     def _on_internal_error(self, failure, request):
-        log.err()
+        failure.trap(InternalError)
+        failure.printTraceback()
+        return self._write_error(request, 502, failure.value)
+
+    def _on_unhandled_internal_error(self, failure, request):
         # failure.printTraceback()
         sentry.capture(failure)
         # only propagate str value to avoid exposing internal details
