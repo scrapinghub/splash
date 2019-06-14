@@ -1,15 +1,26 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile
+from PyQt5.QtWebEngineWidgets import (
+    QWebEngineView,
+    QWebEngineProfile,
+    QWebEngineSettings
+)
 from PyQt5.QtCore import (
     QObject, QSize, Qt, QTimer, pyqtSlot, QEvent,
     QPointF, QPoint, pyqtSignal, QUrl,
+    QSizeF,
 )
 from twisted.internet import defer
 
-
-from splash.browser_tab import BrowserTab, skip_if_closing
-from splash.qtutils import WrappedSignal
+from splash import defaults
+from splash.browser_tab import (
+    BrowserTab,
+    skip_if_closing,
+    webpage_option_setter,
+    webpage_option_getter
+)
+from splash.qtutils import WrappedSignal, parse_size
 from splash.errors import RenderErrorInfo
+from splash.render_options import validate_size_str
 
 from .webpage import ChromiumWebPage
 from .constants import RenderProcessTerminationStatus
@@ -23,8 +34,21 @@ class ChromiumBrowserTab(BrowserTab):
         self.web_view = QWebEngineView()
         self.web_view.setPage(self.web_page)
 
+        self.web_view.setAttribute(Qt.WA_DeleteOnClose, True)
+
+        # TODO: is it ok? :)
+        # self.web_view.setAttribute(Qt.WA_DontShowOnScreen, True)
+
+        # FIXME: required for screenshots?
+        # Also, without .show() in JS window.innerWidth/innerHeight are zeros
+        self.web_view.show()
+
         self._setup_webpage_events()
+        self._set_default_webpage_options()
         self._html_d = None
+
+        # ensure that default window size is not 640x480.
+        self.set_viewport(defaults.VIEWPORT_SIZE)
 
     def _setup_webpage_events(self):
         self._load_finished = WrappedSignal(self.web_view.loadFinished)
@@ -36,6 +60,30 @@ class ChromiumBrowserTab(BrowserTab):
         # main_frame.javaScriptWindowObjectCleared.connect(
         #     self._on_javascript_window_object_cleared)
         # self.logger.add_web_page(self.web_page)
+
+    def _set_default_webpage_options(self):
+        """ Set QWebPage options. TODO: allow to customize defaults. """
+        settings = self.web_page.settings()
+        settings.setAttribute(QWebEngineSettings.ScreenCaptureEnabled, True)
+        settings.setAttribute(QWebEngineSettings.JavascriptCanOpenWindows, False)
+        settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
+
+        # TODO: requires Qt 5.10
+        # settings.setAttribute(QWebEngineSettings.ShowScrollBars, False)
+
+        # TODO
+        # if self.visible:
+        #     settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+
+        # TODO: options
+        # self.set_js_enabled(True)
+        # self.set_plugins_enabled(defaults.PLUGINS_ENABLED)
+        # self.set_request_body_enabled(defaults.REQUEST_BODY_ENABLED)
+        # self.set_response_body_enabled(defaults.RESPONSE_BODY_ENABLED)
+        # self.set_indexeddb_enabled(defaults.INDEXEDDB_ENABLED)
+        # self.set_webgl_enabled(defaults.WEBGL_ENABLED)
+        # self.set_html5_media_enabled(defaults.HTML5_MEDIA_ENABLED)
+        # self.set_media_source_enabled(defaults.MEDIA_SOURCE_ENABLED)
 
     def go(self, url, callback, errback):
         callback_id = self._load_finished.connect(
@@ -87,6 +135,59 @@ class ChromiumBrowserTab(BrowserTab):
         self.logger.log("HTML ready", min_level=2)
         self._html_d.callback(html)
         self._html_d = None
+
+    def set_viewport(self, size, raise_if_empty=False):
+        """
+        Set viewport size.
+        If size is "full" viewport size is detected automatically.
+        If can also be "<width>x<height>".
+
+        FIXME: Currently the implementation just resizes the window, which
+        causes Splash to crash on large sizes(?).
+        Actully it is not changing the viewport.
+
+        XXX: As an effect, this function changes window.outerWidth/outerHeight,
+        while in Webkit implementation window.innerWidth/innerHeight
+        is changed.
+        """
+        if size == 'full':
+            size = self.web_page.contentsSize()
+            self.logger.log("Contents size: %s" % size, min_level=2)
+            if size.isEmpty():
+                if raise_if_empty:
+                    raise RuntimeError("Cannot detect viewport size")
+                else:
+                    size = defaults.VIEWPORT_SIZE
+                    self.logger.log("Viewport is empty, falling back to: %s" %
+                                    size)
+
+        if not isinstance(size, (QSize, QSizeF)):
+            validate_size_str(size)
+            size = parse_size(size)
+        w, h = int(size.width()), int(size.height())
+
+        # XXX: it was crashing with large windows, but then the problem
+        # seemed to go away. Need to keep an eye on it.
+        # # FIXME: don't resize the window?
+        # # FIXME: figure out exact limits
+        # MAX_WIDTH = 1280
+        # MAX_HEIGHT = 1920
+        #
+        # if w > MAX_WIDTH:
+        #     raise RuntimeError("Width {} > {} is currently prohibited".format(
+        #         w, MAX_WIDTH
+        #     ))
+        #
+        # if h > MAX_HEIGHT:
+        #     raise RuntimeError("Height {} > {} is currently prohibited".format(
+        #         h, MAX_HEIGHT
+        #     ))
+        self.web_view.resize(w, h)
+
+        # self._force_relayout()
+        self.logger.log("viewport size is set to %sx%s" % (w, h), min_level=2)
+        self.logger.log("real viewport size: %s" % self.web_view.size(), min_level=2)
+        return w, h
 
     def stop_loading(self):
         self.logger.log("stop_loading", min_level=2)

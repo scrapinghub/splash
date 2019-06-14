@@ -139,6 +139,12 @@ JsViewport = _html_resource("""
 document.write(window.innerWidth);
 document.write('x');
 document.write(window.innerHeight);
+
+document.write("\\n");
+
+document.write(window.outerWidth);
+document.write('X');
+document.write(window.outerHeight);
 </script>
 </body></html>
 """)

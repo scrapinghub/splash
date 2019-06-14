@@ -8,7 +8,7 @@ local Splash = require("splash")
 
 --
 -- A method with a common workflow: go to a page, wait for some time.
--- splash.qtrender.DefaultRenderScript implements a similar logic in Python.
+-- splash.qtrender.WebkitDefaultRenderScript implements a similar logic in Python.
 --
 function Splash:go_and_wait(args)
   -- content-type for error messages. Callers should set their

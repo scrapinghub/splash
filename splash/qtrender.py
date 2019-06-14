@@ -3,11 +3,12 @@ import json
 import functools
 
 from twisted.internet import defer
+from twisted.python.failure import Failure
 
 from splash import defaults
 from splash.engines.webkit import WebkitBrowserTab
 from splash.engines.chromium import ChromiumBrowserTab
-from splash.errors import RenderError
+from splash.errors import RenderError, InternalError, BadOption
 from splash.render_options import RenderOptions
 
 
@@ -78,24 +79,14 @@ class BaseRenderScript(metaclass=abc.ABCMeta):
         self.tab.close()
 
 
-class ChromiumRenderScript(BaseRenderScript):
-    def __init__(self, render_options, verbosity, **kwargs):
-        super().__init__(render_options, verbosity)
-        self.tab = ChromiumBrowserTab(
-            render_options=render_options,
-            verbosity=verbosity,
-        )
+class BaseFixedRenderScript(BaseRenderScript):
+    """ Base render script for pre-defined scenarios """
 
-    def start(self, url, wait=None, **kwargs):
-        self.url = url
-        self.wait_time = defaults.WAIT_TIME if wait is None else wait
-        self.tab.go(
-            url=url,
-            callback=self.on_goto_load_finished,
-            errback=self.on_goto_load_error,
-        )
+    # start() method should set self.wait_time
+    wait_time = 0
 
     def on_goto_load_finished(self):
+        """ callback for tab.go """
         if self.wait_time == 0:
             self.log("loadFinished; not waiting")
             self._load_finished_ok()
@@ -109,6 +100,7 @@ class ChromiumRenderScript(BaseRenderScript):
             )
 
     def on_goto_load_error(self, error_info):
+        """ errback for tab.go """
         ex = RenderError({
             'type': error_info.type,
             'code': error_info.code,
@@ -117,7 +109,7 @@ class ChromiumRenderScript(BaseRenderScript):
         })
         self.return_error(ex)
 
-    @stop_on_error
+    @abc.abstractmethod
     def _load_finished_ok(self):
         self.log("_loadFinishedOK")
 
@@ -126,18 +118,23 @@ class ChromiumRenderScript(BaseRenderScript):
             return
 
         self.tab.stop_loading()
-        # self.tab.store_har_timing("_onPrepareStart")
-        # self._prepare_render()
-        d = defer.maybeDeferred(self.get_result)
-        d.addCallback(self.return_result)
+        # actual code should be defined in a subclass
 
-    def get_result(self):
-        return self.tab.html()
+
+class ChromiumRenderScript(BaseRenderScript):
+    """ Base class for Chromium-based render scripts """
+    def __init__(self, render_options, verbosity, **kwargs):
+        super().__init__(render_options, verbosity)
+        self.tab = ChromiumBrowserTab(
+            render_options=render_options,
+            verbosity=verbosity,
+        )
 
 
 class WebkitRenderScript(BaseRenderScript):
-
-    def __init__(self, render_options, verbosity, network_manager, splash_proxy_factory):
+    """ Base class for Webkit-based render scripts """
+    def __init__(self, render_options, verbosity, network_manager,
+                 splash_proxy_factory):
         super().__init__(render_options, verbosity)
         self.tab = WebkitBrowserTab(
             render_options=render_options,
@@ -147,9 +144,110 @@ class WebkitRenderScript(BaseRenderScript):
         )
 
 
-class DefaultRenderScript(WebkitRenderScript):
+class ChromiumDefaultRenderScript(ChromiumRenderScript, BaseFixedRenderScript):
+
+    def start(self, url, baseurl=None, wait=None, viewport=None,
+              js_source=None, js_profile=None, images=None, console=False,
+              headers=None, http_method='GET', body=None,
+              render_all=False, resource_timeout=None, request_body=False,
+              response_body=False, html5_media=False):
+        self.url = url
+        self.wait_time = defaults.WAIT_TIME if wait is None else wait
+        # self.js_source = js_source
+        # self.js_profile = js_profile
+        # self.console = console
+        self.viewport = defaults.VIEWPORT_SIZE if viewport is None else viewport
+        self.render_all = render_all or viewport == 'full'
+
+        # FIXME: BadOption errors are logged as unhandled errors
+        if baseurl is not None:
+            raise BadOption("baseurl is not implemented")
+
+        if js_source is not None:
+            raise BadOption("js_source is not implemented")
+
+        if js_profile is not None:
+            raise BadOption("js_profile is not implemented")
+
+        if images is False:
+            raise BadOption("images is not implemented")
+
+        if console is True:
+            raise BadOption("console is not implemented")
+
+        if headers is not None:
+            raise BadOption("headers is not implemented")
+
+        if http_method != 'GET':
+            raise BadOption("http_method is not implemented")
+
+        if body is not None:
+            raise BadOption("body is not implemented")
+
+        if resource_timeout is not None and resource_timeout > 0:
+            raise BadOption("resource_timeout is not implemented")
+
+        if request_body is True:
+            raise BadOption("request_body is not implemented")
+
+        if response_body is True:
+            raise BadOption("response_body is not implemented")
+
+        if html5_media is True:
+            raise BadOption("html5_media is not implemented")
+
+        # if resource_timeout:
+        #     self.tab.set_resource_timeout(resource_timeout)
+
+        # if images is not None:
+        #     self.tab.set_images_enabled(images)
+
+        if self.viewport != 'full':
+            self.tab.set_viewport(self.viewport)
+
+        # self.tab.set_request_body_enabled(request_body)
+        # self.tab.set_response_body_enabled(response_body)
+        # self.tab.set_html5_media_enabled(html5_media)
+
+        self.tab.go(
+            url=url,
+            callback=self.on_goto_load_finished,
+            errback=self.on_goto_load_error,
+            # baseurl=baseurl,
+            # http_method=http_method,
+            # body=body,
+            # headers=headers,
+        )
+
+    @stop_on_error
+    def _load_finished_ok(self):
+        super()._load_finished_ok()
+        # self.tab.store_har_timing("_onPrepareStart")
+
+        # self._prepare_render()
+        if self.viewport == 'full':
+            self.tab.set_viewport(self.viewport)
+
+        d = defer.maybeDeferred(self.get_result)
+        d.addCallback(self.return_result)
+        d.addErrback(self._return_internal_error)
+
+    def _return_internal_error(self, failure: Failure):
+        self.return_error(InternalError(str(failure.value)))
+
+    @abc.abstractmethod
+    def get_result(self):
+        return None
+
+
+class ChromiumRenderHtmlScript(ChromiumDefaultRenderScript):
+    def get_result(self):
+        return self.tab.html()
+
+
+class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):
     """
-    DefaultRenderScript object renders a webpage using "standard" render
+    WebkitDefaultRenderScript object renders a webpage using "standard" render
     scenario:
 
     * load an URL;
@@ -165,7 +263,6 @@ class DefaultRenderScript(WebkitRenderScript):
               headers=None, http_method='GET', body=None,
               render_all=False, resource_timeout=None, request_body=False,
               response_body=False, html5_media=False):
-
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.js_source = js_source
@@ -206,37 +303,9 @@ class DefaultRenderScript(WebkitRenderScript):
         """
         pass
 
-    def on_goto_load_finished(self):
-        if self.wait_time == 0:
-            self.log("loadFinished; not waiting")
-            self._load_finished_ok()
-        else:
-            time_ms = int(self.wait_time * 1000)
-            self.log("loadFinished; waiting %sms" % time_ms)
-            self.tab.wait(
-                time_ms=time_ms,
-                callback=self._load_finished_ok,
-                onerror=self.on_goto_load_error,
-            )
-
-    def on_goto_load_error(self, error_info):
-        ex = RenderError({
-            'type': error_info.type,
-            'code': error_info.code,
-            'text': error_info.text,
-            'url': error_info.url
-        })
-        self.return_error(ex)
-
     @stop_on_error
     def _load_finished_ok(self):
-        self.log("_loadFinishedOK")
-
-        if self.tab.closing:
-            self.log("loadFinishedOK is ignored because RenderScript is closing", min_level=3)
-            return
-
-        self.tab.stop_loading()
+        super()._load_finished_ok()
         self.tab.store_har_timing("_onPrepareStart")
         self._prepare_render()
         self.return_result(self.get_result())
@@ -267,12 +336,12 @@ class DefaultRenderScript(WebkitRenderScript):
         self.js_output, self.js_console_output = self._runjs(self.js_source, self.js_profile)
 
 
-class HtmlRender(DefaultRenderScript):
+class HtmlRender(WebkitDefaultRenderScript):
     def get_result(self):
         return self.tab.html()
 
 
-class ImageRender(DefaultRenderScript):
+class ImageRender(WebkitDefaultRenderScript):
 
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
@@ -346,7 +415,7 @@ class JsonRender(JpegRender):
         return res
 
 
-class HarRender(DefaultRenderScript):
+class HarRender(WebkitDefaultRenderScript):
     def get_result(self):
         return json.dumps(self.tab.har())
 

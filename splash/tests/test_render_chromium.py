@@ -17,9 +17,12 @@ class RenderHtmlTest(test_render.RenderHtmlTest):
     def test_allowed_domains(self):
         super().test_allowed_domains()
 
-    @pytest.mark.xfail(reason="not implemented yet")
     def test_viewport(self):
-        super().test_viewport()
+        r = self.request({'url': self.mockurl('jsviewport'), 'viewport': '300x400'})
+        self.assertStatusCode(r, 200)
+        # 300x400 is innerWidth/innerHeight
+        # 300X400 would be outerWidth/outerHeight
+        self.assertIn('300X400', r.text)
 
     @pytest.mark.xfail(reason="not implemented yet")
     def test_resource_timeout(self):

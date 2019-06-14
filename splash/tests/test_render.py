@@ -280,6 +280,8 @@ class RenderHtmlTest(Base.RenderTest):
     def test_viewport(self):
         r = self.request({'url': self.mockurl('jsviewport'), 'viewport': '300x400'})
         self.assertStatusCode(r, 200)
+        # 300x400 is innerWidth/innerHeight
+        # 300X400 would be outerWidth/outerHeight
         self.assertIn('300x400', r.text)
 
     def test_nonascii_url(self):
