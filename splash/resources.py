@@ -478,6 +478,7 @@ class DemoUI(_ValidatingResource):
             'timeout': options.get_timeout(),
             'request_body': options.get_request_body(),
             'response_body': options.get_response_body(),
+            'engine': options.get_engine(),
             'har': 1,
             'png': 1,
             'html': 1,
