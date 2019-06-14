@@ -110,7 +110,7 @@ class HarRenderTest(BaseHarRenderTest):
 
     def test_wait(self):
         self.assertValidHar(self.mockurl("jsinterval"))
-        self.assertValidHar(self.mockurl("jsinterval"), wait=0.2)
+        self.assertValidHar(self.mockurl("jsinterval"), wait=0.4)
 
     def test_meta_redirect_nowait(self):
         data = self.assertValidHar(self.mockurl('meta-redirect0'))

@@ -127,7 +127,7 @@ var num=0;
 setInterval(function(){
     document.getElementById('num').innerHTML = num;
     num += 1;
-}, 100);
+}, 200);
 </script>
 </body></html>
 """)
