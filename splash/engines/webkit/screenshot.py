@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPainter, QRegion
 
 from splash import defaults
 from splash.qtrender_image import (
-    BaseQtImageRenderer, WrappedImage,
+    BaseQtScreenshotRenderer, WrappedImage,
     WrappedQImage,
     WrappedPillowImage,
 )
@@ -20,7 +20,7 @@ class _TilingOptions:
     tile_size = attr.ib()  # type: QSize
 
 
-class QtWebkitImageRenderer(BaseQtImageRenderer):
+class QtWebkitScreenshotRenderer(BaseQtScreenshotRenderer):
 
     def __init__(self, web_page, logger=None, image_format=None,
                  width=None, height=None, scale_method=None, region=None):

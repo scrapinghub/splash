@@ -69,7 +69,7 @@ class QImagePillowConverter:
         return img
 
 
-class BaseQtImageRenderer(metaclass=ABCMeta):
+class BaseQtScreenshotRenderer(metaclass=ABCMeta):
     """ Base class for rendering web page (or its parts) as an image.
 
     It doesn't render anything by itself: subclasses must define
@@ -83,7 +83,7 @@ class BaseQtImageRenderer(metaclass=ABCMeta):
 
     def __init__(self, web_page, logger=None, image_format=None,
                  width=None, height=None, scale_method=None, region=None):
-        self.web_page = web_page  # BaseQtImageRenderer shouldn't use it
+        self.web_page = web_page  # BaseQtScreenshotRenderer shouldn't use it
         self.logger = logger if logger is not None else DummyLogger()
         self.width = width
         self.height = height
@@ -105,7 +105,16 @@ class BaseQtImageRenderer(metaclass=ABCMeta):
     @abstractmethod
     def get_web_viewport_size(self) -> QSize:
         """ Return size of the current viewport """
-        pass
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _render_qwebpage_full(self,
+                              web_rect: QRect,
+                              render_rect: QRect,
+                              canvas_size: QSize,
+                              ) -> 'WrappedImage':
+        """ Render web page in one step. """
+        raise NotImplementedError()
 
     @abstractmethod
     def _render_qwebpage_tiled(self,
@@ -118,16 +127,7 @@ class BaseQtImageRenderer(metaclass=ABCMeta):
         This function should work around bugs in QPaintEngine that occur when
         render_rect is larger than 32k pixels in either dimension.
         """
-        pass
-
-    @abstractmethod
-    def _render_qwebpage_full(self,
-                              web_rect: QRect,
-                              render_rect: QRect,
-                              canvas_size: QSize,
-                              ) -> 'WrappedImage':
-        """ Render web page in one step. """
-        pass
+        raise NotImplementedError()
 
     def render_qwebpage(self) -> 'WrappedImage':
         """ Render QWebPage into a WrappedImage. """

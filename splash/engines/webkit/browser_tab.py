@@ -52,7 +52,7 @@ from splash.browser_tab import (
 from .http_client import SplashWebkitHttpClient, get_header_value
 from .webpage import WebkitWebPage, WebkitEventLogger
 from .webview import SplashQWebView
-from .image_renderer import QtWebkitImageRenderer
+from .screenshot import QtWebkitScreenshotRenderer
 
 
 class WebkitBrowserTab(BrowserTab):
@@ -783,7 +783,7 @@ class WebkitBrowserTab(BrowserTab):
                 self.logger.log("Rendering whole page contents (RENDER_ALL)",
                                 min_level=2)
                 self.set_viewport('full')
-            renderer = QtWebkitImageRenderer(
+            renderer = QtWebkitScreenshotRenderer(
                 self.web_page, self.logger, image_format,
                 width=width, height=height, scale_method=scale_method,
                 region=region)
