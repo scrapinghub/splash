@@ -298,6 +298,10 @@ class ExecuteLuaScriptResource(BaseRenderResource):
         self.implicit_main = implicit_main
 
     def _get_render(self, request, options):
+        engine = options.get_engine()
+        if engine != 'webkit':
+            raise BadOption("engine=chromium is not supported yet")
+
         params = dict(
             proxy=options.get_proxy(),
             lua_source=options.get_lua_source(),
@@ -314,6 +318,10 @@ class RenderPngResource(BaseRenderResource):
     content_type = "image/png"
 
     def _get_render(self, request, options):
+        engine = options.get_engine()
+        if engine != 'webkit':
+            raise BadOption("engine=chromium is not supported yet")
+
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_png_params())
         return self.pool.render(PngRender, options, **params)
@@ -324,6 +332,10 @@ class RenderJpegResource(BaseRenderResource):
     content_type = "image/jpeg"
 
     def _get_render(self, request, options):
+        engine = options.get_engine()
+        if engine != 'webkit':
+            raise BadOption("engine=chromium is not supported yet")
+
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_jpeg_params())
         return self.pool.render(JpegRender, options, **params)
@@ -333,6 +345,10 @@ class RenderJsonResource(BaseRenderResource):
     content_type = "application/json"
 
     def _get_render(self, request, options):
+        engine = options.get_engine()
+        if engine != 'webkit':
+            raise BadOption("engine=chromium is not supported yet")
+
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_jpeg_params())
         params.update(options.get_include_params())
@@ -345,6 +361,10 @@ class RenderHarResource(BaseRenderResource):
     content_type = "application/json"
 
     def _get_render(self, request, options):
+        engine = options.get_engine()
+        if engine != 'webkit':
+            raise BadOption("engine=chromium is not supported yet")
+
         params = options.get_common_params(self.js_profiles_path)
         params['request_body'] = options.get_request_body()
         params['response_body'] = options.get_response_body()
