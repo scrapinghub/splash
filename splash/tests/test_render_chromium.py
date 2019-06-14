@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
-from . import test_render
+from . import test_render, test_redirects
 
 
 class ChromiumRequestHandler(test_render.DirectRequestHandler):
@@ -35,3 +35,49 @@ class RenderHtmlTest(test_render.RenderHtmlTest):
     @pytest.mark.xfail(reason="not implemented yet")
     def test_baseurl(self):
         super().test_baseurl()
+
+
+class HttpRedirectTest(test_redirects.HttpRedirectTest):
+    request_handler = ChromiumRequestHandler
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_301_baseurl(self):
+        super().test_301_baseurl()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_302_baseurl(self):
+        super().test_302_baseurl()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_303_baseurl(self):
+        super().test_303_baseurl()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_307_baseurl(self):
+        super().test_307_baseurl()
+
+
+class MetaRedirectTest(test_redirects.MetaRedirectTest):
+    request_handler = ChromiumRequestHandler
+
+
+class JsRedirectTest(test_redirects.JsRedirectTest):
+    request_handler = ChromiumRequestHandler
+
+    @pytest.mark.skip(reason="In Chromium it is not guaranteed "
+                             "JS redirects are not processed with wait=0")
+    def test_redirect_nowait(self):
+        pass
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_redirect_slowimage_nowait_baseurl(self):
+        super().test_redirect_slowimage_nowait_baseurl()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_redirect_slowimage_wait_baseurl(self):
+        super().test_redirect_slowimage_wait_baseurl()
+
+    @pytest.mark.xfail(reason="behavior is different? "
+                       "It seems error page is displayed instead of 502 code")
+    def test_redirect_to_non_existing(self):
+        super().test_redirect_to_non_existing()
