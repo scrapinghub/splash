@@ -37,6 +37,57 @@ class RenderHtmlTest(test_render.RenderHtmlTest):
         super().test_baseurl()
 
 
+class ChromiumRenderPngTest(test_render.RenderPngTest):
+    request_handler = ChromiumRequestHandler
+
+    # FIXME: default certificate validation is too strict for tests
+    https_supported = False
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_images_enabled(self):
+        super().test_images_enabled()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_images_disabled(self):
+        super().test_images_disabled()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_render_all(self):
+        super().test_render_all()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_render_all_with_viewport(self):
+        super().test_render_all_with_viewport()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_resource_timeout(self):
+        super().test_resource_timeout()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_resource_timeout_abort_first(self):
+        super().test_resource_timeout_abort_first()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_very_long_green_page(self):
+        super().test_very_long_green_page()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_viewport_full(self):
+        super().test_viewport_full()
+
+    @pytest.mark.xfail(reason="not implemented yet")
+    def test_viewport_full_wait(self):
+        super().test_viewport_full_wait()
+
+    @pytest.mark.xfail(reason="FIXME: why is it failing?")
+    def test_scale_method_vector_produces_sharp_split(self):
+        super().test_scale_method_vector_produces_sharp_split()
+
+    @pytest.mark.xfail(reason="FIXME: why is it failing?")
+    def test_scale_method_raster_produces_blurry_split(self):
+        super().test_scale_method_raster_produces_blurry_split()
+
+
 class HttpRedirectTest(test_redirects.HttpRedirectTest):
     request_handler = ChromiumRequestHandler
 

@@ -24,6 +24,7 @@ from splash.qtrender import (
     HarRender,
     JpegRender,
     ChromiumRenderHtmlScript,
+    ChromiumRenderPngScript,
 )
 from splash.lua import is_supported as lua_is_supported
 from splash.utils import (
@@ -322,13 +323,11 @@ class RenderPngResource(BaseRenderResource):
     content_type = "image/png"
 
     def _get_render(self, request, options):
-        engine = options.get_engine()
-        if engine != 'webkit':
-            raise BadOption("engine=chromium is not supported yet")
-
         params = options.get_common_params(self.js_profiles_path)
         params.update(options.get_png_params())
-        return self.pool.render(PngRender, options, **params)
+        engine = options.get_engine()
+        script = PngRender if engine == "webkit" else ChromiumRenderPngScript
+        return self.pool.render(script, options, **params)
 
 
 class RenderJpegResource(BaseRenderResource):

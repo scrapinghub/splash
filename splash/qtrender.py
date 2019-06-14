@@ -196,6 +196,9 @@ class ChromiumDefaultRenderScript(ChromiumRenderScript, BaseFixedRenderScript):
         if html5_media is True:
             raise BadOption("html5_media is not implemented")
 
+        if render_all is True:
+            raise BadOption("render_all is not implemented")
+
         # if resource_timeout:
         #     self.tab.set_resource_timeout(resource_timeout)
 
@@ -243,6 +246,19 @@ class ChromiumDefaultRenderScript(ChromiumRenderScript, BaseFixedRenderScript):
 class ChromiumRenderHtmlScript(ChromiumDefaultRenderScript):
     def get_result(self):
         return self.tab.html()
+
+
+class ChromiumRenderPngScript(ChromiumDefaultRenderScript):
+    def start(self, **kwargs):
+        self.width = kwargs.pop('width')
+        self.height = kwargs.pop('height')
+        self.scale_method = kwargs.pop('scale_method')
+        return super(ChromiumRenderPngScript, self).start(**kwargs)
+
+    def get_result(self):
+        return self.tab.png(self.width, self.height,
+                            render_all=self.render_all,
+                            scale_method=self.scale_method)
 
 
 class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):

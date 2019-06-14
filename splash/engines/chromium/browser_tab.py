@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import base64
+
 from PyQt5.QtWebEngineWidgets import (
     QWebEngineView,
     QWebEngineProfile,
@@ -24,6 +26,7 @@ from splash.render_options import validate_size_str
 
 from .webpage import ChromiumWebPage
 from .constants import RenderProcessTerminationStatus
+from .screenshot import QtChromiumScreenshotRenderer
 
 
 class ChromiumBrowserTab(BrowserTab):
@@ -135,6 +138,32 @@ class ChromiumBrowserTab(BrowserTab):
         self.logger.log("HTML ready", min_level=2)
         self._html_d.callback(html)
         self._html_d = None
+
+    def png(self, width=None, height=None, b64=False, render_all=False,
+            scale_method=None, region=None):
+        """ Return screenshot in PNG format """
+        self.logger.log(
+            "Getting PNG: width=%s, height=%s, "
+            "render_all=%s, scale_method=%s, region=%s" %
+            (width, height, render_all, scale_method, region), min_level=2)
+        if render_all:
+            raise ValueError("render_all=True is not supported yet")
+
+        image = self._get_image('PNG', width, height, render_all,
+                                scale_method, region=region)
+        result = image.to_png()
+        if b64:
+            result = base64.b64encode(result).decode('utf-8')
+        # self.store_har_timing("_onPngRendered")
+        return result
+
+    def _get_image(self, image_format, width, height, render_all,
+                   scale_method, region):
+        renderer = QtChromiumScreenshotRenderer(
+            self.web_page, self.logger, image_format,
+            width=width, height=height, scale_method=scale_method,
+            region=region)
+        return renderer.render_qwebpage()
 
     def set_viewport(self, size, raise_if_empty=False):
         """

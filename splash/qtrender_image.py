@@ -1,12 +1,10 @@
 """This module handles rendering QWebPage into PNG and JPEG images."""
 import sys
-import array
 from abc import ABCMeta, abstractmethod, abstractproperty
 from io import BytesIO
-from math import ceil, floor
+from math import ceil
 from typing import Optional, Tuple
 
-import attr
 from PIL import Image
 from PyQt5.QtCore import QBuffer, QPoint, QRect, QSize, Qt, QSizeF
 from PyQt5.QtGui import QImage
@@ -81,10 +79,10 @@ class BaseQtScreenshotRenderer(metaclass=ABCMeta):
     # this value.
     QPAINTER_MAXSIZE = 32766
 
-    def __init__(self, web_page, logger=None, image_format=None,
+    def __init__(self, web_page, logger=DummyLogger(), image_format=None,
                  width=None, height=None, scale_method=None, region=None):
         self.web_page = web_page  # BaseQtScreenshotRenderer shouldn't use it
-        self.logger = logger if logger is not None else DummyLogger()
+        self.logger = logger
         self.width = width
         self.height = height
         self.img_converter = QImagePillowConverter(image_format)
