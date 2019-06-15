@@ -142,6 +142,7 @@ class ChromiumBrowserTab(BrowserTab):
     def png(self, width=None, height=None, b64=False, render_all=False,
             scale_method=None, region=None):
         """ Return screenshot in PNG format """
+        # FIXME: move to base class
         self.logger.log(
             "Getting PNG: width=%s, height=%s, "
             "render_all=%s, scale_method=%s, region=%s" %
@@ -155,6 +156,26 @@ class ChromiumBrowserTab(BrowserTab):
         if b64:
             result = base64.b64encode(result).decode('utf-8')
         # self.store_har_timing("_onPngRendered")
+        return result
+
+    def jpeg(self, width=None, height=None, b64=False, render_all=False,
+             scale_method=None, quality=None, region=None):
+        """ Return screenshot in JPEG format. """
+        # FIXME: move to base class
+        self.logger.log(
+            "Getting JPEG: width=%s, height=%s, "
+            "render_all=%s, scale_method=%s, quality=%s, region=%s" %
+            (width, height, render_all, scale_method, quality, region),
+            min_level=2)
+        if render_all:
+            raise ValueError("render_all=True is not supported yet")
+
+        image = self._get_image('JPEG', width, height, render_all,
+                                scale_method, region=region)
+        result = image.to_jpeg(quality=quality)
+        if b64:
+            result = base64.b64encode(result).decode('utf-8')
+        # self.store_har_timing("_onJpegRendered")
         return result
 
     def _get_image(self, image_format, width, height, render_all,

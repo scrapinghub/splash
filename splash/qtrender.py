@@ -248,17 +248,30 @@ class ChromiumRenderHtmlScript(ChromiumDefaultRenderScript):
         return self.tab.html()
 
 
-class ChromiumRenderPngScript(ChromiumDefaultRenderScript):
+class _ChromiumRenderImageScript(ChromiumDefaultRenderScript):
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
         self.height = kwargs.pop('height')
         self.scale_method = kwargs.pop('scale_method')
-        return super(ChromiumRenderPngScript, self).start(**kwargs)
+        return super().start(**kwargs)
 
+
+class ChromiumRenderPngScript(_ChromiumRenderImageScript):
     def get_result(self):
         return self.tab.png(self.width, self.height,
                             render_all=self.render_all,
                             scale_method=self.scale_method)
+
+
+class ChromiumRenderJpegScript(_ChromiumRenderImageScript):
+    def start(self, **kwargs):
+        self.quality = kwargs.pop('quality')
+        return super().start(**kwargs)
+
+    def get_result(self):
+        return self.tab.jpeg(
+            self.width, self.height, render_all=self.render_all,
+            scale_method=self.scale_method, quality=self.quality)
 
 
 class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):
