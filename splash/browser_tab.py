@@ -687,7 +687,7 @@ class BrowserTab(QObject):
             try:
                 self.runjs(script, handle_errors=False)
             except Exception as e:
-                msg = "Error in autoload script #{}:".format(idx, e)
+                msg = "Error in autoload script #{}:{}".format(idx, e)
                 self.logger.log(msg, min_level=1)
                 self.logger.log(traceback.format_exc(), min_level=1)
 

@@ -167,8 +167,9 @@ def qt_to_bytes(value):
     if isinstance(value, QByteArray):
         value = bytes(value)
     if not isinstance(value, bytes):
-        raise ValueError("Value must be bytes, got %s object instead",
-                         value.__class__.__name__)
+        raise ValueError(
+            "Value must be bytes, got %s object instead" % value.__class__.__name__
+        )
     return value
 
 
