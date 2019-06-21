@@ -20,7 +20,9 @@ def install_qtreactor(verbose):
     qt5reactor.install()
 
 
-def parse_opts(jupyter=False, argv=sys.argv):
+def parse_opts(jupyter=False, argv=None):
+    if argv is None:
+        argv = sys.argv
     _bool_default = {True:' (default)', False: ''}
 
     op = optparse.OptionParser()
@@ -352,7 +354,9 @@ def _set_global_render_settings(js_disable_cross_domain_access, private_mode,
         settings.setMaximumPagesInCache(0)
 
 
-def main(jupyter=False, argv=sys.argv, server_factory=splash_server):
+def main(jupyter=False, argv=None, server_factory=splash_server):
+    if argv is None:
+        argv = sys.argv
     opts, _ = parse_opts(jupyter, argv)
     if opts.version:
         print(__version__)
