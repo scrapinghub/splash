@@ -17,6 +17,7 @@ from twisted.python import log
 
 import splash
 from splash.argument_cache import ArgumentCache
+from splash import defaults
 from splash.qtrender import (
     HtmlRender, PngRender, JsonRender, HarRender, JpegRender
 )
@@ -85,17 +86,18 @@ class BaseRenderResource(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    def __init__(self, pool, max_timeout, argument_cache):
+    def __init__(self, pool, max_timeout, argument_cache, max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT):
         Resource.__init__(self)
         self.pool = pool
         self.js_profiles_path = self.pool.js_profiles_path
         self.max_timeout = max_timeout
         self.argument_cache = argument_cache
+        self.max_response_size_limit = max_response_size_limit
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
         request.starttime = time.time()
-        render_options = RenderOptions.fromrequest(request, self.max_timeout)
+        render_options = RenderOptions.fromrequest(request, self.max_timeout, max_response_size_limit=self.max_response_size_limit)
 
         # process argument cache
         original_options = render_options.data.copy()
@@ -281,8 +283,9 @@ class ExecuteLuaScriptResource(BaseRenderResource):
                  argument_cache,
                  strict,
                  implicit_main,
+                 max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT,
                  ):
-        BaseRenderResource.__init__(self, pool, max_timeout, argument_cache)
+        BaseRenderResource.__init__(self, pool, max_timeout, argument_cache, max_response_size_limit=max_response_size_limit)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
@@ -434,20 +437,22 @@ class DemoUI(_ValidatingResource):
 
     PATH = b'info'
 
-    def __init__(self, pool, lua_enabled, max_timeout):
+    def __init__(self, pool, lua_enabled, max_timeout, max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT):
         Resource.__init__(self)
         self.pool = pool
         self.lua_enabled = lua_enabled
         self.max_timeout = max_timeout
+        self.max_response_size_limit = max_response_size_limit
 
     def _validate_params(self, request):
-        options = RenderOptions.fromrequest(request, self.max_timeout)
+        options = RenderOptions.fromrequest(request, self.max_timeout, max_response_size_limit=self.max_response_size_limit)
         options.get_filters(self.pool)  # check
         params = options.get_common_params(self.pool.js_profiles_path)
         params.update({
             'save_args': options.get_save_args(),
             'load_args': options.get_load_args(),
             'timeout': options.get_timeout(),
+            'response_size_limit': options.get_response_size_limit(),
             'request_body': options.get_request_body(),
             'response_body': options.get_response_body(),
             'har': 1,
@@ -471,6 +476,7 @@ class DemoUI(_ValidatingResource):
             url = 'http://' + url
         params['url'] = url
         timeout = params['timeout']
+        response_size_limit = params['response_size_limit']
         params = {k: v for k, v in params.items() if v is not None}
 
         # disable "phases" HAR Viewer feature
@@ -514,6 +520,7 @@ class DemoUI(_ValidatingResource):
                       <input type="hidden" name="images" value="1">
                       <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
                       <input type="hidden" name="timeout" value="%(timeout)s">
+                      <input type="hidden" name="response_size_limit" value="%(response_size_limit)s">
 
                       <div class="btn-group" id="render-form">
                           <input class="form-control col-lg-8" type="text" placeholder="Paste an URL" type="text" name="url" value="%(url)s">
@@ -563,6 +570,7 @@ class DemoUI(_ValidatingResource):
                 "lua_enabled": self.lua_enabled,
             }),
             timeout=timeout,
+            response_size_limit=response_size_limit,
             url=url,
             theme=BOOTSTRAP_THEME,
             cm_resources=CODEMIRROR_RESOURCES if self.lua_enabled else "",
@@ -576,6 +584,7 @@ class Root(Resource):
                  max_timeout,
                  argument_cache_max_entries,
                  strict_lua_runner,
+                 max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT,
                  ):
         Resource.__init__(self)
         self.argument_cache = ArgumentCache(argument_cache_max_entries)
@@ -583,11 +592,12 @@ class Root(Resource):
         self.lua_enabled = lua_enabled
 
         _args = pool, max_timeout, self.argument_cache
-        self.putChild(b"render.html", RenderHtmlResource(*_args))
-        self.putChild(b"render.png", RenderPngResource(*_args))
-        self.putChild(b"render.jpeg", RenderJpegResource(*_args))
-        self.putChild(b"render.json", RenderJsonResource(*_args))
-        self.putChild(b"render.har", RenderHarResource(*_args))
+        _kwargs = {'max_response_size_limit': max_response_size_limit}
+        self.putChild(b"render.html", RenderHtmlResource(*_args, **_kwargs))
+        self.putChild(b"render.png", RenderPngResource(*_args, **_kwargs))
+        self.putChild(b"render.jpeg", RenderJpegResource(*_args, **_kwargs))
+        self.putChild(b"render.json", RenderJsonResource(*_args, **_kwargs))
+        self.putChild(b"render.har", RenderHarResource(*_args, **_kwargs))
 
         self.putChild(b"_debug", DebugResource(pool, self.argument_cache))
         self.putChild(b"_gc", ClearCachesResource(self.argument_cache))
@@ -605,6 +615,7 @@ class Root(Resource):
                 max_timeout=max_timeout,
                 argument_cache=self.argument_cache,
                 strict=strict_lua_runner,
+                max_response_size_limit=max_response_size_limit,
             )
             self.putChild(b"execute", ExecuteLuaScriptResource(
                 implicit_main=False, **lua_kwargs))
@@ -626,9 +637,11 @@ class Root(Resource):
             self.putChild(DemoUI.PATH, DemoUI(
                 pool=pool,
                 lua_enabled=self.lua_enabled,
-                max_timeout=max_timeout
+                max_timeout=max_timeout,
+                max_response_size_limit=max_response_size_limit,
             ))
         self.max_timeout = max_timeout
+        self.max_response_size_limit = max_response_size_limit
 
     def getChild(self, name, request):
         if name == b"" and self.ui_enabled:
@@ -720,6 +733,7 @@ end
                           <input type="hidden" name="images" value="1">
                           <input type="hidden" name="expand" value="1"> <!-- for HAR viewer -->
                           <input type="hidden" name="timeout" value="%(timeout)s">
+                          <input type="hidden" name="response_size_limit" value="%(response_size_limit)s">
 
                           <fieldset>
                             <div class="">
@@ -754,5 +768,6 @@ end
             }),
             cm_resources=CODEMIRROR_RESOURCES,
             timeout=self.max_timeout,
+            response_size_limit=self.max_response_size_limit,
         )
         return result.encode('utf8')

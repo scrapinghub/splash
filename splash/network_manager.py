@@ -26,8 +26,75 @@ from splash.request_middleware import (
 )
 from splash.response_middleware import ContentTypeMiddleware
 from splash import defaults
+from splash.qtutils import qt_header_items
 from splash.utils import to_bytes
 from splash.cookies import SplashCookieJar
+
+
+class _InvalidContentLength(ValueError):
+
+    def __init__(self, value):
+        if isinstance(value, bytes):
+            value = '0x' + value.hex()
+        message = 'Invalid Content-Length header value: {}'.format(value)
+        super().__init__(message)
+
+
+def _get_content_length(reply):
+    for name, value in qt_header_items(reply):
+        if bytes(name).lower() == b'content-length':
+            value = bytes(value).split(b',', 1)[0]
+            try:
+                value = value.decode('latin1')
+                value = int(value)
+            except (UnicodeDecodeError, ValueError):
+                raise _InvalidContentLength(value)
+            if value < 0:
+                raise _InvalidContentLength(value)
+            return value
+
+
+def _size_warrants_abort(sizes_and_sources, render_options, log, reply):
+    if render_options is None:
+        return False
+    option = "response_size_limit"
+    max_size = render_options.get(option, None)
+    if max_size is not None:
+        try:
+            max_size = int(max_size)
+        except ValueError:
+            log("Non-integer value received for rendering option '{}': {}"
+                .format(option, max_size), min_level=1)
+            log(traceback.format_exc(), min_level=1, format_msg=False)
+            max_size = None
+        else:
+            if max_size < 0:
+                log("The value of rendering option '{}' ({}) must be 0 or "
+                    "higher.".format(option, max_size),min_level=1)
+                max_size = None
+            elif (render_options.max_response_size_limit is not None and
+                    max_size > render_options.max_response_size_limit):
+                log("The value of rendering option '{}' ({}) exceeds the "
+                    "maximum value allowed.".format(option, max_size),
+                    min_level=1)
+                max_size = None
+    if max_size is None:
+        if render_options.max_response_size_limit is not None:
+            max_size = render_options.max_response_size_limit
+        else:
+            max_size = defaults.RESPONSE_SIZE_LIMIT
+        if max_size is None:
+            return False
+    for size, source in sizes_and_sources:
+        if size is None:
+            continue
+        if size <= max_size:
+            continue
+        log("The {} ({}) exceeds the maximum response size ({}), aborting: "
+            "{{url}}".format(source, size, max_size), reply, min_level=1)
+        log(render_options, reply, min_level=1, format_msg=False)
+        return True
+    return False
 
 
 class NetworkManagerFactory(object):
@@ -86,6 +153,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
     * Tracks information about requests/responses and stores it in HAR format,
       including request and response content.
     * Allows to set per-request timeouts.
+    * Handles per-request response size limits.
     """
     _REQUEST_ID = QNetworkRequest.User + 1
     _SHOULD_TRACK = QNetworkRequest.User + 2
@@ -398,11 +466,32 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
                                     content)
         self.log("Finished downloading {url}", reply)
 
+    def _size_caused_abort(self, sizes_and_sources):
+        reply = self.sender()
+        request = reply.request()
+        render_options = self._get_render_options(request)
+        if _size_warrants_abort(
+                sizes_and_sources, render_options, self.log, reply):
+            reply.abort()
+            return True
+        return False
+
     def _on_reply_headers(self):
         """Signal emitted before reading response body, after getting headers
         """
         reply = self.sender()
         request = reply.request()
+
+        try:
+            content_length = _get_content_length(reply)
+        except _InvalidContentLength as error:
+            self.log("On response from {{url}}: {}".format(error),
+                     reply, min_level=3)
+            content_length = None
+        sizes_and_sources = ((content_length, "Content-Length header"),)
+        if self._size_caused_abort(sizes_and_sources):
+            return
+
         self._handle_reply_cookies(reply)
         self._run_webpage_callbacks(request, "on_response_headers", reply)
 
@@ -413,6 +502,16 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self.log("Headers received for {url}", reply, min_level=3)
 
     def _on_reply_download_progress(self, received, total):
+        reply = self.sender()
+        request = reply.request()
+
+        sizes_and_sources = (
+            (total, "expected response size"),
+            (received, "size of the response content downloaded so far"),
+        )
+        if self._size_caused_abort(sizes_and_sources):
+            return
+
         har = self._get_har()
         if har is not None:
             req_id = self._get_request_id()

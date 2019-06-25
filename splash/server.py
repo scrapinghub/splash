@@ -80,6 +80,9 @@ def parse_opts(jupyter=False, argv=None):
             help="number of render slots (default: %default)")
         op.add_option("--max-timeout", type="float", default=defaults.MAX_TIMEOUT,
             help="maximum allowed value for timeout (default: %default)")
+        op.add_option("--max-response-size-limit", type="int",
+            default=defaults.MAX_RESPONSE_SIZE_LIMIT,
+            help="maximum allowed value for response size limit (default: %default)")
         op.add_option("--disable-ui", action="store_true", default=False,
             help="disable web UI")
         op.add_option("--disable-lua", action="store_true", default=False,
@@ -96,6 +99,7 @@ def parse_opts(jupyter=False, argv=None):
         opts.port = None
         opts.slots = None
         opts.max_timeout = None
+        opts.max_response_size_limit = None
         opts.argument_cache_max_entries = None
 
     return opts, args
@@ -172,7 +176,8 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
                   strict_lua_runner=False,
                   argument_cache_max_entries=None,
                   disable_browser_caches=False,
-                  verbosity=None):
+                  verbosity=None,
+                  max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT):
     from twisted.internet import reactor
     from twisted.web.server import Site
     from splash.resources import Root
@@ -183,8 +188,8 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
     slots = defaults.SLOTS if slots is None else slots
 
-    log.msg("verbosity={}, slots={}, argument_cache_max_entries={}, max-timeout={}".format(
-        verbosity, slots, argument_cache_max_entries, max_timeout
+    log.msg("verbosity={}, slots={}, argument_cache_max_entries={}, max-timeout={}, max-response-size-limit={}".format(
+        verbosity, slots, argument_cache_max_entries, max_timeout, max_response_size_limit
     ))
 
     pool = RenderPool(
@@ -217,6 +222,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
         strict_lua_runner=strict_lua_runner,
+        max_response_size_limit=max_response_size_limit,
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory, interface=ip)
@@ -266,6 +272,7 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
                           verbosity=None,
                           server_factory=splash_server,
                           disable_browser_caches=False,
+                          max_response_size_limit=defaults.MAX_RESPONSE_SIZE_LIMIT,
                           ):
     from splash import network_manager
     network_manager_factory = network_manager.NetworkManagerFactory(
@@ -295,6 +302,7 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
         verbosity=verbosity,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
+        max_response_size_limit=max_response_size_limit,
     )
 
 
@@ -395,7 +403,8 @@ def main(jupyter=False, argv=None, server_factory=splash_server):
             max_timeout=opts.max_timeout,
             argument_cache_max_entries=opts.argument_cache_max_entries,
             server_factory=server_factory,
-            disable_browser_caches=opts.disable_browser_caches
+            disable_browser_caches=opts.disable_browser_caches,
+            max_response_size_limit=opts.max_response_size_limit,
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
