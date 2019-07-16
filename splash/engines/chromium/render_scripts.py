@@ -7,7 +7,7 @@ from twisted.python.failure import Failure
 from splash import defaults
 from splash.engines.chromium import ChromiumBrowserTab
 from splash.errors import BadOption, InternalError
-from splash.qtrender import (
+from splash.render_scripts import (
     BaseRenderScript,
     BaseFixedRenderScript,
     stop_on_error,

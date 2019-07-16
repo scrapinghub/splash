@@ -20,7 +20,7 @@ from splash.lua_runner import (
     BaseScriptRunner,
     AsyncCommand,
 )
-from splash.qtrender import stop_on_error
+from splash.render_scripts import stop_on_error
 from splash.engines.webkit.render_scripts import WebkitRenderScript
 from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
                         PyResult, _mark_table_as_array)

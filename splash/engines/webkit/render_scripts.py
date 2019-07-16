@@ -4,7 +4,7 @@ import json
 
 from splash import defaults
 from splash.engines.webkit import WebkitBrowserTab
-from splash.qtrender import (
+from splash.render_scripts import (
     BaseRenderScript,
     BaseFixedRenderScript,
     stop_on_error,
