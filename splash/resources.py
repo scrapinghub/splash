@@ -17,12 +17,14 @@ from twisted.python import log
 
 import splash
 from splash.argument_cache import ArgumentCache
-from splash.qtrender import (
+from splash.engines.webkit.render_scripts import (
     HtmlRender,
     PngRender,
     JsonRender,
     HarRender,
     JpegRender,
+)
+from splash.engines.chromium.render_scripts import (
     ChromiumRenderHtmlScript,
     ChromiumRenderPngScript,
     ChromiumRenderJpegScript,
