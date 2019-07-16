@@ -354,9 +354,9 @@ class _WrappedJavascriptFunction(object):
     with arguments.
     """
 
-    def __init__(self, splash: BrowserTab, source: str) -> None:
+    def __init__(self, splash: 'Splash', source: str) -> None:
         """
-        :param tab: BrowserTab object
+        :param splash: Splash object
         :param source: function source code
         """
         self.lua = splash.lua
