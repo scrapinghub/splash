@@ -1118,4 +1118,4 @@ class InvalidEngineNameTest(BaseRenderTest):
         url = self.mockurl('getrequest') + '?code=200'
         r = self.request({'url': url})
         self.assertStatusCode(r, 400)
-        self.assertIn("Unsupported render engine", r.text)
+        self.assertIn("Unknown render engine", r.text)

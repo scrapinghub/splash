@@ -356,7 +356,7 @@ class RenderOptions(object):
     def get_engine(self):
         engine = self.get("engine", default="webkit", type=str)
         if engine not in {"webkit", "chromium"}:
-            self.raise_error("get_engine", "Unsupported render engine {}".format(engine))
+            self.raise_error("engine", "Unknown render engine {}".format(engine))
         return engine
 
     def get_common_params(self, js_profiles_path):

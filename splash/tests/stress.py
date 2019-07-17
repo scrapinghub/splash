@@ -152,8 +152,7 @@ def lua_runonce(script, timeout=60., splash_args=None, **kwargs):
     if splash_args is None:
         splash_args = ['--disable-lua-sandbox',
                        '--allowed-schemes=file,http,https', ]
-    with SplashServer(extra_args=splash_args) as s, \
-         MockServer() as ms:
+    with SplashServer(extra_args=splash_args) as s, MockServer() as ms:
         if kwargs.get('url', '').startswith('mock://'):
             kwargs['url'] = ms.url(kwargs['url'][7:])
         params = {'lua_source': script}
