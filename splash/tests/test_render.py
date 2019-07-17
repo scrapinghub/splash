@@ -939,6 +939,11 @@ class CommandLineOptionsTest(BaseRenderTest):
             )
             self.assertStatusCode(resp, 200)
 
+    def test_browser_engines_invalid(self):
+        with pytest.raises(RuntimeError) as e:
+            with SplashServer(extra_args=['--browser-engines', 'foo']) as splash:
+                pass
+
 
 @pytest.mark.usefixtures("class_ts")
 class TestTestSetup(unittest.TestCase):
@@ -1119,3 +1124,35 @@ class InvalidEngineNameTest(BaseRenderTest):
         r = self.request({'url': url})
         self.assertStatusCode(r, 400)
         self.assertIn("Unknown render engine", r.text)
+
+
+class DisabledEnginesTest(BaseRenderTest):
+    def _request_html(self, splash, params):
+        return requests.get(splash.url('render.html'), params=params, timeout=3.0)
+
+    def test_browser_engines_webkit_disabled(self):
+        with SplashServer(extra_args=['--browser-engines', 'chromium']) as splash:
+            url = self.mockurl('getrequest') + '?code=200'
+            resp = self._request_html(splash, {'url': url, 'engine': 'webkit'})
+            self.assertBadArgument(resp, 'engine')
+
+            resp = self._request_html(splash, {'url': url, 'engine': 'chromium'})
+            self.assertStatusCode(resp, 200)
+
+    def test_browser_engines_chromium_disabled(self):
+        with SplashServer(extra_args=['--browser-engines', 'webkit']) as splash:
+            url = self.mockurl('getrequest') + '?code=200'
+            resp = self._request_html(splash, {'url': url, 'engine': 'webkit'})
+            self.assertStatusCode(resp, 200)
+
+            resp = self._request_html(splash, {'url': url, 'engine': 'chromium'})
+            self.assertBadArgument(resp, 'engine')
+
+    def test_browser_engines_all_enabled(self):
+        with SplashServer(extra_args=['--browser-engines', 'chromium,webkit']) as splash:
+            url = self.mockurl('getrequest') + '?code=200'
+            resp = self._request_html(splash, {'url': url,  'engine': 'webkit'})
+            self.assertStatusCode(resp, 200)
+
+            resp = self._request_html(splash, {'url': url, 'engine': 'chromium'})
+            self.assertStatusCode(resp, 200)

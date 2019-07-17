@@ -25,6 +25,15 @@ def parse_opts(jupyter=False, argv=None):
         argv = sys.argv
     _bool_default = {True:' (default)', False: ''}
 
+    def browser_engine_arg(option, opt, value, parser):
+        """ optparse callback for comma-separated args """
+        engines = value.split(',')
+        for engine in engines:
+            if engine not in {'webkit', 'chromium'}:
+                raise optparse.OptionValueError(
+                    "{} is not a supported --browser-engine".format(engine))
+        setattr(parser.values, option.dest, engines)
+
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
     op.add_option("-m", "--maxrss", type=float, default=0,
@@ -58,6 +67,13 @@ def parse_opts(jupyter=False, argv=None):
         help="disable Lua sandbox")
     op.add_option("--disable-browser-caches", action="store_true", default=False,
         help="disables in-memory and network caches used by webkit")
+    op.add_option("--browser-engines",
+        default=defaults.BROWSER_ENGINES_ENABLED,
+        action='callback',
+        type='string',
+        callback=browser_engine_arg,
+        help="Comma-separated list of enabled browser engines (default: %s). "
+             "Allowed engines are chromium and webkit." % defaults.BROWSER_ENGINES_ENABLED)
     op.add_option("--lua-package-path", default="",
         help="semicolon-separated places to add to Lua package.path. "
              "Each place can have a ? in it that's replaced with the module name.")
@@ -89,6 +105,9 @@ def parse_opts(jupyter=False, argv=None):
             help="maximum number of entries in arguments cache (default: %default)")
 
     opts, args = op.parse_args(argv)
+    if isinstance(opts.browser_engines, str):
+        # default value is not processed by optparse
+        opts.browser_engines = opts.browser_engines.split(',')
 
     if jupyter:
         opts.disable_ui = True
@@ -173,6 +192,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
                   strict_lua_runner=False,
                   argument_cache_max_entries=None,
                   disable_browser_caches=False,
+                  browser_engines_enabled=(),
                   verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
@@ -202,10 +222,12 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
 
     # HTTP API
     log.msg(
-        "Web UI: %s, Lua: %s (sandbox: %s)" % (
+        "Web UI: %s, Lua: %s (sandbox: %s), Webkit: %s, Chromium: %s" % (
             ONOFF[ui_enabled],
             ONOFF[lua_enabled],
             ONOFF[lua_sandbox_enabled],
+            ONOFF['webkit' in browser_engines_enabled],
+            ONOFF['chromium' in browser_engines_enabled],
         )
     )
     root = Root(
@@ -218,6 +240,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
         strict_lua_runner=strict_lua_runner,
+        browser_engines_enabled=list(browser_engines_enabled),
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory, interface=ip)
@@ -267,6 +290,7 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
                           verbosity=None,
                           server_factory=splash_server,
                           disable_browser_caches=False,
+                          browser_engines_enabled=(),
                           ):
     from splash import network_manager
     network_manager_factory = network_manager.NetworkManagerFactory(
@@ -296,6 +320,7 @@ def default_splash_server(portnum, ip, max_timeout, slots=None,
         verbosity=verbosity,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
+        browser_engines_enabled=browser_engines_enabled,
     )
 
 
@@ -395,7 +420,8 @@ def main(jupyter=False, argv=None, server_factory=splash_server):
             max_timeout=opts.max_timeout,
             argument_cache_max_entries=opts.argument_cache_max_entries,
             server_factory=server_factory,
-            disable_browser_caches=opts.disable_browser_caches
+            disable_browser_caches=opts.disable_browser_caches,
+            browser_engines_enabled=opts.browser_engines,
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
