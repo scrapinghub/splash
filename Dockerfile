@@ -16,7 +16,7 @@ RUN /tmp/download-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz
 
 # =====================
 
-FROM ubuntu:16.04 as qtbase
+FROM ubuntu:18.04 as qtbase
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY dockerfiles/splash/prepare-install.sh /tmp/prepare-install.sh
@@ -66,6 +66,7 @@ COPY --from=qtbuilder /opt/qt59/5.9.1/gcc_64 /opt/qt59/5.9.1/gcc_64
 
 # XXX: this needs to be updated if Qt is updated
 ENV PATH="/opt/qt59/5.9.1/gcc_64/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/qt59/5.9.1/gcc_64/lib:$LD_LIBRARY_PATH"
 
 # =====================
 
@@ -86,7 +87,7 @@ RUN /tmp/install-python-splash-deps.sh
 
 # FIXME: use virtualenv
 COPY --from=qt5-builder /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
-COPY --from=qt5-builder /usr/local/lib/python3.5/dist-packages /usr/local/lib/python3.5/dist-packages
+COPY --from=qt5-builder /usr/local/lib/python3.6/dist-packages /usr/local/lib/python3.6/dist-packages
 
 COPY . /app
 RUN pip3 install /app

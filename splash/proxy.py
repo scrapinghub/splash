@@ -66,7 +66,7 @@ class _BlackWhiteSplashProxyFactory(object):
 
 
 class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
-    """
+    r"""
     This proxy factory reads BlackWhiteQNetworkProxyFactory
     parameters from ini file; name of the profile can be set per-request
     using GET parameter.
@@ -197,7 +197,7 @@ def get_factory(ini_path, parameter):
     Returns the appropriate factory depending on the value of
     ini_path and parameter
     """
-    if parameter and re.match('^\w+://', parameter):
+    if parameter and re.match(r'^\w+://', parameter):
         return DirectSplashProxyFactory(parameter)
     else:
         if ini_path:

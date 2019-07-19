@@ -1498,7 +1498,7 @@ class HTMLElementTest(BaseLuaRenderTest):
         """, {"url": self.mockurl("various-elements")})
 
         self.assertStatusCode(resp, 200)
-        self.assertRegex(resp.text, '/submitted\?username=admin&password=pass123')
+        self.assertRegex(resp.text, r'/submitted\?username=admin&password=pass123')
 
     def test_submit_not_form(self):
         resp = self.request_lua("""
