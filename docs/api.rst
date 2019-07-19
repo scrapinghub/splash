@@ -227,6 +227,20 @@ html5_media : integer : optional
 
     See also: :ref:`splash-html5-media-enabled`.
 
+.. _arg-engine:
+
+engine : string : optional
+    Browser engine to use. Allowed values are ``webkit`` (default)
+    and ``chromium``.
+
+    .. warning::
+        engine=chromium is in pre-alpha stage: many features don't work,
+        there are known bugs, including Splash crashes. Use on your own risk!
+
+    Allowed values also depend on Splash startup options:
+    ``--browser-engines`` startup option can be used to disable one of them.
+    Start Splash with ``--browser-engines=webkit`` option to disallow
+    Chromium.
 
 Examples
 ~~~~~~~~

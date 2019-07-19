@@ -385,7 +385,7 @@ to set User-Agent header it is recommended to use
 splash:wait
 -----------
 
-Wait for ``time`` seconds. When script is waiting WebKit continues
+Wait for ``time`` seconds. When script is waiting browser continues
 processing the webpage.
 
 **Signature:** ``ok, reason = splash:wait{time, cancel_on_redirect=false, cancel_on_error=true}``
@@ -2315,6 +2315,7 @@ As of now, this table contains:
 * ``qt`` - (string) Qt version
 * ``pyqt`` - (string) PyQt version
 * ``webkit`` - (string) WebKit version
+* ``chromium`` - (string) Chromium version
 * ``sip`` - (string) SIP version
 * ``twisted`` - (string) Twisted version
 

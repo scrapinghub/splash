@@ -6,14 +6,14 @@ Installation
 Linux + Docker
 --------------
 
-1. Install Docker_.
+1. Install Docker_. Make sure Docker version >= 17 is installed.
 2. Pull the image::
 
        $ sudo docker pull scrapinghub/splash
 
 3. Start the container::
 
-       $ sudo docker run -it -p 8050:8050 scrapinghub/splash
+       $ sudo docker run -it -p 8050:8050 --rm scrapinghub/splash
 
 4. Splash is now available at 0.0.0.0 at port 8050 (http).
 
@@ -21,78 +21,18 @@ OS X + Docker
 -------------
 
 1. Install Docker_ for Mac (see https://docs.docker.com/docker-for-mac/).
+   Make sure Docker version >= 17 is installed.
 2. Pull the image::
 
        $ docker pull scrapinghub/splash
 
 3. Start the container::
 
-       $ docker run -it -p 8050:8050 scrapinghub/splash
+       $ docker run -it -p 8050:8050 --rm scrapinghub/splash
 
 5. Splash is available at 0.0.0.0 address at port 8050 (http).
 
 .. _Docker: http://docker.io
-
-
-.. _manual-install-ubuntu:
-
-Ubuntu 16.04 (manual way)
--------------------------
-
-.. warning::
-
-    On desktop machines it is often better to use Docker.
-    Use manual installation with care; at least read the
-    provision.sh script.
-
-1. Clone the repo from GitHub::
-
-      $ git clone https://github.com/scrapinghub/splash/
-
-2. Install dependencies::
-
-      $ cd splash/dockerfiles/splash
-      $ sudo cp ./qt-installer-noninteractive.qs /tmp/script.qs
-      $ sudo ./provision.sh \
-                 prepare_install \
-                 install_msfonts \
-                 install_extra_fonts \
-                 install_deps \
-                 install_flash \
-                 install_qtwebkit_deps \
-                 install_official_qt \
-                 install_qtwebkit \
-                 install_pyqt5 \
-                 install_python_deps
-
-   Change back to the parent directory of splash, i.e. `cd ~`,
-   then run::
-
-        $ sudo pip3 install splash/
-
-To run the server execute the following command::
-
-    python3 -m splash.server
-
-Run ``python3 -m splash.server --help`` to see options available.
-
-By default, Splash API endpoints listen to port 8050 on all available
-IPv4 addresses. To change the port use ``--port`` option::
-
-    python3 -m splash.server --port=5000
-
-.. note::
-
-    Official Docker image uses Ubuntu 16.04; commands above are similar to
-    commands executed in Dockerfile. The main difference is that dangerous
-    ``provision.sh`` remove... commands are not executed; they allow to save
-    space in a Docker image, but can break unrelated software on a
-    desktop system.
-
-Required Python packages
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. literalinclude:: ../requirements.txt
 
 .. _splash and docker:
 
