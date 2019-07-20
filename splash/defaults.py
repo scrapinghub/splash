@@ -1,3 +1,5 @@
+# browser engines
+BROWSER_ENGINES_ENABLED = "webkit,chromium"
 
 # timeouts
 TIMEOUT = 30

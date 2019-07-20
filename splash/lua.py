@@ -9,7 +9,7 @@ except ImportError:
     lupa = None
 
 from splash.utils import to_bytes, to_unicode
-from splash.exceptions import ScriptError
+from splash.errors import ScriptError
 
 
 _supported = None

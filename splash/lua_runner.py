@@ -4,7 +4,7 @@ import itertools
 
 import lupa
 
-from splash.exceptions import ScriptError, InternalError
+from splash.errors import ScriptError, InternalError
 from splash.lua import parse_error_message, PyResult
 from splash.utils import truncated, ensure_tuple
 

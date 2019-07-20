@@ -33,8 +33,14 @@ def _non_block_read(output):
         return ""
 
 
-def _wait_for_port(portnum, delay=0.1, attempts=100):
+def _wait_for_port(portnum, delay=0.1, attempts=100, proc=None):
     while attempts > 0:
+        if proc is not None:
+            proc.poll()
+            if proc.returncode is not None:
+                msg = ("Server exited. Return code: %d" % proc.returncode)
+                raise RuntimeError(msg)
+
         s = socket.socket()
         if s.connect_ex(('127.0.0.1', portnum)) == 0:
             s.close()
@@ -75,12 +81,7 @@ class SplashServer(object):
         args.extend(self.extra_args)
 
         self.proc = Popen(args, env=get_testenv())
-        self.proc.poll()
-        if self.proc.returncode is not None:
-            msg = ("unable to start splash server. return code: %d" %
-                   self.proc.returncode)
-            raise RuntimeError(msg)
-        _wait_for_port(self.portnum)
+        _wait_for_port(self.portnum, proc=self.proc)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -116,7 +117,7 @@ class MockServer(object):
             env=get_testenv()
         )
         for port in (self.http_port, self.https_port, self.proxy_port, self.auth_proxy_port):
-            _wait_for_port(port)
+            _wait_for_port(port, proc=self.proc)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

@@ -4,7 +4,7 @@ import json
 
 from splash import defaults
 from splash.utils import to_bytes, path_join_secure
-from splash.exceptions import BadOption
+from splash.errors import BadOption
 
 
 class RenderOptions(object):
@@ -352,6 +352,15 @@ class RenderOptions(object):
 
     def get_html5_media(self):
         return self._get_bool("html5_media", defaults.HTML5_MEDIA_ENABLED)
+
+    def get_engine(self, browser_engines_enabled=None):
+        engine = self.get("engine", default="webkit", type=str)
+        if engine not in {"webkit", "chromium"}:
+            self.raise_error("engine", "Unknown render engine {}".format(engine))
+        if browser_engines_enabled is not None:
+            if engine not in browser_engines_enabled:
+                self.raise_error("engine", "Disabled render engine {}".format(engine))
+        return engine
 
     def get_common_params(self, js_profiles_path):
         wait = self.get_wait()

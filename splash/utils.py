@@ -1,3 +1,5 @@
+import array
+
 import os
 import gc
 import sys
@@ -79,7 +81,7 @@ def get_num_fds():
 def get_alive():
     """ Return counts of alive objects. """
     relevant_types = {
-        'SplashQWebPage', 'SplashQNetworkAccessManager',
+        'WebkitWebPage', 'SplashQNetworkAccessManager',
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
         'QWebView', 'QWebPage', 'QWebFrame',
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
@@ -90,7 +92,10 @@ def get_alive():
         '_ExposedTimer',
         '_ExposedElement', '_ExposedElementStyle', '_ExposedEvent',
         'EventHandlersStorage', 'EventsStorage', ' ElementsStorage',
-        'BrowserTab', '_SplashHttpClient', 'JavascriptConsole',
+        'WebkitBrowserTab',
+        'ChromiumBrowserTab', 'ChromiumWebPage',
+        'QWebEngineProfile', 'QWebEnginePage', 'QWebEngineView',
+        'SplashWebkitHttpClient', 'JavascriptConsole',
         'ProfilesSplashProxyFactory',
         'SplashProxyRequest', 'Request', 'Deferred',
         'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
@@ -242,3 +247,11 @@ def traverse_data(obj, predicate, convert, max_depth=100):
         }
 
     return obj
+
+
+def swap_byte_order_i32(buf: bytes) -> bytes:
+    """ Swap order of bytes in each 32-bit word of given byte sequence. """
+    arr = array.array('I')
+    arr.frombytes(buf)
+    arr.byteswap()
+    return arr.tobytes()

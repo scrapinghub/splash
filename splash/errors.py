@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+import attr
+
+
+@attr.s
+class RenderErrorInfo:
+    type = attr.ib()
+    code = attr.ib()
+    text = attr.ib()
+    url = attr.ib()
+
+
 class BadOption(Exception):
     """ Incorrect HTTP API arguments """
     pass
@@ -51,3 +62,5 @@ class DOMError(Exception):
     """ Error occurred during DOM operations"""
     NOT_IN_DOM_ERROR = 'NOT_IN_DOM_ERROR'
     NOT_COMPATIBLE_NODE_ERROR = 'NOT_COMPATIBLE_NODE_ERROR'
+
+

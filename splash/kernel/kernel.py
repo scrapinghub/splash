@@ -10,7 +10,7 @@ from twisted.internet import defer
 
 import splash
 from splash.lua import get_version, get_main_sandboxed, get_main
-from splash.browser_tab import BrowserTab
+from splash.engines.webkit import WebkitBrowserTab
 from splash.lua_runtime import SplashLuaRuntime
 from splash.qtrender_lua import (
     Splash, MainCoroutineRunner, StoredExceptions, Extras
@@ -46,11 +46,11 @@ def init_browser(network_manager_factory):
     data = {}
     data['uid'] = id(data)
 
-    tab = BrowserTab(
+    tab = WebkitBrowserTab(
+        render_options=RenderOptions(data, defaults.MAX_TIMEOUT),  # TODO: timeout
+        verbosity=2,  # TODO
         network_manager=network_manager_factory(),
         splash_proxy_factory=proxy_factory,
-        verbosity=2,  # TODO
-        render_options=RenderOptions(data, defaults.MAX_TIMEOUT),  # TODO: timeout
         visible=True,
     )
     return tab

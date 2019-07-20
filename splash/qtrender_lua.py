@@ -14,12 +14,14 @@ from PyQt5.QtCore import QTimer
 import lupa
 
 import splash
-from splash.browser_tab import BrowserTab, JsError
+from splash.browser_tab import BrowserTab
+from splash.errors import JsError
 from splash.lua_runner import (
     BaseScriptRunner,
     AsyncCommand,
 )
-from splash.qtrender import RenderScript, stop_on_error
+from splash.render_scripts import stop_on_error
+from splash.engines.webkit.render_scripts import WebkitRenderScript
 from splash.lua import (get_main, get_main_sandboxed, parse_error_message,
                         PyResult, _mark_table_as_array)
 from splash.har.qt import reply2har, request2har
@@ -43,7 +45,7 @@ from splash.qtutils import (
     get_versions,
     get_headers_dict)
 from splash.lua_runtime import SplashLuaRuntime
-from splash.exceptions import ScriptError, DOMError
+from splash.errors import ScriptError, DOMError
 from splash.html_element import HTMLElement, escape_js_args
 
 
@@ -352,10 +354,10 @@ class _WrappedJavascriptFunction(object):
     with arguments.
     """
 
-    def __init__(self, splash, source):
+    def __init__(self, splash: 'Splash', source: str) -> None:
         """
-        :param splash.browser_tab.BrowserTab tab: BrowserTab object
-        :param str source: function source code
+        :param splash: Splash object
+        :param source: function source code
         """
         self.lua = splash.lua
         self.tab = splash.tab
@@ -473,7 +475,7 @@ class Splash(BaseExposedObject):
                  strict_lua_runner=False):
         """
         :param SplashLuaRuntime lua: Lua wrapper
-        :param splash.browser_tab.BrowserTab tab: BrowserTab object
+        :param splash.browser_tab.WebkitBrowserTab tab: BrowserTab object
         :param splash.render_options.RenderOptions render_options: arguments
         """
         if isinstance(render_options, RenderOptions):
@@ -2413,7 +2415,7 @@ class MainCoroutineRunner(SplashCoroutineRunner):
         })
 
 
-class LuaRender(RenderScript):
+class LuaRender(WebkitRenderScript):
     default_min_log_level = 2
 
     @stop_on_error

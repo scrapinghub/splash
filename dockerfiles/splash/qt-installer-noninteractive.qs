@@ -31,9 +31,9 @@ Controller.prototype.ComponentSelectionPageCallback = function() {
     var widget = gui.currentPageWidget();
     // To get component names, comment out widget.deselectAll()
     // to install everything default, then check components.xml file.
-    widget.deselectAll();
-    widget.selectComponent("qt.591.gcc_64");
-    widget.selectComponent("qt.591.qtwebengine.gcc_64");
+    // widget.deselectAll();
+    // widget.selectComponent("qt.591.gcc_64");
+    // widget.selectComponent("qt.591.qtwebengine.gcc_64");
     gui.clickButton(buttons.NextButton);
 }
 

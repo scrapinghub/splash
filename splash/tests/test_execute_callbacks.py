@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from PIL import Image
 import pytest
 
-from splash.exceptions import ScriptError
+from splash.errors import ScriptError
 from splash.tests.test_proxy import BaseHtmlProxyTest
 from .test_execute import BaseLuaRenderTest
 

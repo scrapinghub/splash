@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from splash.browser_tab import OneShotCallbackProxy, _BrowserTabLogger
+from splash.browser_tab import OneShotCallbackProxy
+from splash.log import SplashLogger
 
 
 class OneShotCallbackProxyTest(unittest.TestCase):
@@ -28,7 +29,7 @@ class OneShotCallbackProxyTest(unittest.TestCase):
             if raise_:
                 raise Exception()
 
-        class Logger(_BrowserTabLogger):
+        class Logger(SplashLogger):
             def __init__(self, uid, verbosity):
                 self.messages = []
                 super().__init__(uid, verbosity)
@@ -85,6 +86,6 @@ class OneShotCallbackProxyTest(unittest.TestCase):
 
     def test_negative_timeout_is_invalid(self):
         with self.assertRaises(ValueError):
-            logger = _BrowserTabLogger(uid=0, verbosity=2)
+            logger = SplashLogger(uid=0, verbosity=2)
             cb_proxy = OneShotCallbackProxy(None, lambda a: a, lambda b: b,
                                             logger, -1)

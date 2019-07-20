@@ -1,7 +1,7 @@
 from functools import wraps
 from contextlib import contextmanager
 
-from splash.exceptions import DOMError
+from splash.errors import DOMError
 from splash.jsutils import escape_js
 from splash.casperjs_utils import (
     VISIBLE_JS_FUNC,

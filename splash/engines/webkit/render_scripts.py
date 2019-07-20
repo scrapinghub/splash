@@ -1,67 +1,32 @@
+# -*- coding: utf-8 -*-
 import abc
 import json
-import functools
-import pprint
 
 from splash import defaults
-from splash.browser_tab import BrowserTab
-from splash.exceptions import RenderError
+from splash.engines.webkit import WebkitBrowserTab
+from splash.render_scripts import (
+    BaseRenderScript,
+    BaseFixedRenderScript,
+    stop_on_error,
+)
 
 
-def stop_on_error(meth):
-    @functools.wraps(meth)
-    def stop_on_error_wrapper(self, *args, **kwargs):
-        try:
-            return meth(self, *args, **kwargs)
-        except Exception as e:
-            self.return_error(e)
-    return stop_on_error_wrapper
-
-
-class RenderScript(metaclass=abc.ABCMeta):
-    """
-    Interface that all render scripts must implement.
-    """
-    default_min_log_level = 2
-
-    def __init__(self, network_manager, splash_proxy_factory, render_options, verbosity):
-        self.tab = BrowserTab(
+class WebkitRenderScript(BaseRenderScript):
+    """ Base class for Webkit-based render scripts """
+    def __init__(self, render_options, verbosity, network_manager,
+                 splash_proxy_factory):
+        super().__init__(render_options, verbosity)
+        self.tab = WebkitBrowserTab(
+            render_options=render_options,
+            verbosity=verbosity,
             network_manager=network_manager,
             splash_proxy_factory=splash_proxy_factory,
-            verbosity=verbosity,
-            render_options=render_options,
         )
-        self.render_options = render_options
-        self.verbosity = verbosity
-        self.deferred = self.tab.deferred
-
-    @abc.abstractmethod
-    def start(self, **kwargs):
-        """ This method is called by Pool when script should begin """
-        pass
-
-    def log(self, text, min_level=None):
-        if min_level is None:
-            min_level = self.default_min_log_level
-        self.tab.logger.log(text, min_level=min_level)
-
-    def return_result(self, result):
-        self.tab.return_result(result)
-
-    def return_error(self, error=None):
-        self.tab.return_error(error)
-
-    def close(self):
-        """
-        This method is called by a Pool after the rendering is done and
-        the RenderScript object is no longer needed.
-        """
-        self.tab.close()
 
 
-class DefaultRenderScript(RenderScript):
+class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):
     """
-    DefaultRenderScript object renders a webpage using "standard" render
+    WebkitDefaultRenderScript object renders a webpage using "standard" render
     scenario:
 
     * load an URL;
@@ -77,7 +42,6 @@ class DefaultRenderScript(RenderScript):
               headers=None, http_method='GET', body=None,
               render_all=False, resource_timeout=None, request_body=False,
               response_body=False, html5_media=False):
-
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.js_source = js_source
@@ -118,37 +82,9 @@ class DefaultRenderScript(RenderScript):
         """
         pass
 
-    def on_goto_load_finished(self):
-        if self.wait_time == 0:
-            self.log("loadFinished; not waiting")
-            self._loadFinishedOK()
-        else:
-            time_ms = int(self.wait_time * 1000)
-            self.log("loadFinished; waiting %sms" % time_ms)
-            self.tab.wait(
-                time_ms=time_ms,
-                callback=self._loadFinishedOK,
-                onerror=self.on_goto_load_error,
-            )
-
-    def on_goto_load_error(self, error_info):
-        ex = RenderError({
-            'type': error_info.type,
-            'code': error_info.code,
-            'text': error_info.text,
-            'url': error_info.url
-        })
-        self.return_error(ex)
-
     @stop_on_error
-    def _loadFinishedOK(self):
-        self.log("_loadFinishedOK")
-
-        if self.tab._closing:
-            self.log("loadFinishedOK is ignored because RenderScript is closing", min_level=3)
-            return
-
-        self.tab.stop_loading()
+    def _load_finished_ok(self):
+        super()._load_finished_ok()
         self.tab.store_har_timing("_onPrepareStart")
         self._prepare_render()
         self.return_result(self.get_result())
@@ -179,12 +115,12 @@ class DefaultRenderScript(RenderScript):
         self.js_output, self.js_console_output = self._runjs(self.js_source, self.js_profile)
 
 
-class HtmlRender(DefaultRenderScript):
+class HtmlRender(WebkitDefaultRenderScript):
     def get_result(self):
         return self.tab.html()
 
 
-class ImageRender(DefaultRenderScript):
+class ImageRender(WebkitDefaultRenderScript):
 
     def start(self, **kwargs):
         self.width = kwargs.pop('width')
@@ -258,7 +194,7 @@ class JsonRender(JpegRender):
         return res
 
 
-class HarRender(DefaultRenderScript):
+class HarRender(WebkitDefaultRenderScript):
     def get_result(self):
         return json.dumps(self.tab.har())
 
