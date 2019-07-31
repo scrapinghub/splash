@@ -23,7 +23,7 @@ def install_qtreactor(verbose):
 def parse_opts(jupyter=False, argv=None):
     if argv is None:
         argv = sys.argv
-    _bool_default = {True:' (default)', False: ''}
+    _bool_default = {True: ' (default)', False: ''}
 
     def browser_engine_arg(option, opt, value, parser):
         """ optparse callback for comma-separated args """
