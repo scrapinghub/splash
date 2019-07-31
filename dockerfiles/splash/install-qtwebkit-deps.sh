@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 apt-get install -y --no-install-recommends \
+    libssl1.0-dev \
     libjpeg-turbo8-dev \
     libgl1-mesa-dev \
     libglu1-mesa-dev \
     mesa-common-dev \
     libfontconfig1-dev \
     libicu-dev \
-    libpng12-dev \
+    libpng-dev \
     libxslt1-dev \
     libxml2-dev \
     libhyphen-dev \

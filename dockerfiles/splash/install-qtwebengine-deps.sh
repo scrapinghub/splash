@@ -17,7 +17,8 @@ apt-get install -y --no-install-recommends \
     libxtst-dev
 
 apt-get install -y --no-install-recommends \
-    libssl-dev \
+    openssl1.0 \
+    libssl1.0-dev \
     libxcursor-dev \
     libxcomposite-dev \
     libxdamage-dev \

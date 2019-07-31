@@ -9,9 +9,9 @@ FROM splash
 
 RUN apt-get update -q && \
     apt-get install --no-install-recommends -y \
-        libzmq-dev \
+        libzmq3-dev \
         libsqlite3-0 \
-        libssl-dev \
+        libssl1.0-dev \
         python3-dev \
         build-essential \
         python3-cryptography \
