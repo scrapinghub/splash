@@ -7,7 +7,7 @@ install_python_deps () {
     ${_PYTHON} -m pip install \
         qt5reactor==0.5 \
         psutil==5.0.0 \
-        Twisted==18.9.0 \
+        Twisted==19.2.1 \
         adblockparser==0.7 \
         xvfbwrapper==0.2.9 \
         funcparserlib==0.3.6 \
