@@ -514,7 +514,7 @@ class DemoUI(_ValidatingResource):
         params = {k: v for k, v in params.items() if v is not None}
 
         # disable "phases" HAR Viewer feature
-        request.addCookie('phaseInterval', 120000)
+        request.addCookie('phaseInterval', '120000')
 
         return ("""<!DOCTYPE html><html>
         <head>
