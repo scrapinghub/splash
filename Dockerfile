@@ -5,8 +5,8 @@ RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 # =====================
 
 FROM byrnedo/alpine-curl as qtwebkit-downloader
-COPY dockerfiles/splash/download-qtwebkit.sh /tmp/download-qtwebkit.sh
-RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.tar.gz
+COPY dockerfiles/splash/download-qtwebkit-source.sh /tmp/download-qtwebkit-source.sh
+RUN /tmp/download-qtwebkit-source.sh /tmp/qtwebkit.tar.xz
 
 # =====================
 
@@ -42,7 +42,6 @@ RUN /tmp/install-qtwebkit-deps.sh
 FROM qtbase as qtbuilder
 ENV DEBIAN_FRONTEND noninteractive
 
-COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.gz /tmp/
 COPY --from=qt-downloader /tmp/qt-installer.run /tmp/
 
 COPY dockerfiles/splash/qt-installer-noninteractive.qs /tmp/script.qs
@@ -52,8 +51,16 @@ RUN /tmp/run-qt-installer.sh /tmp/qt-installer.run /tmp/script.qs
 # XXX: this needs to be updated if Qt is updated
 ENV PATH="/opt/qt59/5.9.1/gcc_64/bin:${PATH}"
 
-COPY dockerfiles/splash/install-qtwebkit.sh /tmp/install-qtwebkit.sh
-RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.tar.gz
+# =====================
+
+FROM qtbuilder as qtwebkitbuilder
+COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
+
+COPY dockerfiles/splash/install-qtwebkit-build-deps.sh /tmp/install-qtwebkit-build-deps.sh
+RUN /tmp/install-qtwebkit-build-deps.sh
+
+COPY dockerfiles/splash/build-qtwebkit.sh /tmp/build-qtwebkit.sh
+RUN /tmp/build-qtwebkit.sh /tmp/qtwebkit.tar.xz
 
 # =====================
 
@@ -62,7 +69,7 @@ FROM qtbase as splash-base
 COPY dockerfiles/splash/install-system-splash-deps.sh /tmp/install-system-splash-deps.sh
 RUN /tmp/install-system-splash-deps.sh
 
-COPY --from=qtbuilder /opt/qt59/5.9.1/gcc_64 /opt/qt59/5.9.1/gcc_64
+COPY --from=qtwebkitbuilder /opt/qt59/5.9.1/gcc_64 /opt/qt59/5.9.1/gcc_64
 
 # XXX: this needs to be updated if Qt is updated
 ENV PATH="/opt/qt59/5.9.1/gcc_64/bin:${PATH}"
