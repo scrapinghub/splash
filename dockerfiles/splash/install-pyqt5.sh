@@ -14,7 +14,6 @@ ${_PYTHON} configure.py && \
 make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
 make install  && \
 popd  && \
-
 # PyQt5
 tar xzf "$2" --keep-newer-files -C pyqt5 --strip-components 1 && \
 pushd pyqt5 && \
@@ -30,16 +29,12 @@ ${_PYTHON} configure.py -c \
     -e QtNetwork \
     -e QtWebKit \
     -e QtWebKitWidgets \
-#    -e QtWebEngine \
-#    -e QtWebEngineCore \
-#    -e QtWebEngineWidgets \
     -e QtWebChannel \
     -e QtSvg \
     -e QtPrintSupport && \
 make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
 make install && \
 popd  && \
-
 # PyQtWebEngine
 tar xzf "$3" --keep-newer-files -C webengine --strip-components 1 && \
 pushd webengine && \

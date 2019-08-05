@@ -12,7 +12,7 @@ RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 
 FROM byrnedo/alpine-curl as qtwebkit-downloader
 COPY dockerfiles/splash/download-qtwebkit.sh /tmp/download-qtwebkit.sh
-RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.tar.xz
+RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
 
 # =====================
 
@@ -58,9 +58,9 @@ RUN /tmp/run-qt-installer.sh /tmp/qt-installer.run /tmp/script.qs
 ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
 
 # install qtwebkit
-COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
+COPY --from=qtwebkit-downloader /tmp/qtwebkit.7z /tmp/
 COPY dockerfiles/splash/install-qtwebkit.sh /tmp/install-qtwebkit.sh
-RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.tar.xz
+RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.7z
 
 # =====================
 
@@ -74,14 +74,6 @@ RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.tar.xz
 #RUN /tmp/build-qtwebkit.sh /tmp/qtwebkit.tar.xz
 
 # =====================
-#
-#FROM qtbuilder as qtwebkitinstaller
-#COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
-#
-#COPY dockerfiles/splash/install-qtwebkit.sh /tmp/install-qtwebkit.sh
-#RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.tar.gz
-
-# =====================
 
 FROM qtbase as splash-base
 
@@ -90,6 +82,7 @@ RUN /tmp/install-system-splash-deps.sh
 
 # XXX: this needs to be updated if Qt is updated
 COPY --from=qtbuilder /opt/qt-5.13/5.13.0/gcc_64 /opt/qt-5.13/5.13.0/gcc_64
+#RUN ls -l /opt/qt-5.13/5.13.0/gcc_64/lib
 ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/qt-13/5.13.0/gcc_64/lib:$LD_LIBRARY_PATH"
 
