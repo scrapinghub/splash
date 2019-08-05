@@ -3,16 +3,22 @@ COPY dockerfiles/splash/download-qt-installer.sh /tmp/download-qt-installer.sh
 RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 
 # =====================
+#
+#FROM byrnedo/alpine-curl as qtwebkit-source-downloader
+#COPY dockerfiles/splash/download-qtwebkit-source.sh /tmp/download-qtwebkit-source.sh
+#RUN /tmp/download-qtwebkit-source.sh /tmp/qtwebkit.tar.xz
+
+# =====================
 
 FROM byrnedo/alpine-curl as qtwebkit-downloader
-COPY dockerfiles/splash/download-qtwebkit-source.sh /tmp/download-qtwebkit-source.sh
-RUN /tmp/download-qtwebkit-source.sh /tmp/qtwebkit.tar.xz
+COPY dockerfiles/splash/download-qtwebkit.sh /tmp/download-qtwebkit.sh
+RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.tar.xz
 
 # =====================
 
 FROM byrnedo/alpine-curl as pyqt5-downloader
 COPY dockerfiles/splash/download-pyqt5.sh /tmp/download-pyqt5.sh
-RUN /tmp/download-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz
+RUN /tmp/download-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz /tmp/webengine.tar.gz
 
 # =====================
 
@@ -49,18 +55,31 @@ COPY dockerfiles/splash/run-qt-installer.sh /tmp/run-qt-installer.sh
 RUN /tmp/run-qt-installer.sh /tmp/qt-installer.run /tmp/script.qs
 
 # XXX: this needs to be updated if Qt is updated
-ENV PATH="/opt/qt59/5.9.1/gcc_64/bin:${PATH}"
+ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
+
+# install qtwebkit
+COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
+COPY dockerfiles/splash/install-qtwebkit.sh /tmp/install-qtwebkit.sh
+RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.tar.xz
 
 # =====================
 
-FROM qtbuilder as qtwebkitbuilder
-COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
+#FROM qtbuilder as qtwebkitbuilder
+#COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
+#
+#COPY dockerfiles/splash/install-qtwebkit-build-deps.sh /tmp/install-qtwebkit-build-deps.sh
+#RUN /tmp/install-qtwebkit-build-deps.sh
+#
+#COPY dockerfiles/splash/build-qtwebkit.sh /tmp/build-qtwebkit.sh
+#RUN /tmp/build-qtwebkit.sh /tmp/qtwebkit.tar.xz
 
-COPY dockerfiles/splash/install-qtwebkit-build-deps.sh /tmp/install-qtwebkit-build-deps.sh
-RUN /tmp/install-qtwebkit-build-deps.sh
-
-COPY dockerfiles/splash/build-qtwebkit.sh /tmp/build-qtwebkit.sh
-RUN /tmp/build-qtwebkit.sh /tmp/qtwebkit.tar.xz
+# =====================
+#
+#FROM qtbuilder as qtwebkitinstaller
+#COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
+#
+#COPY dockerfiles/splash/install-qtwebkit.sh /tmp/install-qtwebkit.sh
+#RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.tar.gz
 
 # =====================
 
@@ -69,11 +88,10 @@ FROM qtbase as splash-base
 COPY dockerfiles/splash/install-system-splash-deps.sh /tmp/install-system-splash-deps.sh
 RUN /tmp/install-system-splash-deps.sh
 
-COPY --from=qtwebkitbuilder /opt/qt59/5.9.1/gcc_64 /opt/qt59/5.9.1/gcc_64
-
 # XXX: this needs to be updated if Qt is updated
-ENV PATH="/opt/qt59/5.9.1/gcc_64/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/qt59/5.9.1/gcc_64/lib:$LD_LIBRARY_PATH"
+COPY --from=qtbuilder /opt/qt-5.13/5.13.0/gcc_64 /opt/qt-5.13/5.13.0/gcc_64
+ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/qt-13/5.13.0/gcc_64/lib:$LD_LIBRARY_PATH"
 
 # =====================
 
@@ -81,9 +99,10 @@ FROM splash-base as qt5-builder
 
 COPY --from=pyqt5-downloader /tmp/sip.tar.gz /tmp/
 COPY --from=pyqt5-downloader /tmp/pyqt5.tar.gz /tmp/
+COPY --from=pyqt5-downloader /tmp/webengine.tar.gz /tmp/
 
 COPY dockerfiles/splash/install-pyqt5.sh /tmp/install-pyqt5.sh
-RUN /tmp/install-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz
+RUN /tmp/install-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz /tmp/webengine.tar.gz
 
 # =====================
 
