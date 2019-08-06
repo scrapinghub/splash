@@ -7,6 +7,7 @@ class ChromiumWebPage(QWebEnginePage):
     def __init__(self, profile: QWebEngineProfile, verbosity: int = 0) -> None:
         super(QWebEnginePage, self).__init__(profile, None)
         self.verbosity = verbosity
+        profile.setParent(self)
 
     def javaScriptAlert(self, url, msg):
         # TODO: callback
