@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+apt-get update -q && \
 apt-get install -y p7zip-full && \
 mkdir -p /tmp/builds/qtwebkit && \
 cd /tmp/builds/qtwebkit && \

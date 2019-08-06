@@ -2,6 +2,7 @@
 
 # Lists are from https://wiki.qt.io/QtWebEngine/How_to_Try,
 # but non-development versions, and with some packages removed
+apt-get update -q && \
 apt-get install -y --no-install-recommends \
     libasound2 \
     libbz2-dev \
@@ -14,7 +15,7 @@ apt-get install -y --no-install-recommends \
     libpci-dev \
     libpulse-dev \
     libudev-dev \
-    libxtst-dev
+    libxtst-dev  && \
 
 apt-get install -y --no-install-recommends \
     openssl1.0 \

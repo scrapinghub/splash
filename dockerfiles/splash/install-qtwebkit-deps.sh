@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+apt-get update -q && \
 apt-get install -y --no-install-recommends \
     libssl1.0-dev \
     libjpeg-turbo8-dev \
