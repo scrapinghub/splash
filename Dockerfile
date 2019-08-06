@@ -113,7 +113,6 @@ COPY --from=qt5-builder /usr/local/lib/python3.6/dist-packages /usr/local/lib/py
 COPY . /app
 RUN pip3 install /app
 ENV PYTHONPATH $PYTHONPATH:/app
-RUN apt-get install -y libxkbcommon-x11-0
 #ENV QT_DEBUG_PLUGINS=1
 
 # Chromium refuses to start under root
