@@ -7,6 +7,7 @@
 # scrapinghub/splash:master.
 FROM splash
 
+USER root:root
 RUN apt-get update -q && \
     apt-get install --no-install-recommends -y \
         libzmq3-dev \
@@ -28,4 +29,7 @@ RUN pip3 install /app
 
 WORKDIR /app
 RUN find . -name \*.pyc -delete
+
+RUN chown -R splash:splash /app
+USER splash:splash
 ENTRYPOINT ["/app/dockerfiles/tests/runtests.sh"]

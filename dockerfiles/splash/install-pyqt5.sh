@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
 
 _PYTHON=python3
-SPLASH_BUILD_PARALLEL_JOBS=4
+SPLASH_BUILD_PARALLEL_JOBS=8
 
 mkdir -p /tmp/builds/sip && \
 mkdir -p /tmp/builds/pyqt5 && \
-mkdir -p /tmp/builds/webengine && \
 pushd /tmp/builds && \
 # sip
 tar xzf "$1" --keep-newer-files -C sip --strip-components 1 && \
 pushd sip && \
-${_PYTHON} configure.py && \
+${_PYTHON} configure.py --sip-module PyQt5.sip && \
 make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
-make install  && \
-popd  && \
+make install && \
+popd && \
 # PyQt5
 tar xzf "$2" --keep-newer-files -C pyqt5 --strip-components 1 && \
 pushd pyqt5 && \
-${_PYTHON} configure.py -c \
+${_PYTHON} configure.py -c -j ${SPLASH_BUILD_PARALLEL_JOBS} \
     --verbose \
     --confirm-license \
     --no-designer-plugin \
@@ -31,17 +30,12 @@ ${_PYTHON} configure.py -c \
     -e QtWebKitWidgets \
     -e QtWebChannel \
     -e QtSvg \
+    -e QtQuick \
     -e QtPrintSupport && \
 make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
 make install && \
 popd  && \
-# PyQtWebEngine
-tar xzf "$3" --keep-newer-files -C webengine --strip-components 1 && \
-pushd webengine && \
-${_PYTHON} configure.py && \
-make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
-make install  && \
-popd  && \
+${_PYTHON} -c "import PyQt5.QtCore; print(PyQt5.QtCore.__file__)"
 
 # Builds Complete
 popd

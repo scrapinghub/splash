@@ -84,7 +84,7 @@ RUN /tmp/install-system-splash-deps.sh
 COPY --from=qtbuilder /opt/qt-5.13/5.13.0/gcc_64 /opt/qt-5.13/5.13.0/gcc_64
 #RUN ls -l /opt/qt-5.13/5.13.0/gcc_64/lib
 ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/qt-13/5.13.0/gcc_64/lib:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/opt/qt-5.13/5.13.0/gcc_64/lib:$LD_LIBRARY_PATH"
 
 # =====================
 
@@ -92,10 +92,12 @@ FROM splash-base as qt5-builder
 
 COPY --from=pyqt5-downloader /tmp/sip.tar.gz /tmp/
 COPY --from=pyqt5-downloader /tmp/pyqt5.tar.gz /tmp/
-COPY --from=pyqt5-downloader /tmp/webengine.tar.gz /tmp/
-
 COPY dockerfiles/splash/install-pyqt5.sh /tmp/install-pyqt5.sh
-RUN /tmp/install-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz /tmp/webengine.tar.gz
+RUN /tmp/install-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz
+
+COPY --from=pyqt5-downloader /tmp/webengine.tar.gz /tmp/
+COPY dockerfiles/splash/install-pyqtwebengine.sh /tmp/install-pyqtwebengine.sh
+RUN /tmp/install-pyqtwebengine.sh /tmp/webengine.tar.gz
 
 # =====================
 
@@ -111,6 +113,14 @@ COPY --from=qt5-builder /usr/local/lib/python3.6/dist-packages /usr/local/lib/py
 COPY . /app
 RUN pip3 install /app
 ENV PYTHONPATH $PYTHONPATH:/app
+RUN apt-get install -y libxkbcommon-x11-0
+#ENV QT_DEBUG_PLUGINS=1
+
+# Chromium refuses to start under root
+RUN groupadd -r splash && useradd --no-log-init -r -g splash splash
+RUN chown -R splash:splash /app
+USER splash:splash
+
 
 VOLUME [ \
     "/etc/splash/proxy-profiles", \
