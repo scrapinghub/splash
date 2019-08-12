@@ -1527,10 +1527,11 @@ class GoTest(BaseLuaRenderTest):
         resp = self.request_lua("""
         function main(splash)
             local ok, reason = splash:go(splash.args.url)
-            return {ok=ok, reason=reason}
+            return {ok=ok, reason=reason, html=splash:html()}
         end
         """, {"url": url})
         self.assertStatusCode(resp, 200)
+        print(resp.json())
         return resp.json()
 
     def _geturl(self, code, empty=False):
@@ -1584,10 +1585,15 @@ class GoTest(BaseLuaRenderTest):
         self.assertEqual(err['info']['argument'], 'url')
 
     @unittest.skipIf(NON_EXISTING_RESOLVABLE, "non existing hosts are resolvable")
-    def test_go_error(self):
-        data = self.go_status("non-existing")
+    def test_go_host_not_found(self):
+        data = self.go_status("http://non-existing")
         self.assertEqual(data.get('ok', False), False)
-        self.assertEqual(data["reason"], "network301")
+        self.assertEqual(data["reason"], "network3")  # HostNotFoundError
+
+    def test_go_protocol_unknown(self):
+        data = self.go_status("abcd://non-existing")
+        self.assertEqual(data.get('ok', False), False)
+        self.assertEqual(data["reason"], "network301")  # Protocol Unknown
 
     def test_go_multiple(self):
         resp = self.request_lua("""
