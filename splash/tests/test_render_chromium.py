@@ -163,6 +163,16 @@ class JsRedirectTest(test_redirects.JsRedirectTest):
     def test_redirect_nowait(self):
         pass
 
+    @pytest.mark.xfail(reason="getting loadFinished=False, need to fix it")
+    def test_redirect_slowimage_wait(self):
+        super().test_redirect_slowimage_wait()
+
+    @pytest.mark.xfail(reason="getting loadFinished=False, need to fix it. "
+                              "Also, nowait is the same as wait here for "
+                              "Chromium.")
+    def test_redirect_slowimage_nowait(self):
+        super().test_redirect_slowimage_nowait()
+
     @pytest.mark.xfail(reason="not implemented yet")
     def test_redirect_slowimage_nowait_baseurl(self):
         super().test_redirect_slowimage_nowait_baseurl()
