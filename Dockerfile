@@ -116,7 +116,7 @@ ENV PYTHONPATH $PYTHONPATH:/app
 #ENV QT_DEBUG_PLUGINS=1
 
 # Chromium refuses to start under root
-RUN groupadd -r splash && useradd --no-log-init -r -g splash splash
+RUN groupadd -r splash && useradd --no-log-init --create-home -r -g splash splash
 RUN chown -R splash:splash /app
 USER splash:splash
 
