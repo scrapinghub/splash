@@ -123,6 +123,8 @@ class WebkitWebPage(QWebPage):
     # distinguish it from (2) and (3).
     def extension(self, extension, info=None, errorPage=None):
         if extension == QWebPage.ErrorPageExtension:
+            if self.verbosity >= 2:
+                log.msg("ErrorPageExtension in WebkitWebPage.extension")
             # catch the error, populate self.errorInfo and return an error page
 
             info = sip.cast(info, QWebPage.ErrorPageExtensionOption)
@@ -159,6 +161,8 @@ class WebkitWebPage(QWebPage):
         # handled the extension. Is it correct? When can this method be
         # called with extension which is not ErrorPageExtension if we
         # are returning False in ``supportsExtension`` for such extensions?
+        if self.verbosity >= 1:
+            log.msg("Unhandled condition in WebkitWebPage.extension")
         return True
 
     def supportsExtension(self, extension):

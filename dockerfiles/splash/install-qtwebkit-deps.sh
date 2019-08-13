@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+apt-get update -q && \
 apt-get install -y --no-install-recommends \
     libssl1.0-dev \
     libjpeg-turbo8-dev \
@@ -16,6 +17,7 @@ apt-get install -y --no-install-recommends \
     libxcb-icccm4 \
     libxcb-keysyms1 \
     libxcb-render-util0 \
+    libxkbcommon-x11-0 \
     libxi6 \
     libxcomposite-dev \
     libxrender-dev \

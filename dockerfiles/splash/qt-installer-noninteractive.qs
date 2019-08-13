@@ -1,20 +1,21 @@
-// Emacs mode hint: -*- mode: JavaScript -*-
-// https://bitbucket.org/xiannox/trusty-qt5.7-beta-x64/raw/HEAD/qt-installer-noninteractive.qs
-// https://bitbucket.org/xiannox/trusty-qt5.7-beta-x64
+// Installer script for qt.
+// Based on https://github.com/rabits/dockerfiles/blob/master/5.13-desktop/extract-qt-installer.sh
+// See https://doc.qt.io/qtinstallerframework/noninteractive.html
 
 function Controller() {
-    installer.autoRejectMessageBoxes();
+    //installer.autoRejectMessageBoxes();
     installer.installationFinished.connect(function() {
         gui.clickButton(buttons.NextButton);
     })
 }
 
 Controller.prototype.WelcomePageCallback = function() {
-    gui.clickButton(buttons.NextButton);
+    console.log("Welcome Page");
+    gui.clickButton(buttons.NextButton, 3000);
 }
 
 Controller.prototype.CredentialsPageCallback = function() {
-    gui.clickButton(buttons.NextButton);
+    gui.clickButton(buttons.CommitButton);
 }
 
 Controller.prototype.IntroductionPageCallback = function() {
@@ -23,38 +24,43 @@ Controller.prototype.IntroductionPageCallback = function() {
 
 Controller.prototype.TargetDirectoryPageCallback = function()
 {
-    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt59");
+    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt-5.13");
     gui.clickButton(buttons.NextButton);
 }
 
 Controller.prototype.ComponentSelectionPageCallback = function() {
+    var components = [
+      "qt.qt5.5130.gcc_64",
+      "qt.qt5.5130.qtwebengine",
+      "qt.qt5.5130.qtnetworkauth",
+    ]
+    console.log("Select components");
     var widget = gui.currentPageWidget();
-    // To get component names, comment out widget.deselectAll()
-    // to install everything default, then check components.xml file.
-    // widget.deselectAll();
-    // widget.selectComponent("qt.591.gcc_64");
-    // widget.selectComponent("qt.591.qtwebengine.gcc_64");
+    for (var i=0; i < components.length; i++){
+        widget.selectComponent(components[i]);
+        console.log("selected: " + components[i])
+    }
     gui.clickButton(buttons.NextButton);
 }
 
 Controller.prototype.LicenseAgreementPageCallback = function() {
-    gui.currentPageWidget().AcceptLicenseRadioButton.setChecked(true);
+    console.log("Accept license agreement");
+    var widget = gui.currentPageWidget();
+    if (widget != null) {
+        widget.AcceptLicenseRadioButton.setChecked(true);
+    }
     gui.clickButton(buttons.NextButton);
 }
 
-Controller.prototype.StartMenuDirectoryPageCallback = function() {
-    gui.clickButton(buttons.NextButton);
-}
-
-Controller.prototype.ReadyForInstallationPageCallback = function()
-{
-    gui.clickButton(buttons.NextButton);
+Controller.prototype.ReadyForInstallationPageCallback = function() {
+    console.log("Ready to install");
+    gui.clickButton(buttons.CommitButton);
 }
 
 Controller.prototype.FinishedPageCallback = function() {
-var checkBoxForm = gui.currentPageWidget().LaunchQtCreatorCheckBoxForm
-if (checkBoxForm && checkBoxForm.launchQtCreatorCheckBox) {
-    checkBoxForm.launchQtCreatorCheckBox.checked = false;
-}
+    var widget = gui.currentPageWidget();
+    if (widget.LaunchQtCreatorCheckBoxForm) {
+        widget.LaunchQtCreatorCheckBoxForm.launchQtCreatorCheckBox.setChecked(false);
+    }
     gui.clickButton(buttons.FinishButton);
 }

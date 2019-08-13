@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
-URL="https://github.com/annulen/webkit/releases/download/qtwebkit-5.212.0-alpha2/qtwebkit-5.212.0_alpha2-qt59-linux-x64.tar.xz"
+URL="https://github.com/qtwebkit/qtwebkit/releases/download/qtwebkit-5.212.0-alpha3/qtwebkit-Linux-RHEL_7_6-GCC-Linux-RHEL_7_6-X86_64.7z"
 curl -L -o "$1" ${URL}

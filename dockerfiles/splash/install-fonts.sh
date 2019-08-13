@@ -20,5 +20,5 @@ install_extra_fonts() {
         fonts-arphic-bkai00mp \
         fonts-beng
 }
-
+apt-get update -q && \
 install_msfonts && install_extra_fonts
