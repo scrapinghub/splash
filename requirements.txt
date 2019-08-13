@@ -1,4 +1,4 @@
-# install PyQt5 (Splash is tested on PyQT 5.9)
+# install PyQt5 (Splash is tested on PyQT 5.13)
 # and the following packages:
 twisted == 19.2.1
 qt5reactor
