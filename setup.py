@@ -59,7 +59,7 @@ setup_args = {
     ]},
     'zip_safe': False,
     'install_requires': [
-        'Twisted >= 19.2.1',
+        'Twisted >= 19.7.0',
         'qt5reactor',
         'psutil',
         'adblockparser',
