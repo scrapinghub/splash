@@ -81,26 +81,42 @@ def get_num_fds():
 def get_alive():
     """ Return counts of alive objects. """
     relevant_types = {
-        'WebkitWebPage', 'SplashQNetworkAccessManager',
+        # general QT objects
+        'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
+
+        # Twisted objects
+        'Request', 'Deferred',
+
+        # API objects
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
+
+        # QtWebKit objects
         'QWebView', 'QWebPage', 'QWebFrame',
         'QNetworkRequest', 'QNetworkReply', 'QNetworkProxy',
-        'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
+
+        # QtWebKit-based objects
+        'WebkitWebPage', 'SplashQNetworkAccessManager',
         'SplashCookieJar', 'OneShotCallbackProxy',
+        'EventHandlersStorage', 'EventsStorage', ' ElementsStorage',
+        'WebkitBrowserTab',
+        'SplashWebkitHttpClient', 'JavascriptConsole',
+        'ProfilesSplashProxyFactory',
+        'SplashProxyRequest',
+
+        # QWebEngine objects
+        'QWebEngineProfile', 'QWebEnginePage', 'QWebEngineView',
+
+        # QWebEngine-based objects
+        'ChromiumBrowserTab', 'ChromiumWebPage',
+
+        # Lua-specific objects
+        'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
+        '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
+        'AsyncBrowserCommand',
         '_ExposedRequest', '_ExposedBoundRequest',
         '_ExposedResponse', '_ExposedBoundResponse',
         '_ExposedTimer',
         '_ExposedElement', '_ExposedElementStyle', '_ExposedEvent',
-        'EventHandlersStorage', 'EventsStorage', ' ElementsStorage',
-        'WebkitBrowserTab',
-        'ChromiumBrowserTab', 'ChromiumWebPage',
-        'QWebEngineProfile', 'QWebEnginePage', 'QWebEngineView',
-        'SplashWebkitHttpClient', 'JavascriptConsole',
-        'ProfilesSplashProxyFactory',
-        'SplashProxyRequest', 'Request', 'Deferred',
-        'LuaRuntime', '_LuaObject', '_LuaTable', '_LuaIter', '_LuaThread',
-        '_LuaFunction', '_LuaCoroutineFunction', 'LuaError', 'LuaSyntaxError',
-        'AsyncBrowserCommand',
     }
     counts = defaultdict(int)
     for o in gc.get_objects():
