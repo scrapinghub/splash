@@ -85,7 +85,7 @@ def get_alive():
         'QSize', 'QBuffer', 'QPainter', 'QImage', 'QUrl', 'QTimer',
 
         # Twisted objects
-        'Request', 'Deferred',
+        'Request', 'Deferred', 'DelayedCall',
 
         # API objects
         'HtmlRender', 'PngRender', 'JsonRender', 'HarRender', 'LuaRender',
