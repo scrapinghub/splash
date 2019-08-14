@@ -9,6 +9,7 @@ import json
 import resource
 from typing import List
 
+from twisted.internet.base import DelayedCall
 from twisted.python.failure import Failure
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.resource import Resource
@@ -45,7 +46,7 @@ from splash.errors import (
     BadOption, RenderError, InternalError,
     GlobalTimeoutError, UnsupportedContentType,
     ExpiredArguments,
-)
+    CancelledError)
 
 if lua_is_supported():
     from splash.qtrender_lua import LuaRender
@@ -134,7 +135,8 @@ class BaseRenderResource(_ValidatingResource):
 
         pool_d.addCallback(self._cancel_timer, timer)
         pool_d.addCallback(self._write_output, request)
-        pool_d.addErrback(self._on_timeout_error, request, timeout=timeout)
+        pool_d.addErrback(self._on_timeout_error, request,
+                          timeout=timeout, timer=timer)
         pool_d.addErrback(self._on_render_error, request)
         pool_d.addErrback(self._on_bad_request, request)
         pool_d.addErrback(self._on_internal_error, request)
@@ -234,9 +236,19 @@ class BaseRenderResource(_ValidatingResource):
         msg = json.dumps(msg).encode("utf8")
         log.msg(msg, system="events")
 
-    def _on_timeout_error(self, failure, request, timeout=None):
+    def _on_timeout_error(self, failure, request, timeout: float = None,
+                          timer: DelayedCall = None):
         failure.trap(defer.CancelledError)
-        ex = GlobalTimeoutError({'timeout': timeout})
+        msg = {}
+        if timer is not None:
+            msg['remaining'] = timer.time - timer.seconds()
+
+        if timer is not None and timer.cancelled:
+            ex = CancelledError(msg)
+            return self._write_error(request, 520, ex)
+
+        msg['timeout'] = timeout
+        ex = GlobalTimeoutError(msg)
         return self._write_error(request, 504, ex)
 
     def _on_render_error(self, failure, request):

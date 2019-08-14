@@ -25,6 +25,10 @@ class InternalError(Exception):
     pass
 
 
+class CancelledError(Exception):
+    """ Render is cancelled """
+
+
 class GlobalTimeoutError(Exception):
     """ Timeout exceeded rendering page """
     pass
