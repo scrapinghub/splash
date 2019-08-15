@@ -11,4 +11,3 @@ nbformat==4.4.0
 notebook==6.0.0
 tornado==6.0.3
 widgetsnbextension==3.5.1
-service_identity
