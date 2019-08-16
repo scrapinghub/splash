@@ -70,9 +70,7 @@ class ChromiumBrowserTab(BrowserTab):
         settings.setAttribute(QWebEngineSettings.ScreenCaptureEnabled, True)
         settings.setAttribute(QWebEngineSettings.JavascriptCanOpenWindows, False)
         settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
-
-        # TODO: requires Qt 5.10
-        # settings.setAttribute(QWebEngineSettings.ShowScrollBars, False)
+        settings.setAttribute(QWebEngineSettings.ShowScrollBars, False)
 
         # TODO
         # if self.visible:
