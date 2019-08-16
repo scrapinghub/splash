@@ -2142,6 +2142,11 @@ class _ExposedBoundRequest(BaseExposedObject):
             })
         self.request.timeout = timeout
 
+    @command()
+    @requires_request
+    def set_http2_enabled(self, value):
+        self.request.http2_enabled = bool(value)
+
 
 class _ExposedResponse(BaseExposedObject):
     """

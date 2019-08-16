@@ -3918,6 +3918,20 @@ class HTTP2Test(BaseLuaRenderTest):
         self.assertStatusCode(resp, 200)
         self.assertNotIn("http2", resp.text)
 
+    def test_enable_per_request(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            splash.http2_enabled = false
+            splash:on_request(function(req)
+                req:set_http2_enabled(true)
+            end)
+            assert(splash:go(args.url))
+            return splash:html()
+        end""", {"url": self._http_version_url()})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("http2", resp.text)
+
+
 class MediaSourceTest(BaseLuaRenderTest):
     # detection code is adapted from
     # https://github.com/nickdesaulniers/netfix/blob/gh-pages/demo/bufferAll.html
