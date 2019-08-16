@@ -285,6 +285,19 @@ to disable it.
 
 .. _Media Source Extensions API: https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API
 
+.. _splash-http2-enabled:
+
+splash.http2_enabled
+--------------------
+
+Enable or disable HTTP2.
+
+**Signature:** ``splash.http2_enabled = true/false``
+
+HTTP2 is enabled by default. Use ``splash.http2_enabled = false`` to disable it.
+Disabling HTTP2 can be useful either for testing, or when http2 causes problems
+(e.g. try disabling http2 if you're getting network399 errors).
+
 Methods
 ~~~~~~~
 

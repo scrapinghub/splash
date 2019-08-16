@@ -25,6 +25,9 @@ function Splash:go_and_wait(args)
   if not wait and (self.args.render_all or self.args.viewport == "full") then
     error("non-zero 'wait' is required when rendering whole page")
   end
+  if args.http2 ~= nil then
+    self.http2_enabled = tonumber(args.http2)
+  end
 
   self.images_enabled = self.args.images
 

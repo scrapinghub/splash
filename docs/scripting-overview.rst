@@ -147,9 +147,9 @@ Inspecting network traffic
 Browsing Options
 ~~~~~~~~~~~~~~~~
 
-* :ref:`splash-js-enabled` allows to turn JavaScript support OFF:
+* :ref:`splash-js-enabled` allows to turn JavaScript support OFF
 * :ref:`splash-private-mode-enabled` allows to turn Private Mode OFF
-  (it is requird for some websites because Webkit doesn't have localStorage
+  (it is required for some websites because Webkit doesn't have localStorage
   available in Private Mode);
 * :ref:`splash-images-enabled` allows to turn OFF downloading of images;
 * :ref:`splash-plugins-enabled` allows to enable plugins (in the default
@@ -162,3 +162,4 @@ Browsing Options
   (e.g. playback of ``<video>`` tags).
 * :ref:`splash-media-source-enabled` allows to turn off Media Source Extension
   API support
+* :ref:`splash-http2-enabled` allows to turn HTTP2 support OFF
