@@ -22,6 +22,8 @@ def https_only(func):
         https_supported = getattr(self.__class__, 'https_supported', True)
         if https_supported:
             func(self, *args, **kwargs)
+        else:
+            pytest.skip("https is not supported in this test")
     return wrapper
 
 
