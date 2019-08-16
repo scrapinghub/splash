@@ -227,6 +227,14 @@ html5_media : integer : optional
 
     See also: :ref:`splash-html5-media-enabled`.
 
+.. _arg-http2:
+
+http2 : integer : optional
+    Enable or disable HTTP2 support.
+    Possible values are ``1`` (enable) and ``0`` (disable). Default is 1.
+    Set it to 0 if website fails to render with http2 due to bugs
+    (usually network 399 errors).
+
 .. _arg-engine:
 
 engine : string : optional

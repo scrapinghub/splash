@@ -177,3 +177,21 @@ Set an HTTP header for this request.
 **Async:** no.
 
 See also: :ref:`splash-set-custom-headers`
+
+
+.. _splash-request-set-http2-enabled:
+
+request:set_http2_enabled
+-------------------------
+
+Enable or disable HTTP2 support for this request.
+
+**Signature:** ``request:set_http2_enabled(true/false)``
+
+**Parameters:**
+
+* value - boolean, whether HTTP2 should be allowed for this request.
+
+**Returns:** nil.
+
+**Async:** no.

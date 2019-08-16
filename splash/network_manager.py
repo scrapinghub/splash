@@ -182,6 +182,7 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
         self._run_webpage_callbacks(request, 'on_request',
                                     request, operation, content)
 
+        self._handle_http2_options(request)
         self._handle_custom_proxies(request)
         self._handle_request_response_tracking(request)
 
@@ -319,6 +320,15 @@ class ProxiedQNetworkAccessManager(QNetworkAccessManager):
 
     def _handle_reply_cookies(self, reply):
         self.cookiejar.fill_from_reply(reply)
+
+    def _handle_http2_options(self, request):
+        if hasattr(request, "http2_enabled"):
+            http2_enabled = request.http2_enabled
+        else:
+            http2_enabled = self._get_webpage_attribute(request, "http2_enabled")
+        if http2_enabled is not None:
+            request.setAttribute(QNetworkRequest.HTTP2AllowedAttribute,
+                                 http2_enabled)
 
     def _handle_request_response_tracking(self, request):
         track = getattr(request, 'track_response_body', False)

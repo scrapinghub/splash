@@ -3882,6 +3882,56 @@ class Html5MediaTest(BaseLuaRenderTest):
             self.assertEqual(resp.json(), {'enabled': enabled})
 
 
+class HTTP2Test(BaseLuaRenderTest):
+    def _http_version_url(self):
+        return self.ts.mockserver.https_url("http-version")
+
+    def request_http_version(self, enabled):
+        return self.request_lua("""
+        function main(splash, args)            
+            splash.http2_enabled = args.enabled
+            assert(splash:go(args.url))
+            return splash:html()
+        end
+        """, {"enabled": enabled, "url": self._http_version_url()})
+
+    def test_defaults(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            assert(splash:go(args.url))
+            return splash:html()
+        end
+        """, {"url": self._http_version_url()})
+        self.assertStatusCode(resp, 200)
+        if defaults.HTTP2_ENABLED:
+            self.assertIn("http2", resp.text)
+        else:
+            self.assertNotIn("http2", resp.text)
+
+    def test_enable(self):
+        resp = self.request_http_version(1)
+        self.assertStatusCode(resp, 200)
+        self.assertIn("http2", resp.text)
+
+    def test_disable(self):
+        resp = self.request_http_version(0)
+        self.assertStatusCode(resp, 200)
+        self.assertNotIn("http2", resp.text)
+
+    def test_enable_per_request(self):
+        resp = self.request_lua("""
+        function main(splash, args)
+            splash.http2_enabled = false
+            splash:on_request(function(req)
+                req:set_http2_enabled(true)
+            end)
+            assert(splash:go(args.url))
+            return splash:html()
+        end""", {"url": self._http_version_url()})
+        self.assertStatusCode(resp, 200)
+        self.assertIn("http2", resp.text)
+
+
 class MediaSourceTest(BaseLuaRenderTest):
     # detection code is adapted from
     # https://github.com/nickdesaulniers/netfix/blob/gh-pages/demo/bufferAll.html

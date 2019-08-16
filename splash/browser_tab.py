@@ -81,6 +81,26 @@ def webpage_option_setter(attr, type_=None):
     return _setter
 
 
+def webpage_attribute_getter(attr):
+    """ Helper function for defining getters for web_page attributes, e.g.
+    ``get_foo_enabled = webpage_attribute_getter("foo")`` returns
+    a value of ``webpage.foo`` attribute.
+    """
+    def _getter(self):
+        return getattr(self.web_page, attr)
+    return _getter
+
+
+def webpage_attribute_setter(attr):
+    """ Helper function for defining setters for web_page attributes, e.g.
+    ``set_foo_enabled = webpage_attribute_setter("foo")`` sets
+    a value of ``webpage.foo`` attribute.
+    """
+    def _setter(self, value):
+        setattr(self.web_page, attr, value)
+    return _setter
+
+
 class BrowserTab(QObject):
     def __init__(self, render_options, verbosity, **kwargs):
         QObject.__init__(self)

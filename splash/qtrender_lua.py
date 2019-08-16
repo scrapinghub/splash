@@ -1197,6 +1197,16 @@ class Splash(BaseExposedObject):
     def set_webgl_enabled(self, enabled):
         self.tab.set_webgl_enabled(bool(enabled))
 
+    @lua_property('http2_enabled')
+    @command()
+    def get_http2_enabled(self):
+        return self.tab.get_http2_enabled()
+
+    @get_http2_enabled.lua_setter
+    @command()
+    def set_http2_enabled(self, enabled):
+        self.tab.set_http2_enabled(bool(enabled))
+
     @lua_property('resource_timeout')
     @command()
     def get_resource_timeout(self):
@@ -2131,6 +2141,11 @@ class _ExposedBoundRequest(BaseExposedObject):
                 "message": "request:set_timeout() argument can't be < 0"
             })
         self.request.timeout = timeout
+
+    @command()
+    @requires_request
+    def set_http2_enabled(self, value):
+        self.request.http2_enabled = bool(value)
 
 
 class _ExposedResponse(BaseExposedObject):

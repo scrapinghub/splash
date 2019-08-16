@@ -1029,6 +1029,27 @@ class RedirectAndHashtagsResource(Resource):
             <html><head></head><body>Hello world</body></html>
             """
 
+
+class HttpVersionResource(Resource):
+    """ Endpoint for checking if a client used http2 or not. """
+    def render(self, request):
+        return self.get_protocol_name(request).encode('utf8')
+
+    @classmethod
+    def get_protocol_name(cls, request):
+        try:
+            from twisted.web._http2 import H2Stream
+            if isinstance(request.channel, H2Stream):
+                return 'http2'
+        except ImportError:
+            pass
+        from twisted.web.http import HTTPChannel
+        if isinstance(request.channel, HTTPChannel):
+            # FIXME: it doesn't distinguish between 1.0 and 1.1
+            return 'http/1.1'
+        return "unknown"
+
+
 class Index(Resource):
     isLeaf = True
 
@@ -1138,6 +1159,7 @@ class Root(Resource):
         self.putChild(b"redirect-hash", RedirectAndHashtagsResource())
 
         self.putChild(b"do-post", XHRPostPage())
+        self.putChild(b"http-version", HttpVersionResource())
 
         self.putChild(b"", Index(self.children))
 

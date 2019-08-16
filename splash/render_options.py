@@ -362,6 +362,9 @@ class RenderOptions(object):
                 self.raise_error("engine", "Disabled render engine {}".format(engine))
         return engine
 
+    def get_http2(self):
+        return self._get_bool("http2", defaults.HTTP2_ENABLED)
+
     def get_common_params(self, js_profiles_path):
         wait = self.get_wait()
         return {
@@ -379,6 +382,7 @@ class RenderOptions(object):
             'http_method': self.get_http_method(),
             'body': self.get_body(),
             'html5_media': self.get_html5_media(),
+            'http2': self.get_http2(),
             # 'lua': self.get_lua(),
         }
 

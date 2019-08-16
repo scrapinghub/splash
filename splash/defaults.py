@@ -102,3 +102,6 @@ WEBGL_ENABLED = True
 # Media Source Extension API
 # it is enabled by default at least to make html5test.com work
 MEDIA_SOURCE_ENABLED = True
+
+# HTTP2
+HTTP2_ENABLED = True

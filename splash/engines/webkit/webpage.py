@@ -31,6 +31,7 @@ class WebkitWebPage(QWebPage):
     resource_timeout = 0
     request_body_enabled = False
     response_body_enabled = False
+    http2_enabled = True
 
     def __init__(self, verbosity=0):
         super(QWebPage, self).__init__()
