@@ -41,7 +41,7 @@ class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):
               js_source=None, js_profile=None, images=None, console=False,
               headers=None, http_method='GET', body=None,
               render_all=False, resource_timeout=None, request_body=False,
-              response_body=False, html5_media=False):
+              response_body=False, html5_media=False, http2=True):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.js_source = js_source
@@ -62,6 +62,7 @@ class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):
         self.tab.set_request_body_enabled(request_body)
         self.tab.set_response_body_enabled(response_body)
         self.tab.set_html5_media_enabled(html5_media)
+        self.tab.set_http2_enabled(http2)
 
         self.tab.go(
             url=url,

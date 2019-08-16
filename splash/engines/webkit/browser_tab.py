@@ -45,6 +45,8 @@ from splash.browser_tab import (
     skip_if_closing,
     webpage_option_getter,
     webpage_option_setter,
+    webpage_attribute_getter,
+    webpage_attribute_setter,
     EventsStorage,
     EventHandlersStorage,
     ElementsStorage,
@@ -205,17 +207,14 @@ class WebkitBrowserTab(BrowserTab):
         """
         self.web_page.custom_headers = headers
 
-    def get_request_body_enabled(self):
-        return self.web_page.request_body_enabled
+    get_request_body_enabled = webpage_attribute_getter('request_body_enabled')
+    set_request_body_enabled = webpage_attribute_setter('request_body_enabled')
 
-    def set_request_body_enabled(self, val):
-        self.web_page.request_body_enabled = val
+    get_response_body_enabled = webpage_attribute_getter("response_body_enabled")
+    set_response_body_enabled = webpage_attribute_setter("response_body_enabled")
 
-    def get_response_body_enabled(self):
-        return self.web_page.response_body_enabled
-
-    def set_response_body_enabled(self, val):
-        self.web_page.response_body_enabled = val
+    get_http2_enabled = webpage_attribute_getter("http2_enabled")
+    set_http2_enabled = webpage_attribute_setter("http2_enabled")
 
     def set_resource_timeout(self, timeout):
         """ Set a default timeout for HTTP requests, in seconds. """
