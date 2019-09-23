@@ -1,9 +1,12 @@
 Changes
 =======
 
-3.4b1 (2019-08-17)
+3.4 (2019-08-17)
 ------------------
 
+* Splash now supports HTTP2 and it's enabled by default. It can be
+  disabled with
+  :ref:`request:set_http2_enabled <splash-request-set-http2-enabled>`.
 * Suport using :ref:`chromium <arg-engine>` instead of webkit as the
   rendering engine. It is in pre-alpha stage so not suggested for
   using in production projects.
@@ -11,8 +14,6 @@ Changes
   QtWebkit-5.212.3-alpha3.
 * Twisted is updated to 19.7.0.
 * Use ubuntu:18.04 as the base docker image.
-* HTTP2 can be disabled with
-  :ref:`request:set_http2_enabled <splash-request-set-http2-enabled>`.
 * Viewport size limit is increased.
 
 3.3.1 (2019-02-21)
