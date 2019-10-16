@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import optparse
@@ -7,6 +8,9 @@ import signal
 import functools
 import faulthandler
 
+from asyncqt import QEventLoop
+from twisted.internet import asyncioreactor
+
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
@@ -15,10 +19,14 @@ from splash._cmdline_utils import ONOFF, comma_separated_callback
 
 
 def install_qtreactor(verbose):
-    init_qt_app(verbose)
-    import qt5reactor
-    qt5reactor.install()
-
+    """
+    Install asyncqt eventloop for asyncio, and then install the
+    asyncioreactor for twisted.
+    """
+    qtapp = init_qt_app(verbose)
+    loop = QEventLoop(qtapp)
+    asyncio.set_event_loop(loop)
+    asyncioreactor.install(loop)
 
 def parse_opts(jupyter=False, argv=None):
     if argv is None:

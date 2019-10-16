@@ -5,7 +5,7 @@ install_python_deps () {
     # Install python-level dependencies.
     ${_PYTHON} -m pip install -U pip setuptools six && \
     ${_PYTHON} -m pip install \
-        qt5reactor==0.5 \
+        asyncqt==0.7.0 \
         psutil==5.0.0 \
         "Twisted[http2]==19.7.0" \
         adblockparser==0.7 \

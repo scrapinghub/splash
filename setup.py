@@ -60,7 +60,7 @@ setup_args = {
     'zip_safe': False,
     'install_requires': [
         'Twisted[http2] >= 19.7.0',
-        'qt5reactor',
+        'asyncqt',
         'psutil',
         'adblockparser',
         'xvfbwrapper',
