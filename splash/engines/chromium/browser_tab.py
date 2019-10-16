@@ -145,8 +145,8 @@ class ChromiumBrowserTab(BrowserTab):
             "Getting PNG: width=%s, height=%s, "
             "render_all=%s, scale_method=%s, region=%s" %
             (width, height, render_all, scale_method, region), min_level=2)
-        # if render_all:
-        #     raise ValueError("render_all=True is not supported yet")
+        if render_all:
+            raise ValueError("render_all=True is not supported yet")
 
         image = self._get_image('PNG', width, height, render_all,
                                 scale_method, region=region)
@@ -165,8 +165,8 @@ class ChromiumBrowserTab(BrowserTab):
             "render_all=%s, scale_method=%s, quality=%s, region=%s" %
             (width, height, render_all, scale_method, quality, region),
             min_level=2)
-        # if render_all:
-        #     raise ValueError("render_all=True is not supported yet")
+        if render_all:
+            raise ValueError("render_all=True is not supported yet")
 
         image = self._get_image('JPEG', width, height, render_all,
                                 scale_method, region=region)
@@ -178,10 +178,6 @@ class ChromiumBrowserTab(BrowserTab):
 
     def _get_image(self, image_format, width, height, render_all,
                    scale_method, region):
-        if render_all:
-            self.logger.log("Rendering whole page contents (RENDER_ALL)",
-                            min_level=2)
-            self.set_viewport('full')
         renderer = QtChromiumScreenshotRenderer(
             self.web_page, self.logger, image_format,
             width=width, height=height, scale_method=scale_method,
