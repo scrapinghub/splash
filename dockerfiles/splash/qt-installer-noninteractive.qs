@@ -30,9 +30,9 @@ Controller.prototype.TargetDirectoryPageCallback = function()
 
 Controller.prototype.ComponentSelectionPageCallback = function() {
     var components = [
-      "qt.qt5.5130.gcc_64",
-      "qt.qt5.5130.qtwebengine",
-      "qt.qt5.5130.qtnetworkauth",
+      "qt.qt5.5131.gcc_64",
+      "qt.qt5.5131.qtwebengine",
+      "qt.qt5.5131.qtnetworkauth",
     ]
     console.log("Select components");
     var widget = gui.currentPageWidget();

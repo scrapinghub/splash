@@ -55,7 +55,7 @@ COPY dockerfiles/splash/run-qt-installer.sh /tmp/run-qt-installer.sh
 RUN /tmp/run-qt-installer.sh /tmp/qt-installer.run /tmp/script.qs
 
 # XXX: this needs to be updated if Qt is updated
-ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
+ENV PATH="/opt/qt-5.13/5.13.1/gcc_64/bin:${PATH}"
 
 # install qtwebkit
 COPY --from=qtwebkit-downloader /tmp/qtwebkit.7z /tmp/
@@ -81,10 +81,10 @@ COPY dockerfiles/splash/install-system-splash-deps.sh /tmp/install-system-splash
 RUN /tmp/install-system-splash-deps.sh
 
 # XXX: this needs to be updated if Qt is updated
-COPY --from=qtbuilder /opt/qt-5.13/5.13.0/gcc_64 /opt/qt-5.13/5.13.0/gcc_64
+COPY --from=qtbuilder /opt/qt-5.13/5.13.1/gcc_64 /opt/qt-5.13/5.13.1/gcc_64
 #RUN ls -l /opt/qt-5.13/5.13.0/gcc_64/lib
-ENV PATH="/opt/qt-5.13/5.13.0/gcc_64/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/qt-5.13/5.13.0/gcc_64/lib:$LD_LIBRARY_PATH"
+ENV PATH="/opt/qt-5.13/5.13.1/gcc_64/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/qt-5.13/5.13.1/gcc_64/lib:$LD_LIBRARY_PATH"
 
 # =====================
 
