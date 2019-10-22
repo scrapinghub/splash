@@ -5,6 +5,7 @@ import resource
 import traceback
 import signal
 import functools
+import faulthandler
 
 from splash import defaults, __version__
 from splash import xvfb
@@ -387,6 +388,8 @@ def main(jupyter=False, argv=None, server_factory=splash_server):
     if opts.version:
         print(__version__)
         sys.exit(0)
+
+    faulthandler.enable()
 
     if not jupyter:
         start_logging(opts)
