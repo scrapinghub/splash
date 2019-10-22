@@ -774,7 +774,7 @@ VariousElementsPage = _html_resource("""
 <html>
 <head>
 <style>
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; height: 100%% }
 </style>
 </head>
 <body>
