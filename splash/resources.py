@@ -96,13 +96,15 @@ class BaseRenderResource(_ValidatingResource):
     isLeaf = True
     content_type = "text/html; charset=utf-8"
 
-    def __init__(self, pool, max_timeout, argument_cache, browser_engines_enabled):
+    def __init__(self, pool, max_timeout, argument_cache,
+                 browser_engines_enabled, dont_log_args):
         Resource.__init__(self)
         self.pool = pool
         self.js_profiles_path = self.pool.js_profiles_path
         self.max_timeout = max_timeout
         self.argument_cache = argument_cache
         self.browser_engines_enabled = browser_engines_enabled
+        self.dont_log_args = set(dont_log_args)
 
     def render_GET(self, request):
         #log.msg("%s %s %s %s" % (id(request), request.method, request.path, request.args))
@@ -211,7 +213,16 @@ class BaseRenderResource(_ValidatingResource):
         ex = ExpiredArguments({'expired': expired_args})
         return self._write_error(request, 498, ex)
 
+    def _value_for_logging(self, key, value):
+        if key not in self.dont_log_args:
+            return value
+        return "***"
+
     def _log_stats(self, request, options, error=None):
+        options = {
+            key: self._value_for_logging(key, value)
+            for key, value in options.items()
+        }
         msg = {
             # Anything we retrieve from Twisted request object contains bytes.
             # We have to convert it to unicode first for json.dump to succeed.
@@ -313,11 +324,13 @@ class ExecuteLuaScriptResource(BaseRenderResource):
                  strict,
                  implicit_main,
                  browser_engines_enabled,
+                 dont_log_args,
                  ):
-        BaseRenderResource.__init__(self,  pool=pool,
-                                    max_timeout=max_timeout,
-                                    argument_cache=argument_cache,
-                                    browser_engines_enabled=browser_engines_enabled)
+        super().__init__(pool=pool,
+                         max_timeout=max_timeout,
+                         argument_cache=argument_cache,
+                         browser_engines_enabled=browser_engines_enabled,
+                         dont_log_args=dont_log_args)
         self.sandboxed = sandboxed
         self.lua_package_path = lua_package_path
         self.lua_sandbox_allowed_modules = lua_sandbox_allowed_modules
@@ -629,6 +642,7 @@ class Root(Resource):
                  argument_cache_max_entries,
                  strict_lua_runner,
                  browser_engines_enabled: List[str],
+                 dont_log_args,
                  ):
         Resource.__init__(self)
         self.argument_cache = ArgumentCache(argument_cache_max_entries)
@@ -636,12 +650,14 @@ class Root(Resource):
         self.lua_enabled = lua_enabled
         self.browser_engines_enabled = browser_engines_enabled
         self.max_timeout = max_timeout
+        self.dont_log_args = dont_log_args
 
         _kwargs = dict(
             pool=pool,
             max_timeout=max_timeout,
             argument_cache=self.argument_cache,
             browser_engines_enabled=browser_engines_enabled,
+            dont_log_args=self.dont_log_args,
         )
         self.putChild(b"render.html", RenderHtmlResource(**_kwargs))
         self.putChild(b"render.png", RenderPngResource(**_kwargs))

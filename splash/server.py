@@ -68,6 +68,14 @@ def parse_opts(jupyter=False, argv=None):
         ),
         help="Comma-separated list of enabled browser engines (default: %s). "
              "Allowed engines are chromium and webkit." % defaults.BROWSER_ENGINES_ENABLED)
+    op.add_option("--dont-log-args",
+        default=[],
+        action='callback',
+        type='string',
+        callback=comma_separated_callback(),
+        help="Comma-separated list of request args which values "
+             "won't be logged, regardless of the log level. "
+             "Example: lua_source,password")
     op.add_option("--lua-package-path", default="",
         help="semicolon-separated places to add to Lua package.path. "
              "Each place can have a ? in it that's replaced with the module name.")
@@ -188,6 +196,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
                   argument_cache_max_entries=None,
                   disable_browser_caches=False,
                   browser_engines_enabled=(),
+                  dont_log_args=None,
                   verbosity=None):
     from twisted.internet import reactor
     from twisted.web.server import Site
@@ -236,6 +245,7 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
         strict_lua_runner=strict_lua_runner,
         browser_engines_enabled=list(browser_engines_enabled),
+        dont_log_args=dont_log_args,
     )
     factory = Site(root)
     reactor.listenTCP(portnum, factory, interface=ip)
@@ -286,6 +296,7 @@ def default_splash_server(portnum, ip, max_timeout, *, slots=None,
                           server_factory=splash_server,
                           disable_browser_caches=False,
                           browser_engines_enabled=(),
+                          dont_log_args=None,
                           ):
     from splash import network_manager
     network_manager_factory = network_manager.NetworkManagerFactory(
@@ -316,6 +327,7 @@ def default_splash_server(portnum, ip, max_timeout, *, slots=None,
         max_timeout=max_timeout,
         argument_cache_max_entries=argument_cache_max_entries,
         browser_engines_enabled=browser_engines_enabled,
+        dont_log_args=dont_log_args,
     )
 
 
@@ -419,6 +431,7 @@ def main(jupyter=False, argv=None, server_factory=splash_server):
             server_factory=server_factory,
             disable_browser_caches=opts.disable_browser_caches,
             browser_engines_enabled=opts.browser_engines,
+            dont_log_args=set(opts.dont_log_args),
         )
         signal.signal(signal.SIGUSR1, lambda s, f: traceback.print_stack(f))
 
