@@ -10,9 +10,8 @@ import faulthandler
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
+from splash._cmdline_utils import ONOFF, comma_separated_callback
 
-
-ONOFF = {True: "enabled", False: "disabled"}
 
 
 def install_qtreactor(verbose):
@@ -25,15 +24,6 @@ def parse_opts(jupyter=False, argv=None):
     if argv is None:
         argv = sys.argv
     _bool_default = {True: ' (default)', False: ''}
-
-    def browser_engine_arg(option, opt, value, parser):
-        """ optparse callback for comma-separated args """
-        engines = value.split(',')
-        for engine in engines:
-            if engine not in {'webkit', 'chromium'}:
-                raise optparse.OptionValueError(
-                    "{} is not a supported --browser-engine".format(engine))
-        setattr(parser.values, option.dest, engines)
 
     op = optparse.OptionParser()
     op.add_option("-f", "--logfile", help="log file")
@@ -72,7 +62,10 @@ def parse_opts(jupyter=False, argv=None):
         default=defaults.BROWSER_ENGINES_ENABLED,
         action='callback',
         type='string',
-        callback=browser_engine_arg,
+        callback=comma_separated_callback(
+            is_valid_func=lambda v: v in {'webkit', 'chromium'},
+            error_msg="{invalid} is not a supported --browser-engine",
+        ),
         help="Comma-separated list of enabled browser engines (default: %s). "
              "Allowed engines are chromium and webkit." % defaults.BROWSER_ENGINES_ENABLED)
     op.add_option("--lua-package-path", default="",
@@ -183,6 +176,7 @@ def log_splash_version():
 
 
 def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
+                  *,
                   splash_proxy_factory_cls=None,
                   js_profiles_path=None,
                   ui_enabled=True,
@@ -276,7 +270,7 @@ def monitor_maxrss(maxrss):
         t.start(60, now=False)
 
 
-def default_splash_server(portnum, ip, max_timeout, slots=None,
+def default_splash_server(portnum, ip, max_timeout, *, slots=None,
                           proxy_profiles_path=None, js_profiles_path=None,
                           js_disable_cross_domain_access=False,
                           filters_path=None, allowed_schemes=None,
