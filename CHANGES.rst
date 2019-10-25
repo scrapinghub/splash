@@ -1,6 +1,63 @@
 Changes
 =======
 
+3.4 (TBA)
+---------
+
+In this release qtwebkit is updated to a more recent version.
+It is still the same rendering engine, but with some bugs fixed
+(e.g. handling of redirects where ``#`` is present),
+and with HTTP2 support enabled.
+
+In addition to webkit, Splash 3.4 got an experimental
+Chromium support (v73.0.3683.105); it can be enabled per-request using
+:ref:`engine <arg-engine>` argument of render.html, render.png and render.jpeg
+endpoints: ``engine=chromium``. It is in pre-alpha stage, and not suggested
+to use in production: many (most) features don't work, there are known bugs.
+
+Main new features:
+
+* Splash now supports HTTP2, and it's enabled by default. It can be
+  disabled with :ref:`http2 <arg-http2>` argument, and with
+  :ref:`request:set_http2_enabled <splash-request-set-http2-enabled>`
+  or :ref:`splash-http2-enabled` in Lua scripts.
+* new ``--dont-log-args`` startup option allows to replace certain
+  argument values with ``"***"`` in logs. Use it for sensitive data or for
+  arguments with long values which you don't want in logs, e.g.
+  ``--dont-log-args=lua_source,mypassword``. Note that sensitive data
+  may still appear in logs, e.g. if you pass it
+  via GET parameters instead of POST.
+
+Other improvements and bug fixes:
+
+* ``--browser-engines`` startup option allows to disable browser
+  engines globally;
+* Max allowed viewport size is increased.
+* For requests which are cancelled (e.g. because client closed a connection)
+  GlobalTimeoutError error no longer appears in logs; it is CancelledError
+  now instead.
+* In case of timeouts, error dict returned to the user now contains
+  "remaining" field with the time remaining, in seconds.
+  It should be negative in most cases (no time remaining => timeout happens).
+  Requests are cancelled not at exact timeout time, there is a small
+  difference, and "remaining" field gives a visibility into that.
+* Better log messages on segfaults (faulthandler is enabled).
+* More robust handling of internal errors in the API.
+* DelayedCall objects are now tracked.
+* Fixed incorrect exception when error happens in ``splash:autoload()`` script.
+* Dockerfile is rewritten to use multi-stage builds; ``provision.sh``
+  script is split into several smaller scripts. This makes development easier,
+  e.g. large downloads (qt, etc.) are now cached.
+* Testing improvements.
+
+Dependency updates:
+
+* qtwebkit is updated to 5.212/1570542016 snapshot.
+* Qt is updated to 5.13.1; PyQT is updated to  5.13.1.
+* Ubuntu 18.04 is used as the base docker image.
+* Splash now uses Python 3.6.
+* Twisted is updated to 19.7.0.
+
 3.3.1 (2019-02-21)
 ------------------
 
