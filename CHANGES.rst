@@ -1,8 +1,8 @@
 Changes
 =======
 
-3.4 (TBA)
----------
+3.4 (2019-10-25)
+----------------
 
 In this release qtwebkit is updated to a more recent version.
 It is still the same rendering engine, but with some bugs fixed
