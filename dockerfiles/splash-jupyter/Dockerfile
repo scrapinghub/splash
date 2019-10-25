@@ -1,6 +1,4 @@
-FROM scrapinghub/splash:master
-# XXX: after each release a new branch named X.Y should be created,
-# and FROM should be changed to FROM scrapinghub/splash:X.Y
+FROM scrapinghub/splash:3.4
 
 USER root:root
 RUN apt-get update -q && \
