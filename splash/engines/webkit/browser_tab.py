@@ -443,7 +443,7 @@ class WebkitBrowserTab(BrowserTab):
                 self.logger.log("loadFinished: %s" % (str(self.web_page.error_info)),
                                 min_level=1)
             else:
-                self.logger.log("loadFinished: unknown error", min_level=1)
+                self.logger.log("loadFinished: unknown error (" + str(self.web_page.error_info) + ")", min_level=1)
 
     def _on_baseurl_request_finished(self, callback, errback, baseurl, url):
         """
