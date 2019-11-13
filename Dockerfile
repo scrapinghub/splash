@@ -130,11 +130,6 @@ VOLUME [ \
 
 EXPOSE 8050
 
-ENTRYPOINT [ \
-    "python3", \
-    "/app/bin/splash", \
-    "--proxy-profiles-path", "/etc/splash/proxy-profiles", \
-    "--js-profiles-path", "/etc/splash/js-profiles", \
-    "--filters-path", "/etc/splash/filters", \
-    "--lua-package-path", "/etc/splash/lua_modules/?.lua" \
-]
+COPY ecs/bin/splash-entrypoint.sh /usr/local/bin/splash-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/splash-entrypoint.sh"]
