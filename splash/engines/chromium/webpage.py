@@ -4,6 +4,8 @@ from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineProfile
 
 
 class ChromiumWebPage(QWebEnginePage):
+    http2_enabled = True
+
     def __init__(self, profile: QWebEngineProfile, verbosity: int = 0) -> None:
         super(QWebEnginePage, self).__init__(profile, None)
         self.verbosity = verbosity
