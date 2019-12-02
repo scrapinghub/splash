@@ -368,15 +368,17 @@ class RenderHtmlTest(Base.RenderTest):
 
     @https_only
     def test_http2_supported(self):
-        r = self.request({'url': self.ts.mockserver.https_url("http-version")})
+        r = self.request({
+            'url': self.ts.mockserver.https_url("http-version"),
+            'http2': '1',
+        })
         self.assertStatusCode(r, 200)
         self.assertIn("http2", r.text)
 
     @https_only
-    def test_disable_http2_support(self):
+    def test_http2_disabled_by_default(self):
         r = self.request({
             'url': self.ts.mockserver.https_url("http-version"),
-            'http2': '0',
         })
         self.assertStatusCode(r, 200)
         self.assertNotIn("http2", r.text)
