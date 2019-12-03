@@ -363,10 +363,12 @@ class RenderOptions(object):
         return engine
 
     def get_http2(self):
-        if self.get_engine() == "chromium":
-            default = defaults.CHROMIUM_HTTP2_ENABLED
+        engine = self.get_engine()
+        if self.get_engine() == "webkit":
+            default = defaults.WEBKIT_HTTP2_ENABLED
         else:
-            default = defaults.HTTP2_ENABLED
+            assert engine == 'chromium'
+            default = defaults.CHROMIUM_HTTP2_ENABLED
         return self._get_bool("http2", default)
 
     def get_common_params(self, js_profiles_path):
