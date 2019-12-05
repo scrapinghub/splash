@@ -41,7 +41,7 @@ class WebkitDefaultRenderScript(WebkitRenderScript, BaseFixedRenderScript):
               js_source=None, js_profile=None, images=None, console=False,
               headers=None, http_method='GET', body=None,
               render_all=False, resource_timeout=None, request_body=False,
-              response_body=False, html5_media=False, http2=True):
+              response_body=False, html5_media=False, http2=False):
         self.url = url
         self.wait_time = defaults.WAIT_TIME if wait is None else wait
         self.js_source = js_source
