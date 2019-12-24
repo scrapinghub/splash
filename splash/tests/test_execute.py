@@ -361,7 +361,7 @@ class ErrorsTest(BaseLuaRenderTest):
         resp = self.request_lua("""                -- 1
         function main(splash)                      -- 2
            local x = 5                             -- 3
-           splash.set_result_content_type("hello") -- 4
+           splash:set_result_content_type("hello") -- 4
         end                                        -- 5
         """)
         self.assertScriptError(resp, ScriptError.SPLASH_LUA_ERROR)

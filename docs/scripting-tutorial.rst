@@ -116,7 +116,7 @@ Here is a snippet from our first example:
 
 The code looks like standard procedural code; there are no callbacks or fancy
 control-flow structures. It doesn't mean Splash works in a synchronous
-way; under the hood it is still async. When you call ``splash.wait(0.5)``,
+way; under the hood it is still async. When you call ``splash:wait(0.5)``,
 Splash switches from the script to other tasks, and comes back after 0.5s.
 
 It is possible to use loops, conditional statements, functions as usual
