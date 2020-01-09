@@ -1,7 +1,7 @@
 Changes
 =======
 
-3.4.1 (2019-12-??)
+3.4.1 (2019-01-09)
 ------------------
 
 HTTP2 support is now disabled by default when using the default Splash engine,
