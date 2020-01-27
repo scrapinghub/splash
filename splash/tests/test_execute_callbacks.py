@@ -114,7 +114,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
                 }
             end)
             assert(splash:go(args.url))
-            return splash.html()
+            return splash:html()
         end
         """ % self.ts.mock_auth_proxy_user, {
             'url': self.mockurl("jsrender"), 'proxy_port': proxy_port
@@ -135,7 +135,7 @@ class OnRequestTest(BaseLuaRenderTest, BaseHtmlProxyTest):
                 }
             end)
             assert(splash:go(args.url))
-            return splash.html()
+            return splash:html()
         end
         """, {'url': self.mockurl("jsrender"), 'proxy_port': proxy_port})
         self.assertStatusCode(resp, 400)

@@ -3903,7 +3903,7 @@ class HTTP2Test(BaseLuaRenderTest):
         end
         """, {"url": self._http_version_url()})
         self.assertStatusCode(resp, 200)
-        if defaults.HTTP2_ENABLED:
+        if defaults.WEBKIT_HTTP2_ENABLED:
             self.assertIn("http2", resp.text)
         else:
             self.assertNotIn("http2", resp.text)

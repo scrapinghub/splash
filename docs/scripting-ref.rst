@@ -294,9 +294,9 @@ Enable or disable HTTP2.
 
 **Signature:** ``splash.http2_enabled = true/false``
 
-HTTP2 is enabled by default. Use ``splash.http2_enabled = false`` to disable it.
-Disabling HTTP2 can be useful either for testing, or when http2 causes problems
-(e.g. try disabling http2 if you're getting network399 errors).
+HTTP2 support is disabled by default as the current implementation can cause
+problems (e.g. network 399 errors). Use ``splash.http2_enabled = true`` to
+enable it.
 
 Methods
 ~~~~~~~

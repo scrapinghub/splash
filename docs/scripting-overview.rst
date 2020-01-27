@@ -162,4 +162,4 @@ Browsing Options
   (e.g. playback of ``<video>`` tags).
 * :ref:`splash-media-source-enabled` allows to turn off Media Source Extension
   API support
-* :ref:`splash-http2-enabled` allows to turn HTTP2 support OFF
+* :ref:`splash-http2-enabled` allows to turn HTTP2 support ON

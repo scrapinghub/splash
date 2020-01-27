@@ -88,8 +88,8 @@ command line flag to run Splash-Jupyter::
 
 On Windows you can `use VcXsrv <https://dev.to/darksmile92/run-gui-app-in-linux-docker-container-on-windows-host-4kde>`_::
 
-    $ docker run -e DISPLAY=$DISPLAY \
-                 -p 8888:8888 \
+    $ docker run -e DISPLAY=$DISPLAY ^
+                 -p 8888:8888 ^
                  -it scrapinghub/splash-jupyter --disable-xvfb
 
 From Notebook to HTTP API

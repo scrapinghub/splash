@@ -1,6 +1,19 @@
 Changes
 =======
 
+3.4.1 (2019-01-09)
+------------------
+
+HTTP2 support is now disabled by default when using the default Splash engine,
+WebKit. We discovered that it does not work properly on some websites, which
+results in ``network399`` errors or incorrect rendering (if those
+``network399`` errors happen for HTML resources such as style of script files).
+
+It can be enabled with the :ref:`http2 <arg-http2>` argument, and with
+:ref:`request:set_http2_enabled <splash-request-set-http2-enabled>` or
+:ref:`splash-http2-enabled` in Lua scripts.
+
+
 3.4 (2019-10-25)
 ----------------
 
