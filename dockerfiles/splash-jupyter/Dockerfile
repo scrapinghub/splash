@@ -1,4 +1,4 @@
-FROM scrapinghub/splash:3.4
+FROM scrapinghub/splash:3.4.1
 
 USER root:root
 RUN apt-get update -q && \
