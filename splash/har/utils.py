@@ -7,7 +7,7 @@ from datetime import datetime
 
 def format_datetime(dt):
     """ Format datetime.datetime object to make HAR validator happy """
-    return dt.isoformat() + 'Z'
+    return dt.isoformat()
 
 
 def get_duration(start, end=None):
