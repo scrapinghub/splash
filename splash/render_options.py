@@ -441,5 +441,5 @@ def validate_size_str(size_str):
     else:
         if not ((0 < w <= max_width) and (0 < h <= max_heigth) and
                     (w * h < max_area)):
-            raise ValueError("Viewport is out of range (%dx%d, area=%d)" %
-                             (max_width, max_heigth, max_area))
+            raise ValueError("Viewport (%dx%d, area=%d) is out of range (%dx%d, area=%d)" %
+                             (w, h, w * h, max_width, max_heigth, max_area))
