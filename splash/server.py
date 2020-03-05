@@ -397,8 +397,7 @@ def main(jupyter=False, argv=None, server_factory=splash_server):
 
     faulthandler.enable()
 
-    if not jupyter:
-        start_logging(opts)
+    start_logging(opts)
 
     with xvfb.autostart(opts.disable_xvfb, opts.xvfb_screen_size) as x:
         xvfb.log_options(x)
