@@ -50,6 +50,8 @@ ENV DEBIAN_FRONTEND noninteractive
 
 COPY --from=qt-downloader /tmp/qt-installer.run /tmp/
 
+ARG DISPLAY
+
 COPY dockerfiles/splash/qt-installer-noninteractive.qs /tmp/script.qs
 COPY dockerfiles/splash/run-qt-installer.sh /tmp/run-qt-installer.sh
 RUN /tmp/run-qt-installer.sh /tmp/qt-installer.run /tmp/script.qs
