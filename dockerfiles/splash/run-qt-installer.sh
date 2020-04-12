@@ -3,7 +3,7 @@
 # as well as qt-installer-noninteractive.qs script.
 
 chmod +x "$1" && \
-xvfb-run "$1" --script "$2" \
+http_proxy="http://localhost:8080" https_proxy="http://localhost:8080" xvfb-run "$1" --script "$2" \
     | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))' && \
 ls /opt/qt-5.13/ && \
 #    cat /opt/qt-5.13/InstallationLog.txt && \
