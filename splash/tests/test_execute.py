@@ -3319,12 +3319,12 @@ end
             ('{100, "a"}', 'a number is required'),
             ('{100, {}}', 'a number is required'),
 
-            ('{100, -1}', 'Viewport is out of range'),
-            ('{100, 0}', 'Viewport is out of range'),
-            ('{100, 99999}', 'Viewport is out of range'),
-            ('{1, -100}', 'Viewport is out of range'),
-            ('{0, 100}', 'Viewport is out of range'),
-            ('{99999, 100}', 'Viewport is out of range'),
+            ('{100, -1}', 'Viewport.* is out of range.*'),
+            ('{100, 0}', 'Viewport.* is out of range.*'),
+            ('{100, 99999}', 'Viewport.* is out of range.*'),
+            ('{1, -100}', 'Viewport.* is out of range.*'),
+            ('{0, 100}', 'Viewport.* is out of range.*'),
+            ('{99999, 100}', 'Viewport.* is out of range.*'),
         ]
 
         def run_test(size_str):
