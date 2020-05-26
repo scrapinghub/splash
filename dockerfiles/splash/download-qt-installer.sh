@@ -1,7 +1,5 @@
 #!/usr/bin/env sh
 
-# XXX: if qt version is changed, Dockerfile should be updated,
-# as well as qt-installer-noninteractive.qs script.
-URL="http://download.qt.io/official_releases/qt/5.13/5.13.1/qt-opensource-linux-x64-5.13.1.run"
+URL="http://download.qt.io/official_releases/qt/$QT_SHORT_VERSION/$QT_FULL_VERSION/qt-opensource-linux-x64-$QT_FULL_VERSION.run"
 
 curl -L -o "$1" ${URL}

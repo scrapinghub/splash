@@ -1,4 +1,19 @@
+ARG QT_MAJOR_VERSION=5
+ARG QT_MINOR_VERSION=13
+ARG QT_PATCH_VERSION=1
+
+ARG QT_SHORT_VERSION=${QT_MAJOR_VERSION}.${QT_MINOR_VERSION}
+ARG QT_FULL_VERSION=${QT_SHORT_VERSION}.${QT_PATCH_VERSION}
+
+# =====================
+
 FROM byrnedo/alpine-curl as qt-downloader
+
+ARG QT_SHORT_VERSION
+ARG QT_FULL_VERSION
+ENV QT_SHORT_VERSION=${QT_SHORT_VERSION}
+ENV QT_FULL_VERSION=${QT_FULL_VERSION}
+
 COPY dockerfiles/splash/download-qt-installer.sh /tmp/download-qt-installer.sh
 RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 
@@ -17,6 +32,12 @@ RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
 # =====================
 
 FROM byrnedo/alpine-curl as pyqt5-downloader
+
+ARG QT_MAJOR_VERSION
+ARG QT_FULL_VERSION
+ENV QT_MAJOR_VERSION=${QT_MAJOR_VERSION}
+ENV QT_FULL_VERSION=${QT_FULL_VERSION}
+
 COPY dockerfiles/splash/download-pyqt5.sh /tmp/download-pyqt5.sh
 RUN /tmp/download-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz /tmp/webengine.tar.gz
 
@@ -52,12 +73,21 @@ COPY --from=qt-downloader /tmp/qt-installer.run /tmp/
 
 ARG DISPLAY
 
+ARG QT_MAJOR_VERSION
+ARG QT_MINOR_VERSION
+ARG QT_PATCH_VERSION
+ARG QT_SHORT_VERSION=${QT_MAJOR_VERSION}.${QT_MINOR_VERSION}
+ARG QT_FULL_VERSION=${QT_SHORT_VERSION}.${QT_PATCH_VERSION}
+
+ENV QT_MAJOR_VERSION=${QT_MAJOR_VERSION}
+ENV QT_MINOR_VERSION=${QT_MINOR_VERSION}
+ENV QT_PATCH_VERSION=${QT_PATCH_VERSION}
+
 COPY dockerfiles/splash/qt-installer-noninteractive.qs /tmp/script.qs
 COPY dockerfiles/splash/run-qt-installer.sh /tmp/run-qt-installer.sh
 RUN /tmp/run-qt-installer.sh /tmp/qt-installer.run /tmp/script.qs
 
-# XXX: this needs to be updated if Qt is updated
-ENV PATH="/opt/qt-5.13/5.13.1/gcc_64/bin:${PATH}"
+ENV PATH="/opt/qt-${QT_SHORT_VERSION}/${QT_FULL_VERSION}/gcc_64/bin:${PATH}"
 
 # install qtwebkit
 COPY --from=qtwebkit-downloader /tmp/qtwebkit.7z /tmp/
@@ -82,15 +112,23 @@ FROM qtbase as splash-base
 COPY dockerfiles/splash/install-system-splash-deps.sh /tmp/install-system-splash-deps.sh
 RUN /tmp/install-system-splash-deps.sh
 
-# XXX: this needs to be updated if Qt is updated
-COPY --from=qtbuilder /opt/qt-5.13/5.13.1/gcc_64 /opt/qt-5.13/5.13.1/gcc_64
-#RUN ls -l /opt/qt-5.13/5.13.0/gcc_64/lib
-ENV PATH="/opt/qt-5.13/5.13.1/gcc_64/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/qt-5.13/5.13.1/gcc_64/lib:$LD_LIBRARY_PATH"
+ARG QT_SHORT_VERSION
+ARG QT_FULL_VERSION
+
+COPY --from=qtbuilder \
+    /opt/qt-${QT_SHORT_VERSION}/${QT_FULL_VERSION}/gcc_64 \
+    /opt/qt-${QT_SHORT_VERSION}/${QT_FULL_VERSION}/gcc_64
+
+#RUN ls -l /opt/qt-${QT_SHORT_VERSION}/${QT_FULL_VERSION}/gcc_64/lib
+ENV PATH="/opt/qt-${QT_SHORT_VERSION}/${QT_FULL_VERSION}/gcc_64/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/qt-${QT_SHORT_VERSION}/${QT_FULL_VERSION}/gcc_64/lib:$LD_LIBRARY_PATH"
 
 # =====================
 
 FROM splash-base as qt5-builder
+
+ARG QT_MAJOR_VERSION
+ENV QT_MAJOR_VERSION=${QT_MAJOR_VERSION}
 
 COPY --from=pyqt5-downloader /tmp/sip.tar.gz /tmp/
 COPY --from=pyqt5-downloader /tmp/pyqt5.tar.gz /tmp/
@@ -104,6 +142,9 @@ RUN /tmp/install-pyqtwebengine.sh /tmp/webengine.tar.gz
 # =====================
 
 FROM splash-base as splash
+
+ARG QT_MAJOR_VERSION
+ENV QT_MAJOR_VERSION=${QT_MAJOR_VERSION}
 
 COPY dockerfiles/splash/install-python-splash-deps.sh /tmp/install-python-splash-deps.sh
 RUN /tmp/install-python-splash-deps.sh
