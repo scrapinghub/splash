@@ -98,6 +98,13 @@ RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.7z
 
 # =====================
 
+FROM qtbuilder as qtwebkitbuilder-base
+
+COPY dockerfiles/splash/install-qtwebkit-build-deps.sh /tmp/install-qtwebkit-build-deps.sh
+RUN /tmp/install-qtwebkit-build-deps.sh
+
+# =====================
+
 #FROM qtbuilder as qtwebkitbuilder
 #COPY --from=qtwebkit-downloader /tmp/qtwebkit.tar.xz /tmp/
 #
