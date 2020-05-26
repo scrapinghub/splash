@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 _PYTHON=python3
-SPLASH_BUILD_PARALLEL_JOBS=8
 
 mkdir -p /tmp/builds/sip && \
 mkdir -p /tmp/builds/pyqt5 && \
