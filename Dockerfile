@@ -27,6 +27,8 @@ RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 # =====================
 
 FROM byrnedo/alpine-curl as qtwebkit-downloader
+ARG WEBKIT_URL=https://download.qt.io/snapshots/ci/qtwebkit/5.212/1570542016/qtwebkit/qtwebkit-Linux-RHEL_7_6-GCC-Linux-RHEL_7_6-X86_64.7z
+ENV WEBKIT_URL=${WEBKIT_URL}
 COPY dockerfiles/splash/download-qtwebkit.sh /tmp/download-qtwebkit.sh
 RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
 
