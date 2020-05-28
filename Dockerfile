@@ -103,6 +103,7 @@ RUN /tmp/install-qtwebkit.sh /tmp/qtwebkit.7z
 FROM qtbuilder as qtwebkitbuilder-base
 
 COPY dockerfiles/splash/install-qtwebkit-build-deps.sh /tmp/install-qtwebkit-build-deps.sh
+COPY dockerfiles/splash/create-package.sh /tmp/create-package.sh
 RUN /tmp/install-qtwebkit-build-deps.sh
 
 # =====================
