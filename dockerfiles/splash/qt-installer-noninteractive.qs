@@ -38,9 +38,9 @@ Controller.prototype.ComponentSelectionPageCallback = function() {
     var qt_version = "qt.qt" + major_version + "." + major_version + minor_version + patch_version;
 
     var components = [
-      "qt.qt5.5131.gcc_64",
-      "qt.qt5.5131.qtwebengine",
-      "qt.qt5.5131.qtnetworkauth",
+      qt_version+ ".gcc_64",
+      qt_version+ ".qtwebengine",
+      qt_version+ ".qtnetworkauth",
     ]
     console.log("Select components");
     var widget = gui.currentPageWidget();
