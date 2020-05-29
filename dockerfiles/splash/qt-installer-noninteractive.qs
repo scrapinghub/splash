@@ -24,15 +24,15 @@ Controller.prototype.IntroductionPageCallback = function() {
 
 Controller.prototype.TargetDirectoryPageCallback = function()
 {
-    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt-5.13");
+    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt-5.14");
     gui.clickButton(buttons.NextButton);
 }
 
 Controller.prototype.ComponentSelectionPageCallback = function() {
     var components = [
-      "qt.qt5.5131.gcc_64",
-      "qt.qt5.5131.qtwebengine",
-      "qt.qt5.5131.qtnetworkauth",
+      "qt.qt5.5141.gcc_64",
+      "qt.qt5.5141.qtwebengine",
+      "qt.qt5.5141.qtnetworkauth",
     ]
     console.log("Select components");
     var widget = gui.currentPageWidget();

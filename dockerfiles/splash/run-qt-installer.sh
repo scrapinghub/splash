@@ -9,8 +9,8 @@ else
 fi
 
 chmod +x "$1" && \
-http_proxy="http://localhost:8080" https_proxy="http://localhost:8080" $command --script "$2" \
+http_proxy="http://localhost:8080" https_proxy="http://localhost:8080" $command --script $2 \
     | egrep -v '\[[0-9]+\] Warning: (Unsupported screen format)|((QPainter|QWidget))' && \
-ls /opt/qt-5.13/ && \
-#    cat /opt/qt-5.13/InstallationLog.txt && \
-cat /opt/qt-5.13/components.xml
+ls /opt/qt-5.14/ && \
+#    cat /opt/qt-5.14/InstallationLog.txt && \
+cat /opt/qt-5.14/components.xml
