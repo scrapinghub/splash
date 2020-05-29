@@ -5,6 +5,6 @@ SIP="https://www.riverbankcomputing.com/static/Downloads/sip/4.19.19/sip-4.19.19
 PYQT="https://www.riverbankcomputing.com/static/Downloads/PyQt5/5.13.2/PyQt5-5.13.2.tar.gz"
 WEBENGINE="https://www.riverbankcomputing.com/static/Downloads/PyQtWebEngine/5.13.2/PyQtWebEngine-5.13.2.tar.gz"
 
-curl -L -o "$1" ${SIP} && \
-curl -L -o "$2" ${PYQT} && \
-curl -L -o "$3" ${WEBENGINE}
+curl --fail -L -o "$1" ${SIP} && \
+curl --fail -L -o "$2" ${PYQT} && \
+curl --fail -L -o "$3" ${WEBENGINE}
