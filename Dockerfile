@@ -1,5 +1,5 @@
 ARG QT_MAJOR_VERSION=5
-ARG QT_MINOR_VERSION=13
+ARG QT_MINOR_VERSION=14
 ARG QT_PATCH_VERSION=1
 ARG QT_SHORT_VERSION=${QT_MAJOR_VERSION}.${QT_MINOR_VERSION}
 ARG QT_FULL_VERSION=${QT_SHORT_VERSION}.${QT_PATCH_VERSION}
@@ -27,7 +27,7 @@ RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 # =====================
 
 FROM byrnedo/alpine-curl as qtwebkit-downloader
-ARG WEBKIT_URL=https://download.qt.io/snapshots/ci/qtwebkit/5.212/1570542016/qtwebkit/qtwebkit-Linux-RHEL_7_6-GCC-Linux-RHEL_7_6-X86_64.7z
+ARG WEBKIT_URL=https://github.com/qtwebkit/qtwebkit/releases/download/qtwebkit-5.212.0-alpha4/qtwebkit-Linux-RHEL_7_6-GCC-Linux-RHEL_7_6-X86_64.7z
 ENV WEBKIT_URL=${WEBKIT_URL}
 COPY dockerfiles/splash/download-qtwebkit.sh /tmp/download-qtwebkit.sh
 RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
@@ -36,11 +36,7 @@ RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
 
 FROM byrnedo/alpine-curl as pyqt5-downloader
 
-ARG QT_MAJOR_VERSION
-ARG QT_FULL_VERSION
-ENV QT_MAJOR_VERSION=${QT_MAJOR_VERSION}
-ENV QT_FULL_VERSION=${QT_FULL_VERSION}
-
+# need to update URLs here with new version of Qt
 COPY dockerfiles/splash/download-pyqt5.sh /tmp/download-pyqt5.sh
 RUN /tmp/download-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz /tmp/webengine.tar.gz
 
