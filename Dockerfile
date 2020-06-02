@@ -1,7 +1,7 @@
 ARG QT_MAJOR_VERSION=5
 ARG QT_MINOR_VERSION=14
 ARG QT_PATCH_VERSION=1
-# docker build has arguments but didn't has variables
+# docker build has arguments but doesn't have variables
 # here we use arguments as variables
 ARG QT_SHORT_VERSION=${QT_MAJOR_VERSION}.${QT_MINOR_VERSION}
 ARG QT_FULL_VERSION=${QT_SHORT_VERSION}.${QT_PATCH_VERSION}
