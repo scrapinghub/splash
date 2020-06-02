@@ -1,0 +1,5 @@
+! Block widgets reendering javascript
+!
+||platform.twitter.com/widgets.js
+||www.instagram.com/embed.js
+||connect.facebook.net/*/*.js

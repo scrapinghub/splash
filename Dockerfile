@@ -29,7 +29,7 @@ RUN /tmp/download-qt-installer.sh /tmp/qt-installer.run
 # =====================
 
 FROM byrnedo/alpine-curl as qtwebkit-downloader
-ARG WEBKIT_URL=https://github.com/qtwebkit/qtwebkit/releases/download/qtwebkit-5.212.0-alpha4/qtwebkit-Linux-RHEL_7_6-GCC-Linux-RHEL_7_6-X86_64.7z
+ARG WEBKIT_URL=https://github.com/whalebot-helmsman/qtwebkit/releases/download/5.14.1-5.212.0-alpha-4/5.14.1-5.212.0-alpha-4.7z
 ENV WEBKIT_URL=${WEBKIT_URL}
 COPY dockerfiles/splash/download-qtwebkit.sh /tmp/download-qtwebkit.sh
 RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
@@ -180,6 +180,8 @@ VOLUME [ \
     "/etc/splash/filters", \
     "/etc/splash/lua_modules" \
 ]
+
+COPY ./filters /etc/splash/filters
 
 EXPOSE 8050
 
