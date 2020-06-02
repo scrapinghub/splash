@@ -8,7 +8,7 @@ pushd /tmp/builds && \
 # sip
 tar xzf "$1" --keep-newer-files -C sip --strip-components 1 && \
 pushd sip && \
-${_PYTHON} configure.py --sip-module PyQt${QT_MAJOR_VERSION}.sip && \
+${_PYTHON} configure.py --sip-module PyQt5.sip && \
 make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
 make install && \
 popd && \
@@ -34,7 +34,7 @@ ${_PYTHON} configure.py -c -j ${SPLASH_BUILD_PARALLEL_JOBS} \
 make -j ${SPLASH_BUILD_PARALLEL_JOBS} && \
 make install && \
 popd  && \
-${_PYTHON} -c "import PyQt${QT_MAJOR_VERSION}.QtCore; print(PyQt${QT_MAJOR_VERSION}.QtCore.__file__)"
+${_PYTHON} -c "import PyQt5.QtCore; print(PyQt5.QtCore.__file__)"
 
 # Builds Complete
 popd
