@@ -24,15 +24,23 @@ Controller.prototype.IntroductionPageCallback = function() {
 
 Controller.prototype.TargetDirectoryPageCallback = function()
 {
-    gui.currentPageWidget().TargetDirectoryLineEdit.setText("/opt/qt-5.13");
+    var short_version = installer.environmentVariable("QT_SHORT_VERSION");
+    var path = "/opt/qt-" + short_version
+
+    gui.currentPageWidget().TargetDirectoryLineEdit.setText(path);
     gui.clickButton(buttons.NextButton);
 }
 
 Controller.prototype.ComponentSelectionPageCallback = function() {
+    var major_version = installer.environmentVariable("QT_MAJOR_VERSION");
+    var minor_version = installer.environmentVariable("QT_MINOR_VERSION");
+    var patch_version = installer.environmentVariable("QT_PATCH_VERSION");
+    var qt_version = "qt.qt" + major_version + "." + major_version + minor_version + patch_version;
+
     var components = [
-      "qt.qt5.5131.gcc_64",
-      "qt.qt5.5131.qtwebengine",
-      "qt.qt5.5131.qtnetworkauth",
+      qt_version+ ".gcc_64",
+      qt_version+ ".qtwebengine",
+      qt_version+ ".qtnetworkauth",
     ]
     console.log("Select components");
     var widget = gui.currentPageWidget();
