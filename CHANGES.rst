@@ -1,6 +1,18 @@
 Changes
 =======
 
+3.5 (2020-06-??)
+------------------
+
+* qtwebkit is updated to 5.212.0-alpha-4
+* Qt is updated to 5.14.1, PyQt is updated to 5.13.2
+* It is not possible to build Splash with a custom qtwebkit binary or build
+* Improved the error message about out-of-range viewports
+* Enabled logs on Jupyter Notebook
+* Fixed a few typos in the documentation
+* Fixed Qt installation on Docker after upstream changes to the installer
+
+
 3.4.1 (2020-01-09)
 ------------------
 
@@ -66,7 +78,7 @@ Other improvements and bug fixes:
 Dependency updates:
 
 * qtwebkit is updated to 5.212/1570542016 snapshot.
-* Qt is updated to 5.13.1; PyQT is updated to  5.13.1.
+* Qt is updated to 5.13.1; PyQt is updated to  5.13.1.
 * Ubuntu 18.04 is used as the base docker image.
 * Splash now uses Python 3.6.
 * Twisted is updated to 19.7.0.
@@ -111,7 +123,7 @@ Other improvements:
 
 * qt5reactor is upgraded to 0.5 - this should slightly reduce idle CPU usage;
 * Twisted is upgraded from 16.1.0 to 18.9.0;
-* PyQT5 is upgraded from 5.9 to 5.9.2;
+* PyQt5 is upgraded from 5.9 to 5.9.2;
 * Pillow is upgraded to 5.4.1 - as a side effect, taking large JPEG screenshots
   should use slightly less RAM;
 * a workaround for JPEG + transparency on a web page is removed, as it seems
@@ -192,7 +204,7 @@ New features:
   ``function main(splash, args) ... end``;
 * new :ref:`splash-scroll-position` attribute allows to get and set
   window scroll position;
-* Qt is upgraded to 5.9.1, PyQT is upgraded to 5.9;
+* Qt is upgraded to 5.9.1, PyQt is upgraded to 5.9;
 * official Docker image now uses Ubuntu 16.04.
 
 Other changes and bug fixes:
