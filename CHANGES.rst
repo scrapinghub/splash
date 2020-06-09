@@ -6,7 +6,7 @@ Changes
 
 * qtwebkit is updated to 5.212.0-alpha-4
 * Qt is updated to 5.14.1, PyQt is updated to 5.13.2
-* It is not possible to build Splash with a custom qtwebkit binary or build
+* It is now possible to build Splash with a custom qtwebkit binary or build
 * Improved the error message about out-of-range viewports
 * Enabled logs on Jupyter Notebook
 * Fixed a few typos in the documentation
