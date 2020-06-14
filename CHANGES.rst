@@ -2,10 +2,14 @@ Changes
 =======
 
 3.5 (2020-06-??)
-------------------
+----------------
 
-* qtwebkit is updated to 5.212.0-alpha-4
-* Qt is updated to 5.14.1, PyQt is updated to 5.13.2
+* Upgraded some dependencies, fixing some crashes:
+  * qtwebkit 5.212.0-alpha-4
+  * Qt 5.14.1
+  * PyQt 5.14.2
+  * PyQtWebEngine 5.14.0
+  * SIP 4.19.22
 * It is now possible to build Splash with a custom qtwebkit binary or build
 * Improved the error message about out-of-range viewports
 * Enabled logs on Jupyter Notebook
