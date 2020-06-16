@@ -1,7 +1,7 @@
 Changes
 =======
 
-3.5 (2020-06-??)
+3.5 (2020-06-16)
 ----------------
 
 * Upgraded some dependencies, fixing some crashes:
