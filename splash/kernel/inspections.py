@@ -94,7 +94,7 @@ class _SplashDocs(object):
         for name in files:
             full_name = os.path.join(folder, name)
             with open(full_name, "rb") as f:
-                info = json.loads(f.read().decode('utf-8'), encoding='utf8')
+                info = json.loads(f.read().decode('utf-8'))
             self.info.update(info)
 
     def __getitem__(self, item):
