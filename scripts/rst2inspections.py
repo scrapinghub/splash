@@ -14,7 +14,7 @@ import collections
 def _parse_doc(doc):
     res = collections.OrderedDict()
 
-    m = re.search("^splash:(\w+)\s+[-]+\s*$", doc, re.MULTILINE)
+    m = re.search(r"^splash:(\w+)\s+[-]+\s*$", doc, re.MULTILINE)
     res['name'] = m.group(1) if m else None
 
     header, content = re.split("[-][-]+", doc, maxsplit=1)
@@ -47,7 +47,7 @@ def parse_rst(rst_source):
     Parse Sphinx Lua splash methods reference docs and
     extract information useful for inspections.
     """
-    parsed = re.split("\.\. _splash-(.+):", rst_source)[1:]
+    parsed = re.split(r"\.\. _splash-(.+):", rst_source)[1:]
     # ids = parsed[::2]
     docs = parsed[1::2]
     info = [_parse_doc(d) for d in docs]
