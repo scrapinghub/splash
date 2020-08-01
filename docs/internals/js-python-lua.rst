@@ -39,7 +39,7 @@ Conversion rules:
 * If there is a need to expose a custom Python object to Lua then
   a subclass of :class:`splash.qtrender_lua.BaseExposedObject` is used; it is
   wrapped to a Lua table using utilities from wraputils.lua.
-  Lua table exposes whitelisted attributes and methods of the object
+  Lua table exposes allowlisted attributes and methods of the object
   using metatable, and disallows access to all other attributes.
 
 * Other than that, there is no automatic conversion. If something is not

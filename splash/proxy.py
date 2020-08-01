@@ -5,10 +5,11 @@ This modules provides classes ("proxy factories") which define
 which proxies to use for a given request. QNetworkManager calls
 a proxy factory for each outgoing request.
 """
-import re
-import os
-from urllib.parse import urlparse
 import configparser
+import os
+import re
+import warnings
+from urllib.parse import urlparse
 
 from PyQt5.QtNetwork import QNetworkProxy
 
@@ -21,15 +22,15 @@ def _raise_proxy_error(description, **kwargs):
     RenderOptions.raise_error("proxy", description, **kwargs)
 
 
-class _BlackWhiteSplashProxyFactory(object):
+class _AllowDenySplashProxyFactory(object):
     """
     Proxy factory that enables non-default proxy list when
-    requested URL is matched by one of whitelist patterns
-    while not being matched by one of the blacklist patterns.
+    requested URL is matched by one of the allowlist patterns
+    while not being matched by one of the denylist patterns.
     """
-    def __init__(self, blacklist=None, whitelist=None, proxy_list=None):
-        self.blacklist = blacklist or []
-        self.whitelist = whitelist or []
+    def __init__(self, allowlist=None, denylist=None, proxy_list=None):
+        self.allowlist = allowlist or []
+        self.denylist = denylist or []
         self.proxy_list = proxy_list or []
 
     def queryProxy(self, query=None, *args, **kwargs):
@@ -47,13 +48,13 @@ class _BlackWhiteSplashProxyFactory(object):
             # don't try to proxy unknown protocols
             return False
 
-        if any(re.match(p, url) for p in self.blacklist):
+        if any(re.match(p, url) for p in self.denylist):
             return False
 
-        if any(re.match(p, url) for p in self.whitelist):
+        if any(re.match(p, url) for p in self.allowlist):
             return True
 
-        return not bool(self.whitelist)
+        return not bool(self.allowlist)
 
     def _get_default_proxy_list(self):
         return [QNetworkProxy(QNetworkProxy.DefaultProxy)]
@@ -65,7 +66,7 @@ class _BlackWhiteSplashProxyFactory(object):
         ]
 
 
-class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
+class ProfilesSplashProxyFactory(_AllowDenySplashProxyFactory):
     r"""
     This proxy factory reads BlackWhiteQNetworkProxyFactory
     parameters from ini file; name of the profile can be set per-request
@@ -82,10 +83,10 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         type=HTTP
 
         [rules]
-        whitelist=
+        allowlist=
             .*mywebsite\.com.*
 
-        blacklist=
+        denylist=
             .*\.js.*
             .*\.css.*
             .*\.png
@@ -99,12 +100,16 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
 
     def __init__(self, proxy_profiles_path, profile_name):
         self.proxy_profiles_path = proxy_profiles_path
-        blacklist, whitelist, proxy_list = self._get_filter_params(profile_name)
-        super(ProfilesSplashProxyFactory, self).__init__(blacklist, whitelist, proxy_list)
+        allowlist, denylist, proxy_list = self._get_filter_params(profile_name)
+        super(ProfilesSplashProxyFactory, self).__init__(
+            allowlist=allowlist,
+            denylist=denylist,
+            proxy_list=proxy_list,
+        )
 
     def _get_filter_params(self, profile_name=None):
         """
-        Return (blacklist, whitelist, proxy_list) tuple
+        Return a (allowlist, denylist, proxy_list) tuple
         loaded from profile ``profile_name``.
         """
         if profile_name is None:
@@ -132,8 +137,20 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         if not parser.read(ini_path):
             _raise_proxy_error(self.NO_PROXY_PROFILE_MSG)
 
-        blacklist = _get_lines(parser, 'rules', 'blacklist', [])
-        whitelist = _get_lines(parser, 'rules', 'whitelist', [])
+        allowlist = _get_lines(parser, 'rules', 'whitelist', [])
+        if allowlist:
+            warnings.warn('{}: ‘whitelist’ is deprecated, use ‘allowlist’ '
+                          'instead'.format(ini_path), DeprecationWarning)
+        else:
+            allowlist = _get_lines(parser, 'rules', 'allowlist', [])
+
+        denylist = _get_lines(parser, 'rules', 'blacklist', [])
+        if denylist:
+            warnings.warn('{}: ‘blacklist’ is deprecated, use ‘denylist’ '
+                          'instead'.format(ini_path), DeprecationWarning)
+        else:
+            denylist = _get_lines(parser, 'rules', 'denylist', [])
+
         try:
             proxy = dict(parser.items('proxy'))
         except configparser.NoSectionError:
@@ -160,7 +177,7 @@ class ProfilesSplashProxyFactory(_BlackWhiteSplashProxyFactory):
         proxy_list = [(host, port,
                        proxy.get('username'), proxy.get('password'),
                        proxy.get('type'))]
-        return blacklist, whitelist, proxy_list
+        return allowlist, denylist, proxy_list
 
 
 class DirectSplashProxyFactory(object):

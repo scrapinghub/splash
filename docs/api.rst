@@ -937,18 +937,18 @@ Example contents of this file::
 
     [rules]
     ; optional, default ".*"
-    whitelist=
+    allowlist=
         .*mywebsite\.com.*
 
-    ; optional, default is no blacklist
-    blacklist=
+    ; optional, default is no denylist
+    denylist=
         .*\.js.*
         .*\.css.*
         .*\.png
 
-whitelist and blacklist are newline-separated lists of regexes.
-If URL matches one of whitelist patterns and matches none of blacklist
-patterns, proxy specified in ``[proxy]`` section is used;
+``allowlist`` and ``denylist`` are newline-separated lists of regexes.
+If URL matches one of the allowlist patterns and matches none of the denylist
+patterns, the proxy specified in the ``[proxy]`` section is used;
 no proxy is used otherwise.
 
 Then, to apply proxy rules according to this profile,

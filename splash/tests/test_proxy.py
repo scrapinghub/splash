@@ -7,7 +7,7 @@ import pytest
 import requests
 
 from splash.proxy import (
-    _BlackWhiteSplashProxyFactory,
+    _AllowDenySplashProxyFactory,
     ProfilesSplashProxyFactory,
     DirectSplashProxyFactory
 )
@@ -17,38 +17,39 @@ from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import MockServers
 
 
-class BlackWhiteProxyFactoryTest(unittest.TestCase):
+class AllowDenyProxyFactoryTest(unittest.TestCase):
+    allowlist_field = 'allowlist'
+    denylist_field = 'denylist'
 
     def _factory(self, **kwargs):
         params = {
             "proxy_list": [("proxy.crawlera.com", 8010, "username", "password")],
-            "whitelist": [
+            self.allowlist_field: [
                 r".*scrapinghub\.com.*",
             ],
-            "blacklist": [
+            self.denylist_field: [
                 r".*\.js",
                 r".*\.css",
             ]
         }
         params.update(kwargs)
-        return _BlackWhiteSplashProxyFactory(**params)
+        return _AllowDenySplashProxyFactory(**params)
 
     def test_noproxy(self):
-        f = _BlackWhiteSplashProxyFactory()
+        f = _AllowDenySplashProxyFactory()
         self.assertFalse(f.should_use_proxy_list('http', 'crawlera.com'))
 
-    def test_whitelist(self):
+    def test_allowlist(self):
         self.assertUsesCustom('http://www.scrapinghub.com')
         self.assertUsesDefault('http://www.google-analytics.com/ga.js')
         self.assertUsesDefault('http://crawlera.com')
 
-    def test_blacklist(self):
+    def test_denylist(self):
         self.assertUsesDefault('http://www.scrapinghub.com/static/styles/screen.css')
 
-    def test_no_whitelist(self):
-        self.assertUsesCustom('http://crawlera.com', whitelist=[])
-        self.assertUsesDefault('http://www.google-analytics.com/ga.js', whitelist=[])
-
+    def test_no_allowlist(self):
+        self.assertUsesCustom('http://crawlera.com', allowlist=[])
+        self.assertUsesDefault('http://www.google-analytics.com/ga.js', allowlist=[])
 
     def assertUsesDefault(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
@@ -57,6 +58,17 @@ class BlackWhiteProxyFactoryTest(unittest.TestCase):
     def assertUsesCustom(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
         self.assertTrue(f.should_use_proxy_list(protocol, url))
+
+
+class DeprecatedBlackWhiteProxyFactoryTest(AllowDenyProxyFactoryTest):
+    allowlist_field = 'whitelist'
+    denylist_field = 'blacklist'
+
+    def _factory(self, **kwargs):
+        with pytest.deprecated_call():
+            return super(DeprecatedBlackWhiteProxyFactoryTest, self)._factory(
+                **kwargs
+            )
 
 
 class DirectSplashProxyFactoryTest(unittest.TestCase):
@@ -104,13 +116,13 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
         r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'test'})
         self.assertProxied(r2.text)
 
-    def test_blacklist(self):
+    def test_denylist(self):
         params = {'url': self.mockurl('iframes'),
                   'proxy': 'test', 'html': 1, 'iframes': 1}
         r = self.request(params, endpoint='render.json')
         data = r.json()
 
-        # only 1.html is blacklisted in test.ini
+        # only 1.html is denylisted in test.ini
         self.assertProxied(data['html'])
         assert any('1.html' in f['requestedUrl'] for f in data['childFrames'])
 
