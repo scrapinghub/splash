@@ -18,16 +18,14 @@ from splash.tests.utils import MockServers
 
 
 class AllowDenyProxyFactoryTest(unittest.TestCase):
-    allowlist_field = 'allowlist'
-    denylist_field = 'denylist'
 
     def _factory(self, **kwargs):
         params = {
             "proxy_list": [("proxy.crawlera.com", 8010, "username", "password")],
-            self.allowlist_field: [
+            'allowlist': [
                 r".*scrapinghub\.com.*",
             ],
-            self.denylist_field: [
+            'denylist': [
                 r".*\.js",
                 r".*\.css",
             ]
@@ -58,17 +56,6 @@ class AllowDenyProxyFactoryTest(unittest.TestCase):
     def assertUsesCustom(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
         self.assertTrue(f.should_use_proxy_list(protocol, url))
-
-
-class DeprecatedBlackWhiteProxyFactoryTest(AllowDenyProxyFactoryTest):
-    allowlist_field = 'whitelist'
-    denylist_field = 'blacklist'
-
-    def _factory(self, **kwargs):
-        with pytest.deprecated_call():
-            return super(DeprecatedBlackWhiteProxyFactoryTest, self)._factory(
-                **kwargs
-            )
 
 
 class DirectSplashProxyFactoryTest(unittest.TestCase):
