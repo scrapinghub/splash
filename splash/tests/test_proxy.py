@@ -94,30 +94,7 @@ class BaseHtmlProxyTest(BaseRenderTest):
         assert 'PROXY_USED' not in html
 
 
-class HtmlProxyRenderTest(BaseHtmlProxyTest):
-
-    def test_proxy_works(self):
-        r1 = self.request({'url': self.mockurl('jsrender')})
-        self.assertNotProxied(r1.text)
-
-        r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'test'})
-        self.assertProxied(r2.text)
-
-    def test_denylist(self):
-        params = {'url': self.mockurl('iframes'),
-                  'proxy': 'test', 'html': 1, 'iframes': 1}
-        r = self.request(params, endpoint='render.json')
-        data = r.json()
-
-        # only 1.html is denylisted in test.ini
-        self.assertProxied(data['html'])
-        assert any('1.html' in f['requestedUrl'] for f in data['childFrames'])
-
-        for frame in data['childFrames']:
-            if '1.html' in frame['requestedUrl']:
-                self.assertNotProxied(frame['html'])
-            else:
-                self.assertProxied(frame['html'])
+class HtmlProxyBadRenderTest(BaseHtmlProxyTest):
 
     def test_insecure(self):
         r = self.request({'url': self.mockurl('jsrender'),
@@ -141,6 +118,38 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'no-proxy-settings'})
         self.assertJsonError(r, 400, 'BadOption')
+
+
+class HtmlProxyRenderTest(BaseHtmlProxyTest):
+    profile = 'test'
+
+    def test_proxy_works(self):
+        r1 = self.request({'url': self.mockurl('jsrender')})
+        self.assertNotProxied(r1.text)
+
+        r2 = self.request({'url': self.mockurl('jsrender'),
+                           'proxy': self.profile})
+        self.assertProxied(r2.text)
+
+    def test_denylist(self):
+        params = {'url': self.mockurl('iframes'),
+                  'proxy': self.profile, 'html': 1, 'iframes': 1}
+        r = self.request(params, endpoint='render.json')
+        data = r.json()
+
+        # only 1.html is denylisted in test.ini
+        self.assertProxied(data['html'])
+        assert any('1.html' in f['requestedUrl'] for f in data['childFrames'])
+
+        for frame in data['childFrames']:
+            if '1.html' in frame['requestedUrl']:
+                self.assertNotProxied(frame['html'])
+            else:
+                self.assertProxied(frame['html'])
+
+
+class HtmlProxyRenderDeprecatedProfileTest(HtmlProxyRenderTest):
+    profile = 'test_deprecated'
 
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
