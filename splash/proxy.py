@@ -68,7 +68,7 @@ class _AllowDenySplashProxyFactory(object):
 
 class ProfilesSplashProxyFactory(_AllowDenySplashProxyFactory):
     r"""
-    This proxy factory reads BlackWhiteQNetworkProxyFactory
+    This proxy factory reads _AllowDenySplashProxyFactory
     parameters from ini file; name of the profile can be set per-request
     using GET parameter.
 
