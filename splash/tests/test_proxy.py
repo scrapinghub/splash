@@ -2,6 +2,7 @@
 import os
 import shutil
 import unittest
+import warnings
 
 import pytest
 import requests
@@ -150,6 +151,15 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
 
 class HtmlProxyRenderDeprecatedProfileTest(HtmlProxyRenderTest):
     profile = 'test_deprecated'
+
+    def test_deprecated(self):
+        warnings.simplefilter('always')
+        profiles_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                     'proxy_profiles'))
+        with pytest.warns(DeprecationWarning, match='whitelist'):
+            ProfilesSplashProxyFactory(profiles_path, self.profile)
+        with pytest.warns(DeprecationWarning, match='blacklist'):
+            ProfilesSplashProxyFactory(profiles_path, self.profile)
 
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):
