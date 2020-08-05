@@ -33,3 +33,4 @@ RUN find . -name \*.pyc -delete
 RUN chown -R splash:splash /app
 USER splash:splash
 ENTRYPOINT ["/app/dockerfiles/tests/runtests.sh"]
+CMD ["scrapy"]
