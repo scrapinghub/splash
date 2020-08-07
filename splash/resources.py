@@ -469,6 +469,19 @@ class PingResource(Resource):
         }, sort_keys=True)).encode('utf-8')
 
 
+class ShutdownResource(Resource):
+    isLeaf = True
+
+    def render_POST(self, request):
+        from splash.server import PROCESS_CONTEXT
+        request.setHeader(b"content-type", b"application/json")
+        if PROCESS_CONTEXT.shutting_down is True:
+            log.msg("Got shutdown HTTP call, forcing shutdown")
+            reactor.callLater(0, reactor.stop)
+            return b'{"status": "ok"}'
+        log.msg("Got shutdown HTTP call, but process is not in shutdown state. Ignoring")
+        return b'{"status": "ignored"}'
+
 
 HARVIEWER_PATH = 'harviewer-2.0.17a' # Change to invalidate cache when updating harviewer
 BOOTSTRAP_THEME = 'simplex'
@@ -668,6 +681,7 @@ class Root(Resource):
         self.putChild(b"_debug", DebugResource(pool, self.argument_cache))
         self.putChild(b"_gc", ClearCachesResource(self.argument_cache))
         self.putChild(b"_ping", PingResource())
+        self.putChild(b"_shutdown", ShutdownResource())
 
         # backwards compatibility
         self.putChild(b"debug", DebugResource(pool, self.argument_cache,

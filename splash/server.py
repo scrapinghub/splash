@@ -7,6 +7,8 @@ import signal
 import functools
 import faulthandler
 
+from twisted.python import log
+
 from splash import defaults, __version__
 from splash import xvfb
 from splash.qtutils import init_qt_app
@@ -14,10 +16,20 @@ from splash._cmdline_utils import ONOFF, comma_separated_callback
 
 
 
+class ProcessContext(object):
+    started = False
+    shutting_down = False
+
+
+PROCESS_CONTEXT = ProcessContext()
+
+
 def install_qtreactor(verbose):
     init_qt_app(verbose)
-    import qt5reactor
-    qt5reactor.install()
+    # TODO remove this, when this will be merged https://github.com/twisted/qt5reactor/pull/54
+    from splash.qtreactor import PatchedQtReactor
+    from twisted.internet.main import installReactor
+    installReactor(PatchedQtReactor())
 
 
 def parse_opts(jupyter=False, argv=None):
@@ -105,6 +117,8 @@ def parse_opts(jupyter=False, argv=None):
         op.add_option("--argument-cache-max-entries", type="int",
             default=defaults.ARGUMENT_CACHE_MAX_ENTRIES,
             help="maximum number of entries in arguments cache (default: %default)")
+        op.add_option("--graceful-shutdown-timeout", type=int, default=0,
+                      help="non-zero value postpones shutdown for a specified number of seconds when OS signal received")
 
     opts, args = op.parse_args(argv)
     if isinstance(opts.browser_engines, str):
@@ -118,13 +132,13 @@ def parse_opts(jupyter=False, argv=None):
         opts.slots = None
         opts.max_timeout = None
         opts.argument_cache_max_entries = None
+        opts.graceful_shutdown_timeout = None
 
     return opts, args
 
 
 def start_logging(opts):
     import twisted
-    from twisted.python import log
     if opts.logfile:
         from twisted.python.logfile import DailyLogFile
         logfile = DailyLogFile.fromFullPath(opts.logfile)
@@ -139,10 +153,10 @@ def start_logging(opts):
 def splash_started(opts, stderr):
     if opts.logfile:
         stderr.write("Splash started - logging to: %s\n" % opts.logfile)
+    PROCESS_CONTEXT.started = True
 
 
 def bump_nofile_limit():
-    from twisted.python import log
     log.msg("Open files limit: %d" % resource.getrlimit(resource.RLIMIT_NOFILE)[0])
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     values_to_try = [v for v in [hard, 100000, 10000] if v > soft]
@@ -160,7 +174,6 @@ def bump_nofile_limit():
 
 def log_splash_version():
     import twisted
-    from twisted.python import log
     from splash import lua
     from splash.qtutils import get_versions
 
@@ -202,7 +215,6 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
     from twisted.web.server import Site
     from splash.resources import Root
     from splash.pool import RenderPool
-    from twisted.python import log
     from splash import lua
 
     verbosity = defaults.VERBOSITY if verbosity is None else verbosity
@@ -254,7 +266,6 @@ def splash_server(portnum, ip, slots, network_manager_factory, max_timeout,
 
 def monitor_maxrss(maxrss):
     from twisted.internet import reactor, task
-    from twisted.python import log
     from splash.utils import get_ru_maxrss, get_total_phymem
 
     # Support maxrss as a ratio of total physical memory
@@ -332,7 +343,6 @@ def default_splash_server(portnum, ip, max_timeout, *, slots=None,
 
 
 def _default_proxy_factory(proxy_profiles_path):
-    from twisted.python import log
     from splash import proxy
 
     if proxy_profiles_path is not None:
@@ -348,8 +358,6 @@ def _default_proxy_factory(proxy_profiles_path):
 
 
 def _check_js_profiles_path(js_profiles_path):
-    from twisted.python import log
-
     if js_profiles_path is not None and not os.path.isdir(js_profiles_path):
         log.msg("--js-profiles-path does not exist or it is not a folder; "
                 "js profiles won't be used")
@@ -359,7 +367,6 @@ def _check_js_profiles_path(js_profiles_path):
 def _set_global_render_settings(js_disable_cross_domain_access, private_mode,
                                 disable_browser_caches):
     from PyQt5.QtWebKit import QWebSecurityOrigin, QWebSettings
-    from twisted.python import log
 
     log.msg(
         "memory cache: %s, private mode: %s, js cross-domain access: %s" % (
@@ -437,7 +444,24 @@ def main(jupyter=False, argv=None, server_factory=splash_server):
         if not jupyter:
             from twisted.internet import reactor
             reactor.callWhenRunning(splash_started, opts, sys.stderr)
-            reactor.run()
+            if opts.graceful_shutdown_timeout > 0:
+                log.msg("Shutdown delay is set to %d secs" % opts.graceful_shutdown_timeout)
+                def handle_sigterm(signum, _):
+                    from twisted.python import log
+                    if PROCESS_CONTEXT.shutting_down is True:
+                        log.msg("Got SIGTERM while process is in shutdown state. Ignoring")
+                        return
+                    if PROCESS_CONTEXT.started is True:
+                        PROCESS_CONTEXT.shutting_down = True
+                    else:
+                        log.msg("Got SIGTERM but process is not started yet. Ignoring")
+                        return
+                    log.msg("Got SIGTERM, waiting for %d seconds before shutting down" % (opts.graceful_shutdown_timeout))
+                    reactor.callFromThread(lambda: reactor.callLater(opts.graceful_shutdown_timeout, reactor.stop))
+                signal.signal(signal.SIGTERM, handle_sigterm)
+                reactor.run(installSignalHandlers=False)
+            else:
+                reactor.run()
 
 
 if __name__ == "__main__":
