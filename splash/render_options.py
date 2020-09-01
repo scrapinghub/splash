@@ -46,7 +46,7 @@ class RenderOptions(object):
                 if b'application/json' in content_type:
                     try:
                         content = request.content.read().decode('utf-8')
-                        data.update(json.loads(content, encoding='utf8'))
+                        data.update(json.loads(content))
                     except ValueError as e:
                         raise BadOption({
                             'type': 'invalid_json',
