@@ -122,7 +122,7 @@ Splash switches from the script to other tasks, and comes back after 0.5s.
 It is possible to use loops, conditional statements, functions as usual
 in Splash scripts which enables more straightforward coding.
 
-Let's check an `example <https://github.com/ariya/phantomjs/blob/master/examples/render_multi_url.js>`__
+Let's check an `example <https://github.com/ariya/phantomjs/blob/master/splash/examples/render_multi_url.js>`__
 PhantomJS script:
 
 .. code-block:: javascript

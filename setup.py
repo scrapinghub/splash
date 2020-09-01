@@ -49,7 +49,6 @@ setup_args = {
         'vendor/harviewer/webapp/har.js',
         'ui/*.*',
 
-        'examples/*.lua',
         'lua_modules/*.lua',
         'lua_modules/libs/*.lua',
         'lua_modules/vendor/*.lua',
