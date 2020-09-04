@@ -1,4 +1,4 @@
-#!/usr/bin/env sh -x
+#!/usr/bin/env sh
 # XXX: these URLs needs to be replaced with sourceforge in future,
 # because riverbank tend to remove old releases.
 SIP="https://www.riverbankcomputing.com/static/Downloads/sip/4.19.24/sip-4.19.24.tar.gz"
