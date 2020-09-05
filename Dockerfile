@@ -37,7 +37,8 @@ RUN /tmp/download-qtwebkit.sh /tmp/qtwebkit.7z
 # =====================
 
 FROM byrnedo/alpine-curl as pyqt5-downloader
-
+ARG SIP_URL=${SIP_URL}
+ENV SIP_URL=${SIP_URL}
 # need to update URLs here with new version of Qt
 COPY dockerfiles/splash/download-pyqt5.sh /tmp/download-pyqt5.sh
 RUN /tmp/download-pyqt5.sh /tmp/sip.tar.gz /tmp/pyqt5.tar.gz /tmp/webengine.tar.gz
