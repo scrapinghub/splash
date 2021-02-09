@@ -158,7 +158,7 @@ headers : JSON array or object : optional
     pairs or a JSON object with header names as keys and header values
     as values.
 
-    "User-Agent" header is special: is is used for all outgoing requests,
+    "User-Agent" header is special: it is used for all outgoing requests,
     unlike other headers.
 
 .. _arg-body:
