@@ -2,12 +2,13 @@
 import os
 import shutil
 import unittest
+import warnings
 
 import pytest
 import requests
 
 from splash.proxy import (
-    _BlackWhiteSplashProxyFactory,
+    _AllowDenySplashProxyFactory,
     ProfilesSplashProxyFactory,
     DirectSplashProxyFactory
 )
@@ -17,38 +18,37 @@ from splash.tests.test_render import BaseRenderTest
 from splash.tests.utils import MockServers
 
 
-class BlackWhiteProxyFactoryTest(unittest.TestCase):
+class AllowDenyProxyFactoryTest(unittest.TestCase):
 
     def _factory(self, **kwargs):
         params = {
             "proxy_list": [("proxy.crawlera.com", 8010, "username", "password")],
-            "whitelist": [
+            'allowlist': [
                 r".*scrapinghub\.com.*",
             ],
-            "blacklist": [
+            'denylist': [
                 r".*\.js",
                 r".*\.css",
             ]
         }
         params.update(kwargs)
-        return _BlackWhiteSplashProxyFactory(**params)
+        return _AllowDenySplashProxyFactory(**params)
 
     def test_noproxy(self):
-        f = _BlackWhiteSplashProxyFactory()
+        f = _AllowDenySplashProxyFactory()
         self.assertFalse(f.should_use_proxy_list('http', 'crawlera.com'))
 
-    def test_whitelist(self):
+    def test_allowlist(self):
         self.assertUsesCustom('http://www.scrapinghub.com')
         self.assertUsesDefault('http://www.google-analytics.com/ga.js')
         self.assertUsesDefault('http://crawlera.com')
 
-    def test_blacklist(self):
+    def test_denylist(self):
         self.assertUsesDefault('http://www.scrapinghub.com/static/styles/screen.css')
 
-    def test_no_whitelist(self):
-        self.assertUsesCustom('http://crawlera.com', whitelist=[])
-        self.assertUsesDefault('http://www.google-analytics.com/ga.js', whitelist=[])
-
+    def test_no_allowlist(self):
+        self.assertUsesCustom('http://crawlera.com', allowlist=[])
+        self.assertUsesDefault('http://www.google-analytics.com/ga.js', allowlist=[])
 
     def assertUsesDefault(self, url, protocol='http', **kwargs):
         f = self._factory(**kwargs)
@@ -95,30 +95,7 @@ class BaseHtmlProxyTest(BaseRenderTest):
         assert 'PROXY_USED' not in html
 
 
-class HtmlProxyRenderTest(BaseHtmlProxyTest):
-
-    def test_proxy_works(self):
-        r1 = self.request({'url': self.mockurl('jsrender')})
-        self.assertNotProxied(r1.text)
-
-        r2 = self.request({'url': self.mockurl('jsrender'), 'proxy': 'test'})
-        self.assertProxied(r2.text)
-
-    def test_blacklist(self):
-        params = {'url': self.mockurl('iframes'),
-                  'proxy': 'test', 'html': 1, 'iframes': 1}
-        r = self.request(params, endpoint='render.json')
-        data = r.json()
-
-        # only 1.html is blacklisted in test.ini
-        self.assertProxied(data['html'])
-        assert any('1.html' in f['requestedUrl'] for f in data['childFrames'])
-
-        for frame in data['childFrames']:
-            if '1.html' in frame['requestedUrl']:
-                self.assertNotProxied(frame['html'])
-            else:
-                self.assertProxied(frame['html'])
+class HtmlProxyBadRenderTest(BaseHtmlProxyTest):
 
     def test_insecure(self):
         r = self.request({'url': self.mockurl('jsrender'),
@@ -142,6 +119,47 @@ class HtmlProxyRenderTest(BaseHtmlProxyTest):
         r = self.request({'url': self.mockurl('jsrender'),
                           'proxy': 'no-proxy-settings'})
         self.assertJsonError(r, 400, 'BadOption')
+
+
+class HtmlProxyRenderTest(BaseHtmlProxyTest):
+    profile = 'test'
+
+    def test_proxy_works(self):
+        r1 = self.request({'url': self.mockurl('jsrender')})
+        self.assertNotProxied(r1.text)
+
+        r2 = self.request({'url': self.mockurl('jsrender'),
+                           'proxy': self.profile})
+        self.assertProxied(r2.text)
+
+    def test_denylist(self):
+        params = {'url': self.mockurl('iframes'),
+                  'proxy': self.profile, 'html': 1, 'iframes': 1}
+        r = self.request(params, endpoint='render.json')
+        data = r.json()
+
+        # only 1.html is denylisted in test.ini
+        self.assertProxied(data['html'])
+        assert any('1.html' in f['requestedUrl'] for f in data['childFrames'])
+
+        for frame in data['childFrames']:
+            if '1.html' in frame['requestedUrl']:
+                self.assertNotProxied(frame['html'])
+            else:
+                self.assertProxied(frame['html'])
+
+
+class HtmlProxyRenderDeprecatedProfileTest(HtmlProxyRenderTest):
+    profile = 'test_deprecated'
+
+    def test_deprecated(self):
+        warnings.simplefilter('always')
+        profiles_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                     'proxy_profiles'))
+        with pytest.warns(DeprecationWarning, match='whitelist'):
+            ProfilesSplashProxyFactory(profiles_path, self.profile)
+        with pytest.warns(DeprecationWarning, match='blacklist'):
+            ProfilesSplashProxyFactory(profiles_path, self.profile)
 
 
 class HtmlProxyDefaultProfileTest(BaseHtmlProxyTest):

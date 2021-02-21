@@ -347,7 +347,7 @@ Example::
 
 When you use a :ref:`Lua sandbox <lua-sandbox>` (default) Lua ``require``
 function is restricted when used in scripts: it only allows to load
-modules from a whitelist. This whitelist is empty by default, i.e. by default
+modules from an allowlist. This allowlist is empty by default, i.e. by default
 you can require nothing. To make your modules available for scripts start
 Splash with ``--lua-sandbox-allowed-modules`` option. It should contain a
 semicolon-separated list of Lua module names allowed in a sandbox::
