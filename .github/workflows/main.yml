@@ -25,4 +25,4 @@ jobs:
         name: Run tests and Codecov
         shell: 'script --return --quiet --command "bash {0}"'
         run: |
-          docker run --env CI='true' -it splash-tests
+          docker run --env CI=${CI} -it splash-tests
