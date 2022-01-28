@@ -23,5 +23,6 @@ jobs:
           tags: splash-tests
       -
         name: Run tests
-        run: | 
+        shell: 'script --return --quiet --command "bash {0}"'
+        run: |
           docker run -it splash-tests
