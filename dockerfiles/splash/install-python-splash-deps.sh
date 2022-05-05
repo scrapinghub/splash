@@ -3,7 +3,7 @@ _PYTHON=python3
 
 install_python_deps () {
     # Install python-level dependencies.
-    ${_PYTHON} -m pip install -U pip setuptools six && \
+    ${_PYTHON} -m pip install -U pip setuptools==57.5.0 six && \
     ${_PYTHON} -m pip install \
         qt5reactor==0.5 \
         psutil==5.0.0 \

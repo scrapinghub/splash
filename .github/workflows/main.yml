@@ -1,0 +1,28 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2.3.4
+      -
+        name: Build base image
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: .
+          tags: splash
+      -
+        name: Build tests image
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: dockerfiles/tests
+          tags: splash-tests
+      -
+        name: Run tests
+        shell: 'script --return --quiet --command "bash {0}"'
+        run: |
+          docker run -it splash-tests
