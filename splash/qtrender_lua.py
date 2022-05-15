@@ -1240,7 +1240,7 @@ class Splash(BaseExposedObject):
         rss_mul = 1 if sys.platform == 'darwin' else 1024
         return {'maxrss': rusage.ru_maxrss * rss_mul,
                 'cputime': rusage.ru_utime + rusage.ru_stime,
-                'walltime': time.time()}
+                 'walltime': time.time()}
 
     @command(sets_callback=True, decode_arguments=False)
     def _on_navigation_locked(self, callback):
