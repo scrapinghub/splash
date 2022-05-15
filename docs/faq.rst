@@ -244,7 +244,7 @@ up to 4GB RAM and daemonizes & restarts itself could look like this::
     $ docker run -d -p 8050:8050 --memory=4.5G --restart=always scrapinghub/splash:3.1 --maxrss 4000
 
 You also need a load balancer; for example configs check Aquarium_ or
-an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/examples/splash-haproxy.conf>`__.
+an HAProxy config in Splash `repository <https://github.com/scrapinghub/splash/blob/master/splash/examples/splash-haproxy.conf>`__.
 
 Ansible Way
 ~~~~~~~~~~~
