@@ -2,7 +2,12 @@
 import os
 import sys
 
+import sys
+orig_dlflags = sys.getdlopenflags()
+sys.setdlopenflags(258)
 import lupa
+sys.setdlopenflags(orig_dlflags)
+
 from ipykernel.kernelapp import IPKernelApp
 from ipykernel.eventloops import loop_qt5
 from jupyter_client.kernelspec import install_kernel_spec

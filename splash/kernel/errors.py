@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import sys
+orig_dlflags = sys.getdlopenflags()
+sys.setdlopenflags(258)
 import lupa
+sys.setdlopenflags(orig_dlflags)
 
 from splash.errors import ScriptError
 from splash.lua import parse_error_message
