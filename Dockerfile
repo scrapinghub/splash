@@ -168,6 +168,9 @@ RUN pip3 install /app
 ENV PYTHONPATH $PYTHONPATH:/app
 #ENV QT_DEBUG_PLUGINS=1
 
+# Enable Chrome DevTools Protocol (CDP) in QtWebEngine
+ENV QTWEBENGINE_REMOTE_DEBUGGING "127.0.0.1:9050"
+
 # Chromium refuses to start under root
 RUN groupadd -r splash && useradd --no-log-init --create-home -r -g splash splash
 RUN chown -R splash:splash /app

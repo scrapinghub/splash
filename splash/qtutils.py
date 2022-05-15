@@ -139,6 +139,9 @@ def init_qt_app(verbose):
             diff = time.time() - self.blockedAt
             log.msg("awake; block time: %0.4f" % diff, system="QAbstractEventDispatcher")
     _qtapp = QApp(sys.argv)
+    # we have to set this, because otherwise the program may quit when
+    # the last web view window is closed.
+    _qtapp.setQuitOnLastWindowClosed(False)
     return _qtapp
 
 
