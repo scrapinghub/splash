@@ -162,7 +162,7 @@ RUN /tmp/install-python-splash-deps.sh
 # FIXME: use virtualenv
 COPY --from=qt5-builder /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
 COPY --from=qt5-builder /usr/local/lib/python3.6/dist-packages /usr/local/lib/python3.6/dist-packages
-
+RUN true
 COPY . /app
 RUN pip3 install /app
 ENV PYTHONPATH $PYTHONPATH:/app
